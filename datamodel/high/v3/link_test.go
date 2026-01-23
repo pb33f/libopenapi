@@ -4,10 +4,14 @@
 package v3
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"go.yaml.in/yaml/v4"
@@ -182,6 +186,79 @@ description: test link`
 	result, err := buildLowLink(node.Content[0], nil)
 
 	// Links Build method is very resilient, so this should succeed
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestLink_MarshalYAMLInline_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInline resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  links:
+    GetUserById:
+      $ref: "#/components/links/InternalLink"
+    InternalLink:
+      operationId: getUser
+      description: Get user by ID
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n v3.Link
+	linkNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.links.GetUserById
+	_ = low.BuildModel(linkNode, &n)
+	_ = n.Build(context.Background(), nil, linkNode, idx)
+
+	l := NewLink(&n)
+
+	result, err := l.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestLink_MarshalYAMLInlineWithContext_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInlineWithContext resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  links:
+    GetUserById:
+      $ref: "#/components/links/InternalLink"
+    InternalLink:
+      operationId: getUser
+      description: Get user by ID
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n v3.Link
+	linkNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.links.GetUserById
+	_ = low.BuildModel(linkNode, &n)
+	_ = n.Build(context.Background(), nil, linkNode, idx)
+
+	l := NewLink(&n)
+
+	ctx := base.NewInlineRenderContext()
+	result, err := l.MarshalYAMLInlineWithContext(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 }

@@ -561,3 +561,82 @@ func TestBuildLowPathItem_BuildError(t *testing.T) {
 		assert.NotNil(t, result)
 	}
 }
+
+func TestPathItem_MarshalYAMLInline_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInline resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  pathItems:
+    CommonPath:
+      $ref: "#/components/pathItems/InternalPath"
+    InternalPath:
+      get:
+        summary: Common GET operation
+        responses:
+          "200":
+            description: OK
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n lowV3.PathItem
+	pathNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.pathItems.CommonPath
+	_ = low.BuildModel(pathNode, &n)
+	_ = n.Build(context.Background(), nil, pathNode, idx)
+
+	pi := NewPathItem(&n)
+
+	result, err := pi.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestPathItem_MarshalYAMLInlineWithContext_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInlineWithContext resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  pathItems:
+    CommonPath:
+      $ref: "#/components/pathItems/InternalPath"
+    InternalPath:
+      get:
+        summary: Common GET operation
+        responses:
+          "200":
+            description: OK
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n lowV3.PathItem
+	pathNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.pathItems.CommonPath
+	_ = low.BuildModel(pathNode, &n)
+	_ = n.Build(context.Background(), nil, pathNode, idx)
+
+	pi := NewPathItem(&n)
+
+	ctx := base.NewInlineRenderContext()
+	result, err := pi.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
