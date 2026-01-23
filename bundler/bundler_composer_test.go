@@ -1499,3 +1499,596 @@ func TestBundleBytes_PreservesEmptyServerVariableDefaults(t *testing.T) {
 	assert.Equal(t, "", slotVar.Default)
 	assert.False(t, slotVar.GoLow().Default.IsEmpty())
 }
+
+// TestBundleBytesComposed_SingleSegmentResponse tests that single-segment JSON pointer
+// references to response objects are properly recomposed to component references.
+func TestBundleBytesComposed_SingleSegmentResponse(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /test:
+    get:
+      operationId: getTest
+      responses:
+        "200":
+          $ref: 'responses.yaml#/OkResponse'
+`
+
+	// Response: must have content/headers/links and NOT required
+	responsesFile := `OkResponse:
+  description: Success response
+  content:
+    application/json:
+      schema:
+        type: string
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("responses.yaml", responsesFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check the reference was recomposed
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+	getOp := testPath["get"].(map[string]any)
+	responses := getOp["responses"].(map[string]any)
+	resp200 := responses["200"].(map[string]any)
+
+	ref, hasRef := resp200["$ref"].(string)
+	require.True(t, hasRef, "Response should have $ref pointing to component")
+	assert.True(t, strings.HasPrefix(ref, "#/components/responses/"),
+		"response should reference component, got: %s", ref)
+	assert.False(t, strings.Contains(ref, "responses.yaml"),
+		"response reference should not contain external file path, got: %s", ref)
+
+	// Check that the response was added to components
+	components := doc["components"].(map[string]any)
+	responsesComp, ok := components["responses"].(map[string]any)
+	require.True(t, ok, "Components should have responses section")
+
+	foundOkResponse := false
+	for responseName := range responsesComp {
+		if responseName == "OkResponse" || strings.Contains(responseName, "OkResponse") {
+			foundOkResponse = true
+			break
+		}
+	}
+	assert.True(t, foundOkResponse, "OkResponse should be added to components")
+}
+
+// TestBundleBytesComposed_SingleSegmentParameter tests that single-segment JSON pointer
+// references to parameter objects are properly recomposed to component references.
+func TestBundleBytesComposed_SingleSegmentParameter(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /test:
+    get:
+      operationId: getTest
+      parameters:
+        - $ref: 'params.yaml#/IdParam'
+      responses:
+        "200":
+          description: OK
+`
+
+	// Parameter: must have name or in
+	paramsFile := `IdParam:
+  name: id
+  in: query
+  schema:
+    type: string
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("params.yaml", paramsFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check the reference was recomposed
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+	getOp := testPath["get"].(map[string]any)
+	params := getOp["parameters"].([]any)
+	param := params[0].(map[string]any)
+
+	ref, hasRef := param["$ref"].(string)
+	require.True(t, hasRef, "Parameter should have $ref pointing to component")
+	assert.True(t, strings.HasPrefix(ref, "#/components/parameters/"),
+		"parameter should reference component, got: %s", ref)
+	assert.False(t, strings.Contains(ref, "params.yaml"),
+		"parameter reference should not contain external file path, got: %s", ref)
+
+	// Check that the parameter was added to components
+	components := doc["components"].(map[string]any)
+	paramsComp, ok := components["parameters"].(map[string]any)
+	require.True(t, ok, "Components should have parameters section")
+
+	foundIdParam := false
+	for paramName := range paramsComp {
+		if paramName == "IdParam" || strings.Contains(paramName, "IdParam") {
+			foundIdParam = true
+			break
+		}
+	}
+	assert.True(t, foundIdParam, "IdParam should be added to components")
+}
+
+// TestBundleBytesComposed_SingleSegmentHeader tests that single-segment JSON pointer
+// references to header objects are properly recomposed to component references.
+func TestBundleBytesComposed_SingleSegmentHeader(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /test:
+    get:
+      operationId: getTest
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Rate-Limit:
+              $ref: 'headers.yaml#/RateLimitHeader'
+`
+
+	// Header: must have schema or content, but NOT in and NOT name
+	headersFile := `RateLimitHeader:
+  description: Rate limit header
+  schema:
+    type: integer
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("headers.yaml", headersFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check the reference was recomposed
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+	getOp := testPath["get"].(map[string]any)
+	responses := getOp["responses"].(map[string]any)
+	resp200 := responses["200"].(map[string]any)
+	headers := resp200["headers"].(map[string]any)
+	rateLimitHeader := headers["X-Rate-Limit"].(map[string]any)
+
+	ref, hasRef := rateLimitHeader["$ref"].(string)
+	require.True(t, hasRef, "Header should have $ref pointing to component")
+	assert.True(t, strings.HasPrefix(ref, "#/components/headers/"),
+		"header should reference component, got: %s", ref)
+	assert.False(t, strings.Contains(ref, "headers.yaml"),
+		"header reference should not contain external file path, got: %s", ref)
+
+	// Check that the header was added to components
+	components := doc["components"].(map[string]any)
+	headersComp, ok := components["headers"].(map[string]any)
+	require.True(t, ok, "Components should have headers section")
+
+	foundRateLimitHeader := false
+	for headerName := range headersComp {
+		if headerName == "RateLimitHeader" || strings.Contains(headerName, "RateLimitHeader") {
+			foundRateLimitHeader = true
+			break
+		}
+	}
+	assert.True(t, foundRateLimitHeader, "RateLimitHeader should be added to components")
+}
+
+// TestBundleBytesComposed_SingleSegmentRequestBody tests that single-segment JSON pointer
+// references to requestBody objects are properly recomposed to component references.
+func TestBundleBytesComposed_SingleSegmentRequestBody(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /test:
+    post:
+      operationId: createTest
+      requestBody:
+        $ref: 'bodies.yaml#/CreateRequest'
+      responses:
+        "201":
+          description: Created
+`
+
+	// RequestBody: must have content AND required (required helps distinguish from Response)
+	bodiesFile := `CreateRequest:
+  description: Create request body
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("bodies.yaml", bodiesFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check the reference was recomposed
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+	postOp := testPath["post"].(map[string]any)
+	reqBody := postOp["requestBody"].(map[string]any)
+
+	ref, hasRef := reqBody["$ref"].(string)
+	require.True(t, hasRef, "RequestBody should have $ref pointing to component")
+	assert.True(t, strings.HasPrefix(ref, "#/components/requestBodies/"),
+		"requestBody should reference component, got: %s", ref)
+	assert.False(t, strings.Contains(ref, "bodies.yaml"),
+		"requestBody reference should not contain external file path, got: %s", ref)
+
+	// Check that the requestBody was added to components
+	components := doc["components"].(map[string]any)
+	bodiesComp, ok := components["requestBodies"].(map[string]any)
+	require.True(t, ok, "Components should have requestBodies section")
+
+	foundCreateRequest := false
+	for bodyName := range bodiesComp {
+		if bodyName == "CreateRequest" || strings.Contains(bodyName, "CreateRequest") {
+			foundCreateRequest = true
+			break
+		}
+	}
+	assert.True(t, foundCreateRequest, "CreateRequest should be added to components")
+}
+
+// TestBundleBytesComposed_SingleSegmentExample tests that single-segment JSON pointer
+// references to example objects are properly recomposed to component references.
+func TestBundleBytesComposed_SingleSegmentExample(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /test:
+    get:
+      operationId: getTest
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+              examples:
+                sample:
+                  $ref: 'examples.yaml#/SampleExample'
+`
+
+	// Example: must have value or externalValue
+	examplesFile := `SampleExample:
+  summary: A sample example
+  value:
+    name: test
+    id: 123
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("examples.yaml", examplesFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check the reference was recomposed
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+	getOp := testPath["get"].(map[string]any)
+	responses := getOp["responses"].(map[string]any)
+	resp200 := responses["200"].(map[string]any)
+	content := resp200["content"].(map[string]any)
+	appJson := content["application/json"].(map[string]any)
+	examples := appJson["examples"].(map[string]any)
+	sampleExample := examples["sample"].(map[string]any)
+
+	ref, hasRef := sampleExample["$ref"].(string)
+	require.True(t, hasRef, "Example should have $ref pointing to component")
+	assert.True(t, strings.HasPrefix(ref, "#/components/examples/"),
+		"example should reference component, got: %s", ref)
+	assert.False(t, strings.Contains(ref, "examples.yaml"),
+		"example reference should not contain external file path, got: %s", ref)
+
+	// Check that the example was added to components
+	components := doc["components"].(map[string]any)
+	examplesComp, ok := components["examples"].(map[string]any)
+	require.True(t, ok, "Components should have examples section")
+
+	foundSampleExample := false
+	for exampleName := range examplesComp {
+		if exampleName == "SampleExample" || strings.Contains(exampleName, "SampleExample") {
+			foundSampleExample = true
+			break
+		}
+	}
+	assert.True(t, foundSampleExample, "SampleExample should be added to components")
+}
+
+// TestBundleBytesComposed_SingleSegmentLink tests that single-segment JSON pointer
+// references to link objects are properly recomposed to component references.
+func TestBundleBytesComposed_SingleSegmentLink(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /test:
+    get:
+      operationId: getTest
+      responses:
+        "200":
+          description: OK
+          links:
+            GetNext:
+              $ref: 'links.yaml#/NextPageLink'
+`
+
+	// Link: must have operationRef or operationId
+	linksFile := `NextPageLink:
+  operationId: getNextPage
+  parameters:
+    page: $response.body#/nextPage
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("links.yaml", linksFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check the reference was recomposed
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+	getOp := testPath["get"].(map[string]any)
+	responses := getOp["responses"].(map[string]any)
+	resp200 := responses["200"].(map[string]any)
+	links := resp200["links"].(map[string]any)
+	getNextLink := links["GetNext"].(map[string]any)
+
+	ref, hasRef := getNextLink["$ref"].(string)
+	require.True(t, hasRef, "Link should have $ref pointing to component")
+	assert.True(t, strings.HasPrefix(ref, "#/components/links/"),
+		"link should reference component, got: %s", ref)
+	assert.False(t, strings.Contains(ref, "links.yaml"),
+		"link reference should not contain external file path, got: %s", ref)
+
+	// Check that the link was added to components
+	components := doc["components"].(map[string]any)
+	linksComp, ok := components["links"].(map[string]any)
+	require.True(t, ok, "Components should have links section")
+
+	foundNextPageLink := false
+	for linkName := range linksComp {
+		if linkName == "NextPageLink" || strings.Contains(linkName, "NextPageLink") {
+			foundNextPageLink = true
+			break
+		}
+	}
+	assert.True(t, foundNextPageLink, "NextPageLink should be added to components")
+}
+
+// TestBundleBytesComposed_SingleSegmentCallback tests that single-segment JSON pointer
+// references to callback objects are properly recomposed to component references.
+func TestBundleBytesComposed_SingleSegmentCallback(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /test:
+    post:
+      operationId: createTest
+      callbacks:
+        onEvent:
+          $ref: 'callbacks.yaml#/EventCallback'
+      responses:
+        "201":
+          description: Created
+`
+
+	// Callback: is a map with keys containing {$
+	callbacksFile := `EventCallback:
+  '{$request.body#/callbackUrl}':
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("callbacks.yaml", callbacksFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check the reference was recomposed
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+	postOp := testPath["post"].(map[string]any)
+	callbacks := postOp["callbacks"].(map[string]any)
+	onEventCallback := callbacks["onEvent"].(map[string]any)
+
+	ref, hasRef := onEventCallback["$ref"].(string)
+	require.True(t, hasRef, "Callback should have $ref pointing to component")
+	assert.True(t, strings.HasPrefix(ref, "#/components/callbacks/"),
+		"callback should reference component, got: %s", ref)
+	assert.False(t, strings.Contains(ref, "callbacks.yaml"),
+		"callback reference should not contain external file path, got: %s", ref)
+
+	// Check that the callback was added to components
+	components := doc["components"].(map[string]any)
+	callbacksComp, ok := components["callbacks"].(map[string]any)
+	require.True(t, ok, "Components should have callbacks section")
+
+	foundEventCallback := false
+	for callbackName := range callbacksComp {
+		if callbackName == "EventCallback" || strings.Contains(callbackName, "EventCallback") {
+			foundEventCallback = true
+			break
+		}
+	}
+	assert.True(t, foundEventCallback, "EventCallback should be added to components")
+}
+
+// TestBundleBytesComposed_SingleSegmentPathItem tests that single-segment JSON pointer
+// references to pathItem objects are properly recomposed to component references.
+func TestBundleBytesComposed_SingleSegmentPathItem(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /test:
+    $ref: 'pathitems.yaml#/TestPath'
+`
+
+	// PathItem: has HTTP methods (get, post, etc.) or parameters
+	pathitemsFile := `TestPath:
+  get:
+    operationId: getTest
+    responses:
+      "200":
+        description: OK
+  post:
+    operationId: createTest
+    responses:
+      "201":
+        description: Created
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("pathitems.yaml", pathitemsFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check the reference was recomposed
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+
+	ref, hasRef := testPath["$ref"].(string)
+	require.True(t, hasRef, "PathItem should have $ref pointing to component")
+	assert.True(t, strings.HasPrefix(ref, "#/components/pathItems/"),
+		"pathItem should reference component, got: %s", ref)
+	assert.False(t, strings.Contains(ref, "pathitems.yaml"),
+		"pathItem reference should not contain external file path, got: %s", ref)
+
+	// Check that the pathItem was added to components
+	components := doc["components"].(map[string]any)
+	pathItemsComp, ok := components["pathItems"].(map[string]any)
+	require.True(t, ok, "Components should have pathItems section")
+
+	foundTestPath := false
+	for pathItemName := range pathItemsComp {
+		if pathItemName == "TestPath" || strings.Contains(pathItemName, "TestPath") {
+			foundTestPath = true
+			break
+		}
+	}
+	assert.True(t, foundTestPath, "TestPath should be added to components")
+}
