@@ -212,7 +212,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 							//
 
 							// check for a config BaseURL and use that if it exists.
-							if idx.GetConfig().BaseURL != nil {
+							if idx.GetConfig() != nil && idx.GetConfig().BaseURL != nil {
 								u := *idx.GetConfig().BaseURL
 								p := ""
 								if u.Path != "" {

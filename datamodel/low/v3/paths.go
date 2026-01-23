@@ -159,27 +159,29 @@ func extractPathItemsMap(ctx context.Context, root *yaml.Node, idx *index.SpecIn
 		}()
 		skip := false
 		var currentNode *yaml.Node
-		for i, pathNode := range root.Content {
-			if strings.HasPrefix(strings.ToLower(pathNode.Value), "x-") {
-				skip = true
-				continue
-			}
-			if skip {
-				skip = false
-				continue
-			}
-			if i%2 == 0 {
-				currentNode = pathNode
-				continue
-			}
+		if root != nil {
+			for i, pathNode := range root.Content {
+				if strings.HasPrefix(strings.ToLower(pathNode.Value), "x-") {
+					skip = true
+					continue
+				}
+				if skip {
+					skip = false
+					continue
+				}
+				if i%2 == 0 {
+					currentNode = pathNode
+					continue
+				}
 
-			select {
-			case in <- buildInput{
-				currentNode: currentNode,
-				pathNode:    pathNode,
-			}:
-			case <-done:
-				return
+				select {
+				case in <- buildInput{
+					currentNode: currentNode,
+					pathNode:    pathNode,
+				}:
+				case <-done:
+					return
+				}
 			}
 		}
 	}()
