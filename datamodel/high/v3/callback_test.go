@@ -269,3 +269,15 @@ func TestBuildLowCallback_BuildError(t *testing.T) {
 	}
 }
 
+func TestBuildLowCallback_BuildError_Reference(t *testing.T) {
+
+	yml := `fresh: 
+  $ref: '#/components/parameters/DoesNotExist'`
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	idx := index.NewSpecIndex(&node)
+
+	_, err := buildLowCallback(node.Content[0], idx)
+	assert.Error(t, err)
+}

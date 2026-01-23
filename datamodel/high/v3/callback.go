@@ -20,7 +20,7 @@ import (
 // buildLowCallback builds a low-level Callback from a resolved YAML node.
 func buildLowCallback(node *yaml.Node, idx *index.SpecIndex) (*lowv3.Callback, error) {
 	var cb lowv3.Callback
-	lowmodel.BuildModel(node, &cb)
+	_ = lowmodel.BuildModel(node, &cb)
 	if err := cb.Build(context.Background(), nil, node, idx); err != nil {
 		return nil, err
 	}
