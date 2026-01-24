@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"hash/maphash"
 	"reflect"
-	"strings"
 	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel"
