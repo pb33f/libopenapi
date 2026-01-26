@@ -2182,3 +2182,320 @@ func (tfi *testFileInfo) Mode() fs.FileMode  { return 0644 }
 func (tfi *testFileInfo) ModTime() time.Time { return time.Now() }
 func (tfi *testFileInfo) IsDir() bool        { return false }
 func (tfi *testFileInfo) Sys() any           { return nil }
+
+// TestRolodex_NestedSubdirRelativeRefResolution tests that relative $ref resolution
+// correctly preserves nested directory paths like /myproject/api-spec/.
+//
+// This test was added to prevent regression of a bug where the '/openapi/' segment
+// was being lost when resolving '../components/...' refs from files in nested subdirs.
+//
+// The bug occurred when a custom filesystem used dbFile.FileLocation (a relative DB path)
+// instead of the computed absolute disk path for fullPath, causing libopenapi's reference
+// resolution to use the wrong base directory.
+func TestRolodex_NestedSubdirRelativeRefResolution(t *testing.T) {
+	t.Parallel()
+
+	// Get absolute path to the test data directory
+	// The key here is that we have a nested structure: nested_subdir/openapi/openapi.yaml
+	// where the spec file is NOT at the root of our "workspace"
+	cwd, _ := os.Getwd()
+	testDataDir := filepath.Join(cwd, "nested_subdir_test_data")
+	specFileDir := filepath.Join(testDataDir, "openapi")
+	specFile := filepath.Join(specFileDir, "openapi.yaml")
+
+	// Read the root spec file
+	specBytes, err := os.ReadFile(specFile)
+	if err != nil {
+		t.Fatalf("failed to read spec file: %v", err)
+	}
+
+	// Configure the rolodex with the nested subdir structure
+	// IMPORTANT: BaseDirectory should be where the spec file lives for correct relative ref resolution
+	fsCfg := &LocalFSConfig{
+		BaseDirectory: specFileDir,
+		DirFS:         os.DirFS(specFileDir),
+	}
+
+	fileFS, err := NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		t.Fatalf("failed to create local FS: %v", err)
+	}
+
+	cf := CreateOpenAPIIndexConfig()
+	// BasePath should be the directory containing the spec file
+	// This is critical for relative $ref resolution to work correctly
+	cf.BasePath = specFileDir
+	cf.SpecFilePath = specFile
+	cf.IgnorePolymorphicCircularReferences = true
+	cf.IgnoreArrayCircularReferences = true
+
+	rolodex := NewRolodex(cf)
+	rolodex.AddLocalFS(specFileDir, fileFS)
+
+	// Parse the root spec and set it as the root document
+	var rootNode yaml.Node
+	err = yaml.Unmarshal(specBytes, &rootNode)
+	if err != nil {
+		t.Fatalf("failed to unmarshal spec: %v", err)
+	}
+
+	rolodex.SetRootNode(&rootNode)
+
+	// Index the rolodex - this will resolve all $refs
+	err = rolodex.IndexTheRolodex(context.Background())
+	if err != nil {
+		t.Fatalf("failed to index rolodex: %v", err)
+	}
+
+	// Get all references to verify resolution
+	refs := rolodex.GetAllReferences()
+
+	// Verify the path file reference was resolved
+	pathRef := "'paths/user.yaml#/user_path'"
+	found := false
+	for ref := range refs {
+		if strings.Contains(ref, "paths/user.yaml") {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "expected to find path reference to paths/user.yaml, refs: %v", refs)
+
+	// Check that there are no errors - if the /openapi/ segment was lost,
+	// we would see file not found errors for the component references
+	caughtErrors := rolodex.GetCaughtErrors()
+
+	// Filter out any non-critical errors
+	var criticalErrors []error
+	for _, e := range caughtErrors {
+		errStr := e.Error()
+		// If we see "unable to locate" or "file not found" for our component files,
+		// that means the path resolution lost the /openapi/ segment
+		if strings.Contains(errStr, "components/schemas/Basic.yaml") ||
+			strings.Contains(errStr, "components/schemas/Error.yaml") {
+			criticalErrors = append(criticalErrors, e)
+		}
+	}
+
+	assert.Empty(t, criticalErrors,
+		"reference resolution failed - likely lost nested dir segment. Errors: %v", criticalErrors)
+
+	// Verify the rolodex found the expected number of indexes (root + external files)
+	indexes := rolodex.GetIndexes()
+	assert.GreaterOrEqual(t, len(indexes), 1, "expected at least root index")
+
+	// Additional verification: check that the external files were indexed
+	// If resolution worked, we should have indexes for:
+	// - openapi.yaml (root)
+	// - paths/user.yaml
+	// - components/schemas/Basic.yaml
+	// - components/schemas/Error.yaml
+	t.Logf("Total indexes created: %d", len(indexes))
+	t.Logf("Total references: %d", len(refs))
+	t.Logf("Path reference %s found: %v", pathRef, found)
+}
+
+// TestRolodex_NestedSubdir_ParentBasePath tests reference resolution when BasePath
+// is a PARENT directory of the spec file (like a workspace root containing multiple specs).
+//
+// This mimics the bunkhouse-githubapp scenario where:
+// - StorageRoot = /storage/session123/
+// - Spec file = /storage/session123/myproject/api-spec/openapi.yaml
+// - BasePath is set to StorageRoot
+//
+// The key requirement is that SpecFilePath must be an absolute path that correctly
+// identifies where the spec file lives, so relative $refs can be resolved properly.
+func TestRolodex_NestedSubdir_ParentBasePath(t *testing.T) {
+	t.Parallel()
+
+	// Setup: nested_subdir is like "storage root", openapi/ is like "myproject/api-spec/"
+	cwd, _ := os.Getwd()
+	workspaceRoot := filepath.Join(cwd, "nested_subdir_test_data")
+	specFileDir := filepath.Join(workspaceRoot, "openapi")
+	specFile := filepath.Join(specFileDir, "openapi.yaml")
+
+	// Read the root spec file
+	specBytes, err := os.ReadFile(specFile)
+	if err != nil {
+		t.Fatalf("failed to read spec file: %v", err)
+	}
+
+	// Configure the local FS with the workspace root as base
+	// This is how bunkhouse configures it - the filesystem root is the workspace root
+	fsCfg := &LocalFSConfig{
+		BaseDirectory: workspaceRoot,
+		DirFS:         os.DirFS(workspaceRoot),
+	}
+
+	fileFS, err := NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		t.Fatalf("failed to create local FS: %v", err)
+	}
+
+	cf := CreateOpenAPIIndexConfig()
+	// BasePath is the workspace root (parent of spec file directory)
+	cf.BasePath = workspaceRoot
+	// SpecFilePath must be the full absolute path to the spec file
+	// This is critical - the directory of this path is used for relative ref resolution
+	cf.SpecFilePath = specFile
+	cf.IgnorePolymorphicCircularReferences = true
+	cf.IgnoreArrayCircularReferences = true
+
+	rolodex := NewRolodex(cf)
+	rolodex.AddLocalFS(workspaceRoot, fileFS)
+
+	// Parse the root spec and set it as the root document
+	var rootNode yaml.Node
+	err = yaml.Unmarshal(specBytes, &rootNode)
+	if err != nil {
+		t.Fatalf("failed to unmarshal spec: %v", err)
+	}
+
+	rolodex.SetRootNode(&rootNode)
+
+	// Index the rolodex - this will resolve all $refs
+	err = rolodex.IndexTheRolodex(context.Background())
+	if err != nil {
+		t.Fatalf("failed to index rolodex: %v", err)
+	}
+
+	// Get all references
+	refs := rolodex.GetAllReferences()
+
+	// Check that there are no file-not-found errors for our component files
+	// If the path resolution lost the /openapi/ segment, we would see errors here
+	caughtErrors := rolodex.GetCaughtErrors()
+
+	var criticalErrors []error
+	for _, e := range caughtErrors {
+		errStr := e.Error()
+		if strings.Contains(errStr, "components/schemas/Basic.yaml") ||
+			strings.Contains(errStr, "components/schemas/Error.yaml") ||
+			strings.Contains(errStr, "paths/user.yaml") {
+			criticalErrors = append(criticalErrors, e)
+		}
+	}
+
+	assert.Empty(t, criticalErrors,
+		"reference resolution failed with parent BasePath - nested dir segment may be lost. Errors: %v", criticalErrors)
+
+	// Verify the expected number of indexes were created
+	indexes := rolodex.GetIndexes()
+	assert.GreaterOrEqual(t, len(indexes), 3,
+		"expected at least 3 indexes (root + paths/user.yaml + component schemas)")
+
+	t.Logf("Total indexes created with parent BasePath: %d", len(indexes))
+	t.Logf("Total references: %d", len(refs))
+}
+
+// TestRolodex_SpecAbsolutePath_AllBranches tests all three code paths in the
+// SpecAbsolutePath computation logic to ensure 100% coverage of the nested directory fix.
+func TestRolodex_SpecAbsolutePath_AllBranches(t *testing.T) {
+	cwd, _ := os.Getwd()
+	testDataDir := filepath.Join(cwd, "nested_subdir_test_data", "openapi")
+
+	// Test case 1: Absolute SpecFilePath
+	// This tests the branch at line 420: if filepath.IsAbs(r.indexConfig.SpecFilePath)
+	t.Run("absolute SpecFilePath", func(t *testing.T) {
+		specFile := filepath.Join(testDataDir, "openapi.yaml")
+		specBytes, _ := os.ReadFile(specFile)
+
+		fsCfg := &LocalFSConfig{
+			BaseDirectory: testDataDir,
+			DirFS:         os.DirFS(testDataDir),
+		}
+		fileFS, _ := NewLocalFSWithConfig(fsCfg)
+
+		cf := CreateOpenAPIIndexConfig()
+		cf.BasePath = testDataDir
+		cf.SpecFilePath = specFile // Absolute path
+		cf.IgnorePolymorphicCircularReferences = true
+		cf.IgnoreArrayCircularReferences = true
+
+		rolodex := NewRolodex(cf)
+		rolodex.AddLocalFS(testDataDir, fileFS)
+
+		var rootNode yaml.Node
+		_ = yaml.Unmarshal(specBytes, &rootNode)
+		rolodex.SetRootNode(&rootNode)
+
+		err := rolodex.IndexTheRolodex(context.Background())
+		assert.NoError(t, err)
+
+		// SpecAbsolutePath should equal SpecFilePath since it's already absolute
+		assert.Equal(t, specFile, rolodex.indexConfig.SpecAbsolutePath)
+	})
+
+	// Test case 2: Relative SpecFilePath that includes the basePath prefix
+	// This tests the branch at line 428: if strings.HasPrefix(specPath, origBasePath...)
+	t.Run("relative SpecFilePath with basePath prefix", func(t *testing.T) {
+		specFile := filepath.Join(testDataDir, "openapi.yaml")
+		specBytes, _ := os.ReadFile(specFile)
+
+		fsCfg := &LocalFSConfig{
+			BaseDirectory: testDataDir,
+			DirFS:         os.DirFS(testDataDir),
+		}
+		fileFS, _ := NewLocalFSWithConfig(fsCfg)
+
+		// Make basePath relative
+		relativeBase := "nested_subdir_test_data/openapi"
+
+		cf := CreateOpenAPIIndexConfig()
+		cf.BasePath = relativeBase
+		// SpecFilePath includes the basePath prefix
+		cf.SpecFilePath = filepath.Join(relativeBase, "openapi.yaml")
+		cf.IgnorePolymorphicCircularReferences = true
+		cf.IgnoreArrayCircularReferences = true
+
+		rolodex := NewRolodex(cf)
+		// AddLocalFS will receive absolute basePath internally
+		absBase, _ := filepath.Abs(relativeBase)
+		rolodex.AddLocalFS(absBase, fileFS)
+
+		var rootNode yaml.Node
+		_ = yaml.Unmarshal(specBytes, &rootNode)
+		rolodex.SetRootNode(&rootNode)
+
+		err := rolodex.IndexTheRolodex(context.Background())
+		assert.NoError(t, err)
+
+		// SpecAbsolutePath should be absolute and correct
+		assert.True(t, filepath.IsAbs(rolodex.indexConfig.SpecAbsolutePath))
+		assert.Contains(t, rolodex.indexConfig.SpecAbsolutePath, "openapi.yaml")
+	})
+
+	// Test case 3: Relative SpecFilePath without basePath prefix
+	// This tests the else branch at line 433
+	t.Run("relative SpecFilePath without basePath prefix", func(t *testing.T) {
+		specFile := filepath.Join(testDataDir, "openapi.yaml")
+		specBytes, _ := os.ReadFile(specFile)
+
+		fsCfg := &LocalFSConfig{
+			BaseDirectory: testDataDir,
+			DirFS:         os.DirFS(testDataDir),
+		}
+		fileFS, _ := NewLocalFSWithConfig(fsCfg)
+
+		cf := CreateOpenAPIIndexConfig()
+		cf.BasePath = testDataDir
+		// SpecFilePath is just the filename, relative to basePath
+		cf.SpecFilePath = "openapi.yaml"
+		cf.IgnorePolymorphicCircularReferences = true
+		cf.IgnoreArrayCircularReferences = true
+
+		rolodex := NewRolodex(cf)
+		rolodex.AddLocalFS(testDataDir, fileFS)
+
+		var rootNode yaml.Node
+		_ = yaml.Unmarshal(specBytes, &rootNode)
+		rolodex.SetRootNode(&rootNode)
+
+		err := rolodex.IndexTheRolodex(context.Background())
+		assert.NoError(t, err)
+
+		// SpecAbsolutePath should be basePath + SpecFilePath
+		expected := filepath.Join(testDataDir, "openapi.yaml")
+		assert.Equal(t, expected, rolodex.indexConfig.SpecAbsolutePath)
+	})
+}

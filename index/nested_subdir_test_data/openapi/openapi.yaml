@@ -1,0 +1,17 @@
+openapi: 3.1.0
+info:
+  title: Nested Subdir Reference Resolution Test
+  version: 1.0.0
+  description: |
+    Tests that relative $ref resolution correctly preserves nested directory paths.
+    The /openapi/ segment must NOT be lost when resolving '../components/...' refs.
+paths:
+  /users:
+    $ref: 'paths/user.yaml#/user_path'
+components:
+  schemas:
+    LocalSchema:
+      type: object
+      properties:
+        id:
+          type: string
