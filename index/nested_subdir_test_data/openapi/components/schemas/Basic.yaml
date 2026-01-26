@@ -1,0 +1,15 @@
+BasicUser:
+  type: object
+  description: A basic user object
+  required:
+    - id
+    - name
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    email:
+      type: string
+      format: email
