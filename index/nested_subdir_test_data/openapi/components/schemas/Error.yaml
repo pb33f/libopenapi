@@ -1,0 +1,11 @@
+ErrorResponse:
+  type: object
+  description: Standard error response
+  required:
+    - code
+    - message
+  properties:
+    code:
+      type: integer
+    message:
+      type: string

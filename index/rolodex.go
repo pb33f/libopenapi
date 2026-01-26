@@ -405,7 +405,34 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 
 			if len(r.localFS) > 0 || len(r.remoteFS) > 0 {
 				if r.indexConfig.SpecFilePath != "" {
-					r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, filepath.Base(r.indexConfig.SpecFilePath))
+					// Compute the absolute path to the spec file.
+					// - If SpecFilePath is already absolute, use it directly.
+					// - If SpecFilePath is relative, it needs careful handling to avoid path doubling.
+					//
+					// The original code used filepath.Base() which incorrectly stripped directory
+					// segments like /myproject/api-spec/ from nested paths.
+					//
+					// Handle cases:
+					// 1. SpecFilePath = "test_data/nested/doc.yaml", BasePath = "/abs/test_data/nested"
+					//    -> Should NOT double to /abs/test_data/nested/test_data/nested/doc.yaml
+					// 2. SpecFilePath = "subdir/doc.yaml", BasePath = "/abs/test_data"
+					//    -> Should produce /abs/test_data/subdir/doc.yaml
+					if filepath.IsAbs(r.indexConfig.SpecFilePath) {
+						r.indexConfig.SpecAbsolutePath = r.indexConfig.SpecFilePath
+					} else {
+						specPath := r.indexConfig.SpecFilePath
+						// Check if SpecFilePath starts with the relative basePath or its original value
+						// This handles cases where SpecFilePath = "test_data/file.yaml" and
+						// BasePath was originally "test_data" (now absolute)
+						origBasePath := r.indexConfig.BasePath
+						if strings.HasPrefix(specPath, origBasePath+string(os.PathSeparator)) {
+							// SpecFilePath includes the original basePath, make it absolute directly
+							r.indexConfig.SpecAbsolutePath, _ = filepath.Abs(specPath)
+						} else {
+							// SpecFilePath is relative to basePath, join them
+							r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, specPath)
+						}
+					}
 				} else {
 					r.indexConfig.SetTheoreticalRoot()
 				}

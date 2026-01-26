@@ -1,0 +1,17 @@
+user_path:
+  get:
+    operationId: getUser
+    summary: Get user by ID
+    responses:
+      '200':
+        description: Successful response
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/Basic.yaml#/BasicUser'
+      '404':
+        description: User not found
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/Error.yaml#/ErrorResponse'
