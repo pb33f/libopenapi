@@ -2370,3 +2370,105 @@ paths:
 	runtime.GC()
 }
 
+func TestBundleBytesWithConfig_ExternalRecursiveSchema_Nested(t *testing.T) {
+	mainYAML := `openapi: 3.1.0
+info:
+  title: Nested Tree API
+  version: 1.0.0
+paths:
+  /tree:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: 'external.yaml#/components/schemas/Node'`
+
+	externalYAML := `components:
+  schemas:
+    Node:
+      type: object
+      properties:
+        value:
+          type: string
+        wrapper:
+          type: object
+          properties:
+            nested:
+              type: object
+              properties:
+                ref:
+                  $ref: '#/components/schemas/Node'`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(mainYAML), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "external.yaml"), []byte(externalYAML), 0644))
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}
+
+	out, err := BundleBytes(mainBytes, cfg)
+	require.NoError(t, err)
+
+	composedOut, err := BundleBytesComposed(out, cfg, nil)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(composedOut, &doc))
+
+	components := doc["components"].(map[string]any)
+	schemas := components["schemas"].(map[string]any)
+	assert.Contains(t, schemas, "Node")
+
+	runtime.GC()
+}
+
+func TestBundleBytesWithConfig_ExternalNonRecursiveSchema(t *testing.T) {
+	mainYAML := `openapi: 3.1.0
+info:
+  title: Simple API
+  version: 1.0.0
+paths:
+  /user:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: 'external.yaml#/components/schemas/User'`
+
+	externalYAML := `components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+        age:
+          type: integer`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(mainYAML), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "external.yaml"), []byte(externalYAML), 0644))
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}
+
+	out, err := BundleBytes(mainBytes, cfg)
+	require.NoError(t, err)
+
+	composedOut, err := BundleBytesComposed(out, cfg, nil)
+	require.NoError(t, err)
+	require.NotNil(t, composedOut)
+
+	runtime.GC()
+}
+
