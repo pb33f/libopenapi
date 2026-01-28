@@ -2486,6 +2486,14 @@ paths:
 	runtime.GC()
 }
 
+func TestResolveRecursiveExternalSchemas_NilModel(t *testing.T) {
+	resolveRecursiveExternalSchemas(nil)
+}
+
+func TestHasRefToSchemasInSet_NilNode(t *testing.T) {
+	assert.False(t, hasRefToSchemasInSet(nil, nil))
+}
+
 func TestBundleBytesWithConfig_ExternalNonRecursiveSchema(t *testing.T) {
 	mainYAML := `openapi: 3.1.0
 info:
