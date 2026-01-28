@@ -267,6 +267,9 @@ func bundleWithConfig(model *v3.Document, config *BundleInlineConfig) ([]byte, e
 	defer highbase.SetBundlingMode(false)
 
 	if model.Rolodex != nil {
+		// Copy external schemas with self-references to components.
+		resolveRecursiveExternalSchemas(model)
+
 		// Handle discriminator external refs if enabled.
 		// This copies external schemas referenced by discriminator mappings to the root
 		// document's components section, ensuring the bundled output is valid.
@@ -294,6 +297,82 @@ type externalSchemaRef struct {
 	schemaName  string            // The target name in components
 	fullDef     string            // The full definition path (e.g., "/path/to/file.yaml#/components/schemas/Cat")
 	originalRef string            // The original reference string (e.g., "#/components/schemas/Cat")
+}
+
+// resolveRecursiveExternalSchemas copies external schemas with self-references
+// to the root document's components section.
+func resolveRecursiveExternalSchemas(model *v3.Document) {
+	if model == nil || model.Rolodex == nil {
+		return
+	}
+
+	rolodex := model.Rolodex
+	rootIdx := rolodex.GetRootIndex()
+	rootPath := rootIdx.GetSpecAbsolutePath()
+
+	var recursiveSchemas []*externalSchemaRef
+	for _, idx := range rolodex.GetIndexes() {
+		if idx.GetSpecAbsolutePath() == rootPath {
+			continue
+		}
+
+		for jsonPointer, schemaRef := range idx.GetAllComponentSchemas() {
+			pointerParts := strings.Split(strings.TrimPrefix(jsonPointer, "#/"), "/")
+			schemaName := pointerParts[len(pointerParts)-1]
+
+			if findRefInNode(schemaRef.Node, jsonPointer) {
+				recursiveSchemas = append(recursiveSchemas, &externalSchemaRef{
+					idx:         idx,
+					ref:         schemaRef,
+					schemaName:  schemaName,
+					fullDef:     fmt.Sprintf("%s%s", idx.GetSpecAbsolutePath(), jsonPointer),
+					originalRef: jsonPointer,
+				})
+			}
+		}
+	}
+
+	if len(recursiveSchemas) == 0 {
+		return
+	}
+
+	if model.Components == nil {
+		model.Components, _ = buildComponents(rootIdx)
+	}
+
+	existingNames := make(map[string]bool)
+	for pair := model.Components.Schemas.First(); pair != nil; pair = pair.Next() {
+		existingNames[pair.Key()] = true
+	}
+
+	for _, extSchema := range recursiveSchemas {
+		copySchemaToComponents(model, extSchema, existingNames)
+	}
+}
+
+func findRefInNode(node *yaml.Node, targetRef string) bool {
+	if node == nil {
+		return false
+	}
+
+	switch node.Kind {
+	case yaml.MappingNode:
+		for i := 0; i < len(node.Content)-1; i += 2 {
+			if node.Content[i].Value == "$ref" && node.Content[i+1].Value == targetRef {
+				return true
+			}
+			if findRefInNode(node.Content[i+1], targetRef) {
+				return true
+			}
+		}
+	case yaml.SequenceNode, yaml.DocumentNode:
+		for _, child := range node.Content {
+			if findRefInNode(child, targetRef) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // resolveDiscriminatorExternalRefs handles copying external schemas referenced by discriminators

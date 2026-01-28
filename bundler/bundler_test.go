@@ -2282,3 +2282,91 @@ components:
 	assert.Equal(t, "#node", itemsSchema.DynamicRef, "DynamicRef should be '#node'")
 }
 
+// TestBundleBytesWithConfig_ExternalRecursiveSchema tests that external schemas
+// with self-references are copied to components instead of being inlined.
+func TestBundleBytesWithConfig_ExternalRecursiveSchema(t *testing.T) {
+	mainYAML := `openapi: 3.1.0
+info:
+  title: Tree API
+  version: 1.0.0
+paths:
+  /tree:
+    get:
+      responses:
+        '200':
+          description: Tree response
+          content:
+            application/json:
+              schema:
+                $ref: 'external.yaml#/components/schemas/Tree'`
+
+	externalYAML := `components:
+  schemas:
+    Tree:
+      type: object
+      properties:
+        name:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tree'`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(mainYAML), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "external.yaml"), []byte(externalYAML), 0644))
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}
+
+	out, err := BundleBytes(mainBytes, cfg)
+	require.NoError(t, err)
+
+	composedOut, err := BundleBytesComposed(out, cfg, nil)
+	require.NoError(t, err)
+	require.NotNil(t, composedOut, "Composed output should not be nil")
+
+	// Parse the composed output to verify structure
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(composedOut, &doc))
+
+	// Verify components section exists and contains the Tree schema
+	components, ok := doc["components"].(map[string]any)
+	require.True(t, ok, "components section should exist after composition")
+
+	schemas, ok := components["schemas"].(map[string]any)
+	require.True(t, ok, "schemas section should exist")
+
+	// Check that the Tree schema was copied to components
+	treeSchema, hasTree := schemas["Tree"].(map[string]any)
+	assert.True(t, hasTree, "Tree schema should be in components")
+
+	// Verify the self-reference is valid (points to #/components/schemas/Tree)
+	if hasTree {
+		props, ok := treeSchema["properties"].(map[string]any)
+		require.True(t, ok, "Tree should have properties")
+
+		children, ok := props["children"].(map[string]any)
+		require.True(t, ok, "Tree should have children property")
+
+		items, ok := children["items"].(map[string]any)
+		require.True(t, ok, "children should have items")
+
+		ref, ok := items["$ref"].(string)
+		require.True(t, ok, "items should have $ref")
+
+		assert.Equal(t, "#/components/schemas/Tree", ref,
+			"self-reference should point to Tree in components")
+	}
+
+	// Verify the output doesn't contain external file references
+	composedStr := string(composedOut)
+	assert.NotContains(t, composedStr, "external.yaml",
+		"Composed output should not contain external file references")
+
+	runtime.GC()
+}
+
