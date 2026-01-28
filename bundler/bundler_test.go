@@ -2370,6 +2370,65 @@ paths:
 	runtime.GC()
 }
 
+func TestBundleBytesWithConfig_ExternalMutualRecursion(t *testing.T) {
+	mainYAML := `openapi: 3.1.0
+info:
+  title: Mutual Recursion API
+  version: 1.0.0
+paths:
+  /blob:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: 'external.yaml#/components/schemas/Blob'`
+
+	externalYAML := `components:
+  schemas:
+    Blob:
+      type: object
+      properties:
+        name:
+          type: string
+        blob2:
+          $ref: '#/components/schemas/Blob2'
+    Blob2:
+      type: object
+      properties:
+        value:
+          type: string
+        blob:
+          $ref: '#/components/schemas/Blob'`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(mainYAML), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "external.yaml"), []byte(externalYAML), 0644))
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}
+
+	out, err := BundleBytes(mainBytes, cfg)
+	require.NoError(t, err)
+
+	composedOut, err := BundleBytesComposed(out, cfg, nil)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(composedOut, &doc))
+
+	components := doc["components"].(map[string]any)
+	schemas := components["schemas"].(map[string]any)
+	assert.Contains(t, schemas, "Blob")
+	assert.Contains(t, schemas, "Blob2")
+
+	runtime.GC()
+}
+
 func TestBundleBytesWithConfig_ExternalRecursiveSchema_Nested(t *testing.T) {
 	mainYAML := `openapi: 3.1.0
 info:

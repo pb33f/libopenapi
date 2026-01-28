@@ -316,11 +316,17 @@ func resolveRecursiveExternalSchemas(model *v3.Document) {
 			continue
 		}
 
-		for jsonPointer, schemaRef := range idx.GetAllComponentSchemas() {
+		schemas := idx.GetAllComponentSchemas()
+		schemaPointers := make(map[string]bool)
+		for ptr := range schemas {
+			schemaPointers[ptr] = true
+		}
+
+		for jsonPointer, schemaRef := range schemas {
 			pointerParts := strings.Split(strings.TrimPrefix(jsonPointer, "#/"), "/")
 			schemaName := pointerParts[len(pointerParts)-1]
 
-			if findRefInNode(schemaRef.Node, jsonPointer) {
+			if hasRefToSchemasInSet(schemaRef.Node, schemaPointers) {
 				recursiveSchemas = append(recursiveSchemas, &externalSchemaRef{
 					idx:         idx,
 					ref:         schemaRef,
@@ -350,7 +356,7 @@ func resolveRecursiveExternalSchemas(model *v3.Document) {
 	}
 }
 
-func findRefInNode(node *yaml.Node, targetRef string) bool {
+func hasRefToSchemasInSet(node *yaml.Node, schemaPointers map[string]bool) bool {
 	if node == nil {
 		return false
 	}
@@ -358,16 +364,18 @@ func findRefInNode(node *yaml.Node, targetRef string) bool {
 	switch node.Kind {
 	case yaml.MappingNode:
 		for i := 0; i < len(node.Content)-1; i += 2 {
-			if node.Content[i].Value == "$ref" && node.Content[i+1].Value == targetRef {
-				return true
+			if node.Content[i].Value == "$ref" {
+				if schemaPointers[node.Content[i+1].Value] {
+					return true
+				}
 			}
-			if findRefInNode(node.Content[i+1], targetRef) {
+			if hasRefToSchemasInSet(node.Content[i+1], schemaPointers) {
 				return true
 			}
 		}
 	case yaml.SequenceNode, yaml.DocumentNode:
 		for _, child := range node.Content {
-			if findRefInNode(child, targetRef) {
+			if hasRefToSchemasInSet(child, schemaPointers) {
 				return true
 			}
 		}
