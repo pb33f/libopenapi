@@ -411,7 +411,7 @@ func TestSchemaProxy_MarshalYAML_StripBasePath(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "circular reference")
 
-	assert.NotEqual(t, index.HashNode(rootNode.Content[0]), index.HashNode(rend.(*yaml.Node)))
+	assert.Equal(t, index.HashNode(rootNode.Content[0]), index.HashNode(rend.(*yaml.Node)))
 }
 
 func TestSchemaProxy_MarshalYAML_BadSchema(t *testing.T) {
