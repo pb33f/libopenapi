@@ -6,6 +6,7 @@ package base
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -492,38 +493,55 @@ func (sp *SchemaProxy) marshalYAMLInlineInternal(ctx *InlineRenderContext) (inte
 		}
 
 		for _, c := range circ {
-			if !sp.IsReference() {
-				continue
-			}
-			if sp.GetReference() == c.LoopPoint.Definition {
-				// nope
-				return sp.GetReferenceNode(), cirError((c.LoopPoint.Definition))
-			}
-			basePath := idx.GetSpecAbsolutePath()
-			if !filepath.IsAbs(basePath) && !strings.HasPrefix(basePath, "http") {
-				basePath, _ = filepath.Abs(basePath)
-			}
-			if basePath == c.LoopPoint.FullDefinition {
-				// we loop on our-self
-				return sp.GetReferenceNode(), cirError((c.LoopPoint.Definition))
-			}
-
-			a := utils.ReplaceWindowsDriveWithLinuxPath(strings.Replace(c.LoopPoint.FullDefinition, basePath, "", 1))
-			b := sp.GetReference()
-
-			aBase, aFragment := index.SplitRefFragment(a)
-			bBase, bFragment := index.SplitRefFragment(b)
-
-			if aFragment != "" && bFragment != "" && aFragment == bFragment {
-				return sp.GetReferenceNode(), cirError((c.LoopPoint.Definition))
-			}
-
-			if aFragment == "" && bFragment == "" {
-				aNorm := strings.TrimPrefix(strings.TrimPrefix(aBase, "./"), "/")
-				bNorm := strings.TrimPrefix(strings.TrimPrefix(bBase, "./"), "/")
-				if aNorm != "" && bNorm != "" && aNorm == bNorm {
+			if sp.IsReference() {
+				if sp.GetReference() == c.LoopPoint.Definition {
 					// nope
-					return sp.GetReferenceNode(), cirError((c.LoopPoint.Definition))
+					return sp.GetReferenceNode(),
+						cirError((c.LoopPoint.Definition))
+				}
+				basePath := sp.GoLow().GetIndex().GetSpecAbsolutePath()
+
+				if !filepath.IsAbs(basePath) && !strings.HasPrefix(basePath, "http") {
+					basePath, _ = filepath.Abs(basePath)
+				}
+
+				if basePath == c.LoopPoint.FullDefinition {
+					// we loop on our-self
+					return sp.GetReferenceNode(),
+						cirError((c.LoopPoint.Definition))
+				}
+				a := utils.ReplaceWindowsDriveWithLinuxPath(strings.Replace(c.LoopPoint.FullDefinition, basePath, "", 1))
+				b := sp.GetReference()
+				if strings.HasPrefix(b, "./") {
+					b = strings.Replace(b, "./", "/", 1) // strip any leading ./ from the reference
+				}
+				// if loading things in remotely and references are relative.
+				if strings.HasPrefix(a, "http") {
+					purl, _ := url.Parse(a)
+					if purl != nil {
+						specPath := filepath.Dir(purl.Path)
+						host := fmt.Sprintf("%s://%s", purl.Scheme, purl.Host)
+						a = strings.Replace(a, host, "", 1)
+						a = strings.Replace(a, specPath, "", 1)
+					}
+				}
+
+				aBase, aFragment := index.SplitRefFragment(a)
+				bBase, bFragment := index.SplitRefFragment(b)
+
+				if aFragment != "" && bFragment != "" && aFragment == bFragment {
+					return sp.GetReferenceNode(),
+						cirError((c.LoopPoint.Definition))
+				}
+
+				if aFragment == "" && bFragment == "" {
+					aNorm := strings.TrimPrefix(strings.TrimPrefix(aBase, "./"), "/")
+					bNorm := strings.TrimPrefix(strings.TrimPrefix(bBase, "./"), "/")
+					if aNorm != "" && bNorm != "" && aNorm == bNorm {
+						// nope
+						return sp.GetReferenceNode(),
+							cirError((c.LoopPoint.Definition))
+					}
 				}
 			}
 		}
