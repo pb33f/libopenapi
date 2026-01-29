@@ -2990,3 +2990,96 @@ func TestBundleDocumentComposedWithOrigins_NilModel(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "model or rolodex is nil")
 }
+
+func TestBundleBytes_ExternalCircularRef(t *testing.T) {
+	tmp := t.TempDir()
+
+	externalYAML := `components:
+  schemas:
+    Tree:
+      type: object
+      properties:
+        name:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tree'`
+
+	err := os.WriteFile(filepath.Join(tmp, "external.yaml"), []byte(externalYAML), 0644)
+	require.NoError(t, err)
+
+	mainYAML := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /tree:
+    get:
+      responses:
+        '200':
+          description: Tree response
+          content:
+            application/json:
+              schema:
+                $ref: 'external.yaml#/components/schemas/Tree'`
+
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}
+
+	bundledBytes, err := BundleBytes([]byte(mainYAML), cfg)
+	require.NoError(t, err)
+
+	bundledStr := string(bundledBytes)
+	assert.Contains(t, bundledStr, "external.yaml#/components/schemas/Tree")
+
+	composedBytes, err := BundleBytesComposed(bundledBytes, cfg, nil)
+	require.NoError(t, err)
+	require.NotNil(t, composedBytes)
+}
+
+func TestBundleBytes_ExternalCircularRef_FileOnly(t *testing.T) {
+	tmp := t.TempDir()
+
+	externalYAML := `type: object
+properties:
+  value:
+    type: string
+  next:
+    $ref: './node.yaml'`
+
+	err := os.WriteFile(filepath.Join(tmp, "node.yaml"), []byte(externalYAML), 0644)
+	require.NoError(t, err)
+
+	mainYAML := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /node:
+    get:
+      responses:
+        '200':
+          description: Node response
+          content:
+            application/json:
+              schema:
+                $ref: './node.yaml'`
+
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}
+
+	bundledBytes, err := BundleBytes([]byte(mainYAML), cfg)
+	require.NoError(t, err)
+
+	bundledStr := string(bundledBytes)
+	assert.Contains(t, bundledStr, "node.yaml")
+
+	composedBytes, err := BundleBytesComposed(bundledBytes, cfg, nil)
+	require.NoError(t, err)
+	require.NotNil(t, composedBytes)
+}
