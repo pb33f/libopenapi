@@ -477,26 +477,15 @@ func (sp *SchemaProxy) marshalYAMLInlineInternal(ctx *InlineRenderContext) (inte
 
 	if s != nil && s.GoLow() != nil && s.GoLow().Index != nil {
 		idx := s.GoLow().Index
-		rolodex := idx.GetRolodex()
-		if rolodex == nil {
-			goto skipCircularCheck
-		}
+		circ := idx.GetCircularReferences()
 
-		rootIdx := rolodex.GetRootIndex()
-		if rootIdx == nil {
-			goto skipCircularCheck
+		// Extract ignored and safe circular references from rolodex if available
+		if idx.GetRolodex() != nil {
+			ignored := idx.GetRolodex().GetIgnoredCircularReferences()
+			safe := idx.GetRolodex().GetSafeCircularReferences()
+			circ = append(circ, ignored...)
+			circ = append(circ, safe...)
 		}
-
-		var circ []*index.CircularReferenceResult
-		circ = rootIdx.GetCircularReferences()
-		if circ == nil {
-			circ = idx.GetCircularReferences()
-		}
-
-		ignored := rolodex.GetIgnoredCircularReferences()
-		safe := rolodex.GetSafeCircularReferences()
-		circ = append(circ, ignored...)
-		circ = append(circ, safe...)
 
 		cirError := func(str string) error {
 			return fmt.Errorf("schema render failure, circular reference: `%s`", str)
@@ -515,6 +504,7 @@ func (sp *SchemaProxy) marshalYAMLInlineInternal(ctx *InlineRenderContext) (inte
 				basePath, _ = filepath.Abs(basePath)
 			}
 			if basePath == c.LoopPoint.FullDefinition {
+				// we loop on our-self
 				return sp.GetReferenceNode(), cirError((c.LoopPoint.Definition))
 			}
 
@@ -532,13 +522,12 @@ func (sp *SchemaProxy) marshalYAMLInlineInternal(ctx *InlineRenderContext) (inte
 				aNorm := strings.TrimPrefix(strings.TrimPrefix(aBase, "./"), "/")
 				bNorm := strings.TrimPrefix(strings.TrimPrefix(bBase, "./"), "/")
 				if aNorm != "" && bNorm != "" && aNorm == bNorm {
+					// nope
 					return sp.GetReferenceNode(), cirError((c.LoopPoint.Definition))
 				}
 			}
 		}
 	}
-
-skipCircularCheck:
 
 	if err != nil {
 		return nil, err
