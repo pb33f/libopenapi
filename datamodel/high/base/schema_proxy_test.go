@@ -406,12 +406,12 @@ func TestSchemaProxy_MarshalYAML_StripBasePath(t *testing.T) {
 	ref.SetReference("./schema_n.yaml", rootNode.Content[0])
 	lowProxy.Reference = ref
 
-	rend, _ := sp.MarshalYAMLInline()
+	rend, err := sp.MarshalYAMLInline()
 	assert.NotNil(t, rend)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "circular reference")
 
-	// should not have rendered and should be the same as the input
-	// check by hashing.
-	assert.Equal(t, index.HashNode(rootNode.Content[0]), index.HashNode(rend.(*yaml.Node)))
+	assert.NotEqual(t, index.HashNode(rootNode.Content[0]), index.HashNode(rend.(*yaml.Node)))
 }
 
 func TestSchemaProxy_MarshalYAML_BadSchema(t *testing.T) {

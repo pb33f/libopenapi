@@ -6,7 +6,6 @@ package base
 import (
 	"errors"
 	"fmt"
-	"net/url"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -477,11 +476,25 @@ func (sp *SchemaProxy) marshalYAMLInlineInternal(ctx *InlineRenderContext) (inte
 	s, err = sp.BuildSchema()
 
 	if s != nil && s.GoLow() != nil && s.GoLow().Index != nil {
-		circ := s.GoLow().Index.GetCircularReferences()
+		idx := s.GoLow().Index
+		rolodex := idx.GetRolodex()
+		if rolodex == nil {
+			goto skipCircularCheck
+		}
 
-		// extract the ignored and safe circular references
-		ignored := s.GoLow().Index.GetRolodex().GetIgnoredCircularReferences()
-		safe := s.GoLow().Index.GetRolodex().GetSafeCircularReferences()
+		rootIdx := rolodex.GetRootIndex()
+		if rootIdx == nil || idx == rootIdx {
+			goto skipCircularCheck
+		}
+
+		var circ []*index.CircularReferenceResult
+		circ = rootIdx.GetCircularReferences()
+		if circ == nil {
+			circ = idx.GetCircularReferences()
+		}
+
+		ignored := rolodex.GetIgnoredCircularReferences()
+		safe := rolodex.GetSafeCircularReferences()
 		circ = append(circ, ignored...)
 		circ = append(circ, safe...)
 
@@ -490,46 +503,42 @@ func (sp *SchemaProxy) marshalYAMLInlineInternal(ctx *InlineRenderContext) (inte
 		}
 
 		for _, c := range circ {
-			if sp.IsReference() {
-				if sp.GetReference() == c.LoopPoint.Definition {
-					// nope
-					return sp.GetReferenceNode(),
-						cirError((c.LoopPoint.Definition))
-				}
-				basePath := sp.GoLow().GetIndex().GetSpecAbsolutePath()
+			if !sp.IsReference() {
+				continue
+			}
+			if sp.GetReference() == c.LoopPoint.Definition {
+				// nope
+				return sp.GetReferenceNode(), cirError((c.LoopPoint.Definition))
+			}
+			basePath := idx.GetSpecAbsolutePath()
+			if !filepath.IsAbs(basePath) && !strings.HasPrefix(basePath, "http") {
+				basePath, _ = filepath.Abs(basePath)
+			}
+			if basePath == c.LoopPoint.FullDefinition {
+				return sp.GetReferenceNode(), cirError((c.LoopPoint.Definition))
+			}
 
-				if !filepath.IsAbs(basePath) && !strings.HasPrefix(basePath, "http") {
-					basePath, _ = filepath.Abs(basePath)
-				}
+			a := utils.ReplaceWindowsDriveWithLinuxPath(strings.Replace(c.LoopPoint.FullDefinition, basePath, "", 1))
+			b := sp.GetReference()
 
-				if basePath == c.LoopPoint.FullDefinition {
-					// we loop on our-self
-					return sp.GetReferenceNode(),
-						cirError((c.LoopPoint.Definition))
-				}
-				a := utils.ReplaceWindowsDriveWithLinuxPath(strings.Replace(c.LoopPoint.FullDefinition, basePath, "", 1))
-				b := sp.GetReference()
-				if strings.HasPrefix(b, "./") {
-					b = strings.Replace(b, "./", "/", 1) // strip any leading ./ from the reference
-				}
-				// if loading things in remotely and references are relative.
-				if strings.HasPrefix(a, "http") {
-					purl, _ := url.Parse(a)
-					if purl != nil {
-						specPath := filepath.Dir(purl.Path)
-						host := fmt.Sprintf("%s://%s", purl.Scheme, purl.Host)
-						a = strings.Replace(a, host, "", 1)
-						a = strings.Replace(a, specPath, "", 1)
-					}
-				}
-				if a == b {
-					// nope
-					return sp.GetReferenceNode(),
-						cirError((c.LoopPoint.Definition))
+			aBase, aFragment := index.SplitRefFragment(a)
+			bBase, bFragment := index.SplitRefFragment(b)
+
+			if aFragment != "" && bFragment != "" && aFragment == bFragment {
+				return sp.GetReferenceNode(), cirError((c.LoopPoint.Definition))
+			}
+
+			if aFragment == "" && bFragment == "" {
+				aNorm := strings.TrimPrefix(strings.TrimPrefix(aBase, "./"), "/")
+				bNorm := strings.TrimPrefix(strings.TrimPrefix(bBase, "./"), "/")
+				if aNorm != "" && bNorm != "" && aNorm == bNorm {
+					return sp.GetReferenceNode(), cirError((c.LoopPoint.Definition))
 				}
 			}
 		}
 	}
+
+skipCircularCheck:
 
 	if err != nil {
 		return nil, err
