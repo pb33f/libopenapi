@@ -592,3 +592,60 @@ func parseYaml(t *testing.T, yamlStr string) *yaml.Node {
 	}
 	return &node
 }
+
+func TestDetectOpenAPIComponentType_QuotedKeys(t *testing.T) {
+	// Test that quoted "items" key is NOT treated as schema
+	quotedItemsYaml := `
+"items":
+  - product_id: 1000012
+    fulfillment_node_id: US01
+    count: 10
+`
+	node := parseYaml(t, quotedItemsYaml)
+	componentType, detected := DetectOpenAPIComponentType(node)
+	assert.Equal(t, "", componentType)
+	assert.False(t, detected)
+
+	// Test that unquoted items key IS treated as schema
+	unquotedItemsYaml := `
+items:
+  type: string
+`
+	node = parseYaml(t, unquotedItemsYaml)
+	componentType, detected = DetectOpenAPIComponentType(node)
+	assert.Equal(t, v3.SchemasLabel, componentType)
+	assert.True(t, detected)
+
+	// Test that quoted "type" key is NOT treated as schema
+	quotedTypeYaml := `
+"type": "user"
+"name": "John"
+`
+	node = parseYaml(t, quotedTypeYaml)
+	componentType, detected = DetectOpenAPIComponentType(node)
+	assert.Equal(t, "", componentType)
+	assert.False(t, detected)
+
+	// Test that unquoted type key IS treated as schema
+	unquotedTypeYaml := `
+type: object
+properties:
+  name:
+    type: string
+`
+	node = parseYaml(t, unquotedTypeYaml)
+	componentType, detected = DetectOpenAPIComponentType(node)
+	assert.Equal(t, v3.SchemasLabel, componentType)
+	assert.True(t, detected)
+
+	// Test mixed quoted and unquoted keys - should detect schema from unquoted key
+	mixedYaml := `
+type: object
+"items":
+  - some: data
+`
+	node = parseYaml(t, mixedYaml)
+	componentType, detected = DetectOpenAPIComponentType(node)
+	assert.Equal(t, v3.SchemasLabel, componentType)
+	assert.True(t, detected)
+}
