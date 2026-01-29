@@ -483,7 +483,7 @@ func (sp *SchemaProxy) marshalYAMLInlineInternal(ctx *InlineRenderContext) (inte
 		}
 
 		rootIdx := rolodex.GetRootIndex()
-		if rootIdx == nil || idx == rootIdx {
+		if rootIdx == nil {
 			goto skipCircularCheck
 		}
 
