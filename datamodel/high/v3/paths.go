@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -196,7 +197,13 @@ func (p *Paths) MarshalYAMLInline() (interface{}, error) {
 	})
 	for _, mp := range mapped {
 		if mp.pi != nil {
-			rendered, _ := mp.pi.MarshalYAMLInline()
+			rendered, err := mp.pi.MarshalYAMLInline()
+			if err != nil {
+				return nil, fmt.Errorf("failed to render path '%s' inline: %w", mp.path, err)
+			}
+			if rendered == nil {
+				continue
+			}
 
 			kn := utils.CreateStringNode(mp.path)
 			kn.Style = mp.style

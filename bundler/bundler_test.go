@@ -3083,3 +3083,44 @@ paths:
 	require.NoError(t, err)
 	require.NotNil(t, composedBytes)
 }
+
+func TestBundleBytes_ExternalPathItemRef_WithLocalComponents(t *testing.T) {
+	tmp := t.TempDir()
+
+	externalYAML := `paths:
+  path:
+    get:
+      summary: Get operation
+      parameters:
+        - $ref: "#/components/parameters/testParam"
+      responses:
+        "200":
+          description: OK
+components:
+  parameters:
+    testParam:
+      name: test
+      in: query
+      schema:
+        type: string`
+
+	err := os.WriteFile(filepath.Join(tmp, "external.yaml"), []byte(externalYAML), 0644)
+	require.NoError(t, err)
+
+	mainYAML := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test:
+    $ref: './external.yaml#/paths/path'`
+
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}
+
+	bundledBytes, err := BundleBytes([]byte(mainYAML), cfg)
+	require.NoError(t, err)
+	require.NotNil(t, bundledBytes)
+}
