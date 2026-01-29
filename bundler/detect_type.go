@@ -149,6 +149,7 @@ func hasPathItemProperties(node *yaml.Node) bool {
 }
 
 // Helper function to get all keys from a mapping node
+// Excludes quoted keys since they should be treated as literal strings, not OpenAPI keywords
 func getNodeKeys(node *yaml.Node) []string {
 	if node.Kind != yaml.MappingNode {
 		return nil
@@ -157,7 +158,12 @@ func getNodeKeys(node *yaml.Node) []string {
 	var keys []string
 	for i := 0; i < len(node.Content); i += 2 {
 		if i < len(node.Content) {
-			keys = append(keys, node.Content[i].Value)
+			keyNode := node.Content[i]
+			// Skip quoted keys - they should not be treated as OpenAPI keywords
+			if keyNode.Style == yaml.SingleQuotedStyle || keyNode.Style == yaml.DoubleQuotedStyle {
+				continue
+			}
+			keys = append(keys, keyNode.Value)
 		}
 	}
 	return keys
