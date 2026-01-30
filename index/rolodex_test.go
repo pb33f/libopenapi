@@ -2251,15 +2251,16 @@ func TestRolodex_NestedSubdirRelativeRefResolution(t *testing.T) {
 	refs := rolodex.GetAllReferences()
 
 	// Verify the path file reference was resolved
-	pathRef := "'paths/user.yaml#/user_path'"
+	// Use filepath.Join to get the correct path separator for the platform
+	pathRef := filepath.Join("paths", "user.yaml")
 	found := false
 	for ref := range refs {
-		if strings.Contains(ref, "paths/user.yaml") {
+		if strings.Contains(ref, pathRef) {
 			found = true
 			break
 		}
 	}
-	assert.True(t, found, "expected to find path reference to paths/user.yaml, refs: %v", refs)
+	assert.True(t, found, "expected to find path reference to %s, refs: %v", pathRef, refs)
 
 	// Check that there are no errors - if the /openapi/ segment was lost,
 	// we would see file not found errors for the component references
