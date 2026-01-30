@@ -17,7 +17,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"unsafe"
 
 	jsonpathconfig "github.com/pb33f/jsonpath/pkg/jsonpath/config"
 
@@ -1049,9 +1048,9 @@ func hashYamlNodeFast(n *yaml.Node) string {
 	}
 
 	// Try cache first for complex nodes
+	// Use pointer directly as key - *yaml.Node pointers are stable and comparable
 	if n.Kind != yaml.ScalarNode {
-		cacheKey := uintptr(unsafe.Pointer(n))
-		if cached, ok := hashCache.Load(cacheKey); ok {
+		if cached, ok := hashCache.Load(n); ok {
 			return cached.(string)
 		}
 	}
@@ -1066,8 +1065,7 @@ func hashYamlNodeFast(n *yaml.Node) string {
 
 	// Cache complex nodes
 	if n.Kind != yaml.ScalarNode {
-		cacheKey := uintptr(unsafe.Pointer(n))
-		hashCache.Store(cacheKey, result)
+		hashCache.Store(n, result)
 	}
 
 	return result
@@ -1094,6 +1092,12 @@ func hashNodeTree(h hash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 		h.Write([]byte(n.Anchor))
 	}
 
+	// CRITICAL: Snapshot Content to prevent TOCTOU races
+	// This captures the slice header (pointer, len, cap) atomically.
+	// Even if another goroutine reassigns n.Content later, our local
+	// 'content' variable still refers to the original backing array.
+	content := n.Content
+
 	// Hash based on node type
 	switch n.Kind {
 	case yaml.ScalarNode:
@@ -1101,7 +1105,7 @@ func hashNodeTree(h hash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 
 	case yaml.SequenceNode:
 		h.Write([]byte("["))
-		for _, child := range n.Content {
+		for _, child := range content {
 			hashNodeTree(h, child, visited)
 			h.Write([]byte(","))
 		}
@@ -1109,6 +1113,13 @@ func hashNodeTree(h hash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 
 	case yaml.MappingNode:
 		h.Write([]byte("{"))
+
+		// Guard against empty mapping nodes
+		if len(content) == 0 {
+			h.Write([]byte("}"))
+			return
+		}
+
 		// For maps, we need consistent ordering
 		// Collect key-value pairs and sort by key hash
 		type kvPair struct {
@@ -1116,17 +1127,17 @@ func hashNodeTree(h hash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 			keyNode   *yaml.Node
 			valueNode *yaml.Node
 		}
-		pairs := make([]kvPair, 0, len(n.Content)/2)
+		pairs := make([]kvPair, 0, len(content)/2)
 
-		for i := 0; i < len(n.Content); i += 2 {
-			if i+1 < len(n.Content) {
+		for i := 0; i < len(content); i += 2 {
+			if i+1 < len(content) {
 				// Hash the key for sorting
 				keyH := sha256.New()
-				hashNodeTree(keyH, n.Content[i], visited)
+				hashNodeTree(keyH, content[i], visited)
 				pairs = append(pairs, kvPair{
 					keyHash:   fmt.Sprintf("%x", keyH.Sum(nil)),
-					keyNode:   n.Content[i],
-					valueNode: n.Content[i+1],
+					keyNode:   content[i],
+					valueNode: content[i+1],
 				})
 			}
 		}
@@ -1147,7 +1158,7 @@ func hashNodeTree(h hash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 
 	case yaml.DocumentNode:
 		h.Write([]byte("DOC["))
-		for _, child := range n.Content {
+		for _, child := range content {
 			hashNodeTree(h, child, visited)
 		}
 		h.Write([]byte("]"))
