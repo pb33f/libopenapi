@@ -3276,3 +3276,161 @@ components:
 	_ = labelNode
 	_ = valueNode
 }
+
+// TestHashNodeTree_EmptyMappingNode tests hashing of empty MappingNode with nil Content
+func TestHashNodeTree_EmptyMappingNode(t *testing.T) {
+	// Test MappingNode with nil Content
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+	}
+	h := sha256.New()
+	visited := make(map[*yaml.Node]bool)
+	hashNodeTree(h, node, visited)
+	result := h.Sum(nil)
+	assert.NotNil(t, result)
+	assert.Greater(t, len(result), 0)
+}
+
+// TestHashNodeTree_EmptyMappingNodeEmptySlice tests hashing of empty MappingNode with empty Content slice
+func TestHashNodeTree_EmptyMappingNodeEmptySlice(t *testing.T) {
+	// Test MappingNode with empty Content slice (not nil)
+	node := &yaml.Node{
+		Kind:    yaml.MappingNode,
+		Tag:     "!!map",
+		Content: []*yaml.Node{},
+	}
+	h := sha256.New()
+	visited := make(map[*yaml.Node]bool)
+	hashNodeTree(h, node, visited)
+	result := h.Sum(nil)
+	assert.NotNil(t, result)
+	assert.Greater(t, len(result), 0)
+}
+
+// TestHashNodeTree_MappingNodeOddChildren tests hashing of MappingNode with odd number of children
+func TestHashNodeTree_MappingNodeOddChildren(t *testing.T) {
+	// Test MappingNode with odd number of children (orphan key)
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "orphan_key"},
+		},
+	}
+	h := sha256.New()
+	visited := make(map[*yaml.Node]bool)
+	hashNodeTree(h, node, visited)
+	result := h.Sum(nil)
+	assert.NotNil(t, result)
+}
+
+// TestHashYamlNodeFast_EmptyMappingNode tests fast hashing of empty MappingNode
+func TestHashYamlNodeFast_EmptyMappingNode(t *testing.T) {
+	ClearHashCache()
+	node := &yaml.Node{
+		Kind:    yaml.MappingNode,
+		Tag:     "!!map",
+		Content: []*yaml.Node{},
+	}
+	hash := hashYamlNodeFast(node)
+	assert.NotEmpty(t, hash)
+}
+
+// TestHashNodeTree_ConcurrentAccess tests for race conditions during concurrent hashing
+func TestHashNodeTree_ConcurrentAccess(t *testing.T) {
+	// Test for race conditions during concurrent hashing
+	ClearHashCache()
+
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "key1"},
+			{Kind: yaml.ScalarNode, Value: "value1"},
+			{Kind: yaml.ScalarNode, Value: "key2"},
+			{Kind: yaml.ScalarNode, Value: "value2"},
+		},
+	}
+
+	var wg sync.WaitGroup
+	results := make([]string, 50)
+
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			results[idx] = hashYamlNodeFast(node)
+		}(i)
+	}
+
+	wg.Wait()
+
+	// All goroutines should produce the same hash
+	expected := results[0]
+	for i := 1; i < len(results); i++ {
+		assert.Equal(t, expected, results[i],
+			"Concurrent hash at index %d doesn't match", i)
+	}
+}
+
+// TestHashNodeTree_ConcurrentModification simulates the race condition scenario
+// NOTE: This test intentionally creates a data race to verify the fix prevents panics.
+// The race detector will report the race, but the test demonstrates that the snapshot
+// pattern prevents index-out-of-bounds panics. In production, callers should synchronize
+// access to yaml.Node objects or use them in single-threaded contexts.
+func TestHashNodeTree_ConcurrentModification(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping race-condition test in short mode")
+	}
+
+	// Simulate the race condition scenario where Content is being modified
+	// during hashing - this test verifies the snapshot pattern prevents panics
+	ClearHashCache()
+
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "key"},
+			{Kind: yaml.ScalarNode, Value: "value"},
+		},
+	}
+
+	var wg sync.WaitGroup
+	done := make(chan bool)
+
+	// Writer goroutine - modifies Content to simulate the race
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 100; i++ {
+			// Simulate the race by reassigning Content
+			// This mimics what happens in ExtractMapNoLookupExtensions
+			node.Content = []*yaml.Node{
+				{Kind: yaml.ScalarNode, Value: fmt.Sprintf("key%d", i)},
+				{Kind: yaml.ScalarNode, Value: fmt.Sprintf("value%d", i)},
+			}
+		}
+		close(done) // Signal reader to stop when writer finishes
+	}()
+
+	// Reader goroutine - hashes repeatedly until writer signals done
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				_ = hashYamlNodeFast(node)
+			}
+		}
+	}()
+
+	// Wait for both goroutines to finish
+	wg.Wait()
+
+	// If we get here without panic, the fix works
+}
