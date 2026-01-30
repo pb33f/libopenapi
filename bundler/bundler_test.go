@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -2166,6 +2167,121 @@ paths: {}`
 	// Collect external schemas - should return empty since all refs are internal
 	result := collectExternalDiscriminatorSchemas(rolodex, rootIdx)
 	assert.Empty(t, result, "Expected no external schemas when all discriminator refs are internal")
+}
+
+func TestCollectExternalDiscriminatorSchemas_DefensiveContinue(t *testing.T) {
+	// Test: defensive check at line 446 - when indexByPath lookup fails
+	// This test uses reflection to manipulate the rolodex's internal state to create
+	// a scenario where an index path exists in the pinned map but not in the rolodex's
+	// index list. This "shouldn't happen with valid specs" but the defensive check
+	// protects against edge cases like concurrent rolodex modifications, path mismatches,
+	// or corrupted state.
+
+	tmpDir := t.TempDir()
+
+	// Create main spec with discriminator mapping to external files
+	mainSpec := `openapi: 3.1.0
+info:
+  title: Main API
+  version: 1.0.0
+components:
+  schemas:
+    Pet:
+      type: object
+      discriminator:
+        propertyName: petType
+        mapping:
+          dog: './external.yaml#/components/schemas/Dog'
+          cat: './external2.yaml#/components/schemas/Cat'
+      oneOf:
+        - $ref: './external.yaml#/components/schemas/Dog'
+        - $ref: './external2.yaml#/components/schemas/Cat'
+paths: {}`
+
+	externalSpec1 := `openapi: 3.1.0
+info:
+  title: External API 1
+  version: 1.0.0
+components:
+  schemas:
+    Dog:
+      type: object
+      properties:
+        breed:
+          type: string
+paths: {}`
+
+	externalSpec2 := `openapi: 3.1.0
+info:
+  title: External API 2
+  version: 1.0.0
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        color:
+          type: string
+paths: {}`
+
+	mainPath := filepath.Join(tmpDir, "main.yaml")
+	externalPath1 := filepath.Join(tmpDir, "external.yaml")
+	externalPath2 := filepath.Join(tmpDir, "external2.yaml")
+
+	err := os.WriteFile(mainPath, []byte(mainSpec), 0644)
+	require.NoError(t, err)
+	err = os.WriteFile(externalPath1, []byte(externalSpec1), 0644)
+	require.NoError(t, err)
+	err = os.WriteFile(externalPath2, []byte(externalSpec2), 0644)
+	require.NoError(t, err)
+
+	mainBytes, err := os.ReadFile(mainPath)
+	require.NoError(t, err)
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(mainBytes, config)
+	require.NoError(t, err)
+
+	model, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+	require.NotNil(t, model)
+
+	rolodex := model.Model.Rolodex
+	rootIdx := rolodex.GetRootIndex()
+
+	// Verify normal operation first
+	result := collectExternalDiscriminatorSchemas(rolodex, rootIdx)
+	require.Len(t, result, 2, "Should collect both external schemas initially")
+
+	// Use reflection to manipulate the rolodex's internal indexes slice
+	// to remove one of the external indexes, creating the scenario where
+	// an index path exists in the pinned map but not in GetIndexes()
+	rolodexVal := reflect.ValueOf(rolodex).Elem()
+	indexesField := rolodexVal.FieldByName("indexes")
+
+	// Make the field writable using reflection
+	indexesField = reflect.NewAt(indexesField.Type(), indexesField.Addr().UnsafePointer()).Elem()
+
+	// Get the current indexes slice
+	currentIndexes := indexesField.Interface().([]*index.SpecIndex)
+	require.GreaterOrEqual(t, len(currentIndexes), 2, "Should have at least 2 external indexes")
+
+	// Remove the last external index from the slice to create a mismatch
+	// This simulates the edge case where an index was removed or is missing
+	modifiedIndexes := currentIndexes[:len(currentIndexes)-1]
+	indexesField.Set(reflect.ValueOf(modifiedIndexes))
+
+	// Now call collectExternalDiscriminatorSchemas again
+	// The function should gracefully handle the missing index via the defensive continue
+	result2 := collectExternalDiscriminatorSchemas(rolodex, rootIdx)
+
+	// The result should have one less schema due to the missing index
+	// The defensive continue at line 446 prevents a panic or nil pointer dereference
+	assert.LessOrEqual(t, len(result2), len(result), "Should handle missing index gracefully")
+	assert.GreaterOrEqual(t, len(result2), 0, "Function should not panic with missing index")
+	assert.Len(t, result2, 1, "Should have one schema remaining after removing one index")
 }
 
 func TestCopySchemaToComponents_NameCollision(t *testing.T) {
