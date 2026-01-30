@@ -27,6 +27,23 @@ import (
 // ErrInvalidModel is returned when the model is not usable.
 var ErrInvalidModel = errors.New("invalid model")
 
+// buildV3ModelFromBytes is a helper that parses bytes and builds a v3 model.
+// Returns the model and any build errors. The model may be non-nil even when err is non-nil
+// (e.g., circular reference warnings), allowing bundling to proceed with warnings.
+func buildV3ModelFromBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) (*v3.Document, error) {
+	doc, err := libopenapi.NewDocumentWithConfiguration(bytes, configuration)
+	if err != nil {
+		return nil, err
+	}
+
+	v3Doc, buildErr := doc.BuildV3Model()
+	if v3Doc == nil {
+		return nil, errors.Join(ErrInvalidModel, buildErr)
+	}
+	// Return both model and error - caller decides how to handle warnings/errors
+	return &v3Doc.Model, buildErr
+}
+
 // BundleBytes will take a byte slice of an OpenAPI specification and return a bundled version of it.
 // This is useful for when you want to take a specification with external references, and you want to bundle it
 // into a single document.
@@ -36,17 +53,12 @@ var ErrInvalidModel = errors.New("invalid model")
 //
 // Circular references will not be resolved and will be skipped.
 func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) ([]byte, error) {
-	doc, err := libopenapi.NewDocumentWithConfiguration(bytes, configuration)
-	if err != nil {
+	model, err := buildV3ModelFromBytes(bytes, configuration)
+	if model == nil {
 		return nil, err
 	}
 
-	v3Doc, err := doc.BuildV3Model()
-	if v3Doc == nil {
-		return nil, errors.Join(ErrInvalidModel, err)
-	}
-
-	bundledBytes, e := bundleWithConfig(&v3Doc.Model, nil)
+	bundledBytes, e := bundleWithConfig(model, nil, configuration)
 	return bundledBytes, errors.Join(err, e)
 }
 
@@ -80,7 +92,7 @@ func BundleBytesComposed(bytes []byte, configuration *datamodel.DocumentConfigur
 //
 // Circular references will not be resolved and will be skipped.
 func BundleDocument(model *v3.Document) ([]byte, error) {
-	return bundleWithConfig(model, nil)
+	return bundleWithConfig(model, nil, nil)
 }
 
 // BundleBytesWithConfig will take a byte slice of an OpenAPI specification and return a bundled version of it,
@@ -89,17 +101,12 @@ func BundleDocument(model *v3.Document) ([]byte, error) {
 // Use the BundleInlineConfig to enable features like ResolveDiscriminatorExternalRefs which copies external
 // schemas referenced by discriminator mappings to the root document's components section.
 func BundleBytesWithConfig(bytes []byte, configuration *datamodel.DocumentConfiguration, bundleConfig *BundleInlineConfig) ([]byte, error) {
-	doc, err := libopenapi.NewDocumentWithConfiguration(bytes, configuration)
-	if err != nil {
+	model, err := buildV3ModelFromBytes(bytes, configuration)
+	if model == nil {
 		return nil, err
 	}
 
-	v3Doc, err := doc.BuildV3Model()
-	if v3Doc == nil {
-		return nil, errors.Join(ErrInvalidModel, err)
-	}
-
-	bundledBytes, e := bundleWithConfig(&v3Doc.Model, bundleConfig)
+	bundledBytes, e := bundleWithConfig(model, bundleConfig, configuration)
 	return bundledBytes, errors.Join(err, e)
 }
 
@@ -109,7 +116,7 @@ func BundleBytesWithConfig(bytes []byte, configuration *datamodel.DocumentConfig
 // Use the BundleInlineConfig to enable features like ResolveDiscriminatorExternalRefs which copies external
 // schemas referenced by discriminator mappings to the root document's components section.
 func BundleDocumentWithConfig(model *v3.Document, bundleConfig *BundleInlineConfig) ([]byte, error) {
-	return bundleWithConfig(model, bundleConfig)
+	return bundleWithConfig(model, bundleConfig, nil)
 }
 
 // BundleCompositionConfig is used to configure the composition of OpenAPI documents when using BundleDocumentComposed.
@@ -119,6 +126,14 @@ type BundleCompositionConfig struct {
 }
 
 // BundleInlineConfig provides configuration options for inline bundling.
+//
+// Example usage:
+//   // Inline everything including local refs
+//   inlineTrue := true
+//   config := &BundleInlineConfig{
+//       InlineLocalRefs: &inlineTrue,
+//   }
+//   bundled, err := BundleBytesWithConfig(specBytes, docConfig, config)
 type BundleInlineConfig struct {
 	// ResolveDiscriminatorExternalRefs when true, copies external schemas referenced
 	// by discriminator mappings to the root document's components section.
@@ -126,6 +141,13 @@ type BundleInlineConfig struct {
 	// in external files reference other schemas in those external files.
 	// Default: false (preserves existing behavior of keeping external refs as-is)
 	ResolveDiscriminatorExternalRefs bool
+
+	// InlineLocalRefs controls whether local component references are inlined during bundling.
+	// When nil, falls back to DocumentConfiguration.BundleInlineRefs.
+	// - false: preserve local refs like #/components/schemas/Pet (discriminator-safe, default behavior)
+	// - true: inline all refs including local component refs
+	// Default: nil (uses DocumentConfiguration.BundleInlineRefs)
+	InlineLocalRefs *bool
 }
 
 // BundleDocumentComposed will take a v3.Document and return a composed bundled version of it. Composed means
@@ -260,30 +282,47 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	return b, errors.Join(errs...)
 }
 
-func bundleWithConfig(model *v3.Document, config *BundleInlineConfig) ([]byte, error) {
-	// Enable bundling mode to preserve local component refs.
-	// This ensures refs to schemas already in the root document aren't inlined.
-	highbase.SetBundlingMode(true)
-	defer highbase.SetBundlingMode(false)
+// resolveBundleInlineConfig resolves the inlineLocalRefs setting from the fallback chain:
+// 1. BundleInlineConfig.InlineLocalRefs (explicit per-call)
+// 2. DocumentConfiguration.BundleInlineRefs (document-wide default)
+// 3. false (system default - preserve local refs)
+func resolveBundleInlineConfig(bundleConfig *BundleInlineConfig, docConfig *datamodel.DocumentConfiguration) bool {
+	if bundleConfig != nil && bundleConfig.InlineLocalRefs != nil {
+		return *bundleConfig.InlineLocalRefs
+	}
+	if docConfig != nil {
+		return docConfig.BundleInlineRefs
+	}
+	return false // system default
+}
+
+func bundleWithConfig(model *v3.Document, config *BundleInlineConfig, docConfig *datamodel.DocumentConfiguration) ([]byte, error) {
+	if model == nil {
+		return nil, errors.New("model cannot be nil")
+	}
+
+	inlineLocalRefs := resolveBundleInlineConfig(config, docConfig)
+
+	// enable bundling mode to preserve local component refs during marshalling
+	// when inlineLocalRefs is true, skip bundling mode to inline everything
+	if !inlineLocalRefs {
+		highbase.SetBundlingMode(true)
+		defer highbase.SetBundlingMode(false)
+	}
 
 	if model.Rolodex != nil {
-		// Handle discriminator external refs if enabled.
-		// This copies external schemas referenced by discriminator mappings to the root
-		// document's components section, ensuring the bundled output is valid.
+		// copy external schemas referenced by discriminator mappings to root components
+		// ensures bundled output is valid and self-contained
 		if config != nil && config.ResolveDiscriminatorExternalRefs {
 			resolveDiscriminatorExternalRefs(model)
 		}
 
-		// Resolve extension refs before rendering.
-		// Extensions are raw *yaml.Node and bypass MarshalYAMLInline(), so we resolve them separately.
-		// NOTE: This mutates the model's extension nodes in-place.
+		// resolve extension refs before rendering (mutates model's extension nodes in-place)
+		// extensions are raw yaml nodes that bypass MarshalYAMLInline()
 		resolveExtensionRefs(model.Rolodex)
 	}
 
-	// Use RenderInline which resolves refs on-the-fly during rendering.
-	// Discriminator mappings are preserved via Schema.MarshalYAMLInline() which
-	// marks oneOf/anyOf SchemaProxy items to preserve their references.
-	// Circular references are handled in SchemaProxy.MarshalYAMLInline().
+	// render inline - discriminator mappings and circular refs are preserved via SchemaProxy.MarshalYAMLInline()
 	return model.RenderInline()
 }
 
@@ -400,11 +439,14 @@ func collectExternalDiscriminatorSchemas(rolodex *index.Rolodex, rootIdx *index.
 			continue
 		}
 
-		// Find the index for this file using pre-built map (O(1) lookup)
-		// All pinned refs come from indexed files, so this lookup always succeeds
-		sourceIdx := indexByPath[filePath]
+		// find the index for this file using pre-built map (O(1) lookup)
+		sourceIdx, ok := indexByPath[filePath]
+		if !ok {
+			// defensive: skip if index not found (shouldn't happen with valid specs)
+			continue
+		}
 
-		// Find the actual reference - this was already found when pinning
+		// find the actual reference - this was already found when pinning
 		ref, _ := sourceIdx.SearchIndexForReference(jsonPointer)
 
 		// Extract schema name from the JSON pointer

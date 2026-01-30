@@ -130,8 +130,14 @@ type DocumentConfiguration struct {
 	// defaults to false (which means extensions will be included)
 	ExcludeExtensionRefs bool
 
-	// BundleInlineRefs is used by the bundler module. If set to true, all references will be inlined, including
-	// local references (to the root document) as well as all external references. This is false by default.
+	// BundleInlineRefs controls whether local component references are inlined during bundling.
+	// When false (default): Local refs like #/components/schemas/Pet are preserved
+	// When true: Local refs are also inlined (may break discriminator mappings)
+	//
+	// Note: This setting can be overridden per-call using BundleInlineConfig.InlineLocalRefs
+	// when calling bundler.BundleBytesWithConfig()
+	//
+	// Circular references are ALWAYS preserved regardless of this setting.
 	BundleInlineRefs bool
 
 	// RecomposeRefs is used by the bundler module. If set to true, all references will be composed into the root document.
