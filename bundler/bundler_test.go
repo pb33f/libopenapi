@@ -2282,3 +2282,553 @@ components:
 	assert.Equal(t, "#node", itemsSchema.DynamicRef, "DynamicRef should be '#node'")
 }
 
+// ============================================================================
+// BundleInlineRefs Configuration Tests
+// These tests verify the BundleInlineRefs flag functionality (Issue #511)
+// Issue #511: https://github.com/pb33f/libopenapi/issues/511
+// ============================================================================
+
+// TestBundleInlineRefs_Default_PreservesLocalRefs verifies the default behavior
+// when BundleInlineRefs is not set (defaults to false).
+// Local component refs like #/components/schemas/Pet should be preserved.
+func TestBundleInlineRefs_Default_PreservesLocalRefs(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+        tag:
+          type: string`
+
+	// Default config (BundleInlineRefs not set, defaults to false)
+	config := datamodel.NewDocumentConfiguration()
+
+	bundled, err := BundleBytes([]byte(spec), config)
+	require.NoError(t, err)
+	require.NotNil(t, bundled)
+
+	bundledStr := string(bundled)
+
+	// Local refs should be preserved in default mode
+	assert.Contains(t, bundledStr, "$ref: '#/components/schemas/Pet'")
+	assert.Contains(t, bundledStr, "components:")
+	assert.Contains(t, bundledStr, "schemas:")
+	assert.Contains(t, bundledStr, "Pet:")
+}
+
+// TestBundleInlineRefs_False_PreservesLocalRefs verifies that explicitly setting
+// BundleInlineRefs to false preserves local component refs.
+func TestBundleInlineRefs_False_PreservesLocalRefs(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BundleInlineRefs = false // Explicitly set to false
+
+	bundled, err := BundleBytes([]byte(spec), config)
+	require.NoError(t, err)
+	require.NotNil(t, bundled)
+
+	bundledStr := string(bundled)
+
+	// Local refs should be preserved
+	assert.Contains(t, bundledStr, "$ref: '#/components/schemas/Pet'")
+	assert.Contains(t, bundledStr, "components:")
+	assert.Contains(t, bundledStr, "Pet:")
+}
+
+// TestBundleInlineRefs_True_InlinesLocalRefs verifies that setting
+// BundleInlineRefs to true causes local component refs to be inlined.
+// This resolves Issue #511 where the flag had no effect.
+func TestBundleInlineRefs_True_InlinesLocalRefs(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+        tag:
+          type: string`
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BundleInlineRefs = true // Enable full inlining
+
+	bundled, err := BundleBytes([]byte(spec), config)
+	require.NoError(t, err)
+	require.NotNil(t, bundled)
+
+	bundledStr := string(bundled)
+
+	// Local refs should be inlined (no $ref to Pet)
+	assert.NotContains(t, bundledStr, "$ref: '#/components/schemas/Pet'")
+
+	// The schema should be inlined directly in the response
+	assert.Contains(t, bundledStr, "schema:")
+	assert.Contains(t, bundledStr, "type: object")
+	assert.Contains(t, bundledStr, "properties:")
+	assert.Contains(t, bundledStr, "name:")
+}
+
+// TestBundleInlineConfig_OverridesDocConfig verifies that BundleInlineConfig.InlineLocalRefs
+// takes precedence over DocumentConfiguration.BundleInlineRefs.
+func TestBundleInlineConfig_OverridesDocConfig(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	// Document config says preserve refs
+	docConfig := datamodel.NewDocumentConfiguration()
+	docConfig.BundleInlineRefs = false
+
+	// Bundle config overrides to inline refs
+	inlineTrue := true
+	bundleConfig := &BundleInlineConfig{
+		InlineLocalRefs: &inlineTrue,
+	}
+
+	bundled, err := BundleBytesWithConfig([]byte(spec), docConfig, bundleConfig)
+	require.NoError(t, err)
+	require.NotNil(t, bundled)
+
+	bundledStr := string(bundled)
+
+	// BundleInlineConfig should win - refs should be inlined
+	assert.NotContains(t, bundledStr, "$ref: '#/components/schemas/Pet'")
+	assert.Contains(t, bundledStr, "type: object")
+}
+
+// TestBundleInlineConfig_NilUsesDocConfig verifies that when BundleInlineConfig.InlineLocalRefs
+// is nil, it falls back to DocumentConfiguration.BundleInlineRefs.
+func TestBundleInlineConfig_NilUsesDocConfig(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	// Document config says inline refs
+	docConfig := datamodel.NewDocumentConfiguration()
+	docConfig.BundleInlineRefs = true
+
+	// Bundle config doesn't override (InlineLocalRefs is nil)
+	bundleConfig := &BundleInlineConfig{
+		InlineLocalRefs: nil, // Not set - should use docConfig
+	}
+
+	bundled, err := BundleBytesWithConfig([]byte(spec), docConfig, bundleConfig)
+	require.NoError(t, err)
+	require.NotNil(t, bundled)
+
+	bundledStr := string(bundled)
+
+	// Should fall back to docConfig - refs should be inlined
+	assert.NotContains(t, bundledStr, "$ref: '#/components/schemas/Pet'")
+	assert.Contains(t, bundledStr, "type: object")
+}
+
+// TestBundleInlineConfig_FalseOverridesDocConfigTrue verifies that explicitly
+// setting BundleInlineConfig.InlineLocalRefs to false overrides a true value
+// in DocumentConfiguration.BundleInlineRefs.
+func TestBundleInlineConfig_FalseOverridesDocConfigTrue(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	// Document config says inline refs
+	docConfig := datamodel.NewDocumentConfiguration()
+	docConfig.BundleInlineRefs = true
+
+	// Bundle config explicitly says preserve refs
+	inlineFalse := false
+	bundleConfig := &BundleInlineConfig{
+		InlineLocalRefs: &inlineFalse,
+	}
+
+	bundled, err := BundleBytesWithConfig([]byte(spec), docConfig, bundleConfig)
+	require.NoError(t, err)
+	require.NotNil(t, bundled)
+
+	bundledStr := string(bundled)
+
+	// BundleInlineConfig should win - refs should be preserved
+	assert.Contains(t, bundledStr, "$ref: '#/components/schemas/Pet'")
+	assert.Contains(t, bundledStr, "components:")
+	assert.Contains(t, bundledStr, "Pet:")
+}
+
+// TestBundleDocument_NoConfigAvailable verifies that BundleDocument (which doesn't
+// have access to DocumentConfiguration) uses system defaults (preserve refs).
+func TestBundleDocument_NoConfigAvailable(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	doc, err := libopenapi.NewDocument([]byte(spec))
+	require.NoError(t, err)
+
+	v3Doc, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	bundled, err := BundleDocument(&v3Doc.Model)
+	require.NoError(t, err)
+	require.NotNil(t, bundled)
+
+	bundledStr := string(bundled)
+
+	// Without config, should use system default (preserve refs)
+	assert.Contains(t, bundledStr, "$ref: '#/components/schemas/Pet'")
+	assert.Contains(t, bundledStr, "components:")
+}
+
+// TestBundleWithConfig_NilModel verifies that passing a nil model returns an error.
+func TestBundleWithConfig_NilModel(t *testing.T) {
+	config := datamodel.NewDocumentConfiguration()
+
+	// Call bundleWithConfig directly with nil model
+	_, err := bundleWithConfig(nil, nil, config)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "model cannot be nil")
+}
+
+// TestBundleInlineRefs_CircularRefs_AlwaysSkipped verifies that circular references
+// are never inlined, even with BundleInlineRefs: true.
+func TestBundleInlineRefs_CircularRefs_AlwaysSkipped(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /nodes:
+    get:
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TreeNode'
+components:
+  schemas:
+    TreeNode:
+      type: object
+      properties:
+        value:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/TreeNode'`
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BundleInlineRefs = true // Try to inline everything
+
+	bundled, err := BundleBytes([]byte(spec), config)
+	require.NoError(t, err)
+	require.NotNil(t, bundled)
+
+	bundledStr := string(bundled)
+
+	// Circular refs should still be preserved (can't inline infinite recursion)
+	// The ref in the items should remain
+	assert.Contains(t, bundledStr, "$ref:")
+	assert.Contains(t, bundledStr, "TreeNode")
+}
+
+// ============================================================================
+// Issue #511: BundleInlineRefs Flag Was Non-Functional
+// ============================================================================
+// Previously, setting BundleInlineRefs: true had no effect because the flag
+// wasn't wired up to the bundler's SetBundlingMode() mechanism. These tests
+// verify the fix.
+// Issue #511: https://github.com/pb33f/libopenapi/issues/511
+
+// TestIssue511_BundleInlineRefs_WasNonFunctional verifies that Issue #511 is fixed.
+func TestIssue511_BundleInlineRefs_WasNonFunctional(t *testing.T) {
+	// This is the scenario from Issue #511
+	spec := `openapi: 3.1.0
+info:
+  title: Pet Store API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      summary: List all pets
+      responses:
+        '200':
+          description: A list of pets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+  /pets/{petId}:
+    get:
+      summary: Get a pet by ID
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A pet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        tag:
+          type: string`
+
+	// Before the fix: setting BundleInlineRefs: true had NO EFFECT
+	// After the fix: setting BundleInlineRefs: true DOES inline local refs
+
+	config := &datamodel.DocumentConfiguration{
+		BundleInlineRefs: true, // This was broken - didn't actually inline refs
+	}
+
+	bundled, err := BundleBytes([]byte(spec), config)
+	require.NoError(t, err)
+	require.NotNil(t, bundled)
+
+	bundledStr := string(bundled)
+
+	// After the fix: refs should be inlined
+	assert.NotContains(t, bundledStr, "$ref: '#/components/schemas/Pet'",
+		"BundleInlineRefs: true should inline local component refs")
+
+	// Verify the schema is actually inlined in both locations
+	assert.Contains(t, bundledStr, "type: array")
+	assert.Contains(t, bundledStr, "items:")
+	assert.Contains(t, bundledStr, "type: object")
+	assert.Contains(t, bundledStr, "required:")
+
+	// The components section might still exist but shouldn't be referenced
+	// (or it might be removed entirely during rendering - either is fine)
+}
+
+// TestIssue511_BackwardCompatibility verifies that the default behavior
+// (BundleInlineRefs not set or set to false) still preserves local refs
+// to maintain backward compatibility after fixing Issue #511.
+func TestIssue511_BackwardCompatibility(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Pet Store API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: A list of pets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	// Default behavior - don't set BundleInlineRefs (or set to false)
+	config := datamodel.NewDocumentConfiguration()
+	// config.BundleInlineRefs defaults to false
+
+	bundled, err := BundleBytes([]byte(spec), config)
+	require.NoError(t, err)
+	require.NotNil(t, bundled)
+
+	bundledStr := string(bundled)
+
+	// Default behavior should preserve local refs (backward compatible)
+	assert.Contains(t, bundledStr, "$ref: '#/components/schemas/Pet'",
+		"Default behavior should preserve local refs for backward compatibility")
+	assert.Contains(t, bundledStr, "components:")
+	assert.Contains(t, bundledStr, "schemas:")
+	assert.Contains(t, bundledStr, "Pet:")
+}
+
+// TestIssue511_PerCallOverride verifies that BundleInlineConfig.InlineLocalRefs
+// can override DocumentConfiguration.BundleInlineRefs on a per-call basis.
+// This provides the fine-grained control requested in Issue #511.
+func TestIssue511_PerCallOverride(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Pet Store API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: A list of pets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	// Document config says preserve refs
+	docConfig := &datamodel.DocumentConfiguration{
+		BundleInlineRefs: false,
+	}
+
+	// But we want to inline for this specific call
+	inlineTrue := true
+	bundleConfig := &BundleInlineConfig{
+		InlineLocalRefs: &inlineTrue,
+	}
+
+	bundled, err := BundleBytesWithConfig([]byte(spec), docConfig, bundleConfig)
+	require.NoError(t, err)
+	require.NotNil(t, bundled)
+
+	bundledStr := string(bundled)
+
+	// Per-call config should override document config
+	assert.NotContains(t, bundledStr, "$ref: '#/components/schemas/Pet'",
+		"BundleInlineConfig.InlineLocalRefs should override DocumentConfiguration.BundleInlineRefs")
+	assert.Contains(t, bundledStr, "type: object")
+}
