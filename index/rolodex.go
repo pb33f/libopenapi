@@ -425,12 +425,18 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 						// This handles cases where SpecFilePath = "test_data/file.yaml" and
 						// BasePath was originally "test_data" (now absolute)
 						origBasePath := r.indexConfig.BasePath
-						if strings.HasPrefix(specPath, origBasePath+string(os.PathSeparator)) {
+
+						// Normalize paths to use OS-specific separators for Windows compatibility
+						// On Windows, paths may use / but os.PathSeparator is \, causing mismatches
+						normalizedSpecPath := filepath.FromSlash(specPath)
+						normalizedOrigBasePath := filepath.FromSlash(origBasePath)
+
+						if strings.HasPrefix(normalizedSpecPath, normalizedOrigBasePath+string(os.PathSeparator)) {
 							// SpecFilePath includes the original basePath, make it absolute directly
-							r.indexConfig.SpecAbsolutePath, _ = filepath.Abs(specPath)
+							r.indexConfig.SpecAbsolutePath, _ = filepath.Abs(normalizedSpecPath)
 						} else {
 							// SpecFilePath is relative to basePath, join them
-							r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, specPath)
+							r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, normalizedSpecPath)
 						}
 					}
 				} else {
