@@ -82,6 +82,23 @@ func BundleBytesComposed(bytes []byte, configuration *datamodel.DocumentConfigur
 	return bundledBytes, errors.Join(err, e)
 }
 
+// BundleBytesComposedWithOrigins returns a bundled spec with origin tracking for navigation.
+// This enables consumers to map bundled components back to their original file locations.
+func BundleBytesComposedWithOrigins(bytes []byte, configuration *datamodel.DocumentConfiguration, compositionConfig *BundleCompositionConfig) (*BundleResult, error) {
+	doc, err := libopenapi.NewDocumentWithConfiguration(bytes, configuration)
+	if err != nil {
+		return nil, err
+	}
+
+	v3Doc, err := doc.BuildV3Model()
+	if v3Doc == nil || err != nil {
+		return nil, errors.Join(ErrInvalidModel, err)
+	}
+
+	result, e := composeWithOrigins(&v3Doc.Model, compositionConfig)
+	return result, errors.Join(err, e)
+}
+
 // BundleDocument will take a v3.Document and return a bundled version of it.
 // This is useful for when you want to take a document that has been built
 // from a specification with external references, and you want to bundle it
@@ -161,6 +178,134 @@ func BundleDocumentComposed(model *v3.Document, compositionConfig *BundleComposi
 	return compose(model, compositionConfig)
 }
 
+// composeWithOrigins performs composed bundling and returns origin tracking information
+func composeWithOrigins(model *v3.Document, compositionConfig *BundleCompositionConfig) (*BundleResult, error) {
+	if compositionConfig == nil {
+		compositionConfig = &BundleCompositionConfig{
+			Delimiter: "__",
+		}
+	} else {
+		if compositionConfig.Delimiter == "" {
+			compositionConfig.Delimiter = "__"
+		}
+		if strings.Contains(compositionConfig.Delimiter, "#") ||
+			strings.Contains(compositionConfig.Delimiter, "/") {
+			return nil, errors.New("composition delimiter cannot contain '#' or '/' characters")
+		}
+		if strings.Contains(compositionConfig.Delimiter, " ") {
+			return nil, errors.New("composition delimiter cannot contain spaces")
+		}
+	}
+
+	if model == nil || model.Rolodex == nil {
+		return nil, errors.New("model or rolodex is nil")
+	}
+
+	rolodex := model.Rolodex
+	indexes := rolodex.GetIndexes()
+
+	discriminatorMappings := collectDiscriminatorMappingNodes(rolodex)
+
+	cf := &handleIndexConfig{
+		idx:                   rolodex.GetRootIndex(),
+		model:                 model,
+		indexes:               indexes,
+		seen:                  sync.Map{},
+		refMap:                orderedmap.New[string, *processRef](),
+		compositionConfig:     compositionConfig,
+		discriminatorMappings: discriminatorMappings,
+		origins:               make(ComponentOriginMap),
+	}
+	if err := handleIndex(cf); err != nil {
+		return nil, err
+	}
+
+	processedNodes := orderedmap.New[string, *processRef]()
+	var errs []error
+	for _, ref := range cf.refMap.FromOldest() {
+		err := processReference(model, ref, cf)
+		errs = append(errs, err)
+		processedNodes.Set(ref.ref.FullDefinition, ref)
+	}
+
+	slices.SortFunc(indexes, func(i, j *index.SpecIndex) int {
+		if i.GetSpecAbsolutePath() < j.GetSpecAbsolutePath() {
+			return 1
+		}
+		return 0
+	})
+
+	rootIndex := rolodex.GetRootIndex()
+	remapIndex(rootIndex, processedNodes)
+
+	for _, idx := range indexes {
+		remapIndex(idx, processedNodes)
+	}
+
+	updateDiscriminatorMappingsComposed(discriminatorMappings, processedNodes, rolodex)
+
+	// anything that could not be recomposed and needs inlining
+	inlinedPaths := make(map[string]*yaml.Node)
+	for _, pr := range cf.inlineRequired {
+		if pr.refPointer != "" {
+
+			// if the ref is a pointer to an external pointer, then we need to stitch it.
+			uri := strings.Split(pr.refPointer, "#/")
+			if len(uri) == 2 {
+				if uri[0] != "" {
+					if !filepath.IsAbs(uri[0]) && !strings.HasPrefix(uri[0], "http") {
+						// if the uri is not absolute, then we need to make it absolute.
+						uri[0] = filepath.Join(filepath.Dir(pr.idx.GetSpecAbsolutePath()), uri[0])
+					}
+					pointerRef := pr.idx.FindComponent(context.Background(), strings.Join(uri, "#/"))
+					pr.seqRef.Node.Content = pointerRef.Node.Content
+					// Track this inlined content for reuse
+					if pr.ref != nil {
+						inlinedPaths[pr.ref.FullDefinition] = pointerRef.Node
+					}
+					continue
+				}
+			}
+		}
+		pr.seqRef.Node.Content = pr.ref.Node.Content
+		// Track this inlined content for reuse
+		if pr.ref != nil {
+			inlinedPaths[pr.ref.FullDefinition] = pr.ref.Node
+		}
+	}
+
+	// Fix any remaining absolute path references that match inlined content
+	// Also check the root index
+	allIndexes := append(indexes, rolodex.GetRootIndex())
+	for _, idx := range allIndexes {
+		for _, seqRef := range idx.GetRawReferencesSequenced() {
+			if isRef, _, refVal := utils.IsNodeRefValue(seqRef.Node); isRef {
+				// Check if this is an absolute path that should have been inlined
+				if filepath.IsAbs(refVal) {
+					// Try to find matching inlined content
+					for inlinedPath, inlinedNode := range inlinedPaths {
+						// Match if paths are the same or if they refer to the same file
+						if refVal == inlinedPath {
+							seqRef.Node.Content = inlinedNode.Content
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	b, err := model.Render()
+	errs = append(errs, err)
+
+	result := &BundleResult{
+		Bytes:   b,
+		Origins: cf.origins,
+	}
+
+	return result, errors.Join(errs...)
+}
+
 func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]byte, error) {
 	if compositionConfig == nil {
 		compositionConfig = &BundleCompositionConfig{
@@ -196,6 +341,7 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		refMap:                orderedmap.New[string, *processRef](),
 		compositionConfig:     compositionConfig,
 		discriminatorMappings: discriminatorMappings,
+		origins:               make(ComponentOriginMap),
 	}
 	if err := handleIndex(cf); err != nil {
 		return nil, err
