@@ -23,6 +23,15 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+// extractFragment returns the JSON pointer fragment from a full definition.
+// e.g., "file.yaml#/components/schemas/Pet" → "#/components/schemas/Pet"
+func extractFragment(fullDef string) string {
+	if idx := strings.Index(fullDef, "#/"); idx != -1 {
+		return fullDef[idx:]
+	}
+	return "#/"
+}
+
 func calculateCollisionName(name, pointer, delimiter string, iteration int) string {
 	jsonPointer := strings.Split(pointer, "#/")
 	if len(jsonPointer) == 2 {
@@ -83,21 +92,55 @@ func checkReferenceAndBubbleUp[T any](
 	componentMap *orderedmap.Map[string, T],
 	buildFunc func(node *yaml.Node, idx *index.SpecIndex) (T, error),
 ) error {
-	// Build the component
+	// preserve original name before collision handling (unless already set)
+	if pr != nil && pr.originalName == "" {
+		pr.originalName = name
+	}
+
 	component, err := buildFunc(pr.ref.Node, idx)
 	if err != nil {
 		return err
 	}
 
+	wasRenamed := false
+
 	// Handle potential collisions and add to the component map
 	if v := componentMap.GetOrZero(name); !isZeroOfType(v) {
 		uniqueName := handleCollision(name, delimiter, pr, componentMap)
 		componentMap.Set(uniqueName, component)
+		wasRenamed = true
+		name = uniqueName
 	} else {
 		componentMap.Set(name, component)
 	}
 
+	// update final name and renamed flag (preserve existing wasRenamed=true if already set)
+	if pr != nil {
+		pr.name = name
+		// only update wasRenamed if it's being set to true, or if it wasn't already true
+		if wasRenamed || !pr.wasRenamed {
+			pr.wasRenamed = wasRenamed
+		}
+	}
+
 	return nil
+}
+
+// checkReferenceAndCapture combines reference building and origin tracking.
+// eliminates duplication of the check-capture-return pattern used throughout processReference.
+func checkReferenceAndCapture[T any](
+	name, delimiter, componentType string,
+	pr *processRef,
+	idx *index.SpecIndex,
+	componentMap *orderedmap.Map[string, T],
+	buildFunc func(node *yaml.Node, idx *index.SpecIndex) (T, error),
+	origins ComponentOriginMap,
+) error {
+	err := checkReferenceAndBubbleUp(name, delimiter, pr, idx, componentMap, buildFunc)
+	if err == nil && origins != nil {
+		captureOrigin(pr, componentType, origins)
+	}
+	return err
 }
 
 func isZeroOfType[T any](v T) bool {
@@ -118,11 +161,27 @@ func handleCollision[T any](schemaName, delimiter string, pr *processRef, compon
 
 	}
 	pr.name = uniqueName
+	pr.wasRenamed = true
 	return uniqueName
 }
 
 func handleFileImport[T any](pr *processRef, importType, delimiter string, components *orderedmap.Map[string, T]) []string {
-	name := checkForCollision(filepath.Base(strings.Replace(pr.ref.Name, filepath.Ext(pr.ref.Name), "", 1)), delimiter, pr, components)
+	// extract base name from file before collision handling
+	baseName := filepath.Base(strings.Replace(pr.ref.Name, filepath.Ext(pr.ref.Name), "", 1))
+
+	// preserve original name before any renaming
+	if pr.originalName == "" {
+		pr.originalName = baseName
+	}
+
+	// check for collisions and get final name
+	name := checkForCollision(baseName, delimiter, pr, components)
+
+	// detect if renaming occurred
+	if name != baseName {
+		pr.wasRenamed = true
+	}
+
 	pr.name = name
 	pr.ref.Name = name
 	pr.seqRef.Name = name
@@ -328,4 +387,35 @@ func buildPathItem(node *yaml.Node, idx *index.SpecIndex) (*v3.PathItem, error) 
 	ctx := context.Background()
 	err := pathItem.Build(ctx, &yaml.Node{}, node, idx)
 	return v3.NewPathItem(&pathItem), err
+}
+
+// captureOrigin records origin information for a processed reference.
+// enables navigation from bundled components back to their source files.
+func captureOrigin(pr *processRef, componentType string, origins ComponentOriginMap) {
+	if pr == nil || pr.ref == nil || pr.idx == nil || origins == nil {
+		return
+	}
+
+	originalRef := extractFragment(pr.ref.FullDefinition)
+
+	originalName := pr.originalName
+	if originalName == "" {
+		originalName = pr.name
+	}
+
+	// pr.name is updated by checkReferenceAndBubbleUp after collision handling
+	bundledRef := "#/components/" + componentType + "/" + pr.name
+
+	origin := &ComponentOrigin{
+		OriginalFile:  pr.idx.GetSpecAbsolutePath(),
+		OriginalRef:   originalRef,
+		OriginalName:  originalName,
+		Line:          pr.ref.Node.Line,
+		Column:        pr.ref.Node.Column,
+		WasRenamed:    pr.wasRenamed,
+		BundledRef:    bundledRef,
+		ComponentType: componentType,
+	}
+
+	origins[bundledRef] = origin
 }
