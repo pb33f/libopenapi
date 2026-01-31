@@ -18,12 +18,14 @@ import (
 )
 
 type processRef struct {
-	idx        *index.SpecIndex
-	ref        *index.Reference
-	seqRef     *index.Reference
-	refPointer string
-	name       string
-	location   []string
+	idx          *index.SpecIndex
+	ref          *index.Reference
+	seqRef       *index.Reference
+	refPointer   string
+	name         string
+	location     []string
+	wasRenamed   bool   // true when component was renamed due to collision
+	originalName string // original name before collision renaming
 }
 
 type handleIndexConfig struct {
@@ -35,6 +37,7 @@ type handleIndexConfig struct {
 	inlineRequired        []*processRef
 	compositionConfig     *BundleCompositionConfig
 	discriminatorMappings []*yaml.Node
+	origins               ComponentOriginMap // component origins for navigation
 }
 
 // handleIndex will recursively explore the indexes and their references, building a map of references
@@ -207,83 +210,57 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 			if len(location) > 1 {
 				switch location[1] {
 				case v3low.SchemasLabel:
-					if len(location) > 2 {
-						schemaName := location[2]
-						if components.Schemas != nil {
-							return checkReferenceAndBubbleUp(schemaName, cf.compositionConfig.Delimiter,
-								pr, idx, components.Schemas, buildSchema)
-						}
+					if len(location) > 2 && components.Schemas != nil {
+						return checkReferenceAndCapture(location[2], cf.compositionConfig.Delimiter,
+							v3low.SchemasLabel, pr, idx, components.Schemas, buildSchema, cf.origins)
 					}
 
 				case v3low.ResponsesLabel:
-					if len(location) > 2 {
-						responseCode := location[2]
-						if components.Responses != nil {
-							return checkReferenceAndBubbleUp(responseCode, cf.compositionConfig.Delimiter,
-								pr, idx, components.Responses, buildResponse)
-						}
+					if len(location) > 2 && components.Responses != nil {
+						return checkReferenceAndCapture(location[2], cf.compositionConfig.Delimiter,
+							v3low.ResponsesLabel, pr, idx, components.Responses, buildResponse, cf.origins)
 					}
 
 				case v3low.ParametersLabel:
-					if len(location) > 2 {
-						paramName := location[2]
-						if components.Parameters != nil {
-							return checkReferenceAndBubbleUp(paramName, cf.compositionConfig.Delimiter,
-								pr, idx, components.Parameters, buildParameter)
-						}
+					if len(location) > 2 && components.Parameters != nil {
+						return checkReferenceAndCapture(location[2], cf.compositionConfig.Delimiter,
+							v3low.ParametersLabel, pr, idx, components.Parameters, buildParameter, cf.origins)
 					}
 
 				case v3low.HeadersLabel:
-					if len(location) > 2 {
-						headerName := location[2]
-						if components.Headers != nil {
-							return checkReferenceAndBubbleUp(headerName, cf.compositionConfig.Delimiter,
-								pr, idx, components.Headers, buildHeader)
-						}
+					if len(location) > 2 && components.Headers != nil {
+						return checkReferenceAndCapture(location[2], cf.compositionConfig.Delimiter,
+							v3low.HeadersLabel, pr, idx, components.Headers, buildHeader, cf.origins)
 					}
 
 				case v3low.RequestBodiesLabel:
-					if len(location) > 2 {
-						requestBodyName := location[2]
-						if components.RequestBodies != nil {
-							return checkReferenceAndBubbleUp(requestBodyName, cf.compositionConfig.Delimiter,
-								pr, idx, components.RequestBodies, buildRequestBody)
-						}
+					if len(location) > 2 && components.RequestBodies != nil {
+						return checkReferenceAndCapture(location[2], cf.compositionConfig.Delimiter,
+							v3low.RequestBodiesLabel, pr, idx, components.RequestBodies, buildRequestBody, cf.origins)
 					}
+
 				case v3low.ExamplesLabel:
-					if len(location) > 2 {
-						exampleName := location[2]
-						if components.Examples != nil {
-							return checkReferenceAndBubbleUp(exampleName, cf.compositionConfig.Delimiter,
-								pr, idx, components.Examples, buildExample)
-						}
+					if len(location) > 2 && components.Examples != nil {
+						return checkReferenceAndCapture(location[2], cf.compositionConfig.Delimiter,
+							v3low.ExamplesLabel, pr, idx, components.Examples, buildExample, cf.origins)
 					}
 
 				case v3low.LinksLabel:
-					if len(location) > 2 {
-						linksName := location[2]
-						if components.Links != nil {
-							return checkReferenceAndBubbleUp(linksName, cf.compositionConfig.Delimiter,
-								pr, idx, components.Links, buildLink)
-						}
+					if len(location) > 2 && components.Links != nil {
+						return checkReferenceAndCapture(location[2], cf.compositionConfig.Delimiter,
+							v3low.LinksLabel, pr, idx, components.Links, buildLink, cf.origins)
 					}
 
 				case v3low.CallbacksLabel:
-					if len(location) > 2 {
-						callbacks := location[2]
-						if components.Callbacks != nil {
-							return checkReferenceAndBubbleUp(callbacks, cf.compositionConfig.Delimiter,
-								pr, idx, components.Callbacks, buildCallback)
-						}
+					if len(location) > 2 && components.Callbacks != nil {
+						return checkReferenceAndCapture(location[2], cf.compositionConfig.Delimiter,
+							v3low.CallbacksLabel, pr, idx, components.Callbacks, buildCallback, cf.origins)
 					}
 
 				case v3low.PathItemsLabel:
-					if len(location) > 2 {
-						pathItem := location[2]
-						if components.PathItems != nil {
-							return checkReferenceAndBubbleUp(pathItem, cf.compositionConfig.Delimiter,
-								pr, idx, components.PathItems, buildPathItem)
-						}
+					if len(location) > 2 && components.PathItems != nil {
+						return checkReferenceAndCapture(location[2], cf.compositionConfig.Delimiter,
+							v3low.PathItemsLabel, pr, idx, components.PathItems, buildPathItem, cf.origins)
 					}
 				}
 			}
@@ -308,61 +285,64 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 					return nil
 				}
 
+				// preserve original name before collision handling
+				pr.originalName = componentName
+
 				if importType, ok := DetectOpenAPIComponentType(pr.ref.Node); ok {
 					switch importType {
 					case v3low.SchemasLabel:
 						if components.Schemas != nil {
 							pr.name = checkForCollision(componentName, delim, pr, components.Schemas)
 							pr.location = []string{v3low.ComponentsLabel, v3low.SchemasLabel, pr.name}
-							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Schemas, buildSchema)
+							return checkReferenceAndCapture(pr.name, delim, v3low.SchemasLabel, pr, idx, components.Schemas, buildSchema, cf.origins)
 						}
 					case v3low.ResponsesLabel:
 						if components.Responses != nil {
 							pr.name = checkForCollision(componentName, delim, pr, components.Responses)
 							pr.location = []string{v3low.ComponentsLabel, v3low.ResponsesLabel, pr.name}
-							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Responses, buildResponse)
+							return checkReferenceAndCapture(pr.name, delim, v3low.ResponsesLabel, pr, idx, components.Responses, buildResponse, cf.origins)
 						}
 					case v3low.ParametersLabel:
 						if components.Parameters != nil {
 							pr.name = checkForCollision(componentName, delim, pr, components.Parameters)
 							pr.location = []string{v3low.ComponentsLabel, v3low.ParametersLabel, pr.name}
-							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Parameters, buildParameter)
+							return checkReferenceAndCapture(pr.name, delim, v3low.ParametersLabel, pr, idx, components.Parameters, buildParameter, cf.origins)
 						}
 					case v3low.HeadersLabel:
 						if components.Headers != nil {
 							pr.name = checkForCollision(componentName, delim, pr, components.Headers)
 							pr.location = []string{v3low.ComponentsLabel, v3low.HeadersLabel, pr.name}
-							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Headers, buildHeader)
+							return checkReferenceAndCapture(pr.name, delim, v3low.HeadersLabel, pr, idx, components.Headers, buildHeader, cf.origins)
 						}
 					case v3low.RequestBodiesLabel:
 						if components.RequestBodies != nil {
 							pr.name = checkForCollision(componentName, delim, pr, components.RequestBodies)
 							pr.location = []string{v3low.ComponentsLabel, v3low.RequestBodiesLabel, pr.name}
-							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.RequestBodies, buildRequestBody)
+							return checkReferenceAndCapture(pr.name, delim, v3low.RequestBodiesLabel, pr, idx, components.RequestBodies, buildRequestBody, cf.origins)
 						}
 					case v3low.ExamplesLabel:
 						if components.Examples != nil {
 							pr.name = checkForCollision(componentName, delim, pr, components.Examples)
 							pr.location = []string{v3low.ComponentsLabel, v3low.ExamplesLabel, pr.name}
-							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Examples, buildExample)
+							return checkReferenceAndCapture(pr.name, delim, v3low.ExamplesLabel, pr, idx, components.Examples, buildExample, cf.origins)
 						}
 					case v3low.LinksLabel:
 						if components.Links != nil {
 							pr.name = checkForCollision(componentName, delim, pr, components.Links)
 							pr.location = []string{v3low.ComponentsLabel, v3low.LinksLabel, pr.name}
-							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Links, buildLink)
+							return checkReferenceAndCapture(pr.name, delim, v3low.LinksLabel, pr, idx, components.Links, buildLink, cf.origins)
 						}
 					case v3low.CallbacksLabel:
 						if components.Callbacks != nil {
 							pr.name = checkForCollision(componentName, delim, pr, components.Callbacks)
 							pr.location = []string{v3low.ComponentsLabel, v3low.CallbacksLabel, pr.name}
-							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Callbacks, buildCallback)
+							return checkReferenceAndCapture(pr.name, delim, v3low.CallbacksLabel, pr, idx, components.Callbacks, buildCallback, cf.origins)
 						}
 					case v3low.PathItemsLabel:
 						if components.PathItems != nil {
 							pr.name = checkForCollision(componentName, delim, pr, components.PathItems)
 							pr.location = []string{v3low.ComponentsLabel, v3low.PathItemsLabel, pr.name}
-							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.PathItems, buildPathItem)
+							return checkReferenceAndCapture(pr.name, delim, v3low.PathItemsLabel, pr, idx, components.PathItems, buildPathItem, cf.origins)
 						}
 					}
 				}
