@@ -223,6 +223,84 @@ func TestDeriveNameFromFullDefinition_StripsFragment(t *testing.T) {
 	assert.Equal(t, "Cat", name)
 }
 
+func TestResolveDiscriminatorMappingTarget_NilSourceIdx(t *testing.T) {
+	ref, idx := resolveDiscriminatorMappingTarget(nil, "schemas/Cat.yaml")
+	assert.Nil(t, ref)
+	assert.Nil(t, idx)
+}
+
+func TestResolveDiscriminatorMappingTarget_NoRolodex(t *testing.T) {
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`openapi: 3.0.0
+info:
+  title: No Rolodex
+  version: 1.0.0
+paths: {}`), &rootNode))
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	sourceIdx := index.NewSpecIndexWithConfig(&rootNode, cfg)
+
+	ref, idx := resolveDiscriminatorMappingTarget(sourceIdx, "schemas/Cat.yaml")
+	assert.Nil(t, ref)
+	assert.Nil(t, idx)
+}
+
+func TestResolveDiscriminatorMappingTarget_IndexesAndReturnsRef(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "schemas"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "schemas", "Cat.yaml"), []byte("type: object\n"), 0644))
+
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`openapi: 3.0.0
+info:
+  title: Root
+  version: 1.0.0
+paths: {}`), &rootNode))
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	cfg.BasePath = tmpDir
+	cfg.SpecAbsolutePath = ""
+
+	sourceIdx := index.NewSpecIndexWithConfig(&rootNode, cfg)
+	rolodex := index.NewRolodex(cfg)
+
+	localFS, err := index.NewLocalFSWithConfig(&index.LocalFSConfig{
+		BaseDirectory: tmpDir,
+		IndexConfig:   nil,
+	})
+	require.NoError(t, err)
+
+	rolodex.AddLocalFS(tmpDir, localFS)
+	sourceIdx.SetRolodex(rolodex)
+
+	ref, idx := resolveDiscriminatorMappingTarget(sourceIdx, "schemas/Cat.yaml")
+	require.NotNil(t, ref)
+	_ = idx
+
+	expected, err := filepath.Abs(filepath.Join(tmpDir, "schemas", "Cat.yaml"))
+	require.NoError(t, err)
+
+	assert.Equal(t, expected, ref.FullDefinition)
+	assert.Equal(t, expected, ref.RemoteLocation)
+	assert.Equal(t, filepath.Base(expected), ref.Name)
+	require.NotNil(t, ref.Node)
+	assert.NotEqual(t, yaml.DocumentNode, ref.Node.Kind)
+}
+
+func TestHandleDiscriminatorMappingIndexes_SkipsRootTarget(t *testing.T) {
+	rootIdx := &index.SpecIndex{}
+	cf := &handleIndexConfig{
+		idx:                   rootIdx,
+		rootIdx:               rootIdx,
+		discriminatorMappings: []*discriminatorMappingWithContext{{targetIdx: rootIdx}},
+	}
+
+	err := handleDiscriminatorMappingIndexes(cf, rootIdx, nil)
+	require.NoError(t, err)
+	assert.Equal(t, rootIdx, cf.idx)
+}
+
 // TestBundleBytesComposed_DiscriminatorMapping tests that composed bundling correctly
 // updates discriminator mappings when external schemas are moved to components.
 func TestBundleBytesComposed_DiscriminatorMapping(t *testing.T) {

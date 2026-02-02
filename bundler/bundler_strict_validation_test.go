@@ -98,6 +98,113 @@ components:
 	)
 }
 
+func TestStrictValidation_DiscriminatorMappingTarget_ShouldError(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	rootSpec := `openapi: 3.0.0
+info:
+  title: Root
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Animal:
+      type: object
+      discriminator:
+        propertyName: kind
+        mapping:
+          bad: './bad.yaml#/components/schemas/Bad'`
+
+	badSpec := `openapi: 3.0.0
+info:
+  title: Bad
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Good:
+      type: object
+    Bad:
+      $ref: '#/components/schemas/Good'
+      description: invalid sibling`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "root.yaml"), []byte(rootSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "bad.yaml"), []byte(badSpec), 0644))
+
+	docConfig := &datamodel.DocumentConfiguration{
+		BasePath:            tmpDir,
+		AllowFileReferences: true,
+		SpecFilePath:        "root.yaml",
+	}
+
+	config := &BundleCompositionConfig{
+		StrictValidation: true,
+	}
+
+	_, err := BundleBytesComposed([]byte(rootSpec), docConfig, config)
+
+	require.Error(t, err)
+	assert.Contains(
+		t,
+		err.Error(),
+		"invalid OpenAPI 3.0 specification: $ref cannot have sibling properties",
+	)
+}
+
+func TestStrictValidation_DiscriminatorMappingTarget_WithOrigins_ShouldError(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	rootSpec := `openapi: 3.0.0
+info:
+  title: Root
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Animal:
+      type: object
+      discriminator:
+        propertyName: kind
+        mapping:
+          bad: './bad.yaml#/components/schemas/Bad'`
+
+	badSpec := `openapi: 3.0.0
+info:
+  title: Bad
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Good:
+      type: object
+    Bad:
+      $ref: '#/components/schemas/Good'
+      description: invalid sibling`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "root.yaml"), []byte(rootSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "bad.yaml"), []byte(badSpec), 0644))
+
+	docConfig := &datamodel.DocumentConfiguration{
+		BasePath:            tmpDir,
+		AllowFileReferences: true,
+		SpecFilePath:        "root.yaml",
+	}
+
+	config := &BundleCompositionConfig{
+		StrictValidation: true,
+	}
+
+	result, err := BundleBytesComposedWithOrigins([]byte(rootSpec), docConfig, config)
+
+	require.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(
+		t,
+		err.Error(),
+		"invalid OpenAPI 3.0 specification: $ref cannot have sibling properties",
+	)
+}
+
 func TestStrictValidation_RefWithoutSiblings_ShouldSucceed(t *testing.T) {
 	spec := `openapi: 3.0.0
 info:
