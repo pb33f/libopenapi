@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -74,12 +75,12 @@ func BundleBytesComposed(bytes []byte, configuration *datamodel.DocumentConfigur
 	}
 
 	v3Doc, err := doc.BuildV3Model()
-	if v3Doc == nil || err != nil {
+	if err != nil {
 		return nil, errors.Join(ErrInvalidModel, err)
 	}
 
 	bundledBytes, e := compose(&v3Doc.Model, compositionConfig)
-	return bundledBytes, errors.Join(err, e)
+	return bundledBytes, e
 }
 
 // BundleBytesComposedWithOrigins returns a bundled spec with origin tracking for navigation.
@@ -91,12 +92,12 @@ func BundleBytesComposedWithOrigins(bytes []byte, configuration *datamodel.Docum
 	}
 
 	v3Doc, err := doc.BuildV3Model()
-	if v3Doc == nil || err != nil {
+	if err != nil {
 		return nil, errors.Join(ErrInvalidModel, err)
 	}
 
 	result, e := composeWithOrigins(&v3Doc.Model, compositionConfig)
-	return result, errors.Join(err, e)
+	return result, e
 }
 
 // BundleDocument will take a v3.Document and return a bundled version of it.
@@ -138,19 +139,20 @@ func BundleDocumentWithConfig(model *v3.Document, bundleConfig *BundleInlineConf
 
 // BundleCompositionConfig is used to configure the composition of OpenAPI documents when using BundleDocumentComposed.
 type BundleCompositionConfig struct {
-	Delimiter           string // Delimiter is used to separate clashing names. Defaults to `__`.
-	StrictValidation    bool   // StrictValidation will cause bundling to fail on invalid OpenAPI specs (e.g. $ref with siblings)
+	Delimiter        string // Delimiter is used to separate clashing names. Defaults to `__`.
+	StrictValidation bool   // StrictValidation will cause bundling to fail on invalid OpenAPI specs (e.g. $ref with siblings)
 }
 
 // BundleInlineConfig provides configuration options for inline bundling.
 //
 // Example usage:
-//   // Inline everything including local refs
-//   inlineTrue := true
-//   config := &BundleInlineConfig{
-//       InlineLocalRefs: &inlineTrue,
-//   }
-//   bundled, err := BundleBytesWithConfig(specBytes, docConfig, config)
+//
+//	// Inline everything including local refs
+//	inlineTrue := true
+//	config := &BundleInlineConfig{
+//	    InlineLocalRefs: &inlineTrue,
+//	}
+//	bundled, err := BundleBytesWithConfig(specBytes, docConfig, config)
 type BundleInlineConfig struct {
 	// ResolveDiscriminatorExternalRefs when true, copies external schemas referenced
 	// by discriminator mappings to the root document's components section.
@@ -178,6 +180,15 @@ func BundleDocumentComposed(model *v3.Document, compositionConfig *BundleComposi
 	return compose(model, compositionConfig)
 }
 
+// BundleDocumentComposedWithOrigins will take a v3.Document and return a composed bundled version of it
+// along with origin tracking information. This allows consumers to map bundled components back to their
+// original file locations. The document model will be mutated permanently.
+//
+// Circular references will not be resolved and will be skipped.
+func BundleDocumentComposedWithOrigins(model *v3.Document, compositionConfig *BundleCompositionConfig) (*BundleResult, error) {
+	return composeWithOrigins(model, compositionConfig)
+}
+
 // composeWithOrigins performs composed bundling and returns origin tracking information
 func composeWithOrigins(model *v3.Document, compositionConfig *BundleCompositionConfig) (*BundleResult, error) {
 	if compositionConfig == nil {
@@ -203,11 +214,14 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 
 	rolodex := model.Rolodex
 	indexes := rolodex.GetIndexes()
+	rootIndex := rolodex.GetRootIndex()
 
-	discriminatorMappings := collectDiscriminatorMappingNodes(rolodex)
+	// Step 1: Collect discriminator mappings WITH context (early)
+	discriminatorMappings := collectDiscriminatorMappingNodesWithContext(rolodex)
 
 	cf := &handleIndexConfig{
-		idx:                   rolodex.GetRootIndex(),
+		idx:                   rootIndex,
+		rootIdx:               rootIndex,
 		model:                 model,
 		indexes:               indexes,
 		seen:                  sync.Map{},
@@ -216,7 +230,17 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 		discriminatorMappings: discriminatorMappings,
 		origins:               make(ComponentOriginMap),
 	}
+
+	// Step 2: Enqueue mapping targets for composition (AFTER cf is created, BEFORE handleIndex)
+	// Pass rootIndex so we can skip root-local #/ refs
+	enqueueDiscriminatorMappingTargets(discriminatorMappings, cf, rootIndex)
+	// Refresh indexes in case mapping resolution loaded new ones
+	cf.indexes = rolodex.GetIndexes()
+
 	if err := handleIndex(cf); err != nil {
+		return nil, err
+	}
+	if err := handleDiscriminatorMappingIndexes(cf, rootIndex, rolodex); err != nil {
 		return nil, err
 	}
 
@@ -235,18 +259,26 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 		return 0
 	})
 
-	rootIndex := rolodex.GetRootIndex()
+	// Step 3: Remap indexed refs
 	remapIndex(rootIndex, processedNodes)
 
 	for _, idx := range indexes {
 		remapIndex(idx, processedNodes)
 	}
 
+	// Step 4: Update discriminator mappings (uses renameRef for collision handling)
 	updateDiscriminatorMappingsComposed(discriminatorMappings, processedNodes, rolodex)
 
+	// Step 5: Inline handling with guard for synthetic discriminator refs
 	// anything that could not be recomposed and needs inlining
 	inlinedPaths := make(map[string]*yaml.Node)
 	for _, pr := range cf.inlineRequired {
+		// Skip synthetic refs from discriminator mappings - their seqRef.Node is a
+		// scalar value node, not a $ref node with Content array
+		if pr.fromDiscriminator {
+			continue
+		}
+
 		if pr.refPointer != "" {
 
 			// if the ref is a pointer to an external pointer, then we need to stitch it.
@@ -255,7 +287,7 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 				if uri[0] != "" {
 					if !filepath.IsAbs(uri[0]) && !strings.HasPrefix(uri[0], "http") {
 						// if the uri is not absolute, then we need to make it absolute.
-						uri[0] = filepath.Join(filepath.Dir(pr.idx.GetSpecAbsolutePath()), uri[0])
+						uri[0] = utils.CheckPathOverlap(filepath.Dir(pr.idx.GetSpecAbsolutePath()), uri[0], string(os.PathSeparator))
 					}
 					pointerRef := pr.idx.FindComponent(context.Background(), strings.Join(uri, "#/"))
 					pr.seqRef.Node.Content = pointerRef.Node.Content
@@ -274,9 +306,18 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 		}
 	}
 
+	// Step 6: Tree walk for any remaining unindexed refs
+	// Re-fetch indexes since new ones may have been loaded during composition
+	// (e.g., discriminator mapping targets that weren't indexed initially)
+	allLoadedIndexes := rolodex.GetIndexes()
+	rewriteAllRefs(rootIndex, processedNodes, rolodex)
+	for _, idx := range allLoadedIndexes {
+		rewriteAllRefs(idx, processedNodes, rolodex)
+	}
+
 	// Fix any remaining absolute path references that match inlined content
 	// Also check the root index
-	allIndexes := append(indexes, rolodex.GetRootIndex())
+	allIndexes := append(allLoadedIndexes, rolodex.GetRootIndex())
 	for _, idx := range allIndexes {
 		for _, seqRef := range idx.GetRawReferencesSequenced() {
 			if isRef, _, refVal := utils.IsNodeRefValue(seqRef.Node); isRef {
@@ -330,11 +371,14 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 
 	rolodex := model.Rolodex
 	indexes := rolodex.GetIndexes()
+	rootIndex := rolodex.GetRootIndex()
 
-	discriminatorMappings := collectDiscriminatorMappingNodes(rolodex)
+	// Collect discriminator mappings WITH context (early)
+	discriminatorMappings := collectDiscriminatorMappingNodesWithContext(rolodex)
 
 	cf := &handleIndexConfig{
-		idx:                   rolodex.GetRootIndex(),
+		idx:                   rootIndex,
+		rootIdx:               rootIndex,
 		model:                 model,
 		indexes:               indexes,
 		seen:                  sync.Map{},
@@ -343,7 +387,17 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		discriminatorMappings: discriminatorMappings,
 		origins:               make(ComponentOriginMap),
 	}
+
+	// Enqueue mapping targets for composition (AFTER cf is created, BEFORE handleIndex)
+	// Pass rootIndex so we can skip root-local #/ refs
+	enqueueDiscriminatorMappingTargets(discriminatorMappings, cf, rootIndex)
+	// Refresh indexes in case mapping resolution loaded new ones
+	cf.indexes = rolodex.GetIndexes()
+
 	if err := handleIndex(cf); err != nil {
+		return nil, err
+	}
+	if err := handleDiscriminatorMappingIndexes(cf, rootIndex, rolodex); err != nil {
 		return nil, err
 	}
 
@@ -362,18 +416,26 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		return 0
 	})
 
-	rootIndex := rolodex.GetRootIndex()
+	// Remap indexed refs
 	remapIndex(rootIndex, processedNodes)
 
 	for _, idx := range indexes {
 		remapIndex(idx, processedNodes)
 	}
 
+	// Update discriminator mappings (uses renameRef for collision handling)
 	updateDiscriminatorMappingsComposed(discriminatorMappings, processedNodes, rolodex)
 
+	// Inline handling with guard for synthetic discriminator refs
 	// anything that could not be recomposed and needs inlining
 	inlinedPaths := make(map[string]*yaml.Node)
 	for _, pr := range cf.inlineRequired {
+		// Skip synthetic refs from discriminator mappings - their seqRef.Node is a
+		// scalar value node, not a $ref node with a Content array
+		if pr.fromDiscriminator {
+			continue
+		}
+
 		if pr.refPointer != "" {
 
 			// if the ref is a pointer to an external pointer, then we need to stitch it.
@@ -382,7 +444,7 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 				if uri[0] != "" {
 					if !filepath.IsAbs(uri[0]) && !strings.HasPrefix(uri[0], "http") {
 						// if the uri is not absolute, then we need to make it absolute.
-						uri[0] = filepath.Join(filepath.Dir(pr.idx.GetSpecAbsolutePath()), uri[0])
+						uri[0] = utils.CheckPathOverlap(filepath.Dir(pr.idx.GetSpecAbsolutePath()), uri[0], string(os.PathSeparator))
 					}
 					pointerRef := pr.idx.FindComponent(context.Background(), strings.Join(uri, "#/"))
 					pr.seqRef.Node.Content = pointerRef.Node.Content
@@ -401,9 +463,18 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		}
 	}
 
+	// Tree walk for any remaining unindexed refs
+	// Re-fetch indexes since new ones may have been loaded during composition
+	// (e.g., discriminator mapping targets that weren't indexed initially)
+	allLoadedIndexes := rolodex.GetIndexes()
+	rewriteAllRefs(rootIndex, processedNodes, rolodex)
+	for _, idx := range allLoadedIndexes {
+		rewriteAllRefs(idx, processedNodes, rolodex)
+	}
+
 	// Fix any remaining absolute path references that match inlined content
 	// Also check the root index
-	allIndexes := append(indexes, rolodex.GetRootIndex())
+	allIndexes := append(allLoadedIndexes, rolodex.GetRootIndex())
 	for _, idx := range allIndexes {
 		for _, seqRef := range idx.GetRawReferencesSequenced() {
 			if isRef, _, refVal := utils.IsNodeRefValue(seqRef.Node); isRef {
@@ -474,11 +545,11 @@ func bundleWithConfig(model *v3.Document, config *BundleInlineConfig, docConfig 
 
 // externalSchemaRef represents an external schema that needs to be copied to the root document's components.
 type externalSchemaRef struct {
-	idx         *index.SpecIndex  // Source index where the schema is defined
-	ref         *index.Reference  // The reference object
-	schemaName  string            // The target name in components
-	fullDef     string            // The full definition path (e.g., "/path/to/file.yaml#/components/schemas/Cat")
-	originalRef string            // The original reference string (e.g., "#/components/schemas/Cat")
+	idx         *index.SpecIndex // Source index where the schema is defined
+	ref         *index.Reference // The reference object
+	schemaName  string           // The target name in components
+	fullDef     string           // The full definition path (e.g., "/path/to/file.yaml#/components/schemas/Cat")
+	originalRef string           // The original reference string (e.g., "#/components/schemas/Cat")
 }
 
 // resolveDiscriminatorExternalRefs handles copying external schemas referenced by discriminators
@@ -846,6 +917,63 @@ func collectDiscriminatorMappingNodes(rolodex *index.Rolodex) []*yaml.Node {
 	return mappingNodes
 }
 
+// collectDiscriminatorMappingNodesWithContext gathers all discriminator mapping value nodes
+// along with their source index context for proper relative path resolution.
+func collectDiscriminatorMappingNodesWithContext(rolodex *index.Rolodex) []*discriminatorMappingWithContext {
+	var mappings []*discriminatorMappingWithContext
+
+	collectDiscriminatorMappingNodesFromIndexWithContext(rolodex.GetRootIndex(), rolodex.GetRootIndex().GetRootNode(), &mappings)
+	for _, idx := range rolodex.GetIndexes() {
+		collectDiscriminatorMappingNodesFromIndexWithContext(idx, idx.GetRootNode(), &mappings)
+	}
+
+	return mappings
+}
+
+// collectDiscriminatorMappingNodesFromIndexWithContext recursively walks a YAML node tree
+// to find discriminator mapping nodes, preserving the source index context.
+func collectDiscriminatorMappingNodesFromIndexWithContext(idx *index.SpecIndex, n *yaml.Node, mappings *[]*discriminatorMappingWithContext) {
+	if n.Kind == yaml.DocumentNode && len(n.Content) > 0 {
+		n = n.Content[0]
+	}
+
+	switch n.Kind {
+	case yaml.SequenceNode:
+		for _, c := range n.Content {
+			collectDiscriminatorMappingNodesFromIndexWithContext(idx, c, mappings)
+		}
+		return
+	case yaml.MappingNode:
+	default:
+		return
+	}
+
+	var discriminator *yaml.Node
+
+	for i := 0; i < len(n.Content); i += 2 {
+		k, v := n.Content[i], n.Content[i+1]
+		switch k.Value {
+		case "discriminator":
+			discriminator = v
+		}
+		collectDiscriminatorMappingNodesFromIndexWithContext(idx, v, mappings)
+	}
+
+	if discriminator != nil && discriminator.Kind == yaml.MappingNode {
+		for i := 0; i < len(discriminator.Content); i += 2 {
+			if discriminator.Content[i].Value == "mapping" {
+				mappingNode := discriminator.Content[i+1]
+				for j := 0; j < len(mappingNode.Content); j += 2 {
+					*mappings = append(*mappings, &discriminatorMappingWithContext{
+						node:      mappingNode.Content[j+1],
+						sourceIdx: idx,
+					})
+				}
+			}
+		}
+	}
+}
+
 // collectDiscriminatorMappingNodesFromIndex recursively walks a YAML node tree to find discriminator mapping nodes.
 func collectDiscriminatorMappingNodesFromIndex(idx *index.SpecIndex, n *yaml.Node, mappingNodes *[]*yaml.Node) {
 	if n.Kind == yaml.DocumentNode && len(n.Content) > 0 {
@@ -887,34 +1015,53 @@ func collectDiscriminatorMappingNodesFromIndex(idx *index.SpecIndex, n *yaml.Nod
 }
 
 // updateDiscriminatorMappingsComposed updates discriminator mapping references to point to composed component locations.
-func updateDiscriminatorMappingsComposed(mappingNodes []*yaml.Node, processedNodes *orderedmap.Map[string, *processRef], rolodex *index.Rolodex) {
-	for _, mappingNode := range mappingNodes {
-		originalValue := mappingNode.Value
-
-		if !strings.Contains(originalValue, "#/") {
+func updateDiscriminatorMappingsComposed(mappings []*discriminatorMappingWithContext, processedNodes *orderedmap.Map[string, *processRef], rolodex *index.Rolodex) {
+	for _, mapping := range mappings {
+		originalValue := mapping.node.Value
+		if originalValue == "" {
 			continue
 		}
 
-		var matchingIdx *index.SpecIndex
-
-		// Search root index first
-		if ref, refIdx := rolodex.GetRootIndex().SearchIndexForReference(originalValue); ref != nil {
-			matchingIdx = refIdx
-		} else {
-			// Search all other indexes
-			for _, idx := range rolodex.GetIndexes() {
-				if ref, refIdx := idx.SearchIndexForReference(originalValue); ref != nil {
-					matchingIdx = refIdx
-					break
-				}
-			}
+		// Skip external URLs and URNs - they should never be rewritten
+		if strings.HasPrefix(originalValue, "http://") ||
+			strings.HasPrefix(originalValue, "https://") ||
+			strings.HasPrefix(originalValue, "urn:") {
+			continue
 		}
 
-		if matchingIdx != nil {
-			newRef := renameRef(matchingIdx, originalValue, processedNodes)
-			if newRef != originalValue {
-				mappingNode.Value = newRef
+		// Use the cached canonicalKey and targetIdx from enqueue time.
+		// At enqueue time, we captured ref.FullDefinition BEFORE any mutation.
+		// Using SearchIndexForReference again here would return a potentially mutated
+		// ref.FullDefinition that won't match processedNodes keys.
+		canonicalKey := mapping.canonicalKey
+		targetIdx := mapping.targetIdx
+
+		// If canonicalKey is empty, the mapping wasn't resolved during enqueue.
+		// Try to resolve it now as a fallback.
+		if canonicalKey == "" {
+			ref, refIdx := mapping.sourceIdx.SearchIndexForReference(originalValue)
+			if ref == nil {
+				ref, refIdx = rolodex.GetRootIndex().SearchIndexForReference(originalValue)
 			}
+			if ref == nil || refIdx == nil {
+				continue
+			}
+			canonicalKey = ref.FullDefinition
+			targetIdx = refIdx // Use the resolved index, NOT mapping.sourceIdx
+		}
+
+		// Gate rewrites on processedNodes presence.
+		// Only rewrite if the target was actually composed into the bundled output.
+		// This prevents dangling refs when SearchIndexForReference resolves something
+		// that never made it into processedNodes (e.g., unprocessed transitive refs).
+		if processedNodes.GetOrZero(canonicalKey) == nil {
+			continue
+		}
+
+		// Use targetIdx (where the ref actually lives), NOT sourceIdx
+		newRef := renameRef(targetIdx, canonicalKey, processedNodes)
+		if newRef != originalValue {
+			mapping.node.Value = newRef
 		}
 	}
 }

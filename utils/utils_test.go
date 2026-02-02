@@ -1788,3 +1788,81 @@ func TestConvertComponentIdIntoFriendlyPathSearch_DefensiveCodeDocumentation(t *
 	// This assertion should always pass, demonstrating why the defensive code is rarely executed
 	assert.True(t, allProperlyFormatted, "All paths should start with $ due to the function's design")
 }
+
+func TestGetRefValueNode_NilNode(t *testing.T) {
+	result := GetRefValueNode(nil)
+	assert.Nil(t, result)
+}
+
+func TestGetRefValueNode_SimpleRef(t *testing.T) {
+	// YAML node with $ref at position 1 (standard case)
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "$ref"},
+			{Kind: yaml.ScalarNode, Value: "#/components/schemas/Pet"},
+		},
+	}
+	result := GetRefValueNode(node)
+	assert.NotNil(t, result)
+	assert.Equal(t, "#/components/schemas/Pet", result.Value)
+}
+
+func TestGetRefValueNode_RefWithSiblingProperties(t *testing.T) {
+	// OpenAPI 3.1 style: $ref with sibling properties (description comes before $ref)
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "description"},
+			{Kind: yaml.ScalarNode, Value: "A pet description"},
+			{Kind: yaml.ScalarNode, Value: "$ref"},
+			{Kind: yaml.ScalarNode, Value: "#/components/schemas/Pet"},
+		},
+	}
+	result := GetRefValueNode(node)
+	assert.NotNil(t, result)
+	assert.Equal(t, "#/components/schemas/Pet", result.Value)
+}
+
+func TestGetRefValueNode_RefAtEnd(t *testing.T) {
+	// $ref at the end of multiple properties
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "description"},
+			{Kind: yaml.ScalarNode, Value: "Description text"},
+			{Kind: yaml.ScalarNode, Value: "summary"},
+			{Kind: yaml.ScalarNode, Value: "Summary text"},
+			{Kind: yaml.ScalarNode, Value: "$ref"},
+			{Kind: yaml.ScalarNode, Value: "./external.yaml#/components/schemas/Item"},
+		},
+	}
+	result := GetRefValueNode(node)
+	assert.NotNil(t, result)
+	assert.Equal(t, "./external.yaml#/components/schemas/Item", result.Value)
+}
+
+func TestGetRefValueNode_NoRef(t *testing.T) {
+	// Node without $ref
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "type"},
+			{Kind: yaml.ScalarNode, Value: "object"},
+			{Kind: yaml.ScalarNode, Value: "description"},
+			{Kind: yaml.ScalarNode, Value: "A schema without ref"},
+		},
+	}
+	result := GetRefValueNode(node)
+	assert.Nil(t, result)
+}
+
+func TestGetRefValueNode_EmptyNode(t *testing.T) {
+	// Empty mapping node
+	node := &yaml.Node{
+		Kind:    yaml.MappingNode,
+		Content: []*yaml.Node{},
+	}
+	result := GetRefValueNode(node)
+	assert.Nil(t, result)
+}

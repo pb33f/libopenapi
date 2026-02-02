@@ -2948,3 +2948,45 @@ components:
 		"BundleInlineConfig.InlineLocalRefs should override DocumentConfiguration.BundleInlineRefs")
 	assert.Contains(t, bundledStr, "type: object")
 }
+
+// TestBundleDocumentComposed_NilRolodex verifies that BundleDocumentComposed returns
+// an error when the document has a nil Rolodex. This covers the nil check in compose().
+func TestBundleDocumentComposed_NilRolodex(t *testing.T) {
+	// Create a v3.Document with nil Rolodex
+	doc := &v3high.Document{
+		Info: &base.Info{Title: "Test"},
+		// Rolodex intentionally nil
+	}
+	_, err := BundleDocumentComposed(doc, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "model or rolodex is nil")
+}
+
+// TestBundleDocumentComposed_NilModel verifies that BundleDocumentComposed returns
+// an error when the model is nil. This covers the nil check in compose().
+func TestBundleDocumentComposed_NilModel(t *testing.T) {
+	_, err := BundleDocumentComposed(nil, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "model or rolodex is nil")
+}
+
+// TestBundleDocumentComposedWithOrigins_NilRolodex verifies that BundleDocumentComposedWithOrigins
+// returns an error when the document has a nil Rolodex. This covers the nil check in composeWithOrigins().
+func TestBundleDocumentComposedWithOrigins_NilRolodex(t *testing.T) {
+	// Create a v3.Document with nil Rolodex
+	doc := &v3high.Document{
+		Info: &base.Info{Title: "Test"},
+		// Rolodex intentionally nil
+	}
+	_, err := BundleDocumentComposedWithOrigins(doc, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "model or rolodex is nil")
+}
+
+// TestBundleDocumentComposedWithOrigins_NilModel verifies that BundleDocumentComposedWithOrigins
+// returns an error when the model is nil. This covers the nil check in composeWithOrigins().
+func TestBundleDocumentComposedWithOrigins_NilModel(t *testing.T) {
+	_, err := BundleDocumentComposedWithOrigins(nil, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "model or rolodex is nil")
+}

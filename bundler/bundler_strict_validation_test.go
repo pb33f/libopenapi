@@ -55,6 +55,49 @@ components:
 	assert.Contains(t, err.Error(), "column 17")
 }
 
+func TestStrictValidation_RefWithSiblings_WithOrigins_ShouldError(t *testing.T) {
+	spec := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestSchema'
+                description: This is invalid - $ref cannot have siblings
+components:
+  schemas:
+    TestSchema:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	config := &BundleCompositionConfig{
+		StrictValidation: true,
+	}
+
+	docConfig := &datamodel.DocumentConfiguration{
+		AllowFileReferences: false,
+	}
+
+	result, err := BundleBytesComposedWithOrigins([]byte(spec), docConfig, config)
+
+	require.Error(t, err, "Strict validation must fail on invalid $ref siblings for 3.0 specs")
+	assert.Nil(t, result)
+	assert.Contains(
+		t,
+		err.Error(),
+		"invalid OpenAPI 3.0 specification: $ref cannot have sibling properties",
+	)
+}
+
 func TestStrictValidation_RefWithoutSiblings_ShouldSucceed(t *testing.T) {
 	spec := `openapi: 3.0.0
 info:

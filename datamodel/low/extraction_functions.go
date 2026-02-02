@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"hash"
 	"net/url"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -203,7 +204,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 						if p != "" && explodedRefValue[0] != "" {
 							// We are resolving the relative URL against the absolute URL of
 							// the spec containing the reference.
-							u.Path = utils.ReplaceWindowsDriveWithLinuxPath(filepath.Join(p, explodedRefValue[0]))
+							u.Path = utils.ReplaceWindowsDriveWithLinuxPath(utils.CheckPathOverlap(p, explodedRefValue[0], string(os.PathSeparator)))
 						}
 						u.Fragment = ""
 						// Turn the reference value [rv] into the absolute filepath/URL we
@@ -224,13 +225,13 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 								sp := strings.Split(specPath, "#")
 								// Create a clean (absolute?) path to the file containing the
 								// referenced value.
-								abs, _ = filepath.Abs(filepath.Join(filepath.Dir(sp[0]), explodedRefValue[0]))
+								abs, _ = filepath.Abs(utils.CheckPathOverlap(filepath.Dir(sp[0]), explodedRefValue[0], string(os.PathSeparator)))
 							}
 							rv = fmt.Sprintf("%s#%s", abs, explodedRefValue[1])
 						} else {
 							// We don't have a path for the schema we are trying to resolve
 							// relative references from. This likely happens when the schema
-							// is the root schema, i.e. the file given to libopenapi as entry.
+							// is the root schema, i.e., the file given to libopenapi as an entry.
 							//
 
 							// check for a config BaseURL and use that if it exists.
@@ -241,7 +242,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 									p = u.Path
 								}
 
-								u.Path = utils.ReplaceWindowsDriveWithLinuxPath(filepath.Join(p, explodedRefValue[0]))
+								u.Path = utils.ReplaceWindowsDriveWithLinuxPath(utils.CheckPathOverlap(p, explodedRefValue[0], string(os.PathSeparator)))
 								rv = fmt.Sprintf("%s#%s", u.String(), explodedRefValue[1])
 							}
 						}
@@ -254,21 +255,21 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 					if strings.HasPrefix(specPath, "http") {
 						u, _ := url.Parse(specPath)
 						p := filepath.Dir(u.Path)
-						abs, _ := filepath.Abs(filepath.Join(p, rv))
+						abs, _ := filepath.Abs(utils.CheckPathOverlap(p, rv, string(os.PathSeparator)))
 						u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 						rv = u.String()
 
 					} else {
 						if specPath != "" {
 
-							abs, _ := filepath.Abs(filepath.Join(filepath.Dir(specPath), rv))
+							abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(specPath), rv, string(os.PathSeparator)))
 							rv = abs
 
 						} else {
 							// check for a config baseURL and use that if it exists.
 							if idx.GetConfig().BaseURL != nil {
 								u := *idx.GetConfig().BaseURL
-								abs, _ := filepath.Abs(filepath.Join(u.Path, rv))
+								abs, _ := filepath.Abs(utils.CheckPathOverlap(u.Path, rv, string(os.PathSeparator)))
 								u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 								rv = u.String()
 							}

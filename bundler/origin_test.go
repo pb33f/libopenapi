@@ -514,6 +514,21 @@ func TestBundleBytesComposedWithOrigins_ErrorHandling(t *testing.T) {
 	})
 }
 
+func TestBundleBytesComposedWithOrigins_ErrorModel(t *testing.T) {
+	specBytes := []byte(`openapi: 3.1.0
+info:
+  title: Error Model
+  version: 1.0.0
+paths:
+  /cake:
+    $ref: '#/components/schemas/Cake'`)
+
+	result, err := BundleBytesComposedWithOrigins(specBytes, nil, nil)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
 func TestBundleBytesComposedWithOrigins_LineAndColumnTracking(t *testing.T) {
 	tmpDir := t.TempDir()
 
