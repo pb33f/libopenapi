@@ -151,6 +151,9 @@ func hasPathItemProperties(node *yaml.Node) bool {
 // Helper function to get all keys from a mapping node
 // Excludes quoted keys since they should be treated as literal strings, not OpenAPI keywords
 func getNodeKeys(node *yaml.Node) []string {
+	if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
+		node = node.Content[0]
+	}
 	if node.Kind != yaml.MappingNode {
 		return nil
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
@@ -149,6 +150,77 @@ func TestBundlerComposed_StrangeRefs(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		assert.Len(t, bytes, 3397)
 	}
+}
+
+func TestEnqueueDiscriminatorMappingTargets_StripsFragmentWhenNameMissing(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	rootSpec := `openapi: 3.1.0
+info:
+  title: Enqueue Mapping Fragment
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Animal:
+      type: object
+      discriminator:
+        propertyName: kind
+        mapping:
+          cat: './schemas/Cat.yaml#/components/schemas/Cat'`
+
+	catSpec := `components:
+  schemas:
+    Cat:
+      type: object`
+
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "schemas"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "root.yaml"), []byte(rootSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "schemas", "Cat.yaml"), []byte(catSpec), 0644))
+
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "root.yaml"))
+	require.NoError(t, err)
+
+	cfg := datamodel.NewDocumentConfiguration()
+	cfg.BasePath = tmpDir
+	cfg.AllowFileReferences = true
+	cfg.SpecFilePath = "root.yaml"
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, cfg)
+	require.NoError(t, err)
+
+	v3Doc, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	require.NotNil(t, v3Doc)
+
+	rolodex := v3Doc.Index.GetRolodex()
+	mappings := collectDiscriminatorMappingNodesWithContext(rolodex)
+	require.NotEmpty(t, mappings)
+
+	refValue := mappings[0].node.Value
+	ref, _ := mappings[0].sourceIdx.SearchIndexForReference(refValue)
+	require.NotNil(t, ref)
+
+	// Force name extraction logic by clearing the name.
+	ref.Name = ""
+	if !strings.Contains(ref.FullDefinition, "#") {
+		ref.FullDefinition = ref.FullDefinition + "#/components/schemas/Cat"
+	}
+
+	cf := &handleIndexConfig{
+		refMap: orderedmap.New[string, *processRef](),
+	}
+
+	enqueueDiscriminatorMappingTargets(mappings, cf, rolodex.GetRootIndex())
+
+	pr := cf.refMap.GetOrZero(ref.FullDefinition)
+	require.NotNil(t, pr)
+	assert.Equal(t, "Cat", pr.name)
+}
+
+func TestDeriveNameFromFullDefinition_StripsFragment(t *testing.T) {
+	name := deriveNameFromFullDefinition("/tmp/path/Cat.yaml#/components/schemas/Cat")
+	assert.Equal(t, "Cat", name)
 }
 
 // TestBundleBytesComposed_DiscriminatorMapping tests that composed bundling correctly

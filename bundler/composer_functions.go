@@ -167,7 +167,17 @@ func handleCollision[T any](schemaName, delimiter string, pr *processRef, compon
 
 func handleFileImport[T any](pr *processRef, importType, delimiter string, components *orderedmap.Map[string, T]) []string {
 	// extract base name from file before collision handling
-	baseName := filepath.Base(strings.Replace(pr.ref.Name, filepath.Ext(pr.ref.Name), "", 1))
+	// First try pr.ref.Name, then fall back to extracting from FullDefinition
+	refName := pr.ref.Name
+	if refName == "" {
+		// For bare file refs, extract name from FullDefinition path
+		refName = pr.ref.FullDefinition
+		// Remove any fragment
+		if idx := strings.Index(refName, "#"); idx != -1 {
+			refName = refName[:idx]
+		}
+	}
+	baseName := filepath.Base(strings.Replace(refName, filepath.Ext(refName), "", 1))
 
 	// preserve original name before any renaming
 	if pr.originalName == "" {
@@ -279,16 +289,22 @@ func rewireRef(idx *index.SpecIndex, ref *index.Reference, fullDef string, proce
 	if pr := processedNodes.GetOrZero(fullDef); pr != nil {
 		if kk, _, _ := utils.IsNodeRefValue(pr.ref.Node); kk {
 			if pr.refPointer == "" {
-				pr.refPointer = pr.ref.Node.Content[1].Value
+				// Use GetRefValueNode to handle OA 3.1 sibling properties correctly
+				if refValNode := utils.GetRefValueNode(pr.ref.Node); refValNode != nil {
+					pr.refPointer = refValNode.Value
+				}
 			}
 		}
 	}
 
 	rename := renameRef(idx, fullDef, processedNodes)
 	if isRef {
-
-		if ref.Node.Content[1].Value != rename {
-			ref.Node.Content[1].Value = rename
+		// Use GetRefValueNode to find the correct $ref value node
+		// This handles OA 3.1 sibling properties where $ref may not be at index 0
+		if refValNode := utils.GetRefValueNode(ref.Node); refValNode != nil {
+			if refValNode.Value != rename {
+				refValNode.Value = rename
+			}
 		}
 		ref.FullDefinition = rename
 		ref.Definition = rename
@@ -418,4 +434,143 @@ func captureOrigin(pr *processRef, componentType string, origins ComponentOrigin
 	}
 
 	origins[bundledRef] = origin
+}
+
+// rewriteAllRefs walks an index's document tree and rewrites un-re-written $ref values.
+// Must be called as the FINAL step after all other processing.
+func rewriteAllRefs(
+	idx *index.SpecIndex,
+	processedNodes *orderedmap.Map[string, *processRef],
+	rolodex *index.Rolodex,
+) {
+	walkAndRewriteRefs(idx.GetRootNode(), idx, processedNodes, rolodex, false)
+}
+
+func walkAndRewriteRefs(
+	node *yaml.Node,
+	sourceIdx *index.SpecIndex,
+	processedNodes *orderedmap.Map[string, *processRef],
+	rolodex *index.Rolodex,
+	inExtension bool, // Tracks if we're under an x-* key
+) {
+	if node == nil {
+		return
+	}
+
+	switch node.Kind {
+	case yaml.DocumentNode:
+		if len(node.Content) > 0 {
+			walkAndRewriteRefs(node.Content[0], sourceIdx, processedNodes, rolodex, inExtension)
+		}
+		return
+	case yaml.SequenceNode:
+		for _, child := range node.Content {
+			walkAndRewriteRefs(child, sourceIdx, processedNodes, rolodex, inExtension)
+		}
+		return
+	case yaml.MappingNode:
+		// Continue below
+	default:
+		return
+	}
+
+	for i := 0; i < len(node.Content); i += 2 {
+		keyNode := node.Content[i]
+		valueNode := node.Content[i+1]
+
+		// Track extension scope
+		childInExtension := inExtension || strings.HasPrefix(keyNode.Value, "x-")
+
+		if keyNode.Value == "$ref" && valueNode.Kind == yaml.ScalarNode && !inExtension {
+			newRef := resolveRefToComposed(valueNode.Value, sourceIdx, processedNodes, rolodex)
+			if newRef != valueNode.Value {
+				valueNode.Value = newRef
+			}
+		} else {
+			walkAndRewriteRefs(valueNode, sourceIdx, processedNodes, rolodex, childInExtension)
+		}
+	}
+}
+
+func resolveRefToComposed(
+	refValue string,
+	sourceIdx *index.SpecIndex,
+	processedNodes *orderedmap.Map[string, *processRef],
+	rolodex *index.Rolodex,
+) string {
+	// Skip external URLs and URNs
+	if strings.HasPrefix(refValue, "http://") ||
+		strings.HasPrefix(refValue, "https://") ||
+		strings.HasPrefix(refValue, "urn:") {
+		return refValue
+	}
+
+	// Use source index for relative path resolution
+	ref, refIdx := sourceIdx.SearchIndexForReference(refValue)
+	if ref == nil {
+		ref, refIdx = rolodex.GetRootIndex().SearchIndexForReference(refValue)
+	}
+	if ref == nil {
+		for _, idx := range rolodex.GetIndexes() {
+			if r, i := idx.SearchIndexForReference(refValue); r != nil {
+				ref, refIdx = r, i
+				break
+			}
+		}
+	}
+
+	// fallback for unindexed local refs (root cause #4):
+	// If the ref starts with #/ but SearchIndexForReference couldn't resolve it,
+	// try renameRef directly - it may match a processedNodes entry.
+	if ref == nil && strings.HasPrefix(refValue, "#/") {
+		// Build absolute key for lookup: sourceIdx path + refValue
+		absKey := sourceIdx.GetSpecAbsolutePath() + refValue
+		// Gate on processedNodes presence - only rewrite if target was composed
+		if processedNodes.GetOrZero(absKey) == nil {
+			return refValue
+		}
+		return renameRef(sourceIdx, absKey, processedNodes)
+	}
+
+	if ref == nil || refIdx == nil {
+		return refValue
+	}
+
+	// SearchIndexForReference returns a Reference with a potentially relative FullDefinition.
+	// But processedNodes keys are absolute paths. We need to construct the absolute key
+	// using the returned index's path + the fragment from the reference.
+	// Format: /abs/path/to/file.yaml#/components/schemas/Name
+	absoluteKey := ref.FullDefinition
+	fragment := ""
+	if idx := strings.Index(ref.FullDefinition, "#"); idx != -1 {
+		fragment = ref.FullDefinition[idx:]
+	}
+
+	if !filepath.IsAbs(absoluteKey) && refIdx != nil {
+		// Build absolute key
+		absoluteKey = refIdx.GetSpecAbsolutePath() + fragment
+	}
+
+	// If the ref resolves to the ROOT index, and it's a canonical location (#/components/...) ref,
+	// we should rewrite it to a local component ref. Root document components are NOT in
+	// processedNodes (only external refs are), but they're valid targets.
+	rootIdx := rolodex.GetRootIndex()
+	if refIdx != nil && refIdx.GetSpecAbsolutePath() == rootIdx.GetSpecAbsolutePath() {
+		// This ref points to the root document
+		if fragment != "" && strings.HasPrefix(fragment, "#/") {
+			// Return the fragment as-is - it's already a valid local ref
+			return fragment
+		}
+	}
+
+	// For non-root refs, gate rewrites on processedNodes presence.
+	// Only rewrite if the target was actually composed into the bundled output.
+	// This prevents dangling refs when SearchIndexForReference resolves something
+	// that never made it into processedNodes.
+	if processedNodes.GetOrZero(absoluteKey) == nil {
+		return refValue
+	}
+
+	// Use renameRef() which handles collision renames
+	return renameRef(refIdx, absoluteKey, processedNodes)
 }

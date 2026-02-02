@@ -7,8 +7,11 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pb33f/libopenapi/utils"
 )
 
 type ContextKey string
@@ -133,7 +136,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 					if filepath.Ext(absPath) != "" {
 						absPath = filepath.Dir(absPath)
 					}
-					roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
+					roloLookup, _ = filepath.Abs(utils.CheckPathOverlap(absPath, uri[0], string(os.PathSeparator)))
 				}
 			}
 		} else {
@@ -158,7 +161,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 				if filepath.Ext(absPath) != "" {
 					absPath = filepath.Dir(absPath)
 				}
-				roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
+				roloLookup, _ = filepath.Abs(utils.CheckPathOverlap(absPath, uri[0], string(os.PathSeparator)))
 			}
 		}
 		ref = uri[0]

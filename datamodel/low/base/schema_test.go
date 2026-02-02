@@ -1499,6 +1499,7 @@ func TestSchema_Hash_Equal(t *testing.T) {
 }
 
 func TestSchema_Hash_AdditionalPropsSlice(t *testing.T) {
+	low.ClearHashCache()
 	left := `schema:
   additionalProperties:
     - type: string`
@@ -1524,6 +1525,7 @@ func TestSchema_Hash_AdditionalPropsSlice(t *testing.T) {
 }
 
 func TestSchema_Hash_AdditionalPropsSliceNoMap(t *testing.T) {
+	low.ClearHashCache()
 	left := `schema:
   additionalProperties:
     - hello`
@@ -1549,6 +1551,7 @@ func TestSchema_Hash_AdditionalPropsSliceNoMap(t *testing.T) {
 }
 
 func TestSchema_Hash_NotEqual(t *testing.T) {
+	low.ClearHashCache()
 	left := `schema:
   title: an OK message - but different
   items: true

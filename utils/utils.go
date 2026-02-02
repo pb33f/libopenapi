@@ -625,6 +625,25 @@ func IsNodeRefValue(node *yaml.Node) (bool, *yaml.Node, string) {
 	return false, nil, ""
 }
 
+// GetRefValueNode returns the $ref value node from a mapping node.
+// Unlike IsNodeRefValue which returns the string value, this returns the actual node
+// so it can be modified in place. This correctly handles OA 3.1 sibling properties
+// where $ref may not be at position 0.
+func GetRefValueNode(node *yaml.Node) *yaml.Node {
+	if node == nil {
+		return nil
+	}
+	n := NodeAlias(node)
+	for i, r := range n.Content {
+		if i%2 == 0 && r.Value == "$ref" {
+			if i+1 < len(n.Content) {
+				return n.Content[i + 1]
+			}
+		}
+	}
+	return nil
+}
+
 // FixContext will clean up a JSONpath string to be correctly traversable.
 func FixContext(context string) string {
 	tokens := strings.Split(context, ".")
