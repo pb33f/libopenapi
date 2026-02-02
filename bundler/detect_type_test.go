@@ -524,6 +524,13 @@ key3: value3
 	keys := getNodeKeys(node)
 	assert.ElementsMatch(t, []string{"key1", "key2", "key3"}, keys)
 
+	// Test with document node
+	var docNode yaml.Node
+	err := yaml.Unmarshal([]byte(yamlStr), &docNode)
+	assert.NoError(t, err)
+	keys = getNodeKeys(&docNode)
+	assert.ElementsMatch(t, []string{"key1", "key2", "key3"}, keys)
+
 	// Test with sequence node
 	yamlStr = `
 - item1

@@ -596,7 +596,7 @@ func (r *Rolodex) OpenWithContext(ctx context.Context, location string) (Rolodex
 
 			// check if this is a URL or an abs/rel reference.
 			if !filepath.IsAbs(location) {
-				fileLookup, _ = filepath.Abs(filepath.Join(k, location))
+				fileLookup, _ = filepath.Abs(utils.CheckPathOverlap(k, location, string(os.PathSeparator)))
 			}
 
 			// For generic fs.FS implementations, we need to use relative paths

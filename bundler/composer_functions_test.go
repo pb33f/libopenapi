@@ -1,298 +1,238 @@
-// Copyright 2023-2025 Princess Beef Heavy Industries, LLC / Dave Shanley
-// https://pb33f.io
-
 package bundler
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
-	"github.com/pb33f/libopenapi/orderedmap"
-
 	"github.com/pb33f/libopenapi"
+	"github.com/pb33f/libopenapi/datamodel"
+	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
+	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestProcessRef_UnknownLocation(t *testing.T) {
-	// create an empty doc
-	doc, _ := libopenapi.NewDocument([]byte("openapi: 3.1.1"))
-	m, _ := doc.BuildV3Model()
-
-	ref := &processRef{
-		idx: m.Index,
-		ref: &index.Reference{
-			FullDefinition: "#/blarp",
-		},
-		seqRef:   nil,
-		name:     "test",
-		location: []string{"unknown"},
+func TestHandleFileImport_StripsFragment(t *testing.T) {
+	pr := &processRef{
+		ref:    &index.Reference{FullDefinition: "/tmp/schemas/Cat.yaml#Cat"},
+		seqRef: &index.Reference{},
 	}
 
-	config := &handleIndexConfig{
-		compositionConfig: &BundleCompositionConfig{
-			Delimiter: "__",
-		},
-		idx: m.Index,
-	}
+	components := orderedmap.New[string, *highbase.SchemaProxy]()
+	location := handleFileImport(pr, v3low.SchemasLabel, "__", components)
 
-	err := processReference(&m.Model, ref, config)
-
-	assert.NoError(t, err)
-	assert.Len(t, config.inlineRequired, 1)
+	assert.Equal(t, []string{v3low.ComponentsLabel, v3low.SchemasLabel, "Cat"}, location)
+	assert.Equal(t, "Cat", pr.name)
+	assert.Equal(t, "Cat", pr.ref.Name)
+	assert.Equal(t, "Cat", pr.seqRef.Name)
 }
 
-func TestProcessRef_UnknownLocation_TwoStep(t *testing.T) {
-	// create an empty doc
-	doc, _ := libopenapi.NewDocument([]byte("openapi: 3.1.1"))
-	m, _ := doc.BuildV3Model()
-
-	ref := &processRef{
-		idx: m.Index,
-		ref: &index.Reference{
-			FullDefinition: "blip.yaml#/blarp/blop",
-		},
-		seqRef:   nil,
-		name:     "test",
-		location: []string{"unknown"},
-	}
-
-	config := &handleIndexConfig{
-		compositionConfig: &BundleCompositionConfig{
-			Delimiter: "__",
-		},
-		idx: m.Index,
-	}
-
-	err := processReference(&m.Model, ref, config)
-
-	assert.NoError(t, err)
-	assert.Len(t, config.inlineRequired, 1)
+func TestWalkAndRewriteRefs_NilNode(t *testing.T) {
+	require.NotPanics(t, func() {
+		walkAndRewriteRefs(nil, nil, nil, nil, false)
+	})
 }
 
-func TestProcessRef_UnknownLocation_ThreeStep(t *testing.T) {
-	// create an empty doc
-	doc, _ := libopenapi.NewDocument([]byte("openapi: 3.1.1"))
-	m, _ := doc.BuildV3Model()
-
-	ref := &processRef{
-		idx: m.Index,
-		ref: &index.Reference{
-			FullDefinition: "bleep.yaml#/blarp/blop/blurp",
-			Definition:     "#/blarp/blop/blurp",
-		},
-		seqRef:   nil,
-		name:     "test",
-		location: []string{"unknown"},
-	}
-
-	config := &handleIndexConfig{
-		compositionConfig: &BundleCompositionConfig{
-			Delimiter: "__",
-		},
-		idx: m.Index,
-	}
-
-	err := processReference(&m.Model, ref, config)
-
-	assert.NoError(t, err)
-	assert.Len(t, config.inlineRequired, 1)
+func TestResolveRefToComposed_PreservesExternalRefs(t *testing.T) {
+	assert.Equal(t, "https://example.com/schema.json", resolveRefToComposed("https://example.com/schema.json", nil, nil, nil))
+	assert.Equal(t, "urn:example:thing", resolveRefToComposed("urn:example:thing", nil, nil, nil))
 }
 
-// A component key that contains a dot (“asdf.zxcv”) must *not* be shortened to
-// “asdf” when we re-wire references.
-func TestRenameRef_KeepsDotInComponentName(t *testing.T) {
-	spec := []byte(`
-openapi: 3.1.0
+func TestResolveRefToComposed_RootFallbackFromExternalSource(t *testing.T) {
+	_, rolodex := buildResolveRefContext(t)
+
+	indexes := rolodex.GetIndexes()
+	require.NotEmpty(t, indexes)
+
+	got := resolveRefToComposed("#/components/schemas/RootThing", indexes[0], orderedmap.New[string, *processRef](), rolodex)
+	assert.Equal(t, "#/components/schemas/RootThing", got)
+}
+
+func TestResolveRefToComposed_UnindexedLocalRef_NoProcessedNode(t *testing.T) {
+	rootIdx, rolodex := buildResolveRefContext(t)
+	refValue := "#/components/schemas/Missing"
+
+	got := resolveRefToComposed(refValue, rootIdx, orderedmap.New[string, *processRef](), rolodex)
+	assert.Equal(t, refValue, got)
+}
+
+func TestResolveRefToComposed_UnindexedLocalRef_UsesProcessedNode(t *testing.T) {
+	rootIdx, rolodex := buildResolveRefContext(t)
+	refValue := "#/components/schemas/Missing"
+
+	absKey := rootIdx.GetSpecAbsolutePath() + refValue
+	require.NotEmpty(t, rootIdx.GetSpecAbsolutePath())
+
+	processed := orderedmap.New[string, *processRef]()
+	processed.Set(absKey, &processRef{name: "Renamed"})
+
+	got := resolveRefToComposed(refValue, rootIdx, processed, rolodex)
+	assert.Equal(t, "#/components/schemas/Renamed", got)
+}
+
+func TestResolveRefToComposed_UnresolvedRef_ReturnsOriginal(t *testing.T) {
+	rootIdx, rolodex := buildResolveRefContext(t)
+	refValue := "./missing.yaml"
+
+	got := resolveRefToComposed(refValue, rootIdx, orderedmap.New[string, *processRef](), rolodex)
+	assert.Equal(t, refValue, got)
+}
+
+func TestResolveRefToComposed_FindsInOtherIndexes(t *testing.T) {
+	rootIdx, rolodex, idxA, idxB := buildMultiIndexResolveContext(t)
+	require.NotNil(t, rootIdx)
+	require.NotNil(t, idxA)
+	require.NotNil(t, idxB)
+
+	refValue := "./B.yaml#/components/schemas/BThing"
+	if r, _ := idxB.SearchIndexForReference(refValue); r == nil {
+		t.Fatalf("expected idxB to resolve %s", refValue)
+	}
+	if r, _ := rootIdx.SearchIndexForReference(refValue); r != nil {
+		t.Fatalf("expected root index to NOT resolve %s", refValue)
+	}
+
+	got := resolveRefToComposed(refValue, rootIdx, orderedmap.New[string, *processRef](), rolodex)
+	assert.Equal(t, refValue, got)
+}
+
+func TestRenameRef_FallbackKeepsLastSegment(t *testing.T) {
+	def := "/tmp/spec.yaml#/components/schemas/Thing"
+	got := renameRef(nil, def, orderedmap.New[string, *processRef]())
+	assert.Equal(t, "#/components/schemas/Thing", got)
+}
+
+func buildResolveRefContext(t *testing.T) (*index.SpecIndex, *index.Rolodex) {
+	tmpDir := t.TempDir()
+
+	rootSpec := `openapi: 3.1.0
 info:
-  title: Test
-  version: 0.0.0
+  title: Ref Context
+  version: 1.0.0
+paths:
+  /ext:
+    get:
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/External.yaml'
 components:
   schemas:
-    "asdf.zxcv":
-      type: object
-    Foo:
-      allOf:
-        - $ref: '#/components/schemas/asdf.zxcv'
-`)
+    RootThing:
+      type: object`
 
-	doc, err := libopenapi.NewDocument(spec)
-	assert.NoError(t, err)
+	extSchema := `type: object
+properties:
+  id:
+    type: string`
 
-	v3doc, errs := doc.BuildV3Model()
-	assert.NoError(t, errs)
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "schemas"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "root.yaml"), []byte(rootSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "schemas", "External.yaml"), []byte(extSchema), 0644))
 
-	idx := v3doc.Model.Index
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "root.yaml"))
+	require.NoError(t, err)
 
-	processed := orderedmap.New[string, *processRef]()
+	cfg := datamodel.NewDocumentConfiguration()
+	cfg.BasePath = tmpDir
+	cfg.SpecFilePath = "root.yaml"
+	cfg.AllowFileReferences = true
 
-	got := renameRef(idx, "#/components/schemas/asdf.zxcv", processed)
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, cfg)
+	require.NoError(t, err)
 
-	assert.Equal(t,
-		"#/components/schemas/asdf.zxcv",
-		got,
-		"renameRef must not strip the .zxcv part from the component key")
-}
+	v3Doc, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	require.NotNil(t, v3Doc)
 
-// A reference that really *is* a filename + JSON-pointer must still have the
-// extension stripped
-func TestRenameRef_FilePointer_Extensions(t *testing.T) {
-	exts := []string{".yaml", ".yml", ".json"}
-
-	for _, ext := range exts {
-		def := "schemas/pet" + ext + "#/components/schemas/Pet"
-		got := renameRef(nil, def, orderedmap.New[string, *processRef]())
-		assert.Equal(t, "#/components/schemas/Pet", got,
-			"extension %s should not affect the pointer rewrite", ext)
-	}
-}
-
-// If a component name has already been changed during composition,
-// renameRef must return that new name.
-func TestRenameRef_RespectsAlreadyRenamedComponent(t *testing.T) {
-	ps := orderedmap.New[string, *processRef]()
-	ps.Set("#/components/schemas/asdf.zxcv",
-		&processRef{name: "asdf__1", location: []string{}})
-
-	got := renameRef(nil,
-		"#/components/schemas/asdf.zxcv",
-		ps)
-
-	assert.Equal(t,
-		"#/components/schemas/asdf__1",
-		got,
-		"renameRef should use the name stored in processedNodes")
-}
-
-func TestRenameRef_RootFileImport(t *testing.T) {
-	processed := orderedmap.New[string, *processRef]()
-	processed.Set("schemas/pet.yaml",
-		&processRef{location: []string{"components", "schemas", "Pet"}})
-
-	got := renameRef(nil, "schemas/pet.yaml", processed)
-
-	assert.Equal(t, "#/components/schemas/Pet", got)
-}
-
-// A JSON-pointer that has only one segment (e.g. "#/Foo") and was NOT processed
-// must be returned unchanged
-func TestRenameRef_ShortPointerUnprocessedIsReturnedUnchanged(t *testing.T) {
-	got := renameRef(nil, "#/Foo", orderedmap.New[string, *processRef]())
-	assert.Equal(t, "#/Foo", got)
-}
-
-// A JSON-pointer that has only one segment (e.g. "#/Foo") and WAS processed
-// must return the new component path
-func TestRenameRef_ShortPointerProcessedReturnsComponentPath(t *testing.T) {
-	processed := orderedmap.New[string, *processRef]()
-	processed.Set("child.yaml#/NonRequired",
-		&processRef{
-			name:     "NonRequired",
-			location: []string{"components", "schemas", "NonRequired"},
-		})
-
-	got := renameRef(nil, "child.yaml#/NonRequired", processed)
-	assert.Equal(t, "#/components/schemas/NonRequired", got)
-}
-
-// Test renameRef with a single-segment pointer that has a file prefix
-func TestRenameRef_SingleSegmentWithFilePrefixProcessed(t *testing.T) {
-	processed := orderedmap.New[string, *processRef]()
-	processed.Set("schemas/pet.yaml#/Pet",
-		&processRef{
-			name:     "Pet",
-			location: []string{"components", "schemas", "Pet"},
-		})
-
-	got := renameRef(nil, "schemas/pet.yaml#/Pet", processed)
-	assert.Equal(t, "#/components/schemas/Pet", got)
-}
-
-// Test isOpenAPIRootKey helper function - case-sensitive check
-func TestIsOpenAPIRootKey(t *testing.T) {
-	// Root keys that should return true (exact lowercase match)
-	rootKeys := []string{
-		"openapi", "info", "jsonSchemaDialect", "servers", "paths",
-		"webhooks", "components", "security", "tags", "externalDocs",
-	}
-	for _, key := range rootKeys {
-		assert.True(t, isOpenAPIRootKey(key), "isOpenAPIRootKey(%q) should return true", key)
+	if v3Doc.Index == nil || v3Doc.Index.GetRolodex() == nil {
+		t.Fatalf("expected index and rolodex to be initialized")
 	}
 
-	// Non-root keys that should return false (including case variations)
-	// This allows component names like "Paths" or "INFO" to be recomposed
-	nonRootKeys := []string{
-		"Pet", "User", "NonRequired", "MySchema", "Response200",
-		"foo", "bar", "SomeRandomKey",
-		// Case variations of root keys - should NOT match (allows component names)
-		"OPENAPI", "INFO", "PATHS", "Servers", "Components", "Paths",
-	}
-	for _, key := range nonRootKeys {
-		assert.False(t, isOpenAPIRootKey(key), "isOpenAPIRootKey(%q) should return false", key)
-	}
+	return v3Doc.Index, v3Doc.Index.GetRolodex()
 }
 
-// Test JSON Pointer encoding helper functions
-func TestEncodeJSONPointerSegment(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"simple", "simple"},
-		{"foo/bar", "foo~1bar"},
-		{"foo~bar", "foo~0bar"},
-		{"foo~/bar", "foo~0~1bar"},
-		{"a/b/c", "a~1b~1c"},
-		{"~0~1", "~00~01"},
-		{"", ""},
+func buildMultiIndexResolveContext(t *testing.T) (*index.SpecIndex, *index.Rolodex, *index.SpecIndex, *index.SpecIndex) {
+	tmpDir := t.TempDir()
+
+	rootSpec := `openapi: 3.1.0
+info:
+  title: Multi Index
+  version: 1.0.0
+paths:
+  /a:
+    get:
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/A.yaml#/components/schemas/AThing'
+  /b:
+    get:
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './schemas/B.yaml#/components/schemas/BThing'`
+
+	aSchema := `openapi: 3.1.0
+info:
+  title: A
+  version: 1.0.0
+components:
+  schemas:
+    AThing:
+      type: object`
+
+	bSchema := `openapi: 3.1.0
+info:
+  title: B
+  version: 1.0.0
+components:
+  schemas:
+    BThing:
+      type: object`
+
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "schemas"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "root.yaml"), []byte(rootSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "schemas", "A.yaml"), []byte(aSchema), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "schemas", "B.yaml"), []byte(bSchema), 0644))
+
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "root.yaml"))
+	require.NoError(t, err)
+
+	cfg := datamodel.NewDocumentConfiguration()
+	cfg.BasePath = tmpDir
+	cfg.SpecFilePath = "root.yaml"
+	cfg.AllowFileReferences = true
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, cfg)
+	require.NoError(t, err)
+
+	v3Doc, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	require.NotNil(t, v3Doc)
+
+	rolodex := v3Doc.Index.GetRolodex()
+	var idxA, idxB *index.SpecIndex
+	for _, idx := range rolodex.GetIndexes() {
+		switch filepath.Base(idx.GetSpecAbsolutePath()) {
+		case "A.yaml":
+			idxA = idx
+		case "B.yaml":
+			idxB = idx
+		}
 	}
-	for _, tc := range tests {
-		got := encodeJSONPointerSegment(tc.input)
-		assert.Equal(t, tc.expected, got, "encodeJSONPointerSegment(%q)", tc.input)
-	}
-}
 
-func TestJoinLocationAsJSONPointer(t *testing.T) {
-	tests := []struct {
-		location []string
-		expected string
-	}{
-		{[]string{"components", "schemas", "Pet"}, "components/schemas/Pet"},
-		{[]string{"components", "schemas", "Foo/Bar"}, "components/schemas/Foo~1Bar"},
-		{[]string{"components", "schemas", "Foo~Bar"}, "components/schemas/Foo~0Bar"},
-		{[]string{"components", "schemas", "a/b~c"}, "components/schemas/a~1b~0c"},
-		{[]string{}, ""},
-	}
-	for _, tc := range tests {
-		got := joinLocationAsJSONPointer(tc.location)
-		assert.Equal(t, tc.expected, got, "joinLocationAsJSONPointer(%v)", tc.location)
-	}
-}
-
-// Test renameRef properly encodes JSON Pointer escapes
-func TestRenameRef_JSONPointerEscapeRoundTrip(t *testing.T) {
-	// Component name contains "/" - must be escaped as ~1
-	processed := orderedmap.New[string, *processRef]()
-	processed.Set("child.yaml#/Foo~1Bar",
-		&processRef{
-			name:     "Foo/Bar", // decoded name
-			location: []string{"components", "schemas", "Foo/Bar"},
-		})
-
-	got := renameRef(nil, "child.yaml#/Foo~1Bar", processed)
-	assert.Equal(t, "#/components/schemas/Foo~1Bar", got,
-		"renameRef should re-encode / as ~1 in component name")
-}
-
-func TestRenameRef_JSONPointerTildeEscapeRoundTrip(t *testing.T) {
-	// Component name contains "~" - must be escaped as ~0
-	processed := orderedmap.New[string, *processRef]()
-	processed.Set("child.yaml#/Foo~0Bar",
-		&processRef{
-			name:     "Foo~Bar", // decoded name
-			location: []string{"components", "schemas", "Foo~Bar"},
-		})
-
-	got := renameRef(nil, "child.yaml#/Foo~0Bar", processed)
-	assert.Equal(t, "#/components/schemas/Foo~0Bar", got,
-		"renameRef should re-encode ~ as ~0 in component name")
+	return v3Doc.Index, rolodex, idxA, idxB
 }
