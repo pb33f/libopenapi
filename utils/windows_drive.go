@@ -21,6 +21,11 @@ func CheckPathOverlap(pathA, pathB, sep string) string {
 	if sep == "" {
 		sep = string(filepath.Separator)
 	}
+	if pathB != "" {
+		if pathB[0] == '/' || pathB[0] == '\\' || (len(pathB) > 1 && pathB[1] == ':') {
+			return filepath.Clean(pathB)
+		}
+	}
 
 	// Split on both separators so mixed-path inputs are handled safely.
 	split := func(p string) []string {

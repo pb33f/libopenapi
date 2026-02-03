@@ -105,16 +105,56 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		}
 	}
 
+	schemaIdBase := searchRef.SchemaIdBase
+	if schemaIdBase == "" {
+		if scope := GetSchemaIdScope(ctx); scope != nil && scope.BaseUri != "" {
+			schemaIdBase = scope.BaseUri
+		}
+	}
+
+	rawRef := searchRef.FullDefinition
+	if searchRef.RawRef != "" && schemaIdBase != "" {
+		rawRef = searchRef.RawRef
+	}
+	normalizedRef := resolveRefWithSchemaBase(rawRef, schemaIdBase)
+
+	if index.cache != nil && normalizedRef != searchRef.FullDefinition {
+		if v, ok := index.cache.Load(normalizedRef); ok {
+			idx := index.extractIndex(v.(*Reference))
+			return v.(*Reference), idx, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
+		}
+	}
+
 	// Try to resolve via JSON Schema 2020-12 $id registry first
 	// This handles refs like "a.json" resolving to schemas with $id: "https://example.com/a.json"
-	if resolved := index.ResolveRefViaSchemaId(searchRef.FullDefinition); resolved != nil {
+	if resolved := index.ResolveRefViaSchemaId(normalizedRef); resolved != nil {
 		if index.cache != nil {
 			index.cache.Store(searchRef.FullDefinition, resolved)
+			if normalizedRef != searchRef.FullDefinition {
+				index.cache.Store(normalizedRef, resolved)
+			}
 		}
 		return resolved, resolved.Index, context.WithValue(ctx, CurrentPathKey, resolved.RemoteLocation)
 	}
+	pathRef := ""
+	if strings.HasPrefix(normalizedRef, "/") {
+		pathRef = normalizedRef
+	} else if strings.HasPrefix(rawRef, "/") {
+		pathRef = rawRef
+	}
+	if pathRef != "" {
+		if resolved := index.resolveRefViaSchemaIdPath(pathRef); resolved != nil {
+			if index.cache != nil {
+				index.cache.Store(searchRef.FullDefinition, resolved)
+				if normalizedRef != searchRef.FullDefinition {
+					index.cache.Store(normalizedRef, resolved)
+				}
+			}
+			return resolved, resolved.Index, context.WithValue(ctx, CurrentPathKey, resolved.RemoteLocation)
+		}
+	}
 
-	ref := searchRef.FullDefinition
+	ref := normalizedRef
 	refAlt := ref
 	absPath := index.specAbsolutePath
 	if searchRef.RemoteLocation != "" {
