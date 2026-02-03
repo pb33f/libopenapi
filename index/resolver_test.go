@@ -448,7 +448,7 @@ func TestResolver_DeepJourney(t *testing.T) {
 	}
 	idx := NewSpecIndexWithConfig(nil, CreateClosedAPIIndexConfig())
 	resolver := NewResolver(idx)
-	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, nil, journey, nil, false, 0))
+	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, nil, journey, nil, false, 0, ""))
 }
 
 func TestResolver_DeepDepth(t *testing.T) {
@@ -481,7 +481,7 @@ func TestResolver_DeepDepth(t *testing.T) {
 	ref := &Reference{
 		FullDefinition: "#/components/schemas/A",
 	}
-	found := resolver.extractRelatives(ref, refA, nil, nil, nil, nil, false, 0)
+	found := resolver.extractRelatives(ref, refA, nil, nil, nil, nil, false, 0, "")
 
 	assert.Nil(t, found)
 	assert.Contains(t, buf.String(), "libopenapi resolver: relative depth exceeded 100 levels")
@@ -822,7 +822,7 @@ func TestResolver_ExtractRelatives_HttpFullDefinition(t *testing.T) {
 	resolver := NewResolver(idx)
 	ref.Index = idx
 
-	_ = resolver.extractRelatives(ref, targetNode, nil, map[string]bool{}, []*Reference{}, map[int]bool{}, false, 0)
+	_ = resolver.extractRelatives(ref, targetNode, nil, map[string]bool{}, []*Reference{}, map[int]bool{}, false, 0, "")
 	assert.NotEmpty(t, resolver.GetResolvingErrors())
 }
 
@@ -912,6 +912,74 @@ func TestResolver_ResolveComponents_k8s(t *testing.T) {
 
 	circ := resolver.Resolve()
 	assert.Len(t, circ, 0)
+}
+
+func TestResolver_Resolve_UsesSchemaIdBaseForNestedRefs(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Integer:
+      $id: "https://example.com/schemas/mixins/integer"
+      type: integer
+    NonNegativeInteger:
+      $id: "https://example.com/schemas/examples/non-negative-integer"
+      $defs:
+        nonNegativeInteger:
+          allOf:
+            - $ref: "/schemas/mixins/integer"
+      $ref: "#/$defs/nonNegativeInteger"
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+	assert.NotNil(t, idx)
+
+	resolver := NewResolver(idx)
+	assert.NotNil(t, resolver)
+
+	errs := resolver.Resolve()
+	assert.Len(t, errs, 0)
+}
+
+func TestResolver_Resolve_UsesSchemaIdBaseViaIdRef(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    NonNegativeInteger:
+      $ref: "https://example.com/schemas/examples/non-negative-integer"
+    NonNegativeInteger2:
+      $id: "https://example.com/schemas/examples/non-negative-integer"
+      $defs:
+        nonNegativeInteger:
+          allOf:
+            - $ref: "/schemas/mixins/integer"
+      $ref: "#/$defs/nonNegativeInteger"
+    Integer:
+      $id: "https://example.com/schemas/mixins/integer"
+      type: integer
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+	assert.NotNil(t, idx)
+
+	resolver := NewResolver(idx)
+	assert.NotNil(t, resolver)
+
+	errs := resolver.Resolve()
+	assert.Len(t, errs, 0)
 }
 
 // Example of how to resolve the Stripe OpenAPI specification, and check for circular reference errors

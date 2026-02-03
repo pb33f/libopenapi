@@ -1882,6 +1882,74 @@ func TestLocateRefNode_CurrentPathKey_DeeperPath_URL(t *testing.T) {
 	assert.NotNil(t, c)
 }
 
+func TestLocateRefNodeWithContext_SchemaIdBase_AbsolutePath(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    base:
+      $id: "https://example.com/schemas/base"
+      $ref: "/schemas/other"
+    other:
+      $id: "https://example.com/schemas/other"
+      type: string
+`
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &rootNode))
+
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "https://example.com/openapi.yaml"
+	idx := index.NewSpecIndexWithConfig(&rootNode, cfg)
+
+	scope := index.NewSchemaIdScope("https://example.com/schemas/base")
+	ctx := index.WithSchemaIdScope(context.Background(), scope)
+	refNode := utils.CreateRefNode("/schemas/other")
+
+	found, _, err, _ := LocateRefNodeWithContext(ctx, refNode, idx)
+	require.NoError(t, err)
+	require.NotNil(t, found)
+
+	_, _, typeNode := utils.FindKeyNodeFullTop("type", found.Content)
+	require.NotNil(t, typeNode)
+	assert.Equal(t, "string", typeNode.Value)
+}
+
+func TestLocateRefNodeWithContext_SchemaIdBase_FragmentOnly(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    base:
+      $id: "https://example.com/schemas/base"
+      $defs:
+        foo:
+          type: string
+      $ref: "#/$defs/foo"
+`
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &rootNode))
+
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "https://example.com/openapi.yaml"
+	idx := index.NewSpecIndexWithConfig(&rootNode, cfg)
+
+	scope := index.NewSchemaIdScope("https://example.com/schemas/base")
+	ctx := index.WithSchemaIdScope(context.Background(), scope)
+	refNode := utils.CreateRefNode("#/$defs/foo")
+
+	found, _, err, _ := LocateRefNodeWithContext(ctx, refNode, idx)
+	require.NoError(t, err)
+	require.NotNil(t, found)
+
+	_, _, typeNode := utils.FindKeyNodeFullTop("type", found.Content)
+	require.NotNil(t, typeNode)
+	assert.Equal(t, "string", typeNode.Value)
+}
+
 func TestLocateRefNode_NoExplode(t *testing.T) {
 	no := yaml.Node{
 		Kind: yaml.MappingNode,

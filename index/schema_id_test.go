@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
@@ -324,6 +325,19 @@ func TestResolveSchemaId_InvalidURIs(t *testing.T) {
 	_, err = ResolveSchemaId("schema\x00.json", "https://example.com/")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid $id URI")
+}
+
+func TestResolveRefWithSchemaBase(t *testing.T) {
+	assert.Equal(t, "#/defs/X", resolveRefWithSchemaBase("#/defs/X", ""))
+	assert.Equal(t, "pet.json", resolveRefWithSchemaBase("pet.json", "://invalid-base"))
+	assert.Equal(t,
+		"https://example.com/schema.json#/defs/X",
+		resolveRefWithSchemaBase("#/defs/X", "https://example.com/schema.json"),
+	)
+	assert.Equal(t,
+		"https://jsonschema.dev/schemas/mixins/integer",
+		resolveRefWithSchemaBase("/schemas/mixins/integer", "https://jsonschema.dev/schemas/examples/non-negative-integer"),
+	)
 }
 
 func TestResolveRefAgainstSchemaId_InvalidBaseInScope(t *testing.T) {
@@ -966,12 +980,12 @@ items:
 			checkVal: "second",
 		},
 		{
-			name:    "navigate to non-existent path",
+			name:     "navigate to non-existent path",
 			fragment: "#/nonexistent",
 			wantNil:  true,
 		},
 		{
-			name:    "navigate to invalid array index",
+			name:     "navigate to invalid array index",
 			fragment: "#/items/99",
 			wantNil:  true,
 		},
@@ -1223,23 +1237,31 @@ info:
 	assert.Equal(t, "https://example.com/schemas/pet.json", resolved.FullDefinition)
 }
 
-// Test that findSchemaIdInNode returns empty for non-mapping nodes
+// Test that FindSchemaIdInNode returns empty for non-mapping nodes
 func TestFindSchemaIdInNode_NonMapping(t *testing.T) {
 	// Sequence node
 	seqNode := &yaml.Node{Kind: yaml.SequenceNode}
-	assert.Equal(t, "", findSchemaIdInNode(seqNode))
+	assert.Equal(t, "", FindSchemaIdInNode(seqNode))
 
 	// Nil node
-	assert.Equal(t, "", findSchemaIdInNode(nil))
+	assert.Equal(t, "", FindSchemaIdInNode(nil))
 }
 
-// Test that findSchemaIdInNode returns empty when $id is not a string
+func TestFindSchemaIdInNode_DocumentNode(t *testing.T) {
+	yml := `$id: "https://example.com/schema.json"`
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	assert.Equal(t, "https://example.com/schema.json", FindSchemaIdInNode(&node))
+}
+
+// Test that FindSchemaIdInNode returns empty when $id is not a string
 func TestFindSchemaIdInNode_NonStringId(t *testing.T) {
 	yml := `$id: 123`
 	var node yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &node)
 
-	assert.Equal(t, "", findSchemaIdInNode(node.Content[0]))
+	assert.Equal(t, "", FindSchemaIdInNode(node.Content[0]))
 }
 
 // Test error path when $id contains fragment
@@ -1429,6 +1451,33 @@ components:
 	assert.Equal(t, "https://example.com/schemas/pet.json", ref.FullDefinition)
 }
 
+func TestFindComponent_AbsolutePathViaSchemaId(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Integer:
+      $id: "https://example.com/schemas/mixins/integer"
+      type: integer
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+	assert.NotNil(t, index)
+
+	ref := index.FindComponent(context.Background(), "/schemas/mixins/integer")
+	if assert.NotNil(t, ref) && assert.NotNil(t, ref.Node) {
+		_, _, typeNode := utils.FindKeyNodeFullTop("type", ref.Node.Content)
+		assert.NotNil(t, typeNode)
+		assert.Equal(t, "integer", typeNode.Value)
+	}
+}
+
 // Test SchemaIdEntry GetKey with empty ResolvedUri falls back to Id
 func TestSchemaIdEntry_GetKey_FallbackToId(t *testing.T) {
 	entry := &SchemaIdEntry{
@@ -1437,6 +1486,149 @@ func TestSchemaIdEntry_GetKey_FallbackToId(t *testing.T) {
 	}
 
 	assert.Equal(t, "schema.json", entry.GetKey())
+}
+
+func TestLocateRef_UsesSchemaIdBase(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    NonNegativeInteger:
+      $id: "https://example.com/schemas/non-negative-integer"
+      $defs:
+        nonNegativeInteger:
+          type: integer
+          minimum: 0
+      $ref: "#/$defs/nonNegativeInteger"
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	var targetRef *Reference
+	for _, ref := range index.GetAllReferences() {
+		if ref.Definition == "#/$defs/nonNegativeInteger" {
+			targetRef = ref
+			break
+		}
+	}
+	if assert.NotNil(t, targetRef) {
+		assert.Equal(t, "https://example.com/schemas/non-negative-integer", targetRef.SchemaIdBase)
+		assert.Equal(t, "#/$defs/nonNegativeInteger", targetRef.RawRef)
+	}
+
+	resolved := index.locateRef(context.Background(), targetRef)
+	if assert.NotNil(t, resolved) && assert.NotNil(t, resolved.Node) {
+		foundMinimum := false
+		for i := 0; i < len(resolved.Node.Content)-1; i += 2 {
+			if resolved.Node.Content[i].Value == "minimum" {
+				assert.Equal(t, "0", resolved.Node.Content[i+1].Value)
+				foundMinimum = true
+				break
+			}
+		}
+		assert.True(t, foundMinimum, "expected to find minimum: 0 in resolved schema")
+	}
+}
+
+func TestSearchIndexForReferenceByReferenceWithContext_UsesSchemaIdBase(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    NonNegativeInteger:
+      $id: "https://example.com/schemas/non-negative-integer"
+      $defs:
+        nonNegativeInteger:
+          type: integer
+          minimum: 0
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	searchRef := &Reference{
+		FullDefinition: "#/$defs/nonNegativeInteger",
+		RawRef:         "#/$defs/nonNegativeInteger",
+		SchemaIdBase:   "https://example.com/schemas/non-negative-integer",
+	}
+
+	found, foundIdx, _ := index.SearchIndexForReferenceByReferenceWithContext(context.Background(), searchRef)
+	if assert.NotNil(t, found) && assert.NotNil(t, foundIdx) {
+		assert.Equal(t, "https://example.com/schemas/non-negative-integer#/$defs/nonNegativeInteger", found.FullDefinition)
+	}
+}
+
+func TestExtractRefs_AbsoluteRefWithoutFragmentHasDefinition(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    External:
+      $ref: "https://example.com/schemas/external"
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	errors := index.GetReferenceIndexErrors()
+	if assert.NotEmpty(t, errors) {
+		assert.Contains(t, errors[0].Error(), "https://example.com/schemas/external")
+		assert.NotContains(t, errors[0].Error(), "component `` does not exist")
+	}
+}
+
+func TestExtractRefs_AbsoluteFileRefWithoutFragmentSetsFullDefinition(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Local:
+      $ref: "/tmp/schemas/local.yaml"
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	var targetRef *Reference
+	for _, ref := range index.GetAllReferences() {
+		if ref.RawRef == "/tmp/schemas/local.yaml" {
+			targetRef = ref
+			break
+		}
+	}
+	if assert.NotNil(t, targetRef) {
+		assert.Equal(t, "/tmp/schemas/local.yaml", targetRef.FullDefinition)
+		assert.Equal(t, "/tmp/schemas/local.yaml", targetRef.Definition)
+	}
 }
 
 // Test copySchemaIdRegistry with nil registry
