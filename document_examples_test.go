@@ -110,7 +110,7 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 	// Digital Ocean needs a baseURL to be set, so we can resolve relative references.
 	// baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
 	// locked this in to a release, because the spec is throwing 404's occasionally.
-	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/9b763029ba805c3e0e56927fd6685d73bc27f3e8/specification")
+	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/ed0958267922794ec8cf540e19131a2d9664bfc7/specification")
 
 	// create a DocumentConfiguration that allows loading file and remote references, and sets the baseURL
 	// to somewhere that can resolve the relative references.

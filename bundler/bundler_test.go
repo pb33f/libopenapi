@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -34,6 +33,21 @@ import (
 )
 
 // Test helper functions to reduce duplication across DigitalOcean tests
+
+const digitalOceanCommitID = "ed0958267922794ec8cf540e19131a2d9664bfc7"
+
+func checkoutDigitalOceanRepo(t *testing.T) string {
+	t.Helper()
+	tmp := t.TempDir()
+	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi.git", tmp)
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("git clone failed: %s", err)
+	}
+	if err := exec.Command("git", "-C", tmp, "reset", "--hard", digitalOceanCommitID).Run(); err != nil {
+		t.Fatalf("git reset failed: %s", err)
+	}
+	return tmp
+}
 
 // collectAllDiscriminatorRefs gathers all refs that are allowed to be preserved (discriminator mappings).
 func collectAllDiscriminatorRefs(model *v3high.Document) map[string]struct{} {
@@ -82,13 +96,7 @@ func isEmptyRef(line string) bool {
 
 func TestBundleDocument_DigitalOcean(t *testing.T) {
 	// test the mother of all exploded specs.
-	tmp := t.TempDir()
-	cmd := exec.Command("git", "clone", "-b", "asb/dedup-key-model", "https://github.com/digitalocean/openapi.git", tmp)
-
-	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
-	}
+	tmp := checkoutDigitalOceanRepo(t)
 
 	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
 	digi, _ := os.ReadFile(spec)
@@ -129,13 +137,7 @@ func TestBundleDocument_DigitalOcean(t *testing.T) {
 
 func TestBundleDocument_DigitalOceanAsync(t *testing.T) {
 	// test the mother of all exploded specs.
-	tmp := t.TempDir()
-	cmd := exec.Command("git", "clone", "-b", "asb/dedup-key-model", "https://github.com/digitalocean/openapi.git", tmp)
-
-	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
-	}
+	tmp := checkoutDigitalOceanRepo(t)
 
 	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
 	digi, _ := os.ReadFile(spec)
@@ -1399,13 +1401,7 @@ someData: "test"`
 // for resolving refs in async mode. This is Option C from the investigation.
 func TestRenderInline_DigitalOceanAsync(t *testing.T) {
 	// test the mother of all exploded specs.
-	tmp := t.TempDir()
-	cmd := exec.Command("git", "clone", "-b", "asb/dedup-key-model", "https://github.com/digitalocean/openapi.git", tmp)
-
-	err := cmd.Run()
-	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
-	}
+	tmp := checkoutDigitalOceanRepo(t)
 
 	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
 	digi, _ := os.ReadFile(spec)

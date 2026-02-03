@@ -68,6 +68,27 @@ func TestSchemaProxy_Build_CheckRef(t *testing.T) {
 	assert.NotEmpty(t, low.GenerateHashString(&sch))
 }
 
+func TestSchemaProxy_Build_SetsSchemaIdScope(t *testing.T) {
+	yml := `$id: "https://example.com/schemas/base"
+type: string`
+
+	var sch SchemaProxy
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "https://example.com/openapi.yaml"
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	err := sch.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	scope := index.GetSchemaIdScope(sch.GetContext())
+	if assert.NotNil(t, scope) {
+		assert.Equal(t, "https://example.com/schemas/base", scope.BaseUri)
+	}
+}
+
 func TestSchemaProxy_Build_HashInline(t *testing.T) {
 	yml := `type: int`
 
