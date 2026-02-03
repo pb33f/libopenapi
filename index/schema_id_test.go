@@ -1771,8 +1771,10 @@ components:
 	}
 	if assert.NotNil(t, targetRef) {
 		expected := "/tmp/schemas/local.yaml"
-		if runtime.GOOS != "windows" {
-			expected = filepath.Clean(expected)
+		if runtime.GOOS == "windows" {
+			abs, err := filepath.Abs(expected)
+			assert.NoError(t, err)
+			expected = abs
 		}
 		assert.Equal(t, expected, targetRef.FullDefinition)
 		assert.Equal(t, expected, targetRef.Definition)
