@@ -809,6 +809,95 @@ func TestResolver_SearchReferenceWithContext_SourceIndex(t *testing.T) {
 	assert.Equal(t, otherIdx, foundIdx)
 }
 
+func TestResolver_SearchReferenceWithContext_SchemaIdBaseFromSearchRef(t *testing.T) {
+	cfg := CreateClosedAPIIndexConfig()
+	cfg.ResolveNestedRefsWithDocumentContext = true
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.0.0"), &rootNode)
+	idx := NewSpecIndexWithConfig(&rootNode, cfg)
+
+	searchRef := &Reference{
+		FullDefinition: "#/components/schemas/Thing",
+		SchemaIdBase:   "https://example.com/schemas/base",
+		Index:          idx,
+	}
+	idx.SetMappedReferences(map[string]*Reference{
+		searchRef.FullDefinition: {
+			FullDefinition: searchRef.FullDefinition,
+			Node:           utils.CreateStringNode("value"),
+			Index:          idx,
+			RemoteLocation: cfg.SpecAbsolutePath,
+		},
+	})
+
+	resolver := NewResolver(idx)
+	_, _, ctx := resolver.searchReferenceWithContext(nil, searchRef)
+
+	scope := GetSchemaIdScope(ctx)
+	if assert.NotNil(t, scope) {
+		assert.Equal(t, searchRef.SchemaIdBase, scope.BaseUri)
+	}
+}
+
+func TestResolver_SearchReferenceWithContext_SchemaIdBaseFromSourceRef(t *testing.T) {
+	cfg := CreateClosedAPIIndexConfig()
+	cfg.ResolveNestedRefsWithDocumentContext = true
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.0.0"), &rootNode)
+	idx := NewSpecIndexWithConfig(&rootNode, cfg)
+
+	searchRef := &Reference{
+		FullDefinition: "#/components/schemas/Thing",
+		Index:          idx,
+	}
+	idx.SetMappedReferences(map[string]*Reference{
+		searchRef.FullDefinition: {
+			FullDefinition: searchRef.FullDefinition,
+			Node:           utils.CreateStringNode("value"),
+			Index:          idx,
+			RemoteLocation: cfg.SpecAbsolutePath,
+		},
+	})
+
+	sourceRef := &Reference{
+		Index:        idx,
+		SchemaIdBase: "https://example.com/schemas/source",
+	}
+
+	resolver := NewResolver(idx)
+	_, _, ctx := resolver.searchReferenceWithContext(sourceRef, searchRef)
+
+	scope := GetSchemaIdScope(ctx)
+	if assert.NotNil(t, scope) {
+		assert.Equal(t, sourceRef.SchemaIdBase, scope.BaseUri)
+	}
+}
+
+func TestResolver_ResolveSchemaIdBase(t *testing.T) {
+	cfg := CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "https://example.com/openapi.yaml"
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.0.0"), &rootNode)
+	idx := NewSpecIndexWithConfig(&rootNode, cfg)
+	resolver := NewResolver(idx)
+
+	assert.Equal(t, "base", resolver.resolveSchemaIdBase("base", nil))
+
+	var noIdNode yaml.Node
+	_ = yaml.Unmarshal([]byte("type: string"), &noIdNode)
+	assert.Equal(t, "base", resolver.resolveSchemaIdBase("base", noIdNode.Content[0]))
+
+	var relNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`$id: "schemas/pet.json"`), &relNode)
+	assert.Equal(t, "https://example.com/schemas/pet.json", resolver.resolveSchemaIdBase("", relNode.Content[0]))
+
+	var badNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`$id: "http://[::1"`), &badNode)
+	assert.Equal(t, "http://[::1", resolver.resolveSchemaIdBase("", badNode.Content[0]))
+}
+
 func TestResolver_ExtractRelatives_HttpFullDefinition(t *testing.T) {
 	refNode := utils.CreateRefNode("#/components/schemas/Root")
 	ref := &Reference{

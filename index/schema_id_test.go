@@ -5,6 +5,7 @@ package index
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -1559,6 +1560,67 @@ components:
 	assert.NotNil(t, ref)
 }
 
+func TestResolveRefViaSchemaIdPath_InvalidInput(t *testing.T) {
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.0.0"), &rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+
+	assert.Nil(t, index.resolveRefViaSchemaIdPath(""))
+	assert.Nil(t, index.resolveRefViaSchemaIdPath("schemas/mixins/integer"))
+}
+
+func TestResolveRefViaSchemaIdPath_SkipsInvalidEntries(t *testing.T) {
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.0.0"), &rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+
+	index.schemaIdRegistry = map[string]*SchemaIdEntry{
+		"nil":      nil,
+		"bad":      {ResolvedUri: "http://[::1"},
+		"relative": {Id: "schemas/relative.json"},
+		"no-path":  {ResolvedUri: "https://example.com"},
+		"match": {
+			ResolvedUri: "https://example.com/schemas/target",
+			SchemaNode:  &yaml.Node{Kind: yaml.MappingNode},
+			Index:       index,
+		},
+	}
+
+	ref := index.resolveRefViaSchemaIdPath("/schemas/target")
+	assert.NotNil(t, ref)
+	assert.Equal(t, "https://example.com/schemas/target", ref.FullDefinition)
+}
+
+func TestResolveRefViaSchemaIdPath_UsesGlobalEntries(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Integer:
+      $id: "https://example.com/schemas/mixins/integer"
+      type: integer
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+	globalIdx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+
+	var localNode yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.0.0"), &localNode)
+	localIdx := NewSpecIndexWithConfig(&localNode, CreateClosedAPIIndexConfig())
+
+	rolo := NewRolodex(CreateClosedAPIIndexConfig())
+	rolo.AddIndex(globalIdx)
+	localIdx.SetRolodex(rolo)
+
+	ref := localIdx.resolveRefViaSchemaIdPath("/schemas/mixins/integer")
+	assert.NotNil(t, ref)
+	assert.Equal(t, "https://example.com/schemas/mixins/integer", ref.FullDefinition)
+	assert.Equal(t, globalIdx, ref.Index)
+}
+
 // Test SchemaIdEntry GetKey with empty ResolvedUri falls back to Id
 func TestSchemaIdEntry_GetKey_FallbackToId(t *testing.T) {
 	entry := &SchemaIdEntry{
@@ -1707,8 +1769,10 @@ components:
 		}
 	}
 	if assert.NotNil(t, targetRef) {
-		assert.Equal(t, "/tmp/schemas/local.yaml", targetRef.FullDefinition)
-		assert.Equal(t, "/tmp/schemas/local.yaml", targetRef.Definition)
+		expected, err := filepath.Abs("/tmp/schemas/local.yaml")
+		assert.NoError(t, err)
+		assert.Equal(t, expected, targetRef.FullDefinition)
+		assert.Equal(t, expected, targetRef.Definition)
 	}
 }
 
