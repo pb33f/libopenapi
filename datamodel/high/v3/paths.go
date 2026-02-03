@@ -201,9 +201,6 @@ func (p *Paths) MarshalYAMLInline() (interface{}, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed to render path '%s' inline: %w", mp.path, err)
 			}
-			if rendered == nil {
-				continue
-			}
 
 			kn := utils.CreateStringNode(mp.path)
 			kn.Style = mp.style
