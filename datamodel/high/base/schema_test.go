@@ -16,6 +16,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -1213,6 +1214,36 @@ components:
 	// now render it out, it should be identical.
 	schemaBytes, _ := compiled.RenderInline()
 	assert.Equal(t, "properties:\n    bigBank:\n        type: object\n        properties:\n            failure_balance_transaction:\n                allOf:\n                    - type: object\n                      properties:\n                        name:\n                            type: string\n                        price:\n                            type: number\n                      anyOf:\n                        - description: A balance transaction\n                anyOf:\n                    - maxLength: 5000\n                      type: string\n                    - description: A balance transaction\n", string(schemaBytes))
+}
+
+func TestSchema_RenderInline_MapEncodedNestedProperties_NoCircularDetection(t *testing.T) {
+	// Ensure inline rendering doesn't falsely detect circular refs when schema
+	// nodes are built from yaml.Node.Encode (no line/column metadata).
+	schemaMap := map[string]any{
+		"type": "array",
+		"contains": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"name": map[string]any{
+					"const": "X-Required-Version",
+				},
+				"in": map[string]any{
+					"const": "header",
+				},
+			},
+			"required": []any{"name", "in"},
+		},
+	}
+
+	var node yaml.Node
+	require.NoError(t, node.Encode(schemaMap))
+
+	lowSchema := new(lowbase.Schema)
+	require.NoError(t, lowSchema.Build(context.Background(), &node, nil))
+
+	highSchema := NewSchema(lowSchema)
+	_, err := highSchema.RenderInline()
+	assert.NoError(t, err)
 }
 
 func TestUnevaluatedPropertiesBoolean_True(t *testing.T) {
