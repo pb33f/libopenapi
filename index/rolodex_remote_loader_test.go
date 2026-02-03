@@ -109,7 +109,7 @@ func TestNewRemoteFS_BasicCheck_Valid(t *testing.T) {
 	remoteFS, _ := NewRemoteFSWithRootURL(server.URL)
 	remoteFS.RemoteHandlerFunc = test_httpClient.Get
 
-	file, err := remoteFS.Open("https://raw.githubusercontent.com/digitalocean/openapi/main/specification/file1.yaml")
+	file, err := remoteFS.Open("https://raw.githubusercontent.com/digitalocean/openapi/ed0958267922794ec8cf540e19131a2d9664bfc7/specification/file1.yaml")
 
 	assert.NoError(t, err)
 
@@ -118,7 +118,7 @@ func TestNewRemoteFS_BasicCheck_Valid(t *testing.T) {
 
 	stat, _ := file.Stat()
 
-	assert.Equal(t, "/digitalocean/openapi/main/specification/file1.yaml", stat.Name())
+	assert.Equal(t, "/digitalocean/openapi/ed0958267922794ec8cf540e19131a2d9664bfc7/specification/file1.yaml", stat.Name())
 	assert.Equal(t, int64(53), stat.Size())
 	assert.Len(t, bytes, 53)
 

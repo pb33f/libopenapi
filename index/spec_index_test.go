@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	digitalOceanCommitID = "d8d390155b515cdd94555478bbcdf5682460c52e"
+	digitalOceanCommitID = "ed0958267922794ec8cf540e19131a2d9664bfc7"
 )
 
 func TestSpecIndex_GetCache(t *testing.T) {
@@ -145,7 +145,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(do, &rootNode)
 
-	location := "https://raw.githubusercontent.com/digitalocean/openapi/8ce96ef186fe938bdce26fb2f5d63ac53ca9d06f/specification"
+	location := "https://raw.githubusercontent.com/digitalocean/openapi/" + digitalOceanCommitID + "/specification"
 	baseURL, _ := url.Parse(location)
 
 	// create a new config that allows remote lookups.
@@ -320,7 +320,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	files := fileFS.GetFiles()
 	fileLen := len(files)
 
-	assert.Equal(t, 1716, fileLen)
+	assert.Equal(t, 1722, fileLen)
 
 	rolo.AddLocalFS(basePath, fileFS)
 
@@ -342,11 +342,11 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
 	if runtime.GOOS != "windows" {
-		assert.Equal(t, "1.3 MB", rolo.RolodexFileSizeAsString())
+		assert.Equal(t, "1.31 MB", rolo.RolodexFileSizeAsString())
 	} else {
 		assert.Equal(t, "1.35 MB", rolo.RolodexFileSizeAsString())
 	}
-	assert.Equal(t, 1716, rolo.RolodexTotalFiles())
+	assert.Equal(t, 1722, rolo.RolodexTotalFiles())
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *testing.T) {
@@ -403,7 +403,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	files := fileFS.GetFiles()
 	fileLen := len(files)
 
-	assert.Equal(t, 1702, fileLen)
+	assert.Equal(t, 1708, fileLen)
 
 	assert.NoError(t, rErr)
 
@@ -422,9 +422,9 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	if runtime.GOOS == "windows" {
 		assert.Equal(t, "1.29 MB", rolo.RolodexFileSizeAsString())
 	} else {
-		assert.Equal(t, "1.24 MB", rolo.RolodexFileSizeAsString())
+		assert.Equal(t, "1.25 MB", rolo.RolodexFileSizeAsString())
 	}
-	assert.Equal(t, 1702, rolo.RolodexTotalFiles())
+	assert.Equal(t, 1708, rolo.RolodexTotalFiles())
 }
 
 func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {

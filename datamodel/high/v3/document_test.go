@@ -476,6 +476,10 @@ func TestDigitalOceanAsDocViaCheckout(t *testing.T) {
 		log.Fatalf("cmd.Run() failed with %s\n", err)
 	}
 
+	if err := exec.Command("git", "-C", tmp, "reset", "--hard", "ed0958267922794ec8cf540e19131a2d9664bfc7").Run(); err != nil {
+		log.Fatalf("git reset failed with %s\n", err)
+	}
+
 	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
 	doLocal, _ := os.ReadFile(spec)
 
@@ -513,7 +517,7 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
 
-	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/82e1d558e15a59edc1d47d2c5544e7138f5b3cbf/specification")
+	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/ed0958267922794ec8cf540e19131a2d9664bfc7/specification")
 	config := datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,
@@ -532,7 +536,7 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 	}
 
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
-	assert.Len(t, utils.UnwrapErrors(err), 3) // there are 3 404's in this release of the API.
+	assert.Len(t, utils.UnwrapErrors(err), 0)
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
 	assert.Equal(t, 183, d.Paths.PathItems.Len())
@@ -543,7 +547,7 @@ func TestDigitalOceanAsDocFromMain(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
 
-	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
+	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/ed0958267922794ec8cf540e19131a2d9664bfc7/specification")
 	config := datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,
@@ -560,18 +564,13 @@ func TestDigitalOceanAsDocFromMain(t *testing.T) {
 		}
 		config.RemoteURLHandler = func(url string) (*http.Response, error) {
 			request, _ := http.NewRequest(http.MethodGet, url, nil)
-			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GITHUB_TOKEN")))
+			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GH_PAT")))
 			return client.Do(request)
 		}
 	}
 
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
-	if err != nil {
-		er := utils.UnwrapErrors(err)
-		for e := range er {
-			fmt.Printf("Reported Error: %s\n", er[e])
-		}
-	}
+	assert.Len(t, utils.UnwrapErrors(err), 0)
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
 	assert.Equal(t, 183, orderedmap.Len(d.Paths.PathItems))
