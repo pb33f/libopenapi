@@ -114,3 +114,36 @@ func TestPaths_MarshalYAMLInline(t *testing.T) {
 	rend, _ = high.RenderInline()
 	assert.Equal(t, yml, strings.TrimSpace(string(rend)))
 }
+
+func TestPaths_MarshalYAMLInline_PathItemError(t *testing.T) {
+	yml := `openapi: 3.1.0
+paths:
+  /test:
+    $ref: '#/components/pathItems/BrokenPath'
+components:
+  pathItems:
+    BrokenPath:
+      get:
+        parameters:
+          - $ref: '#/components/parameters/DoesNotExist'
+        responses:
+          '200':
+            description: OK`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+	pathsNode := idxNode.Content[0].Content[3]
+
+	var n v3low.Paths
+	_ = low.BuildModel(pathsNode, &n)
+	_ = n.Build(context.Background(), nil, pathsNode, idx)
+
+	high := NewPaths(&n)
+
+	result, err := high.MarshalYAMLInline()
+	assert.Nil(t, result)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "/test")
+}
