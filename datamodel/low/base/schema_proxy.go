@@ -68,7 +68,6 @@ type SchemaProxy struct {
 func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *index.SpecIndex) error {
 	sp.kn = key
 	sp.idx = idx
-	sp.ctx = ctx
 
 	// transform sibling refs to allOf structure if enabled and applicable
 	// this ensures sp.vn contains the pre-transformed YAML as the source of truth
@@ -87,6 +86,7 @@ func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *in
 	}
 
 	sp.vn = transformedValue
+	sp.ctx = applySchemaIdScope(ctx, value, idx)
 
 	// handle reference detection
 	if !wasTransformed {
@@ -100,6 +100,33 @@ func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *in
 	var m sync.Map
 	sp.NodeMap = &low.NodeMap{Nodes: &m}
 	return nil
+}
+
+func applySchemaIdScope(ctx context.Context, node *yaml.Node, idx *index.SpecIndex) context.Context {
+	if node == nil {
+		return ctx
+	}
+	scope := index.GetSchemaIdScope(ctx)
+	idValue := index.FindSchemaIdInNode(node)
+	if idValue == "" {
+		return ctx
+	}
+	if scope == nil {
+		base := ""
+		if idx != nil {
+			base = idx.GetSpecAbsolutePath()
+		}
+		scope = index.NewSchemaIdScope(base)
+		ctx = index.WithSchemaIdScope(ctx, scope)
+	}
+	parentBase := scope.BaseUri
+	resolved, err := index.ResolveSchemaId(idValue, parentBase)
+	if err != nil || resolved == "" {
+		resolved = idValue
+	}
+	updated := scope.Copy()
+	updated.PushId(resolved)
+	return index.WithSchemaIdScope(ctx, updated)
 }
 
 // Schema will first check if this SchemaProxy has already rendered the schema, and return the pre-rendered version

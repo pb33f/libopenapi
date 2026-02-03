@@ -374,6 +374,19 @@ func (resolver *Resolver) searchReferenceWithContext(sourceRef, searchRef *Refer
 	if currentPath != "" {
 		ctx = context.WithValue(ctx, CurrentPathKey, currentPath)
 	}
+	if searchRef != nil || sourceRef != nil {
+		base := ""
+		if searchRef != nil && searchRef.SchemaIdBase != "" {
+			base = searchRef.SchemaIdBase
+		} else if sourceRef != nil && sourceRef.SchemaIdBase != "" {
+			base = sourceRef.SchemaIdBase
+		}
+		if base != "" {
+			scope := NewSchemaIdScope(base)
+			scope.PushId(base)
+			ctx = WithSchemaIdScope(ctx, scope)
+		}
+	}
 
 	return searchIndex.SearchIndexForReferenceByReferenceWithContext(ctx, searchRef)
 }
@@ -392,7 +405,8 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 	if ref != nil {
 		journey = append(journey, ref)
 		seenRelatives := make(map[int]bool)
-		relatives := resolver.extractRelatives(ref, ref.Node, nil, seen, journey, seenRelatives, resolve, 0)
+		base := resolver.resolveSchemaIdBase(ref.SchemaIdBase, ref.Node)
+		relatives := resolver.extractRelatives(ref, ref.Node, nil, seen, journey, seenRelatives, resolve, 0, base)
 
 		seen = make(map[string]bool)
 
@@ -514,7 +528,7 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 
 func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.Node,
 	foundRelatives map[string]bool,
-	journey []*Reference, seen map[int]bool, resolve bool, depth int,
+	journey []*Reference, seen map[int]bool, resolve bool, depth int, schemaIdBase string,
 ) []*Reference {
 	if len(journey) > 100 {
 		return nil
@@ -547,6 +561,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 		return nil
 	}
 
+	currentBase := resolver.resolveSchemaIdBase(schemaIdBase, node)
 	var found []*Reference
 
 	if node != nil && len(node.Content) > 0 {
@@ -562,11 +577,11 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				var foundRef *Reference
 				foundRef, _, _ = resolver.searchReferenceWithContext(ref, ref)
 				if foundRef != nil && !foundRef.Circular {
-					found = append(found, resolver.extractRelatives(foundRef, n, node, foundRelatives, journey, seen, resolve, depth)...)
+					found = append(found, resolver.extractRelatives(foundRef, n, node, foundRelatives, journey, seen, resolve, depth, currentBase)...)
 					depth--
 				}
 				if foundRef == nil {
-					found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, seen, resolve, depth)...)
+					found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, seen, resolve, depth, currentBase)...)
 					depth--
 				}
 
@@ -672,9 +687,15 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					}
 				}
 
+				if currentBase != "" {
+					fullDef = resolveRefWithSchemaBase(value, currentBase)
+				}
+
 				searchRef := &Reference{
 					Definition:     definition,
 					FullDefinition: fullDef,
+					RawRef:         value,
+					SchemaIdBase:   currentBase,
 					RemoteLocation: ref.RemoteLocation,
 					IsRemote:       true,
 					Index:          ref.Index,
@@ -741,7 +762,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 								if d, _, l := utils.IsNodeRefValue(v); d {
 
 									// create full definition lookup based on ref.
-									def := resolver.buildDefPath(ref, l)
+									def := resolver.buildDefPathWithSchemaBase(ref, l, currentBase)
 
 									mappedRefs, _ := resolver.specIndex.SearchIndexForReference(def)
 									if mappedRefs != nil && !mappedRefs.Circular {
@@ -786,7 +807,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 								if d, _, l := utils.IsNodeRefValue(v); d {
 
 									// create full definition lookup based on ref.
-									def := resolver.buildDefPath(ref, l)
+									def := resolver.buildDefPathWithSchemaBase(ref, l, currentBase)
 
 									mappedRefs, _ := resolver.specIndex.SearchIndexForReference(def)
 									if mappedRefs != nil && !mappedRefs.Circular {
@@ -832,7 +853,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 							v := node.Content[i+1].Content[q]
 							if utils.IsNodeMap(v) {
 								if d, _, l := utils.IsNodeRefValue(v); d {
-									def := resolver.buildDefPath(ref, l)
+									def := resolver.buildDefPathWithSchemaBase(ref, l, currentBase)
 									mappedRefs, _ := resolver.specIndex.SearchIndexForReference(def)
 									if mappedRefs != nil && !mappedRefs.Circular {
 										circ := false
@@ -871,7 +892,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 								} else {
 									depth++
 									found = append(found, resolver.extractRelatives(ref, v, n,
-										foundRelatives, journey, seen, resolve, depth)...)
+										foundRelatives, journey, seen, resolve, depth, currentBase)...)
 								}
 							}
 						}
@@ -962,6 +983,35 @@ func (resolver *Resolver) buildDefPath(ref *Reference, l string) string {
 	}
 
 	return def
+}
+
+func (resolver *Resolver) buildDefPathWithSchemaBase(ref *Reference, l string, schemaIdBase string) string {
+	if schemaIdBase != "" {
+		normalized := resolveRefWithSchemaBase(l, schemaIdBase)
+		if normalized != l {
+			return normalized
+		}
+	}
+	return resolver.buildDefPath(ref, l)
+}
+
+func (resolver *Resolver) resolveSchemaIdBase(parentBase string, node *yaml.Node) string {
+	if node == nil {
+		return parentBase
+	}
+	idValue := FindSchemaIdInNode(node)
+	if idValue == "" {
+		return parentBase
+	}
+	base := parentBase
+	if base == "" && resolver.specIndex != nil {
+		base = resolver.specIndex.specAbsolutePath
+	}
+	resolved, err := ResolveSchemaId(idValue, base)
+	if err != nil || resolved == "" {
+		return idValue
+	}
+	return resolved
 }
 
 func (resolver *Resolver) ResolvePendingNodes() {
