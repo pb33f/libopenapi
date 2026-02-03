@@ -6,6 +6,7 @@ package index
 import (
 	"context"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -1769,8 +1770,10 @@ components:
 		}
 	}
 	if assert.NotNil(t, targetRef) {
-		expected, err := filepath.Abs("/tmp/schemas/local.yaml")
-		assert.NoError(t, err)
+		expected := "/tmp/schemas/local.yaml"
+		if runtime.GOOS != "windows" {
+			expected = filepath.Clean(expected)
+		}
 		assert.Equal(t, expected, targetRef.FullDefinition)
 		assert.Equal(t, expected, targetRef.Definition)
 	}
