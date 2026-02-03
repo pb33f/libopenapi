@@ -256,3 +256,23 @@ func TestCheckPathOverlap_WindowsDriveLetter(t *testing.T) {
 		t.Errorf("Expected result to contain file.yaml, got %s", result)
 	}
 }
+
+func TestCheckPathOverlap_AbsolutePathB(t *testing.T) {
+	pathA := "/base/dir"
+	pathB := "/schemas/mixins/integer"
+	result := CheckPathOverlap(pathA, pathB, "/")
+	expected := filepath.Clean(pathB)
+	if result != expected {
+		t.Errorf("Expected %s, got %s", expected, result)
+	}
+}
+
+func TestCheckPathOverlap_AbsolutePathB_WindowsDrive(t *testing.T) {
+	pathA := `C:\base\dir`
+	pathB := `D:\schemas\mixins\integer`
+	result := CheckPathOverlap(pathA, pathB, `\`)
+	expected := filepath.Clean(pathB)
+	if result != expected {
+		t.Errorf("Expected %s, got %s", expected, result)
+	}
+}

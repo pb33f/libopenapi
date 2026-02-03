@@ -1950,6 +1950,36 @@ components:
 	assert.Equal(t, "string", typeNode.Value)
 }
 
+func TestLocateRefNodeWithContext_SchemaIdScopeFromResolvedRef(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    base:
+      $id: "https://example.com/schemas/base"
+      type: string
+    ref:
+      $ref: "https://example.com/schemas/base"
+`
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &rootNode))
+
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "https://example.com/openapi.yaml"
+	idx := index.NewSpecIndexWithConfig(&rootNode, cfg)
+
+	refNode := utils.CreateRefNode("https://example.com/schemas/base")
+	_, _, err, foundCtx := LocateRefNodeWithContext(context.Background(), refNode, idx)
+	require.NoError(t, err)
+
+	scope := index.GetSchemaIdScope(foundCtx)
+	if assert.NotNil(t, scope) {
+		assert.Equal(t, "https://example.com/schemas/base", scope.BaseUri)
+	}
+}
+
 func TestLocateRefNode_NoExplode(t *testing.T) {
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
