@@ -387,11 +387,22 @@ func (sp *SchemaProxy) getInlineRenderKey() string {
 	// For inline schemas, use the node position
 	if sp.schema.ValueNode != nil {
 		node := sp.schema.ValueNode
-		if sp.schema.Value != nil && sp.schema.Value.GetIndex() != nil {
-			idx := sp.schema.Value.GetIndex()
-			return fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), node.Line, node.Column)
+		var idx *index.SpecIndex
+		if sp.schema.Value != nil {
+			idx = sp.schema.Value.GetIndex()
 		}
-		return fmt.Sprintf("inline:%d:%d", node.Line, node.Column)
+		if node.Line > 0 && node.Column > 0 {
+			if idx != nil {
+				return fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), node.Line, node.Column)
+			}
+			return fmt.Sprintf("inline:%d:%d", node.Line, node.Column)
+		}
+		// Nodes created via yaml.Node.Encode() don't include line/column info.
+		// Fall back to a pointer-based key to avoid false cycle detection.
+		if idx != nil {
+			return fmt.Sprintf("%s:inline:%p", idx.GetSpecAbsolutePath(), node)
+		}
+		return fmt.Sprintf("inline:%p", node)
 	}
 	return ""
 }

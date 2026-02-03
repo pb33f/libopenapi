@@ -944,6 +944,66 @@ func TestGetInlineRenderKey_NilSchemaValueReturnsRefStr(t *testing.T) {
 	assert.Equal(t, "#/components/schemas/AnotherEarlyReturn", renderKey)
 }
 
+func TestGetInlineRenderKey_InlineNodeWithoutPosition_NoIndex(t *testing.T) {
+	// Nodes created via yaml.Node.Encode() will have line/column set to zero.
+	// The render key should fall back to a pointer-based key to avoid collisions.
+
+	valueNode1 := &yaml.Node{Kind: yaml.MappingNode}
+	valueNode2 := &yaml.Node{Kind: yaml.MappingNode}
+
+	lowProxy1 := &lowbase.SchemaProxy{}
+	lowProxy2 := &lowbase.SchemaProxy{}
+
+	lowRef1 := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy1,
+		ValueNode: valueNode1,
+	}
+	lowRef2 := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy2,
+		ValueNode: valueNode2,
+	}
+
+	proxy1 := NewSchemaProxy(&lowRef1)
+	proxy2 := NewSchemaProxy(&lowRef2)
+
+	renderKey1 := proxy1.getInlineRenderKey()
+	renderKey2 := proxy2.getInlineRenderKey()
+
+	require.NotEmpty(t, renderKey1)
+	require.NotEmpty(t, renderKey2)
+	assert.Contains(t, renderKey1, "inline:")
+	assert.Contains(t, renderKey2, "inline:")
+	assert.NotEqual(t, "inline:0:0", renderKey1)
+	assert.NotEqual(t, "inline:0:0", renderKey2)
+	assert.NotEqual(t, renderKey1, renderKey2)
+}
+
+func TestGetInlineRenderKey_InlineNodeWithoutPosition_WithIndex(t *testing.T) {
+	// When an index is present and line/column are missing, include the index path
+	// and use a pointer-based key for uniqueness.
+
+	valueNode := &yaml.Node{Kind: yaml.MappingNode}
+	lowProxy := &lowbase.SchemaProxy{}
+
+	idx := &index.SpecIndex{}
+	idx.SetAbsolutePath("/tmp/spec.yaml")
+
+	err := lowProxy.Build(context.Background(), nil, valueNode, idx)
+	require.NoError(t, err)
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: valueNode,
+	}
+
+	proxy := NewSchemaProxy(&lowRef)
+	renderKey := proxy.getInlineRenderKey()
+
+	require.NotEmpty(t, renderKey)
+	assert.True(t, strings.HasPrefix(renderKey, idx.GetSpecAbsolutePath()+":inline:"))
+	assert.NotEqual(t, idx.GetSpecAbsolutePath()+":0:0", renderKey)
+}
+
 func TestMarshalYAMLInlineWithContext_PreserveReference_ViaLowLevel(t *testing.T) {
 	// test context-based ref preservation when reference is set via low-level proxy
 	// (refStr is empty, so GetReferenceNode uses low-level path)
