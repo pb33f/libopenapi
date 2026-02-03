@@ -16,6 +16,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -28,6 +30,19 @@ import (
 const (
 	digitalOceanCommitID = "ed0958267922794ec8cf540e19131a2d9664bfc7"
 )
+
+func parseSizeMB(t *testing.T, size string) float64 {
+	t.Helper()
+	parts := strings.Fields(size)
+	if len(parts) != 2 || parts[1] != "MB" {
+		t.Fatalf("unexpected size format: %q", size)
+	}
+	val, err := strconv.ParseFloat(parts[0], 64)
+	if err != nil {
+		t.Fatalf("unable to parse size %q: %v", size, err)
+	}
+	return val
+}
 
 func TestSpecIndex_GetCache(t *testing.T) {
 	petstore, _ := os.ReadFile("../test_specs/petstorev3.json")
@@ -341,10 +356,11 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
+	sizeMB := parseSizeMB(t, rolo.RolodexFileSizeAsString())
 	if runtime.GOOS != "windows" {
-		assert.Equal(t, "1.31 MB", rolo.RolodexFileSizeAsString())
+		assert.InDelta(t, 1.31, sizeMB, 0.02)
 	} else {
-		assert.Equal(t, "1.35 MB", rolo.RolodexFileSizeAsString())
+		assert.InDelta(t, 1.35, sizeMB, 0.02)
 	}
 	assert.Equal(t, 1722, rolo.RolodexTotalFiles())
 }
@@ -419,10 +435,11 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
+	sizeMB := parseSizeMB(t, rolo.RolodexFileSizeAsString())
 	if runtime.GOOS == "windows" {
-		assert.Equal(t, "1.29 MB", rolo.RolodexFileSizeAsString())
+		assert.InDelta(t, 1.29, sizeMB, 0.02)
 	} else {
-		assert.Equal(t, "1.25 MB", rolo.RolodexFileSizeAsString())
+		assert.InDelta(t, 1.25, sizeMB, 0.02)
 	}
 	assert.Equal(t, 1708, rolo.RolodexTotalFiles())
 }

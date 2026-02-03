@@ -1980,6 +1980,54 @@ components:
 	}
 }
 
+func TestApplyResolvedSchemaIdScope_EarlyReturns(t *testing.T) {
+	ctx := applyResolvedSchemaIdScope(context.Background(), nil, nil)
+	assert.Nil(t, index.GetSchemaIdScope(ctx))
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte("type: string"), &node)
+	ref := &index.Reference{Node: node.Content[0]}
+	ctx = applyResolvedSchemaIdScope(context.Background(), ref, nil)
+	assert.Nil(t, index.GetSchemaIdScope(ctx))
+}
+
+func TestApplyResolvedSchemaIdScope_UsesIdxBaseAndResolves(t *testing.T) {
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`$id: "schemas/pet.json"`), &node)
+	ref := &index.Reference{Node: node.Content[0]}
+
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "https://example.com/openapi.yaml"
+	idx := index.NewSpecIndexWithConfig(&node, cfg)
+
+	scope := index.NewSchemaIdScope("")
+	ctx := index.WithSchemaIdScope(context.Background(), scope)
+	updated := applyResolvedSchemaIdScope(ctx, ref, idx)
+
+	updatedScope := index.GetSchemaIdScope(updated)
+	if assert.NotNil(t, updatedScope) {
+		assert.Equal(t, "https://example.com/schemas/pet.json", updatedScope.BaseUri)
+	}
+}
+
+func TestApplyResolvedSchemaIdScope_InvalidIdFallsBack(t *testing.T) {
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`$id: "http://[::1"`), &node)
+	ref := &index.Reference{
+		Node:           node.Content[0],
+		RemoteLocation: "https://example.com/base",
+	}
+
+	scope := index.NewSchemaIdScope("https://example.com/base")
+	ctx := index.WithSchemaIdScope(context.Background(), scope)
+	updated := applyResolvedSchemaIdScope(ctx, ref, nil)
+
+	updatedScope := index.GetSchemaIdScope(updated)
+	if assert.NotNil(t, updatedScope) {
+		assert.Equal(t, "http://[::1", updatedScope.BaseUri)
+	}
+}
+
 func TestLocateRefNode_NoExplode(t *testing.T) {
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
@@ -3405,6 +3453,24 @@ func TestGenerateHashString_SchemaProxyTypeCheck(t *testing.T) {
 
 	assert.Equal(t, result1, result2) // Should still be equal, just not cached
 	assert.NotEmpty(t, result1)
+}
+
+func TestExtractMapExtensions_DoneChannelStopsInput(t *testing.T) {
+	prev := runtime.GOMAXPROCS(1)
+	defer runtime.GOMAXPROCS(prev)
+
+	var b strings.Builder
+	b.WriteString("test:\n")
+	for i := 0; i < 200; i++ {
+		fmt.Fprintf(&b, "  key%d: {}\n", i)
+	}
+
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(b.String()), &root))
+
+	idx := index.NewSpecIndexWithConfig(&root, index.CreateClosedAPIIndexConfig())
+	_, _, _, err := ExtractMapExtensions[*test_noGood](context.Background(), "test", root.Content[0], idx, false)
+	assert.Error(t, err)
 }
 
 func TestExtractMapExtensions_ValueNodeAssignment(t *testing.T) {

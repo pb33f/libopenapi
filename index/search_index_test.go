@@ -42,6 +42,101 @@ func TestSpecIndex_SearchIndexForReferenceWithContext(t *testing.T) {
 
 }
 
+func TestSearchIndexForReferenceByReferenceWithContext_SchemaIdBaseFromContext(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0.0"
+components:
+  schemas:
+    Pet:
+      $id: "https://example.com/schemas/pet.json"
+      type: string
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+	scope := NewSchemaIdScope("https://example.com/schemas/")
+	ctx := WithSchemaIdScope(context.Background(), scope)
+
+	searchRef := &Reference{FullDefinition: "pet.json"}
+	found, _, _ := idx.SearchIndexForReferenceByReferenceWithContext(ctx, searchRef)
+	if assert.NotNil(t, found) {
+		assert.Equal(t, "https://example.com/schemas/pet.json", found.FullDefinition)
+	}
+}
+
+func TestSearchIndexForReferenceByReferenceWithContext_CacheHitOnNormalizedRef(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0.0"
+components:
+  schemas:
+    Pet:
+      $id: "https://example.com/schemas/pet.json"
+      type: string
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	cfg := CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "https://example.com/openapi.yaml"
+	idx := NewSpecIndexWithConfig(&rootNode, cfg)
+
+	cachedRef := &Reference{
+		FullDefinition: "https://example.com/schemas/pet.json",
+		Index:          idx,
+		RemoteLocation: cfg.SpecAbsolutePath,
+	}
+	idx.cache.Store(cachedRef.FullDefinition, cachedRef)
+
+	searchRef := &Reference{
+		FullDefinition: "pet.json",
+		SchemaIdBase:   "https://example.com/schemas/",
+	}
+	found, foundIdx, _ := idx.SearchIndexForReferenceByReferenceWithContext(context.Background(), searchRef)
+	assert.Equal(t, cachedRef, found)
+	assert.Equal(t, idx, foundIdx)
+}
+
+func TestSearchIndexForReferenceByReferenceWithContext_PathRefUsesRawRef(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0.0"
+components:
+  schemas:
+    Integer:
+      $id: "https://other.com/schemas/mixins/integer"
+      type: integer
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+
+	searchRef := &Reference{
+		FullDefinition: "/schemas/mixins/integer",
+		SchemaIdBase:   "https://example.com/schemas/examples/non-negative-integer",
+	}
+	found, _, _ := idx.SearchIndexForReferenceByReferenceWithContext(context.Background(), searchRef)
+	if assert.NotNil(t, found) {
+		assert.Equal(t, "https://other.com/schemas/mixins/integer", found.FullDefinition)
+	}
+
+	if cached, ok := idx.cache.Load("/schemas/mixins/integer"); assert.True(t, ok) {
+		assert.Equal(t, found, cached)
+	}
+	if cached, ok := idx.cache.Load("https://example.com/schemas/mixins/integer"); assert.True(t, ok) {
+		assert.Equal(t, found, cached)
+	}
+}
+
 // TestSearchIndexForReference_LastDitchRolodexFallback tests the last-ditch effort
 // code path where a reference is found by iterating through rolodex indexes
 // after all other lookup methods fail.
@@ -140,7 +235,6 @@ paths: {}`), &rootNode)
 	assert.Equal(t, "external.yaml", filepath.Base(found.FullDefinition))
 }
 
-
 func TestIsFileBeingIndexed_HTTPPathMatch(t *testing.T) {
 	// Test that HTTP paths match when the path portion is the same
 	ctx := context.Background()
@@ -159,4 +253,3 @@ func TestIsFileBeingIndexed_HTTPPathMatch(t *testing.T) {
 	// Different path - should not match
 	assert.False(t, IsFileBeingIndexed(ctx, "https://example.com/other/file.yaml"))
 }
-
