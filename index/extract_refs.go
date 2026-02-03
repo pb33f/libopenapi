@@ -26,20 +26,6 @@ import (
 // Set LIBOPENAPI_LEGACY_REF_ORDER=true to use the old non-deterministic ordering.
 var preserveLegacyRefOrder = os.Getenv("LIBOPENAPI_LEGACY_REF_ORDER") == "true"
 
-// findSchemaIdInNode looks for a $id key in a mapping node and returns its value.
-// Returns empty string if not found or if the node is not a mapping.
-func findSchemaIdInNode(node *yaml.Node) string {
-	if node == nil || node.Kind != yaml.MappingNode {
-		return ""
-	}
-	for i := 0; i < len(node.Content)-1; i += 2 {
-		if node.Content[i].Value == "$id" && utils.IsNodeStringValue(node.Content[i+1]) {
-			return node.Content[i+1].Value
-		}
-	}
-	return ""
-}
-
 // indexedRef pairs a resolved reference with its original input position for deterministic ordering.
 type indexedRef struct {
 	ref *Reference
@@ -67,7 +53,7 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 	// Check if THIS node has a $id and update scope for processing children
 	// This must happen before iterating children so they see the updated scope
 	if node.Kind == yaml.MappingNode {
-		if nodeId := findSchemaIdInNode(node); nodeId != "" {
+		if nodeId := FindSchemaIdInNode(node); nodeId != "" {
 			resolvedNodeId, _ := ResolveSchemaId(nodeId, parentBaseUri)
 			if resolvedNodeId == "" {
 				resolvedNodeId = nodeId
@@ -307,6 +293,10 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 				if len(node.Content) > i+1 {
 
 					value := node.Content[i+1].Value
+					schemaIdBase := ""
+					if scope != nil && len(scope.Chain) > 0 {
+						schemaIdBase = scope.BaseUri
+					}
 					// extract last path segment without allocating a full slice
 					lastSlash := strings.LastIndexByte(value, '/')
 					var name string
@@ -424,6 +414,13 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 						}
 					}
 
+					if fullDefinitionPath == "" && value != "" {
+						fullDefinitionPath = value
+					}
+					if componentName == "" {
+						componentName = value
+					}
+
 					_, p := utils.ConvertComponentIdIntoFriendlyPathSearch(componentName)
 
 					// check for sibling properties
@@ -444,6 +441,8 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 						ParentNode:           parent,
 						FullDefinition:       fullDefinitionPath,
 						Definition:           componentName,
+						RawRef:               value,
+						SchemaIdBase:         schemaIdBase,
 						Name:                 name,
 						Node:                 node,
 						KeyNode:              node.Content[i+1],
@@ -489,6 +488,8 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 							ParentNode:           parent,
 							FullDefinition:       fullDefinitionPath,
 							Definition:           ref.Definition,
+							RawRef:               ref.RawRef,
+							SchemaIdBase:         ref.SchemaIdBase,
 							Name:                 ref.Name,
 							Node:                 &copiedNode,
 							KeyNode:              node.Content[i],
@@ -1019,7 +1020,16 @@ func (index *SpecIndex) locateRef(ctx context.Context, ref *Reference) *Referenc
 	}
 
 	if located == nil {
-		return nil
+		rawRef := ref.RawRef
+		if rawRef == "" {
+			rawRef = ref.FullDefinition
+		}
+		normalizedRef := resolveRefWithSchemaBase(rawRef, ref.SchemaIdBase)
+		if resolved := index.ResolveRefViaSchemaId(normalizedRef); resolved != nil {
+			located = resolved
+		} else {
+			return nil
+		}
 	}
 
 	// Extract KeyNode - yamlpath API returns subnodes only, so we need to

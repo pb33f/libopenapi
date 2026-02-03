@@ -119,43 +119,60 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 				root.Line, root.Column), ctx
 		}
 
+		origRef := rv
+		resolvedRef := rv
+		if scope := index.GetSchemaIdScope(ctx); scope != nil && scope.BaseUri != "" {
+			if resolved, err := index.ResolveRefAgainstSchemaId(rv, scope); err == nil && resolved != "" {
+				resolvedRef = resolved
+			}
+		}
+		searchRefs := []string{origRef}
+		if resolvedRef != origRef {
+			searchRefs = append(searchRefs, resolvedRef)
+		}
+
 		// run through everything and return as soon as we find a match.
 		// this operates as fast as possible as ever
 		collections := generateIndexCollection(idx)
 		var found map[string]*index.Reference
 		for _, collection := range collections {
 			found = collection()
-			if found != nil && found[rv] != nil {
-				foundRef := found[rv]
-				foundIndex := idx
-				if foundRef.Index != nil {
-					foundIndex = foundRef.Index
-				}
-				if foundIndex != nil && foundRef.RemoteLocation != "" &&
-					foundIndex.GetSpecAbsolutePath() != foundRef.RemoteLocation {
-					if rolo := foundIndex.GetRolodex(); rolo != nil {
-						for _, candidate := range append(rolo.GetIndexes(), rolo.GetRootIndex()) {
-							if candidate == nil {
-								continue
-							}
-							if candidate.GetSpecAbsolutePath() == foundRef.RemoteLocation {
-								foundIndex = candidate
-								break
+			if found != nil {
+				for _, candidate := range searchRefs {
+					if found[candidate] == nil {
+						continue
+					}
+					foundRef := found[candidate]
+					foundIndex := idx
+					if foundRef.Index != nil {
+						foundIndex = foundRef.Index
+					}
+					if foundIndex != nil && foundRef.RemoteLocation != "" &&
+						foundIndex.GetSpecAbsolutePath() != foundRef.RemoteLocation {
+						if rolo := foundIndex.GetRolodex(); rolo != nil {
+							for _, candidateIdx := range append(rolo.GetIndexes(), rolo.GetRootIndex()) {
+								if candidateIdx == nil {
+									continue
+								}
+								if candidateIdx.GetSpecAbsolutePath() == foundRef.RemoteLocation {
+									foundIndex = candidateIdx
+									break
+								}
 							}
 						}
 					}
-				}
-				foundCtx := ctx
-				if foundRef.RemoteLocation != "" {
-					foundCtx = context.WithValue(foundCtx, index.CurrentPathKey, foundRef.RemoteLocation)
-				}
-				// if this is a ref node, we need to keep diving
-				// until we hit something that isn't a ref.
-				if jh, _, _ := utils.IsNodeRefValue(foundRef.Node); jh {
-					// if this node is circular, stop drop and roll.
-					if !IsCircular(foundRef.Node, foundIndex) && foundRef.Node != root {
-						return LocateRefNodeWithContext(foundCtx, foundRef.Node, foundIndex)
-					} else {
+					foundCtx := ctx
+					if foundRef.RemoteLocation != "" {
+						foundCtx = context.WithValue(foundCtx, index.CurrentPathKey, foundRef.RemoteLocation)
+					}
+					foundCtx = applyResolvedSchemaIdScope(foundCtx, foundRef, foundIndex)
+					// if this is a ref node, we need to keep diving
+					// until we hit something that isn't a ref.
+					if jh, _, _ := utils.IsNodeRefValue(foundRef.Node); jh {
+						// if this node is circular, stop drop and roll.
+						if !IsCircular(foundRef.Node, foundIndex) && foundRef.Node != root {
+							return LocateRefNodeWithContext(foundCtx, foundRef.Node, foundIndex)
+						}
 
 						crr := GetCircularReferenceResult(foundRef.Node, foundIndex)
 						jp := ""
@@ -168,10 +185,12 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 							foundRef.Node.Line,
 							foundRef.Node.Column), foundCtx
 					}
+					return utils.NodeAlias(foundRef.Node), foundIndex, nil, foundCtx
 				}
-				return utils.NodeAlias(foundRef.Node), foundIndex, nil, foundCtx
 			}
 		}
+
+		rv = resolvedRef
 
 		// Obtain the absolute filepath/URL of the spec in which we are trying to
 		// resolve the reference value [rv] from. It's either available from the
@@ -281,6 +300,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 
 		foundRef, fIdx, newCtx := idx.SearchIndexForReferenceWithContext(ctx, rv)
 		if foundRef != nil {
+			newCtx = applyResolvedSchemaIdScope(newCtx, foundRef, fIdx)
 			return utils.NodeAlias(foundRef.Node), fIdx, nil, newCtx
 		}
 
@@ -301,6 +321,40 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 			rv, root.Line, root.Column), ctx
 	}
 	return nil, idx, nil, ctx
+}
+
+func applyResolvedSchemaIdScope(ctx context.Context, ref *index.Reference, idx *index.SpecIndex) context.Context {
+	if ref == nil || ref.Node == nil {
+		return ctx
+	}
+	idValue := index.FindSchemaIdInNode(ref.Node)
+	if idValue == "" {
+		return ctx
+	}
+
+	scope := index.GetSchemaIdScope(ctx)
+	base := ""
+	if ref.RemoteLocation != "" {
+		base = ref.RemoteLocation
+	} else if idx != nil {
+		base = idx.GetSpecAbsolutePath()
+	}
+	if scope == nil {
+		scope = index.NewSchemaIdScope(base)
+		ctx = index.WithSchemaIdScope(ctx, scope)
+	}
+
+	parentBase := scope.BaseUri
+	if parentBase == "" {
+		parentBase = base
+	}
+	resolved, err := index.ResolveSchemaId(idValue, parentBase)
+	if err != nil || resolved == "" {
+		resolved = idValue
+	}
+	updated := scope.Copy()
+	updated.PushId(resolved)
+	return index.WithSchemaIdScope(ctx, updated)
 }
 
 // LocateRefNode will perform a complete lookup for a $ref node. This function searches the entire index for

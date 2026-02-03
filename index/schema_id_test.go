@@ -1478,6 +1478,87 @@ components:
 	}
 }
 
+func TestFindComponent_AbsolutePathWithFragmentViaSchemaId(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Integer:
+      $id: "https://example.com/schemas/mixins/integer"
+      $defs:
+        inner:
+          type: string
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+	assert.NotNil(t, index)
+
+	ref := index.FindComponent(context.Background(), "/schemas/mixins/integer#/$defs/inner")
+	if assert.NotNil(t, ref) && assert.NotNil(t, ref.Node) {
+		_, _, typeNode := utils.FindKeyNodeFullTop("type", ref.Node.Content)
+		assert.NotNil(t, typeNode)
+		assert.Equal(t, "string", typeNode.Value)
+	}
+}
+
+func TestResolveRefViaSchemaIdPath_Ambiguous(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    One:
+      $id: "https://example.com/schemas/mixins/integer"
+      type: integer
+    Two:
+      $id: "https://other.com/schemas/mixins/integer"
+      type: integer
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+	assert.NotNil(t, index)
+
+	ref := index.resolveRefViaSchemaIdPath("/schemas/mixins/integer")
+	assert.Nil(t, ref)
+}
+
+func TestResolveRefViaSchemaIdPath_UsesLocalWhenGlobalEmpty(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Integer:
+      $id: "https://example.com/schemas/mixins/integer"
+      type: integer
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+	assert.NotNil(t, index)
+
+	rolo := NewRolodex(CreateClosedAPIIndexConfig())
+	index.SetRolodex(rolo)
+
+	ref := index.resolveRefViaSchemaIdPath("/schemas/mixins/integer")
+	assert.NotNil(t, ref)
+}
+
 // Test SchemaIdEntry GetKey with empty ResolvedUri falls back to Id
 func TestSchemaIdEntry_GetKey_FallbackToId(t *testing.T) {
 	entry := &SchemaIdEntry{
