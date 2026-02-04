@@ -39,6 +39,41 @@ func TestResolveRelativeFilePath_PrefersBasePath(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
+func TestResolveRelativeFilePath_FindsInOtherLocalFS(t *testing.T) {
+	baseA := t.TempDir()
+	baseB := t.TempDir()
+	mapFS := fstest.MapFS{
+		"resources/schemas/Item.yaml": {Data: []byte("type: object")},
+	}
+
+	localA, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseA,
+		DirFS:         mapFS,
+	})
+	require.NoError(t, err)
+
+	localB, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseB,
+		DirFS:         fstest.MapFS{},
+	})
+	require.NoError(t, err)
+
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddLocalFS(baseA, localA)
+	rolo.AddLocalFS(baseB, localB)
+
+	cfg := CreateOpenAPIIndexConfig()
+	cfg.BasePath = baseB
+	cfg.Rolodex = rolo
+	idx := &SpecIndex{config: cfg, rolodex: rolo}
+
+	defRoot := filepath.Join(baseB, "resources", "paths")
+	ref := "resources/schemas/Item.yaml"
+	got := idx.ResolveRelativeFilePath(defRoot, ref)
+	want := filepath.Join(baseA, "resources", "schemas", "Item.yaml")
+	assert.Equal(t, want, got)
+}
+
 func TestResolveRelativeFilePath_Fallback_NoIndex(t *testing.T) {
 	var idx *SpecIndex
 	got := idx.ResolveRelativeFilePath("/base", "file.yaml")
@@ -76,6 +111,35 @@ func TestPathExistsInFS_LocalFS_DirFS(t *testing.T) {
 	assert.False(t, pathExistsInFS(baseDir, localFS, absPath))
 }
 
+func TestPathExistsInFS_LocalFS_RelativeAbsPath(t *testing.T) {
+	baseDir := t.TempDir()
+	mapFS := fstest.MapFS{
+		"resources/x.yaml": {Data: []byte("test")},
+	}
+	localFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         mapFS,
+	})
+	require.NoError(t, err)
+
+	assert.True(t, pathExistsInFS(baseDir, localFS, "resources/x.yaml"))
+}
+
+func TestPathExistsInFS_LocalFS_DirFS_RelError(t *testing.T) {
+	baseDir := t.TempDir()
+	mapFS := fstest.MapFS{
+		"resources/x.yaml": {Data: []byte("test")},
+	}
+	localFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         mapFS,
+	})
+	require.NoError(t, err)
+
+	absPath := filepath.Join(baseDir, "resources", "x.yaml")
+	assert.False(t, pathExistsInFS("", localFS, absPath))
+}
+
 func TestPathExistsInFS_LocalFS_OS(t *testing.T) {
 	baseDir := t.TempDir()
 	absPath := filepath.Join(baseDir, "file.yaml")
@@ -89,6 +153,16 @@ func TestPathExistsInFS_LocalFS_OS(t *testing.T) {
 	assert.True(t, pathExistsInFS(baseDir, localFS, absPath))
 }
 
+func TestPathExistsInFS_LocalFS_OS_InvalidRel(t *testing.T) {
+	baseDir := t.TempDir()
+	localFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+	})
+	require.NoError(t, err)
+
+	assert.False(t, pathExistsInFS(baseDir, localFS, baseDir))
+}
+
 func TestPathExistsInFS_NonLocalFS(t *testing.T) {
 	baseDir := "/base"
 	fsys := fstest.MapFS{
@@ -96,6 +170,23 @@ func TestPathExistsInFS_NonLocalFS(t *testing.T) {
 	}
 	absPath := filepath.Join(baseDir, "resources", "x.yaml")
 	assert.True(t, pathExistsInFS(baseDir, fsys, absPath))
+}
+
+func TestPathExistsInFS_NonLocalFS_RelError(t *testing.T) {
+	baseDir := t.TempDir()
+	fsys := fstest.MapFS{
+		"resources/x.yaml": {Data: []byte("test")},
+	}
+	absPath := filepath.Join(baseDir, "resources", "x.yaml")
+	assert.False(t, pathExistsInFS("", fsys, absPath))
+}
+
+func TestPathExistsInFS_NonLocalFS_InvalidRel(t *testing.T) {
+	baseDir := "/base"
+	fsys := fstest.MapFS{
+		"resources/x.yaml": {Data: []byte("test")},
+	}
+	assert.False(t, pathExistsInFS(baseDir, fsys, baseDir))
 }
 
 func TestResolverResolveLocalRefPath(t *testing.T) {

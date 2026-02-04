@@ -5,6 +5,7 @@ package base
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -67,6 +68,43 @@ func TestSchemaProxy_MarshalYAML(t *testing.T) {
 func TestCreateSchemaProxy_Fail(t *testing.T) {
 	proxy := &SchemaProxy{}
 	assert.Nil(t, proxy.Schema())
+}
+
+func TestSchemaProxy_Schema_NoLowLevel(t *testing.T) {
+	proxy := &SchemaProxy{
+		lock: &sync.Mutex{},
+	}
+	assert.Nil(t, proxy.Schema())
+}
+
+func TestSchemaProxy_BuildSchema_NoLock(t *testing.T) {
+	buildErr := errors.New("build failed")
+	proxy := &SchemaProxy{
+		buildError: buildErr,
+	}
+	schema, err := proxy.BuildSchema()
+	assert.Nil(t, schema)
+	assert.Equal(t, buildErr, err)
+}
+
+func TestSchemaProxy_BuildSchema_NilProxy(t *testing.T) {
+	var proxy *SchemaProxy
+	schema, err := proxy.BuildSchema()
+	assert.Nil(t, schema)
+	assert.NoError(t, err)
+}
+
+func TestSchemaProxy_GetBuildError_NilProxy(t *testing.T) {
+	var proxy *SchemaProxy
+	assert.Nil(t, proxy.GetBuildError())
+}
+
+func TestSchemaProxy_GetBuildError_NoLock(t *testing.T) {
+	buildErr := errors.New("build failed")
+	proxy := &SchemaProxy{
+		buildError: buildErr,
+	}
+	assert.Equal(t, buildErr, proxy.GetBuildError())
 }
 
 func TestCreateSchemaProxy(t *testing.T) {

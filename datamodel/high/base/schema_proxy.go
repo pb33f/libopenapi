@@ -367,13 +367,7 @@ func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
 		nb := high.NewNodeBuilder(s, s.low)
 		return nb.Render(), nil
 	} else {
-		refNode := sp.GetReferenceNode()
-		if refNode != nil {
-			return refNode, nil
-		}
-
-		// do not build out a reference, just marshal the reference.
-		return utils.CreateRefNode(sp.GetReference()), nil
+		return sp.GetReferenceNode(), nil
 	}
 }
 
