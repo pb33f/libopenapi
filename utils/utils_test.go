@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pb33f/jsonpath/pkg/jsonpath"
 	"github.com/stretchr/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
@@ -1542,11 +1543,6 @@ func TestIsNodeNull(t *testing.T) {
 }
 
 func TestFindNodesWithoutDeserializingWithTimeout(t *testing.T) {
-	// Skip this test when running with -short flag to avoid stack overflow with race detector
-	if testing.Short() {
-		t.Skip("Skipping circular reference timeout test in short mode")
-	}
-
 	// create a and b node that reference each other
 	a := &yaml.Node{
 		Value: "beans",
@@ -1561,15 +1557,30 @@ func TestFindNodesWithoutDeserializingWithTimeout(t *testing.T) {
 	a.Content = []*yaml.Node{b}
 	b.Content = []*yaml.Node{a}
 
-	// now look for something that does not exist.
-	// Use a longer timeout when race detector might be enabled
-	timeout := 10 * time.Millisecond
-	if os.Getenv("GORACE") != "" {
-		timeout = 100 * time.Millisecond
-	}
-	nodes, err := FindNodesWithoutDeserializingWithTimeout(a, "$..chicken", timeout)
+	nodes, err := FindNodesWithoutDeserializingWithTimeout(a, "$..chicken", 10*time.Millisecond)
 	assert.Nil(t, nodes)
-	assert.Error(t, err)
+	assert.ErrorIs(t, err, errCircularReference)
+}
+
+func TestFindNodesWithoutDeserializingWithTimeout_Timeout(t *testing.T) {
+	root, _ := FindNodes(getPetstore(), "$")
+	block := make(chan struct{})
+	done := make(chan struct{})
+	original := jsonPathQuery
+	jsonPathQuery = func(path *jsonpath.JSONPath, node *yaml.Node) []*yaml.Node {
+		<-block
+		close(done)
+		return nil
+	}
+	defer func() {
+		jsonPathQuery = original
+		close(block)
+		<-done
+	}()
+
+	nodes, err := FindNodesWithoutDeserializingWithTimeout(root[0], "$.info.contact", 1*time.Millisecond)
+	assert.Nil(t, nodes)
+	assert.ErrorContains(t, err, "timeout exceeded")
 }
 
 func TestFindNodesWithoutDeserializingWithTimeout_Success(t *testing.T) {
@@ -1578,6 +1589,54 @@ func TestFindNodesWithoutDeserializingWithTimeout_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, nodes)
 	assert.Len(t, nodes, 1)
+}
+
+func TestHasCircularReference_NoCycle(t *testing.T) {
+	leaf := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Value: "leaf",
+	}
+	root := &yaml.Node{
+		Kind:    yaml.MappingNode,
+		Content: []*yaml.Node{leaf, leaf},
+	}
+	assert.False(t, hasCircularReference(root))
+}
+
+func TestHasCircularReference_NilRoot(t *testing.T) {
+	assert.False(t, hasCircularReference(nil))
+}
+
+func TestHasCircularReference_NilChild(t *testing.T) {
+	root := &yaml.Node{
+		Kind:    yaml.SequenceNode,
+		Content: []*yaml.Node{nil},
+	}
+	assert.False(t, hasCircularReference(root))
+}
+
+func TestHasCircularReference_AliasNoCycle(t *testing.T) {
+	target := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Value: "target",
+	}
+	alias := &yaml.Node{
+		Kind:  yaml.AliasNode,
+		Alias: target,
+	}
+	root := &yaml.Node{
+		Kind:    yaml.MappingNode,
+		Content: []*yaml.Node{alias},
+	}
+	assert.False(t, hasCircularReference(root))
+}
+
+func TestHasCircularReference_AliasCycle(t *testing.T) {
+	alias := &yaml.Node{
+		Kind: yaml.AliasNode,
+	}
+	alias.Alias = alias
+	assert.True(t, hasCircularReference(alias))
 }
 
 func TestGenerateAlphanumericString(t *testing.T) {
