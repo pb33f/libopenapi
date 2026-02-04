@@ -38,6 +38,8 @@ func cleanHashCacheForTest(t *testing.T) {
 }
 
 func TestComparePathItem_V2(t *testing.T) {
+	cleanHashCacheForTest(t)
+
 	left := `get:
   description: get me
 put:
