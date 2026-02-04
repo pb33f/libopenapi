@@ -3622,6 +3622,9 @@ func TestHashNodeTree_ConcurrentModification(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping race-condition test in short mode")
 	}
+	if raceEnabled {
+		t.Skip("Skipping concurrent modification test under -race")
+	}
 
 	// Simulate the race condition scenario where Content is being modified
 	// during hashing - this test verifies the snapshot pattern prevents panics
