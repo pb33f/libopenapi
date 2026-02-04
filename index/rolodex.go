@@ -434,6 +434,12 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 						if strings.HasPrefix(normalizedSpecPath, normalizedOrigBasePath+string(os.PathSeparator)) {
 							// SpecFilePath includes the original basePath, make it absolute directly
 							r.indexConfig.SpecAbsolutePath, _ = filepath.Abs(normalizedSpecPath)
+						} else if strings.HasPrefix(normalizedSpecPath, "..") {
+							// SpecFilePath starts with ".." (parent directory), resolve it from cwd
+							// Using filepath.Join with basePath would incorrectly double paths
+							// e.g., basePath="/Users/foo/bar" + "../bar/file.yaml" would give
+							// "/Users/foo/bar/bar/file.yaml" instead of "/Users/foo/bar/file.yaml"
+							r.indexConfig.SpecAbsolutePath, _ = filepath.Abs(normalizedSpecPath)
 						} else {
 							// SpecFilePath is relative to basePath, join them
 							r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, normalizedSpecPath)
