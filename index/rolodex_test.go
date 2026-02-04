@@ -2499,4 +2499,74 @@ func TestRolodex_SpecAbsolutePath_AllBranches(t *testing.T) {
 		expected := filepath.Join(testDataDir, "openapi.yaml")
 		assert.Equal(t, expected, rolodex.indexConfig.SpecAbsolutePath)
 	})
+
+	// Test case 4: SpecFilePath starting with ".." (parent directory reference)
+	// This tests the branch: else if strings.HasPrefix(normalizedSpecPath, "..")
+	// This is important to prevent path doubling when users specify paths like
+	// "../other-project/spec.yaml"
+	t.Run("SpecFilePath with parent directory reference", func(t *testing.T) {
+		// Create a minimal spec without external references to test path computation only
+		specBytes := []byte(`openapi: "3.1.0"
+info:
+  title: Test API
+  version: "1.0"
+paths: {}
+`)
+		// Set BasePath to a subdirectory so we can use ".." to go up
+		// BasePath is "rolodex_test_data/dir1" (relative from cwd)
+		// SpecFilePath is "../dir2/doc.yaml" which starts with ".."
+		testDir := filepath.Join(cwd, "rolodex_test_data")
+		relativeBase := filepath.Join("rolodex_test_data", "dir1")
+
+		fsCfg := &LocalFSConfig{
+			BaseDirectory: testDir,
+			DirFS:         os.DirFS(testDir),
+		}
+		fileFS, _ := NewLocalFSWithConfig(fsCfg)
+
+		cf := CreateOpenAPIIndexConfig()
+		cf.BasePath = relativeBase
+		// SpecFilePath starts with ".." - this is the key condition being tested
+		// This simulates a user running: vacuum lint ../other-project/spec.yaml
+		cf.SpecFilePath = filepath.Join("..", "dir2", "doc.yaml")
+		cf.IgnorePolymorphicCircularReferences = true
+		cf.IgnoreArrayCircularReferences = true
+		cf.AvoidCircularReferenceCheck = true
+
+		rolodex := NewRolodex(cf)
+		// Need to add a local FS to trigger path computation logic
+		absBase, _ := filepath.Abs(relativeBase)
+		rolodex.AddLocalFS(absBase, fileFS)
+
+		var rootNode yaml.Node
+		_ = yaml.Unmarshal(specBytes, &rootNode)
+		rolodex.SetRootNode(&rootNode)
+
+		err := rolodex.IndexTheRolodex(context.Background())
+		assert.NoError(t, err)
+
+		// SpecAbsolutePath should be correctly resolved without path doubling
+		// It should resolve "../dir2/doc.yaml" from cwd using filepath.Abs(),
+		// not join with basePath which would cause doubling
+		expected, _ := filepath.Abs(cf.SpecFilePath)
+		assert.Equal(t, expected, rolodex.indexConfig.SpecAbsolutePath)
+
+		// Verify the path is absolute
+		assert.True(t, filepath.IsAbs(rolodex.indexConfig.SpecAbsolutePath))
+
+		// Ensure the path doesn't contain doubled segments (the bug we fixed)
+		// Without the fix, joining basePath + specPath would give:
+		// /cwd/rolodex_test_data/dir2/doc.yaml (going up from dir1 then into dir2)
+		// which is incorrect - it should be /cwd/rolodex_test_data/dir2/doc.yaml
+		// The key check is that we don't get /cwd/rolodex_test_data/dir1/dir2/doc.yaml
+		pathParts := strings.Split(rolodex.indexConfig.SpecAbsolutePath, string(os.PathSeparator))
+		for i := 0; i < len(pathParts)-1; i++ {
+			if pathParts[i] == pathParts[i+1] && pathParts[i] != "" {
+				t.Errorf("path contains doubled segment: %s", rolodex.indexConfig.SpecAbsolutePath)
+			}
+		}
+
+		// Verify the path ends correctly
+		assert.True(t, strings.HasSuffix(rolodex.indexConfig.SpecAbsolutePath, filepath.Join("dir2", "doc.yaml")))
+	})
 }

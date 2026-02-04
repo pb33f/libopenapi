@@ -9,7 +9,7 @@ import (
 func BenchmarkRegexMatchString(b *testing.B) {
 	re := regexp.MustCompile(`^[A-Za-z0-9_\\]*$`)
 	testString := "simple_test_123"
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = re.MatchString(testString)
@@ -19,7 +19,7 @@ func BenchmarkRegexMatchString(b *testing.B) {
 // Optimized character check benchmark
 func BenchmarkOptimizedCharCheck(b *testing.B) {
 	testString := "simple_test_123"
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = isPathChar(testString)

@@ -637,7 +637,7 @@ func GetRefValueNode(node *yaml.Node) *yaml.Node {
 	for i, r := range n.Content {
 		if i%2 == 0 && r.Value == "$ref" {
 			if i+1 < len(n.Content) {
-				return n.Content[i + 1]
+				return n.Content[i+1]
 			}
 		}
 	}

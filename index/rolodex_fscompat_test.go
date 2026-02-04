@@ -34,18 +34,18 @@ func (s strictFS) Open(name string) (fs.File, error) {
 
 func TestRolodex_FSCompatibility_RelativePath(t *testing.T) {
 	t.Parallel()
-	
+
 	// Create a test filesystem that strictly enforces fs.FS interface
 	testFS := strictFS{
 		FS: fstest.MapFS{
-			"spec.yaml":             {Data: []byte("test content"), ModTime: time.Now()},
-			"refs/common.yaml":      {Data: []byte("common ref"), ModTime: time.Now()},
-			"schemas/pet.yaml":      {Data: []byte("pet schema"), ModTime: time.Now()},
+			"spec.yaml":        {Data: []byte("test content"), ModTime: time.Now()},
+			"refs/common.yaml": {Data: []byte("common ref"), ModTime: time.Now()},
+			"schemas/pet.yaml": {Data: []byte("pet schema"), ModTime: time.Now()},
 		},
 	}
 
 	baseDir := "/project/api"
-	
+
 	rolo := NewRolodex(CreateOpenAPIIndexConfig())
 	rolo.AddLocalFS(baseDir, testFS)
 
@@ -67,17 +67,17 @@ func TestRolodex_FSCompatibility_RelativePath(t *testing.T) {
 
 func TestRolodex_FSCompatibility_AbsolutePath(t *testing.T) {
 	t.Parallel()
-	
+
 	// Create a test filesystem that strictly enforces fs.FS interface
 	testFS := strictFS{
 		FS: fstest.MapFS{
-			"api/spec.yaml":      {Data: []byte("api spec"), ModTime: time.Now()},
-			"common/base.yaml":   {Data: []byte("base spec"), ModTime: time.Now()},
+			"api/spec.yaml":    {Data: []byte("api spec"), ModTime: time.Now()},
+			"common/base.yaml": {Data: []byte("base spec"), ModTime: time.Now()},
 		},
 	}
 
 	baseDir, _ := filepath.Abs("/tmp/test")
-	
+
 	rolo := NewRolodex(CreateOpenAPIIndexConfig())
 	rolo.AddLocalFS(baseDir, testFS)
 
@@ -90,17 +90,17 @@ func TestRolodex_FSCompatibility_AbsolutePath(t *testing.T) {
 
 func TestRolodex_FSCompatibility_MultipleFS(t *testing.T) {
 	t.Parallel()
-	
+
 	// For this test, we don't need strict enforcement since we're testing
 	// the ability to find files across multiple file systems
 	// The strict enforcement is tested in other test cases
 	apiFS := fstest.MapFS{
 		"openapi.yaml": {Data: []byte("api spec"), ModTime: time.Now()},
 	}
-	
+
 	schemasFS := fstest.MapFS{
-		"pet.json":    {Data: []byte("pet schema"), ModTime: time.Now()},
-		"store.json":  {Data: []byte("store schema"), ModTime: time.Now()},
+		"pet.json":   {Data: []byte("pet schema"), ModTime: time.Now()},
+		"store.json": {Data: []byte("store schema"), ModTime: time.Now()},
 	}
 
 	rolo := NewRolodex(CreateOpenAPIIndexConfig())
@@ -120,7 +120,7 @@ func TestRolodex_FSCompatibility_MultipleFS(t *testing.T) {
 
 func TestRolodex_FSCompatibility_StandardFS(t *testing.T) {
 	t.Parallel()
-	
+
 	// Test with various standard fs.FS implementations
 	testCases := []struct {
 		name string
@@ -139,7 +139,7 @@ func TestRolodex_FSCompatibility_StandardFS(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			rolo := NewRolodex(CreateOpenAPIIndexConfig())
 			rolo.AddLocalFS("/base", tc.fs)
-			
+
 			f, err := rolo.Open("test.yaml")
 			require.NoError(t, err, "Should work with %s", tc.name)
 			assert.Equal(t, "test data", f.GetContent())

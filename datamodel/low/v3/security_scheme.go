@@ -25,21 +25,21 @@ import (
 // Recommended for most use case is Authorization Code Grant flow with PKCE.
 //   - https://spec.openapis.org/oas/v3.1.0#security-scheme-object
 type SecurityScheme struct {
-	Type             low.NodeReference[string]
-	Description      low.NodeReference[string]
-	Name             low.NodeReference[string]
-	In               low.NodeReference[string]
-	Scheme           low.NodeReference[string]
-	BearerFormat     low.NodeReference[string]
-	Flows            low.NodeReference[*OAuthFlows]
-	OpenIdConnectUrl low.NodeReference[string]
+	Type              low.NodeReference[string]
+	Description       low.NodeReference[string]
+	Name              low.NodeReference[string]
+	In                low.NodeReference[string]
+	Scheme            low.NodeReference[string]
+	BearerFormat      low.NodeReference[string]
+	Flows             low.NodeReference[*OAuthFlows]
+	OpenIdConnectUrl  low.NodeReference[string]
 	OAuth2MetadataUrl low.NodeReference[string] // OpenAPI 3.2+ OAuth2 metadata URL
-	Deprecated       low.NodeReference[bool]   // OpenAPI 3.2+ deprecated flag
-	Extensions       *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
-	KeyNode          *yaml.Node
-	RootNode         *yaml.Node
-	index            *index.SpecIndex
-	context          context.Context
+	Deprecated        low.NodeReference[bool]   // OpenAPI 3.2+ deprecated flag
+	Extensions        *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode           *yaml.Node
+	RootNode          *yaml.Node
+	index             *index.SpecIndex
+	context           context.Context
 	*low.Reference
 	low.NodeMap
 }

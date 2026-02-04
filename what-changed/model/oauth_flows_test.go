@@ -456,7 +456,7 @@ func TestCompareOAuthFlows_DeviceFlowModified(t *testing.T) {
 	assert.NotNil(t, extChanges.DeviceChanges)
 
 	// DeviceChanges should be included in GetAllChanges and TotalChanges
-	assert.Equal(t, 2, extChanges.TotalChanges()) // tokenUrl change + scope addition
+	assert.Equal(t, 2, extChanges.TotalChanges())         // tokenUrl change + scope addition
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges()) // tokenUrl change is breaking
 
 	allChanges := extChanges.GetAllChanges()
