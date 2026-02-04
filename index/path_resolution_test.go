@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -137,7 +139,7 @@ func TestPathExistsInFS_LocalFS_DirFS_RelError(t *testing.T) {
 	require.NoError(t, err)
 
 	absPath := filepath.Join(baseDir, "resources", "x.yaml")
-	assert.False(t, pathExistsInFS("", localFS, absPath))
+	assert.False(t, pathExistsInFS(differentVolumeBaseDir(absPath), localFS, absPath))
 }
 
 func TestPathExistsInFS_LocalFS_OS(t *testing.T) {
@@ -164,11 +166,12 @@ func TestPathExistsInFS_LocalFS_OS_InvalidRel(t *testing.T) {
 }
 
 func TestPathExistsInFS_NonLocalFS(t *testing.T) {
-	baseDir := "/base"
-	fsys := fstest.MapFS{
-		"resources/x.yaml": {Data: []byte("test")},
-	}
+	baseDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(baseDir, "resources"), 0o755))
 	absPath := filepath.Join(baseDir, "resources", "x.yaml")
+	require.NoError(t, os.WriteFile(absPath, []byte("test"), 0o600))
+
+	fsys := os.DirFS(baseDir)
 	assert.True(t, pathExistsInFS(baseDir, fsys, absPath))
 }
 
@@ -178,15 +181,26 @@ func TestPathExistsInFS_NonLocalFS_RelError(t *testing.T) {
 		"resources/x.yaml": {Data: []byte("test")},
 	}
 	absPath := filepath.Join(baseDir, "resources", "x.yaml")
-	assert.False(t, pathExistsInFS("", fsys, absPath))
+	assert.False(t, pathExistsInFS(differentVolumeBaseDir(absPath), fsys, absPath))
 }
 
 func TestPathExistsInFS_NonLocalFS_InvalidRel(t *testing.T) {
-	baseDir := "/base"
+	baseDir := filepath.FromSlash("/base")
 	fsys := fstest.MapFS{
 		"resources/x.yaml": {Data: []byte("test")},
 	}
 	assert.False(t, pathExistsInFS(baseDir, fsys, baseDir))
+}
+
+func differentVolumeBaseDir(absPath string) string {
+	if runtime.GOOS != "windows" {
+		return "relative"
+	}
+	vol := filepath.VolumeName(absPath)
+	if strings.EqualFold(vol, "Z:") {
+		return "Y:\\"
+	}
+	return "Z:\\"
 }
 
 func TestResolverResolveLocalRefPath(t *testing.T) {
