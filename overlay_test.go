@@ -531,4 +531,3 @@ actions:
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
-

@@ -118,7 +118,7 @@ allowReserved: true`
 	// compare.
 	extChanges := CompareEncoding(&lDoc, &rDoc)
 	assert.NotNil(t, extChanges)
-	assert.Equal(t, 2, extChanges.TotalChanges())    // style added + header added
+	assert.Equal(t, 2, extChanges.TotalChanges()) // style added + header added
 	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges()) // style added is breaking
 }
@@ -153,7 +153,7 @@ allowReserved: true`
 	// compare.
 	extChanges := CompareEncoding(&rDoc, &lDoc)
 	assert.NotNil(t, extChanges)
-	assert.Equal(t, 2, extChanges.TotalChanges())         // style removed + header removed
+	assert.Equal(t, 2, extChanges.TotalChanges()) // style removed + header removed
 	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges()) // both style and header removed are breaking
 }

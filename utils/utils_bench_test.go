@@ -20,7 +20,7 @@ func BenchmarkPathCharExp_Regex(b *testing.B) {
 		"123numeric",
 		"back\\slash",
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, tc := range testCases {
@@ -32,7 +32,7 @@ func BenchmarkPathCharExp_Regex(b *testing.B) {
 func BenchmarkPathCharExp_Optimized(b *testing.B) {
 	testCases := []string{
 		"simple",
-		"SimpleCase", 
+		"SimpleCase",
 		"with_underscore",
 		"with-dash",
 		"with spaces",
@@ -40,7 +40,7 @@ func BenchmarkPathCharExp_Optimized(b *testing.B) {
 		"123numeric",
 		"back\\slash",
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, tc := range testCases {

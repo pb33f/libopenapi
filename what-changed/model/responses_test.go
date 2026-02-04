@@ -526,7 +526,7 @@ func TestCompareResponses_V3_ConfigurableCodesBreaking(t *testing.T) {
 
 	// test 1: default behavior - removing codes is breaking, adding is not
 	changes := CompareResponses(&lDoc, &rDoc)
-	assert.Equal(t, 3, changes.TotalChanges()) // 2 removed (404, 500) + 1 added (418)
+	assert.Equal(t, 3, changes.TotalChanges())         // 2 removed (404, 500) + 1 added (418)
 	assert.Equal(t, 2, changes.TotalBreakingChanges()) // only removals are breaking by default
 
 	// test 2: custom config - make removals non-breaking
@@ -540,7 +540,7 @@ func TestCompareResponses_V3_ConfigurableCodesBreaking(t *testing.T) {
 	SetActiveBreakingRulesConfig(customConfig)
 
 	changes2 := CompareResponses(&lDoc, &rDoc)
-	assert.Equal(t, 3, changes2.TotalChanges()) // same number of changes
+	assert.Equal(t, 3, changes2.TotalChanges())         // same number of changes
 	assert.Equal(t, 0, changes2.TotalBreakingChanges()) // no breaking changes now
 
 	// test 3: custom config - make additions breaking

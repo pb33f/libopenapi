@@ -16,13 +16,15 @@ import (
 // TestTranslateMapParallel_ContextCancellation specifically targets lines 158-159
 // in translate.go which handle context cancellation during job dispatch.
 // This test ensures 100% coverage even on single-CPU systems like GitHub runners.
-// 
+//
 // The flaky coverage issue occurs because the select statement at lines 156-160:
-//   select {
-//   case jobChan <- j:
-//   case <-ctx.Done():
-//     return
-//   }
+//
+//	select {
+//	case jobChan <- j:
+//	case <-ctx.Done():
+//	  return
+//	}
+//
 // The ctx.Done() branch (lines 158-159) is only hit when the context is cancelled
 // while the goroutine is blocked trying to send to jobChan. This is a race condition
 // that doesn't always occur, especially on single-CPU systems.
@@ -57,7 +59,7 @@ func TestTranslateMapParallel_ContextCancellation(t *testing.T) {
 				time.Sleep(10 * time.Millisecond)
 				return "", errors.New("trigger cancellation")
 			}
-			
+
 			// Other jobs: count how many get started
 			jobsBlocked.Add(1)
 			time.Sleep(100 * time.Millisecond)
@@ -72,13 +74,13 @@ func TestTranslateMapParallel_ContextCancellation(t *testing.T) {
 		err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "trigger cancellation")
-		
+
 		// Wait for goroutines to clean up
 		time.Sleep(20 * time.Millisecond)
-		
+
 		// Verify context cancellation prevented all jobs from running
 		// If lines 158-159 are hit, some jobs will be skipped
-		assert.Less(t, int(jobsBlocked.Load()), itemCount-1, 
+		assert.Less(t, int(jobsBlocked.Load()), itemCount-1,
 			"Iteration %d: Context cancellation should prevent some jobs", iteration)
 	}
 }

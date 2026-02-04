@@ -157,7 +157,6 @@ func TestSecurityScheme_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
 	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }
 
-
 func TestBuildLowSecurityScheme_Success(t *testing.T) {
 	yml := `type: apiKey
 name: X-API-Key
