@@ -1,0 +1,9 @@
+get:
+  summary: Get items
+  responses:
+    "200":
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: "resources/schemas/Item.yaml"
