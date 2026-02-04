@@ -244,7 +244,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 								sp := strings.Split(specPath, "#")
 								// Create a clean (absolute?) path to the file containing the
 								// referenced value.
-								abs, _ = filepath.Abs(utils.CheckPathOverlap(filepath.Dir(sp[0]), explodedRefValue[0], string(os.PathSeparator)))
+								abs = idx.ResolveRelativeFilePath(filepath.Dir(sp[0]), explodedRefValue[0])
 							}
 							rv = fmt.Sprintf("%s#%s", abs, explodedRefValue[1])
 						} else {
@@ -281,7 +281,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 					} else {
 						if specPath != "" {
 
-							abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(specPath), rv, string(os.PathSeparator)))
+							abs := idx.ResolveRelativeFilePath(filepath.Dir(specPath), rv)
 							rv = abs
 
 						} else {

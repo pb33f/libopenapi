@@ -321,7 +321,7 @@ func TestRolodexLocalFileSystem_ProvideNonRolodexFS(t *testing.T) {
 	cf.LocalFS = os.DirFS(baseDir)
 	lDoc, err := CreateDocumentFromConfig(info, cf)
 	assert.NotNil(t, lDoc)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
 
 func TestRolodexLocalFileSystem_ProvideRolodexFS(t *testing.T) {

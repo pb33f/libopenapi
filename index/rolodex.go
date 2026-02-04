@@ -295,6 +295,7 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 
 			// copy config and set the
 			copiedConfig := *r.indexConfig
+			copiedConfig.Rolodex = r
 			copiedConfig.SpecAbsolutePath = fullPath
 			copiedConfig.AvoidBuildIndex = true // we will build out everything in two steps.
 			idx, err := idxFile.Index(&copiedConfig)
@@ -394,6 +395,7 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 
 	// indexed and built every supporting file, we can build the root index (our entry point)
 	if r.rootNode != nil {
+		r.indexConfig.Rolodex = r
 
 		// if there is a base path but no SpecFilePath, then we need to set the root spec config to point to a theoretical root.yaml
 		// which does not exist, but is used to formulate the absolute path to root references correctly.

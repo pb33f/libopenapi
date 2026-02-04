@@ -331,37 +331,27 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 									fullDefinitionPath = value
 									componentName = fmt.Sprintf("#/%s", uri[1])
 								} else {
-									// if the index has a base path, use that to resolve the path
-									if index.config.BasePath != "" && index.config.BaseURL == nil {
-										abs, _ := filepath.Abs(utils.CheckPathOverlap(index.config.BasePath, uri[0], string(os.PathSeparator)))
-										if abs != defRoot {
-											abs, _ = filepath.Abs(utils.CheckPathOverlap(defRoot, uri[0], string(os.PathSeparator)))
+									// if the index has a base URL, use that to resolve the path.
+									if index.config.BaseURL != nil && !filepath.IsAbs(defRoot) {
+										var u url.URL
+										if strings.HasPrefix(defRoot, "http") {
+											up, _ := url.Parse(defRoot)
+											up.Path = utils.ReplaceWindowsDriveWithLinuxPath(filepath.Dir(up.Path))
+											u = *up
+										} else {
+											u = *index.config.BaseURL
 										}
+										// abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
+										// abs, _ := filepath.Abs(utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator)))
+										abs := utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator))
+										u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
+										fullDefinitionPath = fmt.Sprintf("%s#/%s", u.String(), uri[1])
+										componentName = fmt.Sprintf("#/%s", uri[1])
+
+									} else {
+										abs := index.resolveRelativeFilePath(defRoot, uri[0])
 										fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
 										componentName = fmt.Sprintf("#/%s", uri[1])
-									} else {
-										// if the index has a base URL, use that to resolve the path.
-										if index.config.BaseURL != nil && !filepath.IsAbs(defRoot) {
-											var u url.URL
-											if strings.HasPrefix(defRoot, "http") {
-												up, _ := url.Parse(defRoot)
-												up.Path = utils.ReplaceWindowsDriveWithLinuxPath(filepath.Dir(up.Path))
-												u = *up
-											} else {
-												u = *index.config.BaseURL
-											}
-											// abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
-											// abs, _ := filepath.Abs(utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator)))
-											abs := utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator))
-											u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
-											fullDefinitionPath = fmt.Sprintf("%s#/%s", u.String(), uri[1])
-											componentName = fmt.Sprintf("#/%s", uri[1])
-
-										} else {
-											abs, _ := filepath.Abs(utils.CheckPathOverlap(defRoot, uri[0], string(os.PathSeparator)))
-											fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
-											componentName = fmt.Sprintf("#/%s", uri[1])
-										}
 									}
 								}
 							}
@@ -384,29 +374,19 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 									}
 								} else {
 									if !filepath.IsAbs(uri[0]) {
-										// if the index has a base path, use that to resolve the path
-										if index.config.BasePath != "" {
-											abs, _ := filepath.Abs(utils.CheckPathOverlap(index.config.BasePath, uri[0], string(os.PathSeparator)))
-											if abs != defRoot {
-												abs, _ = filepath.Abs(utils.CheckPathOverlap(defRoot, uri[0], string(os.PathSeparator)))
-											}
-											fullDefinitionPath = abs
+										// if the index has a base URL, use that to resolve the path.
+										if index.config.BaseURL != nil {
+
+											u := *index.config.BaseURL
+											abs := utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator))
+											abs = utils.ReplaceWindowsDriveWithLinuxPath(abs)
+											u.Path = abs
+											fullDefinitionPath = u.String()
 											componentName = uri[0]
 										} else {
-											// if the index has a base URL, use that to resolve the path.
-											if index.config.BaseURL != nil {
-
-												u := *index.config.BaseURL
-												abs := utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator))
-												abs = utils.ReplaceWindowsDriveWithLinuxPath(abs)
-												u.Path = abs
-												fullDefinitionPath = u.String()
-												componentName = uri[0]
-											} else {
-												abs, _ := filepath.Abs(utils.CheckPathOverlap(defRoot, uri[0], string(os.PathSeparator)))
-												fullDefinitionPath = abs
-												componentName = uri[0]
-											}
+											abs := index.resolveRelativeFilePath(defRoot, uri[0])
+											fullDefinitionPath = abs
+											componentName = uri[0]
 										}
 									}
 								}
