@@ -190,9 +190,9 @@ func TestAllChangesModels_NilChecks(t *testing.T) {
 		{"InfoChanges_TotalBreakingChanges_WithNestedChanges", func(t *testing.T) {
 			breakingChange := &Change{Breaking: true}
 			i := &InfoChanges{
-				PropertyChanges: &PropertyChanges{Changes: []*Change{breakingChange}},
-				ContactChanges:  &ContactChanges{PropertyChanges: &PropertyChanges{Changes: []*Change{breakingChange}}},
-				LicenseChanges:  &LicenseChanges{PropertyChanges: &PropertyChanges{Changes: []*Change{breakingChange}}},
+				PropertyChanges:  &PropertyChanges{Changes: []*Change{breakingChange}},
+				ContactChanges:   &ContactChanges{PropertyChanges: &PropertyChanges{Changes: []*Change{breakingChange}}},
+				LicenseChanges:   &LicenseChanges{PropertyChanges: &PropertyChanges{Changes: []*Change{breakingChange}}},
 				ExtensionChanges: &ExtensionChanges{PropertyChanges: &PropertyChanges{Changes: []*Change{breakingChange}}},
 			}
 			assert.Equal(t, 4, i.TotalBreakingChanges())
@@ -352,188 +352,188 @@ func TestComparisonFunctions_NilReturnPatterns(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
 	// Test all comparison functions that have TotalChanges() <= 0 nil return patterns
-	
+
 	// Create identical objects for comparison (should result in no changes)
-	
+
 	t.Run("Components_NoChanges_ReturnsNil", func(t *testing.T) {
 		components := &v3.Components{}
 		result := CompareComponents(components, components)
 		assert.Nil(t, result, "CompareComponents should return nil when there are no changes")
 	})
-	
+
 	t.Run("Header_NoChanges_ReturnsNil", func(t *testing.T) {
 		header := &v3.Header{}
 		result := CompareHeaders(header, header)
 		assert.Nil(t, result, "CompareHeaders should return nil when there are no changes")
 	})
-	
+
 	t.Run("Paths_NoChanges_ReturnsNil", func(t *testing.T) {
 		paths := &v3.Paths{}
 		result := ComparePaths(paths, paths)
 		assert.Nil(t, result, "ComparePaths should return nil when there are no changes")
 	})
-	
+
 	t.Run("OAuthFlows_NoChanges_ReturnsNil", func(t *testing.T) {
 		flows := &v3.OAuthFlows{}
 		result := CompareOAuthFlows(flows, flows)
 		assert.Nil(t, result, "CompareOAuthFlows should return nil when there are no changes")
 	})
-	
+
 	t.Run("OAuthFlow_NoChanges_ReturnsNil", func(t *testing.T) {
 		flow := &v3.OAuthFlow{}
 		result := CompareOAuthFlow(flow, flow)
 		assert.Nil(t, result, "CompareOAuthFlow should return nil when there are no changes")
 	})
-	
+
 	t.Run("RequestBody_NoChanges_ReturnsNil", func(t *testing.T) {
 		requestBody := &v3.RequestBody{}
 		result := CompareRequestBodies(requestBody, requestBody)
 		assert.Nil(t, result, "CompareRequestBodies should return nil when there are no changes")
 	})
-	
+
 	t.Run("XML_NoChanges_ReturnsNil", func(t *testing.T) {
 		xml := &base.XML{}
 		result := CompareXML(xml, xml)
 		assert.Nil(t, result, "CompareXML should return nil when there are no changes")
 	})
-	
+
 	t.Run("ServerVariable_NoChanges_ReturnsNil", func(t *testing.T) {
 		serverVar := &v3.ServerVariable{}
 		result := CompareServerVariables(serverVar, serverVar)
 		assert.Nil(t, result, "CompareServerVariables should return nil when there are no changes")
 	})
-	
+
 	t.Run("Responses_NoChanges_ReturnsNil", func(t *testing.T) {
 		responses := &v3.Responses{}
 		result := CompareResponses(responses, responses)
 		assert.Nil(t, result, "CompareResponses should return nil when there are no changes")
 	})
-	
+
 	t.Run("Items_NoChanges_ReturnsNil", func(t *testing.T) {
 		items := &v2.Items{}
 		result := CompareItems(items, items)
 		assert.Nil(t, result, "CompareItems should return nil when there are no changes")
 	})
-	
+
 	t.Run("Response_NoChanges_ReturnsNil", func(t *testing.T) {
 		response := &v3.Response{}
 		result := CompareResponseV3(response, response)
 		assert.Nil(t, result, "CompareResponseV3 should return nil when there are no changes")
 	})
-	
+
 	t.Run("Info_NoChanges_ReturnsNil", func(t *testing.T) {
 		info := &base.Info{}
 		result := CompareInfo(info, info)
 		assert.Nil(t, result, "CompareInfo should return nil when there are no changes")
 	})
-	
+
 	t.Run("Server_NoChanges_ReturnsNil", func(t *testing.T) {
 		server := &v3.Server{}
 		result := CompareServers(server, server)
 		assert.Nil(t, result, "CompareServers should return nil when there are no changes")
 	})
-	
+
 	t.Run("Discriminator_NoChanges_ReturnsNil", func(t *testing.T) {
 		discriminator := &base.Discriminator{}
 		result := CompareDiscriminator(discriminator, discriminator)
 		assert.Nil(t, result, "CompareDiscriminator should return nil when there are no changes")
 	})
-	
+
 	t.Run("Extensions_NoChanges_ReturnsNil", func(t *testing.T) {
 		result := CompareExtensions(nil, nil)
 		assert.Nil(t, result, "CompareExtensions should return nil when there are no changes")
 	})
-	
+
 	t.Run("SecurityScheme_NoChanges_ReturnsNil", func(t *testing.T) {
 		securityScheme := &v3.SecurityScheme{}
 		result := CompareSecuritySchemes(securityScheme, securityScheme)
 		assert.Nil(t, result, "CompareSecuritySchemes should return nil when there are no changes")
 	})
-	
+
 	t.Run("Contact_NoChanges_ReturnsNil", func(t *testing.T) {
 		contact := &base.Contact{}
 		result := CompareContact(contact, contact)
 		assert.Nil(t, result, "CompareContact should return nil when there are no changes")
 	})
-	
+
 	t.Run("Encoding_NoChanges_ReturnsNil", func(t *testing.T) {
 		encoding := &v3.Encoding{}
 		result := CompareEncoding(encoding, encoding)
 		assert.Nil(t, result, "CompareEncoding should return nil when there are no changes")
 	})
-	
+
 	t.Run("ExternalDocs_NoChanges_ReturnsNil", func(t *testing.T) {
 		externalDocs := &base.ExternalDoc{}
 		result := CompareExternalDocs(externalDocs, externalDocs)
 		assert.Nil(t, result, "CompareExternalDocs should return nil when there are no changes")
 	})
-	
+
 	t.Run("MediaType_NoChanges_ReturnsNil", func(t *testing.T) {
 		mediaType := &v3.MediaType{}
 		result := CompareMediaTypes(mediaType, mediaType)
 		assert.Nil(t, result, "CompareMediaTypes should return nil when there are no changes")
 	})
-	
+
 	t.Run("Parameter_NoChanges_ReturnsNil", func(t *testing.T) {
 		parameter := &v3.Parameter{}
 		result := CompareParametersV3(parameter, parameter)
 		assert.Nil(t, result, "CompareParametersV3 should return nil when there are no changes")
 	})
-	
+
 	t.Run("SecurityRequirement_NoChanges_ReturnsNil", func(t *testing.T) {
 		securityReq := &base.SecurityRequirement{}
 		result := CompareSecurityRequirement(securityReq, securityReq)
 		assert.Nil(t, result, "CompareSecurityRequirement should return nil when there are no changes")
 	})
-	
+
 	t.Run("Example_NoChanges_ReturnsNil", func(t *testing.T) {
 		example := &base.Example{}
 		result := CompareExamples(example, example)
 		assert.Nil(t, result, "CompareExamples should return nil when there are no changes")
 	})
-	
+
 	t.Run("Scopes_NoChanges_ReturnsNil", func(t *testing.T) {
 		scopes := &v2.Scopes{}
 		result := CompareScopes(scopes, scopes)
 		assert.Nil(t, result, "CompareScopes should return nil when there are no changes")
 	})
-	
+
 	t.Run("Operation_NoChanges_ReturnsNil", func(t *testing.T) {
 		operation := &v3.Operation{}
 		result := CompareOperations(operation, operation)
 		assert.Nil(t, result, "CompareOperations should return nil when there are no changes")
 	})
-	
+
 	t.Run("Examples_NoChanges_ReturnsNil", func(t *testing.T) {
 		examples := &v2.Examples{}
 		result := CompareExamplesV2(examples, examples)
 		assert.Nil(t, result, "CompareExamplesV2 should return nil when there are no changes")
 	})
-	
+
 	t.Run("Callback_NoChanges_ReturnsNil", func(t *testing.T) {
 		callback := &v3.Callback{}
 		result := CompareCallback(callback, callback)
 		assert.Nil(t, result, "CompareCallback should return nil when there are no changes")
 	})
-	
+
 	t.Run("Document_NoChanges_ReturnsNil", func(t *testing.T) {
 		document := &v3.Document{}
 		result := CompareDocuments(document, document)
 		assert.Nil(t, result, "CompareDocuments should return nil when there are no changes")
 	})
-	
+
 	t.Run("PathItem_NoChanges_ReturnsNil", func(t *testing.T) {
 		pathItem := &v3.PathItem{}
 		result := ComparePathItems(pathItem, pathItem)
 		assert.Nil(t, result, "ComparePathItems should return nil when there are no changes")
 	})
-	
+
 	t.Run("Link_NoChanges_ReturnsNil", func(t *testing.T) {
 		link := &v3.Link{}
 		result := CompareLinks(link, link)
 		assert.Nil(t, result, "CompareLinks should return nil when there are no changes")
 	})
-	
+
 	t.Run("License_NoChanges_ReturnsNil", func(t *testing.T) {
 		license := &base.License{}
 		result := CompareLicense(license, license)
@@ -547,7 +547,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
 	// Test all 31 instances of the TotalChanges() <= 0 pattern found by grep
-	
+
 	// 1. components.go:203
 	t.Run("ComponentsChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		components1 := &v3.Components{}
@@ -555,7 +555,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareComponents(components1, components2)
 		assert.Nil(t, result, "CompareComponents should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 2. server_variable.go:84
 	t.Run("ServerVariableChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		serverVar1 := &v3.ServerVariable{}
@@ -563,7 +563,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareServerVariables(serverVar1, serverVar2)
 		assert.Nil(t, result, "CompareServerVariables should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 3. header.go:285
 	t.Run("HeaderChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		// Create v2 headers that will bypass equality check but have no changes
@@ -572,7 +572,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareHeaders(header1, header2)
 		assert.Nil(t, result, "CompareHeaders should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 4. request_body.go:98
 	t.Run("RequestBodyChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		requestBody1 := &v3.RequestBody{}
@@ -580,7 +580,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareRequestBodies(requestBody1, requestBody2)
 		assert.Nil(t, result, "CompareRequestBodies should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 5. paths.go:228
 	t.Run("PathsChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		paths1 := &v3.Paths{}
@@ -588,7 +588,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := ComparePaths(paths1, paths2)
 		assert.Nil(t, result, "ComparePaths should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 6. link.go:165
 	t.Run("LinkChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		link1 := &v3.Link{}
@@ -596,7 +596,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareLinks(link1, link2)
 		assert.Nil(t, result, "CompareLinks should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 7. xml.go:116
 	t.Run("XMLChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		xml1 := &base.XML{}
@@ -604,7 +604,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareXML(xml1, xml2)
 		assert.Nil(t, result, "CompareXML should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 8. oauth_flows.go:159 (CompareOAuthFlows)
 	t.Run("OAuthFlowsChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		flows1 := &v3.OAuthFlows{}
@@ -612,7 +612,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareOAuthFlows(flows1, flows2)
 		assert.Nil(t, result, "CompareOAuthFlows should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 9. oauth_flows.go:267 (CompareOAuthFlow)
 	t.Run("OAuthFlowChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		flow1 := &v3.OAuthFlow{}
@@ -620,13 +620,13 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareOAuthFlow(flow1, flow2)
 		assert.Nil(t, result, "CompareOAuthFlow should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 10. extensions.go:87
 	t.Run("ExtensionChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		result := CompareExtensions(nil, nil)
 		assert.Nil(t, result, "CompareExtensions should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 11. scopes.go:81
 	t.Run("ScopesChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		scopes1 := &v2.Scopes{}
@@ -634,7 +634,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareScopes(scopes1, scopes2)
 		assert.Nil(t, result, "CompareScopes should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 12. response.go:200
 	t.Run("ResponseChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		response1 := &v3.Response{}
@@ -642,7 +642,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareResponseV3(response1, response2)
 		assert.Nil(t, result, "CompareResponseV3 should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 13. document.go:295
 	t.Run("DocumentChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		document1 := &v3.Document{}
@@ -650,7 +650,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareDocuments(document1, document2)
 		assert.Nil(t, result, "CompareDocuments should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 14. example.go:212
 	t.Run("ExampleChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		example1 := &base.Example{}
@@ -658,7 +658,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareExamples(example1, example2)
 		assert.Nil(t, result, "CompareExamples should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 15. items.go:88
 	t.Run("ItemsChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		items1 := &v2.Items{}
@@ -666,7 +666,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareItems(items1, items2)
 		assert.Nil(t, result, "CompareItems should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 16. callback.go:116
 	t.Run("CallbackChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		callback1 := &v3.Callback{}
@@ -674,7 +674,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareCallback(callback1, callback2)
 		assert.Nil(t, result, "CompareCallback should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 17. license.go:94
 	t.Run("LicenseChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		license1 := &base.License{}
@@ -682,7 +682,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareLicense(license1, license2)
 		assert.Nil(t, result, "CompareLicense should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 18. server.go:97
 	t.Run("ServerChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		server1 := &v3.Server{}
@@ -690,7 +690,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareServers(server1, server2)
 		assert.Nil(t, result, "CompareServers should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 19. encoding.go:100
 	t.Run("EncodingChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		encoding1 := &v3.Encoding{}
@@ -698,7 +698,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareEncoding(encoding1, encoding2)
 		assert.Nil(t, result, "CompareEncoding should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 20. external_docs.go:84
 	t.Run("ExternalDocsChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		extDocs1 := &base.ExternalDoc{}
@@ -706,7 +706,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareExternalDocs(extDocs1, extDocs2)
 		assert.Nil(t, result, "CompareExternalDocs should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 21. examples.go:88
 	t.Run("ExamplesChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		examples1 := &v2.Examples{}
@@ -714,7 +714,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareExamplesV2(examples1, examples2)
 		assert.Nil(t, result, "CompareExamplesV2 should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 22. contact.go:82
 	t.Run("ContactChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		contact1 := &base.Contact{}
@@ -722,7 +722,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareContact(contact1, contact2)
 		assert.Nil(t, result, "CompareContact should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 23. parameter.go:342
 	t.Run("ParameterChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		param1 := &v3.Parameter{}
@@ -730,7 +730,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareParametersV3(param1, param2)
 		assert.Nil(t, result, "CompareParametersV3 should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 24. media_type.go:152
 	t.Run("MediaTypeChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		mediaType1 := &v3.MediaType{}
@@ -738,7 +738,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareMediaTypes(mediaType1, mediaType2)
 		assert.Nil(t, result, "CompareMediaTypes should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 25. discriminator.go:97
 	t.Run("DiscriminatorChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		discriminator1 := &base.Discriminator{}
@@ -746,7 +746,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareDiscriminator(discriminator1, discriminator2)
 		assert.Nil(t, result, "CompareDiscriminator should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 26. security_scheme.go:186
 	t.Run("SecuritySchemeChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		secScheme1 := &v3.SecurityScheme{}
@@ -754,7 +754,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareSecuritySchemes(secScheme1, secScheme2)
 		assert.Nil(t, result, "CompareSecuritySchemes should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 27. path_item.go:223
 	t.Run("PathItemChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		pathItem1 := &v3.PathItem{}
@@ -762,7 +762,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := ComparePathItems(pathItem1, pathItem2)
 		assert.Nil(t, result, "ComparePathItems should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 28. info.go:160
 	t.Run("InfoChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		info1 := &base.Info{}
@@ -770,7 +770,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareInfo(info1, info2)
 		assert.Nil(t, result, "CompareInfo should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 29. security_requirement.go:51
 	t.Run("SecurityRequirementChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		secReq1 := &base.SecurityRequirement{}
@@ -778,7 +778,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareSecurityRequirement(secReq1, secReq2)
 		assert.Nil(t, result, "CompareSecurityRequirement should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 30. operation.go:428
 	t.Run("OperationChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		operation1 := &v3.Operation{}
@@ -786,7 +786,7 @@ func TestTotalChangesZeroReturnNil(t *testing.T) {
 		result := CompareOperations(operation1, operation2)
 		assert.Nil(t, result, "CompareOperations should return nil when TotalChanges() <= 0")
 	})
-	
+
 	// 31. responses.go:145
 	t.Run("ResponsesChanges_TotalChangesZero_ReturnsNil", func(t *testing.T) {
 		responses1 := &v3.Responses{}

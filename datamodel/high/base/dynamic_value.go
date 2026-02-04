@@ -22,11 +22,11 @@ import (
 //
 // The N value indicates which value is set (0 = A, 1 == B), preventing the need to check both values.
 type DynamicValue[A any, B any] struct {
-	N           int // 0 == A, 1 == B
-	A           A
-	B           B
-	inline      bool
-	renderCtx   any // Context for inline rendering (typed as any to avoid import cycles)
+	N         int // 0 == A, 1 == B
+	A         A
+	B         B
+	inline    bool
+	renderCtx any // Context for inline rendering (typed as any to avoid import cycles)
 }
 
 // IsA will return true if the 'A' or left value is set.

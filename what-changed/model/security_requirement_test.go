@@ -593,7 +593,7 @@ ApiKey: []`
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
-	assert.Equal(t, "ApiKey", extChanges.Changes[0].Property)  // Verify scheme name in property
+	assert.Equal(t, "ApiKey", extChanges.Changes[0].Property) // Verify scheme name in property
 	assert.Equal(t, "ApiKey", extChanges.Changes[0].Original) // Verify scheme name in original value (entire scheme removed)
 }
 

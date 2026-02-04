@@ -2319,8 +2319,8 @@ func TestCopySchemaToComponents_NameCollision(t *testing.T) {
 func TestCalculateCollisionNameInline_NumericSuffix(t *testing.T) {
 	// Test: When filename-based name also collides, use numeric suffix
 	existingNames := map[string]bool{
-		"Cat":             true,
-		"Cat__external":   true, // Filename-based collision also exists
+		"Cat":              true,
+		"Cat__external":    true, // Filename-based collision also exists
 		"Cat__external__1": true, // First numeric suffix also taken (format: name__basename__N)
 	}
 

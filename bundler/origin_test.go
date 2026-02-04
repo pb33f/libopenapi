@@ -914,7 +914,7 @@ func TestCaptureOrigin_FullCoverage(t *testing.T) {
 		pr := &processRef{
 			ref: &index.Reference{
 				FullDefinition: "test.yaml",
-				Node: &yaml.Node{Line: 5, Column: 2},
+				Node:           &yaml.Node{Line: 5, Column: 2},
 			},
 			idx:          &index.SpecIndex{},
 			originalName: "Test",
