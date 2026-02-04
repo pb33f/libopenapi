@@ -308,17 +308,31 @@ func (sp *SchemaProxy) GetReferenceOrigin() *index.NodeOrigin {
 // It differs from Schema in that it does not require a low-level SchemaProxy to be present,
 // and will build the schema from the high-level one.
 func (sp *SchemaProxy) BuildSchema() (*Schema, error) {
-	if sp.rendered != nil {
-		return sp.rendered, sp.buildError
+	if sp == nil {
+		return nil, nil
 	}
 	schema := sp.Schema()
+	if sp.lock == nil {
+		return schema, sp.buildError
+	}
+	sp.lock.Lock()
 	er := sp.buildError
+	sp.lock.Unlock()
 	return schema, er
 }
 
 // GetBuildError returns any error that was thrown when calling Schema()
 func (sp *SchemaProxy) GetBuildError() error {
-	return sp.buildError
+	if sp == nil {
+		return nil
+	}
+	if sp.lock == nil {
+		return sp.buildError
+	}
+	sp.lock.Lock()
+	err := sp.buildError
+	sp.lock.Unlock()
+	return err
 }
 
 func (sp *SchemaProxy) GoLow() *base.SchemaProxy {
