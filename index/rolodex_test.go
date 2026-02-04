@@ -2554,17 +2554,12 @@ paths: {}
 		// Verify the path is absolute
 		assert.True(t, filepath.IsAbs(rolodex.indexConfig.SpecAbsolutePath))
 
-		// Ensure the path doesn't contain doubled segments (the bug we fixed)
-		// Without the fix, joining basePath + specPath would give:
-		// /cwd/rolodex_test_data/dir2/doc.yaml (going up from dir1 then into dir2)
-		// which is incorrect - it should be /cwd/rolodex_test_data/dir2/doc.yaml
-		// The key check is that we don't get /cwd/rolodex_test_data/dir1/dir2/doc.yaml
-		pathParts := strings.Split(rolodex.indexConfig.SpecAbsolutePath, string(os.PathSeparator))
-		for i := 0; i < len(pathParts)-1; i++ {
-			if pathParts[i] == pathParts[i+1] && pathParts[i] != "" {
-				t.Errorf("path contains doubled segment: %s", rolodex.indexConfig.SpecAbsolutePath)
-			}
-		}
+		// Ensure the path doesn't contain the specific doubled segments that the bug would cause
+		// The bug would cause paths like "dir1/dir2/dir2/doc.yaml" when it should be "dir2/doc.yaml"
+		// Note: We only check for doubled segments in the relative portion of the path,
+		// not the entire absolute path (CI runners may have paths like /work/repo/repo/)
+		assert.NotContains(t, rolodex.indexConfig.SpecAbsolutePath, "dir1"+string(os.PathSeparator)+"dir2"+string(os.PathSeparator)+"dir2")
+		assert.NotContains(t, rolodex.indexConfig.SpecAbsolutePath, "dir2"+string(os.PathSeparator)+"dir2")
 
 		// Verify the path ends correctly
 		assert.True(t, strings.HasSuffix(rolodex.indexConfig.SpecAbsolutePath, filepath.Join("dir2", "doc.yaml")))
