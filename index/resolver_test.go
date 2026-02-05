@@ -1781,4 +1781,43 @@ func TestVisitReference_Nil(t *testing.T) {
 	assert.Nil(t, n)
 }
 
+func TestResolver_SkipExternalRefResolution(t *testing.T) {
+	// Spec with external $ref that cannot be resolved
+	yml := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        product:
+          $ref: './models/product.yaml'
+        customer:
+          $ref: 'https://example.com/schemas/customer.yaml'`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.SkipExternalRefResolution = true
+	idx := NewSpecIndexWithConfig(&rootNode, config)
+
+	resolver := NewResolver(idx)
+	assert.NotNil(t, resolver)
+
+	errs := resolver.Resolve()
+	// With SkipExternalRefResolution, the resolver should NOT produce errors
+	// for external refs that can't be resolved
+	for _, err := range errs {
+		assert.NotContains(t, err.ErrorRef.Error(), "product.yaml",
+			"resolver should not report errors for external file refs when SkipExternalRefResolution is enabled")
+		assert.NotContains(t, err.ErrorRef.Error(), "customer.yaml",
+			"resolver should not report errors for external URL refs when SkipExternalRefResolution is enabled")
+	}
+}
+
 // func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, journey []*Reference, resolve bool) []*yaml.Node {

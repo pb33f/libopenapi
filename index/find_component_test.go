@@ -544,3 +544,33 @@ components:
 	assert.True(t, strings.Contains(logOutput, "external_schema.yaml"),
 		"Expected log to contain the file location")
 }
+
+func TestLookupRolodex_SkipExternalRefResolution(t *testing.T) {
+	spec := `openapi: 3.0.2
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    thang:
+      type: object`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.SkipExternalRefResolution = true
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+	r := NewRolodex(c)
+	index.rolodex = r
+
+	// lookupRolodex should return nil immediately when SkipExternalRefResolution is set,
+	// without attempting to open files via the rolodex
+	n := index.lookupRolodex(context.Background(), []string{"./models/pet.yaml"})
+	assert.Nil(t, n, "lookupRolodex should return nil when SkipExternalRefResolution is enabled")
+
+	// Also test with a remote URL reference
+	n = index.lookupRolodex(context.Background(), []string{"https://example.com/schemas/pet.yaml"})
+	assert.Nil(t, n, "lookupRolodex should return nil for remote refs when SkipExternalRefResolution is enabled")
+}

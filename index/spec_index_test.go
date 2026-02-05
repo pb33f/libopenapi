@@ -1062,6 +1062,68 @@ components:
 	assert.Len(t, index.GetReferenceIndexErrors(), 1)
 }
 
+func TestSpecIndex_ExtractComponentsFromRefs_SkipExternalRef_Sequential(t *testing.T) {
+	yml := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    exists:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.ExtractRefsSequentially = true
+	config.SkipExternalRefResolution = true
+	index := NewSpecIndexWithConfig(&rootNode, config)
+
+	// Create an external reference that cannot be found locally
+	ref := &Reference{
+		FullDefinition: "./models/pet.yaml",
+		Definition:     "./models/pet.yaml",
+	}
+
+	result := index.ExtractComponentsFromRefs(context.Background(), []*Reference{ref})
+	assert.Empty(t, result, "should return no results for unresolvable external ref")
+	// The key assertion: no errors should be recorded because external ref errors are skipped
+	assert.Len(t, index.GetReferenceIndexErrors(), 0,
+		"should not record errors for external refs when SkipExternalRefResolution is enabled")
+}
+
+func TestSpecIndex_ExtractComponentsFromRefs_SkipExternalRef_Async(t *testing.T) {
+	yml := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    exists:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.ExtractRefsSequentially = false // async mode
+	config.SkipExternalRefResolution = true
+	index := NewSpecIndexWithConfig(&rootNode, config)
+
+	// Create an external reference that cannot be found locally
+	ref := &Reference{
+		FullDefinition: "https://example.com/schemas/pet.yaml",
+		Definition:     "https://example.com/schemas/pet.yaml",
+	}
+
+	result := index.ExtractComponentsFromRefs(context.Background(), []*Reference{ref})
+	assert.Empty(t, result, "should return no results for unresolvable external ref")
+	// The key assertion: no errors should be recorded because external ref errors are skipped
+	assert.Len(t, index.GetReferenceIndexErrors(), 0,
+		"should not record errors for external refs when SkipExternalRefResolution is enabled")
+}
+
 func TestSpecIndex_FindComponent_WithACrazyAssPath(t *testing.T) {
 	yml := `paths:
   /crazy/ass/references:
