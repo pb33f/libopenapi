@@ -599,6 +599,14 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 				value := node.Content[i+1].Value
 				value = strings.ReplaceAll(value, "\\\\", "\\")
+
+				// If SkipExternalRefResolution is enabled, skip external refs entirely
+				if resolver.specIndex != nil && resolver.specIndex.config != nil &&
+					resolver.specIndex.config.SkipExternalRefResolution && utils.IsExternalRef(value) {
+					skip = true
+					continue
+				}
+
 				var locatedRef *Reference
 				var fullDef string
 				var definition string

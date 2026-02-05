@@ -840,6 +840,10 @@ func (index *SpecIndex) ExtractComponentsFromRefs(ctx context.Context, refs []*R
 				}
 				index.refLock.Unlock()
 			} else {
+				// If SkipExternalRefResolution is enabled, don't record errors for external refs
+				if index.config != nil && index.config.SkipExternalRefResolution && utils.IsExternalRef(ref.Definition) {
+					continue
+				}
 				// Record error for definitive failure
 				_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
 				index.errorLock.Lock()
@@ -959,6 +963,10 @@ func (index *SpecIndex) ExtractComponentsFromRefs(ctx context.Context, refs []*R
 			}
 			index.refLock.Unlock()
 		} else {
+			// If SkipExternalRefResolution is enabled, don't record errors for external refs
+			if index.config != nil && index.config.SkipExternalRefResolution && utils.IsExternalRef(ref.Definition) {
+				continue
+			}
 			// Definitive failure - record error
 			_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
 			index.errorLock.Lock()
