@@ -3,7 +3,6 @@ package utils
 import (
 	"crypto/rand"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -51,8 +50,6 @@ type cachedJSONPath struct {
 // jsonPathCache stores compiled JSONPath expressions keyed by normalized string.
 var jsonPathCache sync.Map
 
-var errCircularReference = errors.New("circular reference detected in YAML node graph")
-
 var jsonPathQuery = func(path *jsonpath.JSONPath, node *yaml.Node) []*yaml.Node {
 	return path.Query(node)
 }
@@ -71,61 +68,6 @@ func getJSONPath(rawPath string) (*jsonpath.JSONPath, error) {
 		err:  err,
 	})
 	return path, err
-}
-
-func hasCircularReference(root *yaml.Node) bool {
-	if root == nil {
-		return false
-	}
-
-	type frame struct {
-		node      *yaml.Node
-		index     int
-		aliasDone bool
-	}
-
-	visited := make(map[*yaml.Node]uint8, 64) // 0 = unvisited, 1 = visiting, 2 = done
-	stack := []frame{{node: root}}
-	for len(stack) > 0 {
-		top := &stack[len(stack)-1]
-		n := top.node
-
-		if visited[n] == 0 {
-			visited[n] = 1
-		}
-
-		if !top.aliasDone {
-			top.aliasDone = true
-			if n.Kind == yaml.AliasNode && n.Alias != nil {
-				if visited[n.Alias] == 1 {
-					return true
-				}
-				if visited[n.Alias] == 0 {
-					stack = append(stack, frame{node: n.Alias})
-					continue
-				}
-			}
-		}
-
-		if top.index < len(n.Content) {
-			child := n.Content[top.index]
-			top.index++
-			if child == nil {
-				continue
-			}
-			if visited[child] == 1 {
-				return true
-			}
-			if visited[child] == 0 {
-				stack = append(stack, frame{node: child})
-			}
-			continue
-		}
-
-		visited[n] = 2
-		stack = stack[:len(stack)-1]
-	}
-	return false
 }
 
 // FindNodes will find a node based on JSONPath, it accepts raw yaml/json as input.
@@ -203,10 +145,6 @@ func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, 
 	path, err := getJSONPath(jsonPath)
 	if err != nil {
 		return nil, err
-	}
-
-	if hasCircularReference(node) {
-		return nil, errCircularReference
 	}
 
 	// this can spin out, to lets gatekeep it.

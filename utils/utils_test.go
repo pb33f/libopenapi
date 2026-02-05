@@ -1542,26 +1542,6 @@ func TestIsNodeNull(t *testing.T) {
 	assert.True(t, IsNodeNull(noNode))
 }
 
-func TestFindNodesWithoutDeserializingWithTimeout(t *testing.T) {
-	// create a and b node that reference each other
-	a := &yaml.Node{
-		Value: "beans",
-		Tag:   "!!map",
-		Kind:  yaml.MappingNode,
-	}
-	b := &yaml.Node{
-		Tag:   "!!map",
-		Value: "cake",
-		Kind:  yaml.MappingNode,
-	}
-	a.Content = []*yaml.Node{b}
-	b.Content = []*yaml.Node{a}
-
-	nodes, err := FindNodesWithoutDeserializingWithTimeout(a, "$..chicken", 10*time.Millisecond)
-	assert.Nil(t, nodes)
-	assert.ErrorIs(t, err, errCircularReference)
-}
-
 func TestFindNodesWithoutDeserializingWithTimeout_Timeout(t *testing.T) {
 	root, _ := FindNodes(getPetstore(), "$")
 	block := make(chan struct{})
@@ -1589,54 +1569,6 @@ func TestFindNodesWithoutDeserializingWithTimeout_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, nodes)
 	assert.Len(t, nodes, 1)
-}
-
-func TestHasCircularReference_NoCycle(t *testing.T) {
-	leaf := &yaml.Node{
-		Kind:  yaml.ScalarNode,
-		Value: "leaf",
-	}
-	root := &yaml.Node{
-		Kind:    yaml.MappingNode,
-		Content: []*yaml.Node{leaf, leaf},
-	}
-	assert.False(t, hasCircularReference(root))
-}
-
-func TestHasCircularReference_NilRoot(t *testing.T) {
-	assert.False(t, hasCircularReference(nil))
-}
-
-func TestHasCircularReference_NilChild(t *testing.T) {
-	root := &yaml.Node{
-		Kind:    yaml.SequenceNode,
-		Content: []*yaml.Node{nil},
-	}
-	assert.False(t, hasCircularReference(root))
-}
-
-func TestHasCircularReference_AliasNoCycle(t *testing.T) {
-	target := &yaml.Node{
-		Kind:  yaml.ScalarNode,
-		Value: "target",
-	}
-	alias := &yaml.Node{
-		Kind:  yaml.AliasNode,
-		Alias: target,
-	}
-	root := &yaml.Node{
-		Kind:    yaml.MappingNode,
-		Content: []*yaml.Node{alias},
-	}
-	assert.False(t, hasCircularReference(root))
-}
-
-func TestHasCircularReference_AliasCycle(t *testing.T) {
-	alias := &yaml.Node{
-		Kind: yaml.AliasNode,
-	}
-	alias.Alias = alias
-	assert.True(t, hasCircularReference(alias))
 }
 
 func TestGenerateAlphanumericString(t *testing.T) {
