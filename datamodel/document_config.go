@@ -81,6 +81,12 @@ type DocumentConfiguration struct {
 	// FileFilter should be used to limit the scope of the rolodex.
 	AllowFileReferences bool
 
+	// SkipExternalRefResolution will skip resolving external $ref references (those not starting with #).
+	// When enabled, external references will be left as-is during model building. Schema proxies will
+	// report IsReference()=true and GetReference() will return the ref string, but Schema() will return nil.
+	// This is useful for code generators that handle external refs via import mappings.
+	SkipExternalRefResolution bool
+
 	// AllowRemoteReferences will allow the index to lookup remote references. This is disabled by default.
 	//
 	// This behavior is now driven by the inclusion of a BaseURL. If a BaseURL is set, then the

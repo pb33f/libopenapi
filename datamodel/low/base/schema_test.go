@@ -1400,6 +1400,7 @@ func TestExtractSchema_OneOfRef(t *testing.T) {
 }
 
 func TestSchema_Hash_Equal(t *testing.T) {
+	low.ClearHashCache()
 	left := `schema:
   $schema: https://athing.com
   multipleOf: 1
@@ -3042,4 +3043,166 @@ contentSchema:
 
 	// Different contentSchema types should produce different hashes
 	assert.NotEqual(t, hash1, hash2)
+}
+
+func TestBuildPropertyMap_SkipExternalRef(t *testing.T) {
+	// Schema with a property that has an external $ref
+	schemaYml := `type: object
+properties:
+  local:
+    type: string
+  external:
+    $ref: './models/Pet.yaml#/Pet'`
+
+	var schemaNode yaml.Node
+	_ = yaml.Unmarshal([]byte(schemaYml), &schemaNode)
+
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&schemaNode, cfg)
+
+	var schema Schema
+	_ = low.BuildModel(schemaNode.Content[0], &schema)
+	err := schema.Build(context.Background(), schemaNode.Content[0], idx)
+	assert.Nil(t, err) // parent builds successfully
+
+	// Check properties
+	assert.NotNil(t, schema.Properties.Value)
+	found := false
+	for k, v := range schema.Properties.Value.FromOldest() {
+		if k.Value == "external" {
+			found = true
+			proxy := v.Value
+			assert.True(t, proxy.IsReference())
+			assert.Equal(t, "./models/Pet.yaml#/Pet", proxy.GetReference())
+			// Schema() should return nil for unresolved external ref
+			assert.Nil(t, proxy.Schema())
+			assert.Nil(t, proxy.GetBuildError())
+		}
+	}
+	assert.True(t, found, "expected to find 'external' property")
+}
+
+func TestBuildSchema_AllOf_SkipExternalRef(t *testing.T) {
+	schemaYml := `allOf:
+  - $ref: './models/Base.yaml#/Base'
+  - type: object
+    properties:
+      name:
+        type: string`
+
+	var schemaNode yaml.Node
+	_ = yaml.Unmarshal([]byte(schemaYml), &schemaNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&schemaNode, cfg)
+
+	var schema Schema
+	_ = low.BuildModel(schemaNode.Content[0], &schema)
+	err := schema.Build(context.Background(), schemaNode.Content[0], idx)
+	assert.Nil(t, err)
+
+	assert.NotNil(t, schema.AllOf.Value)
+	assert.Len(t, schema.AllOf.Value, 2)
+
+	// First allOf item should be the external ref
+	first := schema.AllOf.Value[0].Value
+	assert.True(t, first.IsReference())
+	assert.Equal(t, "./models/Base.yaml#/Base", first.GetReference())
+	assert.Nil(t, first.Schema())
+	assert.Nil(t, first.GetBuildError())
+}
+
+func TestBuildSchema_OneOf_SkipExternalRef(t *testing.T) {
+	schemaYml := `oneOf:
+  - $ref: 'https://example.com/Cat.yaml'
+  - type: object
+    properties:
+      bark:
+        type: boolean`
+
+	var schemaNode yaml.Node
+	_ = yaml.Unmarshal([]byte(schemaYml), &schemaNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&schemaNode, cfg)
+
+	var schema Schema
+	_ = low.BuildModel(schemaNode.Content[0], &schema)
+	err := schema.Build(context.Background(), schemaNode.Content[0], idx)
+	assert.Nil(t, err)
+
+	assert.NotNil(t, schema.OneOf.Value)
+	assert.Len(t, schema.OneOf.Value, 2)
+
+	first := schema.OneOf.Value[0].Value
+	assert.True(t, first.IsReference())
+	assert.Equal(t, "https://example.com/Cat.yaml", first.GetReference())
+	assert.Nil(t, first.Schema())
+	assert.Nil(t, first.GetBuildError())
+}
+
+func TestBuildSchema_AllOfMap_SkipExternalRef(t *testing.T) {
+	// allOf as a single map $ref (not an array) exercises the map branch of buildSchema (Site B)
+	schemaYml := `allOf:
+  $ref: './models/Base.yaml#/Base'`
+
+	var schemaNode yaml.Node
+	_ = yaml.Unmarshal([]byte(schemaYml), &schemaNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&schemaNode, cfg)
+
+	var schema Schema
+	_ = low.BuildModel(schemaNode.Content[0], &schema)
+	err := schema.Build(context.Background(), schemaNode.Content[0], idx)
+	assert.Nil(t, err)
+
+	assert.NotNil(t, schema.AllOf.Value)
+	assert.Len(t, schema.AllOf.Value, 1)
+
+	first := schema.AllOf.Value[0].Value
+	assert.True(t, first.IsReference())
+	assert.Equal(t, "./models/Base.yaml#/Base", first.GetReference())
+	assert.Nil(t, first.Schema())
+	assert.Nil(t, first.GetBuildError())
+}
+
+func TestExtractSchema_RootRef_SkipExternalRef(t *testing.T) {
+	yml := `$ref: './models/Pet.yaml#/Pet'`
+
+	var root yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &root)
+
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&root, cfg)
+
+	result, err := ExtractSchema(context.Background(), root.Content[0], idx)
+	assert.Nil(t, err)
+	assert.NotNil(t, result)
+	assert.True(t, result.Value.IsReference())
+	assert.Equal(t, "./models/Pet.yaml#/Pet", result.Value.GetReference())
+	assert.Nil(t, result.Value.Schema())
+	assert.Nil(t, result.Value.GetBuildError())
+}
+
+func TestExtractSchema_SchemaKeyRef_SkipExternalRef(t *testing.T) {
+	yml := `schema:
+  $ref: './models/Pet.yaml#/Pet'`
+
+	var root yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &root)
+
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&root, cfg)
+
+	result, err := ExtractSchema(context.Background(), root.Content[0], idx)
+	assert.Nil(t, err)
+	assert.NotNil(t, result)
+	assert.True(t, result.Value.IsReference())
+	assert.Equal(t, "./models/Pet.yaml#/Pet", result.Value.GetReference())
+	assert.Nil(t, result.Value.Schema())
+	assert.Nil(t, result.Value.GetBuildError())
 }

@@ -145,6 +145,12 @@ func (sp *SchemaProxy) Schema() *Schema {
 		return sp.rendered
 	}
 
+	// If this proxy represents an unresolved external ref, return nil without error.
+	if sp.IsReference() && sp.idx != nil && sp.idx.GetConfig() != nil &&
+		sp.idx.GetConfig().SkipExternalRefResolution && utils.IsExternalRef(sp.GetReference()) {
+		return nil
+	}
+
 	// handle property merging for references with sibling properties
 	buildNode := sp.vn
 	if sp.idx != nil && sp.idx.GetConfig() != nil {

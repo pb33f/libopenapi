@@ -1928,3 +1928,109 @@ components:
 		t.Fatal("components or schemas not found in reloaded model")
 	}
 }
+
+func TestSkipExternalRefResolution_Integration(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  localProp:
+                    type: string
+                  externalProp:
+                    $ref: './models/Pet.yaml#/Pet'
+                allOf:
+                  - $ref: './models/Base.yaml#/Base'
+                  - type: object
+                    properties:
+                      name:
+                        type: string
+components:
+  schemas:
+    LocalSchema:
+      type: object
+      properties:
+        id:
+          type: integer`
+
+	config := datamodel.NewDocumentConfiguration()
+	config.SkipExternalRefResolution = true
+
+	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
+	require.NoError(t, err)
+
+	model, errs := doc.BuildV3Model()
+	_ = errs
+	require.NotNil(t, model)
+
+	// Navigate to the response schema
+	path := model.Model.Paths.PathItems.GetOrZero("/pets")
+	require.NotNil(t, path)
+
+	getOp := path.Get
+	require.NotNil(t, getOp)
+
+	resp := getOp.Responses.Codes.GetOrZero("200")
+	require.NotNil(t, resp)
+
+	jsonContent := resp.Content.GetOrZero("application/json")
+	require.NotNil(t, jsonContent)
+
+	schema := jsonContent.Schema
+	require.NotNil(t, schema)
+
+	schemaResolved := schema.Schema()
+	require.NotNil(t, schemaResolved)
+
+	// Check properties are iterable
+	require.NotNil(t, schemaResolved.Properties)
+
+	// Check external ref property
+	externalProp := schemaResolved.Properties.GetOrZero("externalProp")
+	require.NotNil(t, externalProp, "externalProp should exist in properties")
+	assert.True(t, externalProp.IsReference())
+	assert.Equal(t, "./models/Pet.yaml#/Pet", externalProp.GetReference())
+	assert.Nil(t, externalProp.Schema()) // unresolved external ref
+	assert.Nil(t, externalProp.GetBuildError())
+
+	// Check local properties still work
+	localProp := schemaResolved.Properties.GetOrZero("localProp")
+	require.NotNil(t, localProp, "localProp should exist in properties")
+	assert.False(t, localProp.IsReference())
+	localSchema := localProp.Schema()
+	require.NotNil(t, localSchema)
+	assert.Contains(t, localSchema.Type, "string")
+
+	// Check allOf with external ref
+	require.NotNil(t, schemaResolved.AllOf)
+	require.Len(t, schemaResolved.AllOf, 2)
+
+	allOfFirst := schemaResolved.AllOf[0]
+	assert.True(t, allOfFirst.IsReference())
+	assert.Equal(t, "./models/Base.yaml#/Base", allOfFirst.GetReference())
+	assert.Nil(t, allOfFirst.Schema())
+	assert.Nil(t, allOfFirst.GetBuildError())
+
+	// Second allOf should build normally (local)
+	allOfSecond := schemaResolved.AllOf[1]
+	assert.False(t, allOfSecond.IsReference())
+	secondSchema := allOfSecond.Schema()
+	require.NotNil(t, secondSchema)
+
+	// Check that the LocalSchema component still resolves
+	localSchemaComp := model.Model.Components.Schemas.GetOrZero("LocalSchema")
+	require.NotNil(t, localSchemaComp, "LocalSchema component should exist")
+	resolved := localSchemaComp.Schema()
+	require.NotNil(t, resolved)
+}
