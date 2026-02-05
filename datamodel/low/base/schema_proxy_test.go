@@ -700,3 +700,50 @@ type: array`), &node)
 	result := sp.attemptPropertyMerging(node.Content[0], config)
 	assert.Nil(t, result) // when merge fails, nil is returned
 }
+
+func TestSchemaProxy_SkipExternalRef_ReturnsNil(t *testing.T) {
+	yml := `components:
+  schemas:
+    Local:
+      type: object`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	sp := &SchemaProxy{idx: idx}
+	sp.SetReference("./models/Pet.yaml#/Pet", nil)
+	_ = sp.Build(context.Background(), nil, &yaml.Node{Kind: yaml.MappingNode}, idx)
+
+	// Schema() should return nil without setting a build error
+	result := sp.Schema()
+	assert.Nil(t, result)
+	assert.Nil(t, sp.GetBuildError())
+	assert.True(t, sp.IsReference())
+	assert.Equal(t, "./models/Pet.yaml#/Pet", sp.GetReference())
+}
+
+func TestSchemaProxy_SkipExternalRef_LocalRefNotBlocked(t *testing.T) {
+	yml := `components:
+  schemas:
+    Local:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	// local ref - should NOT be skipped by the guard
+	sp := &SchemaProxy{idx: idx}
+	sp.SetReference("#/components/schemas/Local", nil)
+
+	assert.True(t, sp.IsReference())
+	assert.Equal(t, "#/components/schemas/Local", sp.GetReference())
+}

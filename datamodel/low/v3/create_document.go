@@ -49,6 +49,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	idxConfig.IgnorePolymorphicCircularReferences = config.IgnorePolymorphicCircularReferences
 	idxConfig.AllowUnknownExtensionContentDetection = config.AllowUnknownExtensionContentDetection
 	idxConfig.TransformSiblingRefs = config.TransformSiblingRefs
+	idxConfig.SkipExternalRefResolution = config.SkipExternalRefResolution
 	idxConfig.AvoidCircularReferenceCheck = true
 
 	// handle $self field for OpenAPI 3.2+ documents
