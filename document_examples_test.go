@@ -19,12 +19,13 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/utils"
-	"github.com/stretchr/testify/assert"
 )
 
 func ExampleNewDocument_fromOpenAPI3Document() {
@@ -700,6 +701,8 @@ components:
           $ref: './models/product.yaml'
         customer:
           $ref: 'https://example.com/schemas/customer.yaml'
+		warehouse:
+          $ref: 'https://example.com/schemas/supplier.yaml#/components/schemas/Warehouse'
       required:
         - id
         - product
