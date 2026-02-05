@@ -5,7 +5,6 @@ package bundler
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -575,10 +574,7 @@ func TestBundleDocument_BundleBytesComposed_NestedFiles(t *testing.T) {
 		len2 := len(bundledBytes)
 		assert.Equal(t, len1, len2)
 
-		// hash the two files and ensure they match
-		hash1 := sha256.Sum256(preBundled)
-		hash2 := sha256.Sum256(bundledBytes)
-		assert.Equal(t, hash1, hash2)
+		assert.Equal(t, preBundled, bundledBytes)
 	}
 }
 

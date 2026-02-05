@@ -4,12 +4,9 @@
 package low
 
 import (
-	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"hash"
+	"hash/maphash"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -1082,9 +1079,7 @@ func GenerateHashString(v any) string {
 			str = fmt.Sprint(v)
 		}
 
-		// Use hex.EncodeToString which is more efficient than fmt.Sprintf
-		hash := sha256.Sum256([]byte(str))
-		hashStr = hex.EncodeToString(hash[:])
+		hashStr = strconv.FormatUint(maphash.String(globalHashSeed, str), 16)
 	}
 
 	// Store in cache if we have a valid pointer and caching is enabled for this type
@@ -1110,13 +1105,12 @@ func hashYamlNodeFast(n *yaml.Node) string {
 		}
 	}
 
-	// Use a hasher instead of marshaling
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, n, visited)
-
-	// Use hex.EncodeToString which is more efficient than fmt.Sprintf
-	result := hex.EncodeToString(h.Sum(nil))
+	result := strconv.FormatUint(h.Sum64(), 16)
+	hasherPool.Put(h)
 
 	// Cache complex nodes
 	if n.Kind != yaml.ScalarNode {
@@ -1127,7 +1121,7 @@ func hashYamlNodeFast(n *yaml.Node) string {
 }
 
 // hashNodeTree walks the YAML tree and hashes it without marshaling
-func hashNodeTree(h hash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
+func hashNodeTree(h *maphash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 	if n == nil {
 		return
 	}
@@ -1178,7 +1172,7 @@ func hashNodeTree(h hash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 		// For maps, we need consistent ordering
 		// Collect key-value pairs and sort by key hash
 		type kvPair struct {
-			keyHash   string
+			keyHash   uint64
 			keyNode   *yaml.Node
 			valueNode *yaml.Node
 		}
@@ -1186,14 +1180,15 @@ func hashNodeTree(h hash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 
 		for i := 0; i < len(content); i += 2 {
 			if i+1 < len(content) {
-				// Hash the key for sorting
-				keyH := sha256.New()
+				keyH := hasherPool.Get().(*maphash.Hash)
+				keyH.Reset()
 				hashNodeTree(keyH, content[i], visited)
 				pairs = append(pairs, kvPair{
-					keyHash:   fmt.Sprintf("%x", keyH.Sum(nil)),
+					keyHash:   keyH.Sum64(),
 					keyNode:   content[i],
 					valueNode: content[i+1],
 				})
+				hasherPool.Put(keyH)
 			}
 		}
 
@@ -1238,21 +1233,22 @@ func CompareYAMLNodes(left, right *yaml.Node) bool {
 		return false
 	}
 
-	// Use the existing hashNodeTree function to generate consistent hashes
-	leftHash := sha256.New()
-	rightHash := sha256.New()
+	leftH := hasherPool.Get().(*maphash.Hash)
+	leftH.Reset()
+	rightH := hasherPool.Get().(*maphash.Hash)
+	rightH.Reset()
 
 	leftVisited := make(map[*yaml.Node]bool)
 	rightVisited := make(map[*yaml.Node]bool)
 
-	hashNodeTree(leftHash, left, leftVisited)
-	hashNodeTree(rightHash, right, rightVisited)
+	hashNodeTree(leftH, left, leftVisited)
+	hashNodeTree(rightH, right, rightVisited)
 
-	leftSum := leftHash.Sum(nil)
-	rightSum := rightHash.Sum(nil)
+	result := leftH.Sum64() == rightH.Sum64()
 
-	// Compare the hash bytes directly
-	return bytes.Equal(leftSum, rightSum)
+	hasherPool.Put(leftH)
+	hasherPool.Put(rightH)
+	return result
 }
 
 // YAMLNodeToBytes converts a YAML node to bytes in a more efficient way than yaml.Marshal
@@ -1274,14 +1270,17 @@ func HashYAMLNodeSlice(nodes []*yaml.Node) string {
 		return ""
 	}
 
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 
 	for _, node := range nodes {
 		hashNodeTree(h, node, visited)
 	}
 
-	return fmt.Sprintf("%x", h.Sum(nil))
+	result := strconv.FormatUint(h.Sum64(), 16)
+	hasherPool.Put(h)
+	return result
 }
 
 // AppendMapHashes will append all the hashes of a map to a slice of strings.
