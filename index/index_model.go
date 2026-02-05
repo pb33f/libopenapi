@@ -177,6 +177,10 @@ type SpecIndexConfig struct {
 	// the file is a JSON Schema. To allow JSON Schema files to be included set this to true.
 	SkipDocumentCheck bool
 
+	// SkipExternalRefResolution will skip resolving external $ref references (those not starting with #).
+	// When enabled, external references will be left as-is during model building.
+	SkipExternalRefResolution bool
+
 	// ExtractRefsSequentially will extract all references sequentially, which means the index will look up references
 	// as it finds them, vs looking up everything asynchronously.
 	// This is a more thorough way of building the index, but it's slower. It's required building a document
@@ -270,6 +274,7 @@ func (s *SpecIndexConfig) ToDocumentConfiguration() *datamodel.DocumentConfigura
 		TransformSiblingRefs:                  s.TransformSiblingRefs,
 		MergeReferencedProperties:             s.MergeReferencedProperties,
 		PropertyMergeStrategy:                 strategy,
+		SkipExternalRefResolution:             s.SkipExternalRefResolution,
 		Logger:                                s.Logger,
 	}
 }

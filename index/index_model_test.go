@@ -107,3 +107,19 @@ func TestSpecIndexConfig_ToDocumentConfiguration_AllFields(t *testing.T) {
 	assert.True(t, result.TransformSiblingRefs)
 	assert.False(t, result.MergeReferencedProperties) // default disabled for index configs
 }
+
+func TestSpecIndexConfig_ToDocumentConfiguration_SkipExternalRefResolution(t *testing.T) {
+	config := &SpecIndexConfig{
+		SkipExternalRefResolution: true,
+	}
+	result := config.ToDocumentConfiguration()
+	assert.NotNil(t, result)
+	assert.True(t, result.SkipExternalRefResolution)
+}
+
+func TestSpecIndexConfig_ToDocumentConfiguration_SkipExternalRefResolution_False(t *testing.T) {
+	config := &SpecIndexConfig{}
+	result := config.ToDocumentConfiguration()
+	assert.NotNil(t, result)
+	assert.False(t, result.SkipExternalRefResolution)
+}

@@ -1122,6 +1122,12 @@ func CheckForMergeNodes(node *yaml.Node) {
 	}
 }
 
+// IsExternalRef returns true if the reference string points to an external resource
+// (i.e., it is non-empty and does not start with '#').
+func IsExternalRef(ref string) bool {
+	return ref != "" && !strings.HasPrefix(ref, "#")
+}
+
 type RemoteURLHandler = func(url string) (*http.Response, error)
 
 // GenerateAlphanumericString creates a random alphanumeric string of length n

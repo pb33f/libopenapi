@@ -2,6 +2,7 @@ package base
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash/maphash"
 	"sort"
@@ -1403,14 +1404,16 @@ func buildPropertyMap(ctx context.Context, parent *Schema, root *yaml.Node, idx 
 			refString := ""
 			var refNode *yaml.Node
 			if h, _, l := utils.IsNodeRefValue(prop); h {
-				ref, fIdx, _, fctx := low.LocateRefNodeWithContext(foundCtx, prop, foundIdx)
+				ref, fIdx, err, fctx := low.LocateRefNodeWithContext(foundCtx, prop, foundIdx)
 				if ref != nil {
-
 					refNode = prop
 					prop = ref
 					refString = l
 					foundCtx = fctx
 					foundIdx = fIdx
+				} else if errors.Is(err, low.ErrExternalRefSkipped) {
+					refString = l
+					refNode = prop
 				} else {
 					return nil, fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
 						prop.Content[1].Value, prop.Content[1].Line, prop.Content[1].Column)
@@ -1554,12 +1557,14 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(valueNode); h {
 				isRef = true
-				ref, fIdx, _, fctx := low.LocateRefNodeWithContext(foundCtx, valueNode, foundIdx)
+				ref, fIdx, err, fctx := low.LocateRefNodeWithContext(foundCtx, valueNode, foundIdx)
 				if ref != nil {
 					refNode = valueNode
 					valueNode = ref
 					foundCtx = fctx
 					foundIdx = fIdx
+				} else if err == low.ErrExternalRefSkipped {
+					refNode = valueNode
 				} else {
 					errors <- fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 						valueNode.Content[1].Value, valueNode.Content[1].Line, valueNode.Content[1].Column)
@@ -1587,16 +1592,17 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 				foundCtx = ctx
 				if h, _, refLocation = utils.IsNodeRefValue(vn); h {
 					isRef = true
-					ref, fIdx, _, fctx := low.LocateRefNodeWithContext(foundCtx, vn, foundIdx)
+					ref, fIdx, err, fctx := low.LocateRefNodeWithContext(foundCtx, vn, foundIdx)
 					if ref != nil {
 						refNode = vn
 						vn = ref
 						foundCtx = fctx
 						foundIdx = fIdx
+					} else if err == low.ErrExternalRefSkipped {
+						refNode = vn
 					} else {
-						err := fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
+						errors <- fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 							vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column)
-						errors <- err
 						return
 					}
 				}
@@ -1633,14 +1639,22 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 
 	foundIndex := idx
 	foundCtx := ctx
-	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
+	if rf, rl, rv := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
-		ref, fIdx, _, nCtx := low.LocateRefNodeWithContext(ctx, root, idx)
+		ref, fIdx, err, nCtx := low.LocateRefNodeWithContext(ctx, root, idx)
 		if ref != nil {
 			schNode = ref
 			schLabel = rl
 			foundCtx = nCtx
 			foundIndex = fIdx
+		} else if errors.Is(err, low.ErrExternalRefSkipped) {
+			refLocation = rv
+			schema := &SchemaProxy{kn: root, vn: root, idx: idx, ctx: ctx}
+			_ = schema.Build(ctx, root, root, idx)
+			n := &low.NodeReference[*SchemaProxy]{Value: schema, KeyNode: root, ValueNode: root}
+			n.SetReference(refLocation, root)
+			schema.SetReference(refLocation, root)
+			return n, nil
 		} else {
 			v := root.Content[1].Value
 			if root.Content[1].Value == "" {
@@ -1654,7 +1668,7 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 		if schNode != nil {
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(schNode); h {
-				ref, fIdx, _, nCtx := low.LocateRefNodeWithContext(foundCtx, schNode, foundIndex)
+				ref, fIdx, lerr, nCtx := low.LocateRefNodeWithContext(foundCtx, schNode, foundIndex)
 				if ref != nil {
 					refNode = schNode
 					schNode = ref
@@ -1662,6 +1676,8 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 						foundIndex = fIdx
 					}
 					foundCtx = nCtx
+				} else if errors.Is(lerr, low.ErrExternalRefSkipped) {
+					refNode = schNode
 				} else {
 					v := schNode.Content[1].Value
 					if schNode.Content[1].Value == "" {

@@ -38,6 +38,10 @@ var stringBuilderPool = sync.Pool{
 // Uses sync.Map for thread-safe concurrent access.
 var hashCache sync.Map
 
+// ErrExternalRefSkipped is returned by LocateRefNodeWithContext when
+// SkipExternalRefResolution is enabled and the reference is external.
+var ErrExternalRefSkipped = errors.New("external reference resolution skipped")
+
 // ClearHashCache clears the global hash cache. This should be called before
 // starting a new document comparison to ensure clean state.
 func ClearHashCache() {
@@ -114,6 +118,10 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 		if rv == "" {
 			return nil, nil, fmt.Errorf("reference at line %d, column %d is empty, it cannot be resolved",
 				root.Line, root.Column), ctx
+		}
+
+		if idx != nil && idx.GetConfig() != nil && idx.GetConfig().SkipExternalRefResolution && utils.IsExternalRef(rv) {
+			return nil, idx, ErrExternalRefSkipped, ctx
 		}
 
 		origRef := rv
@@ -381,6 +389,10 @@ func ExtractObjectRaw[T Buildable[N], N any](ctx context.Context, key, root *yam
 			if err != nil {
 				circError = err
 			}
+		} else if errors.Is(err, ErrExternalRefSkipped) {
+			var n T = new(N)
+			SetReference(n, rv, root)
+			return n, nil, true, rv
 		} else {
 			if err != nil {
 				return nil, fmt.Errorf("object extraction failed: %s", err.Error()), isReference, referenceValue
@@ -431,6 +443,12 @@ func ExtractObject[T Buildable[N], N any](ctx context.Context, label string, roo
 			if err != nil {
 				circError = err
 			}
+		} else if errors.Is(err, ErrExternalRefSkipped) {
+			var n T = new(N)
+			SetReference(n, refVal, root)
+			res := NodeReference[T]{Value: n, KeyNode: rl, ValueNode: root}
+			res.SetReference(refVal, root)
+			return res, nil
 		} else {
 			if err != nil {
 				return NodeReference[T]{}, fmt.Errorf("object extraction failed: %s", err.Error())
@@ -453,6 +471,12 @@ func ExtractObject[T Buildable[N], N any](ctx context.Context, label string, roo
 					if lerr != nil {
 						circError = lerr
 					}
+				} else if errors.Is(lerr, ErrExternalRefSkipped) {
+					var n T = new(N)
+					SetReference(n, rVal, vn)
+					res := NodeReference[T]{Value: n, KeyNode: ln, ValueNode: vn}
+					res.SetReference(rVal, vn)
+					return res, nil
 				} else {
 					if lerr != nil {
 						return NodeReference[T]{}, fmt.Errorf("object extraction failed: %s", lerr.Error())
@@ -498,8 +522,34 @@ func SetReference(obj any, ref string, refNode *yaml.Node) {
 		return
 	}
 
+	// Ensure the embedded *Reference is initialized before calling SetReference.
+	// Buildable types embed *Reference (a pointer) which is nil after new(T).
+	// Calling SetReference on a nil *Reference would panic.
+	initEmbeddedReference(obj)
+
 	if r, ok := obj.(SetReferencer); ok {
 		r.SetReference(ref, refNode)
+	}
+}
+
+// initEmbeddedReference uses reflection to find and initialize a nil *Reference
+// field embedded in obj. This is needed when objects are created via new(T) without
+// calling Build(), which normally initializes the embedded *Reference.
+func initEmbeddedReference(obj any) {
+	v := reflect.ValueOf(obj)
+	if v.Kind() != reflect.Ptr || v.IsNil() {
+		return
+	}
+	v = v.Elem()
+	if v.Kind() != reflect.Struct {
+		return
+	}
+	f := v.FieldByName("Reference")
+	if !f.IsValid() || f.Kind() != reflect.Ptr || !f.IsNil() {
+		return
+	}
+	if f.Type() == reflect.TypeOf((*Reference)(nil)) {
+		f.Set(reflect.ValueOf(new(Reference)))
 	}
 }
 
@@ -523,6 +573,8 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 			if err != nil {
 				circError = err
 			}
+		} else if errors.Is(err, ErrExternalRefSkipped) {
+			return []ValueReference[T]{}, rl, root, nil
 		} else {
 			return []ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
 				root.Content[1].Value)
@@ -540,6 +592,8 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 					if err != nil {
 						circError = err
 					}
+				} else if errors.Is(err, ErrExternalRefSkipped) {
+					return []ValueReference[T]{}, ln, vn, nil
 				} else {
 					if err != nil {
 						return []ValueReference[T]{}, nil, nil,
@@ -587,6 +641,13 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 					if err != nil {
 						circError = err
 					}
+				} else if errors.Is(err, ErrExternalRefSkipped) {
+					var n T = new(N)
+					SetReference(n, rv, node)
+					v := ValueReference[T]{Value: n, ValueNode: node}
+					v.SetReference(rv, node)
+					items = append(items, v)
+					continue
 				} else {
 					if err != nil {
 						return []ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
@@ -688,6 +749,13 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 					if err != nil {
 						circError = err
 					}
+				} else if errors.Is(err, ErrExternalRefSkipped) {
+					var n PT = new(N)
+					SetReference(n, rv, node)
+					v := ValueReference[PT]{Value: n, ValueNode: node}
+					v.SetReference(rv, node)
+					valueMap.Set(KeyReference[string]{Value: currentKey.Value, KeyNode: currentKey}, v)
+					continue
 				} else {
 					if err != nil {
 						return nil, fmt.Errorf("map build failed: reference cannot be found: %s", err.Error())
@@ -781,6 +849,8 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 			if err != nil {
 				circError = err
 			}
+		} else if errors.Is(err, ErrExternalRefSkipped) {
+			return nil, rl, root, nil
 		} else {
 			return nil, labelNode, valueNode, fmt.Errorf("map build failed: reference cannot be found: %s",
 				root.Content[1].Value)
@@ -798,6 +868,8 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 					if err != nil {
 						circError = err
 					}
+				} else if errors.Is(err, ErrExternalRefSkipped) {
+					return nil, labelNode, valueNode, nil
 				} else {
 					if err != nil {
 						return nil, labelNode, valueNode, fmt.Errorf("map build failed: reference cannot be found: %s",
@@ -888,6 +960,15 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 					if err != nil {
 						circError = err
 					}
+				} else if errors.Is(err, ErrExternalRefSkipped) {
+					var n PT = new(N)
+					SetReference(n, refVal, en)
+					v := ValueReference[PT]{Value: n, ValueNode: en}
+					v.SetReference(refVal, en)
+					return mappingResult[PT]{
+						k: KeyReference[string]{KeyNode: input.label, Value: input.label.Value},
+						v: v,
+					}, nil
 				} else {
 					if err != nil {
 						return mappingResult[PT]{}, fmt.Errorf("flat map build failed: reference cannot be found: %s",

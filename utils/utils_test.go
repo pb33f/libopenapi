@@ -1857,3 +1857,23 @@ func TestGetRefValueNode_EmptyNode(t *testing.T) {
 	result := GetRefValueNode(node)
 	assert.Nil(t, result)
 }
+
+func TestIsExternalRef_RelativeFile(t *testing.T) {
+	assert.True(t, IsExternalRef("./file.yaml#/Foo"))
+}
+
+func TestIsExternalRef_AbsoluteURL(t *testing.T) {
+	assert.True(t, IsExternalRef("https://example.com/schema.yaml"))
+}
+
+func TestIsExternalRef_LocalFragment(t *testing.T) {
+	assert.False(t, IsExternalRef("#/components/schemas/Foo"))
+}
+
+func TestIsExternalRef_AnchorOnly(t *testing.T) {
+	assert.False(t, IsExternalRef("#SomeAnchor"))
+}
+
+func TestIsExternalRef_Empty(t *testing.T) {
+	assert.False(t, IsExternalRef(""))
+}

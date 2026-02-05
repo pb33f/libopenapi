@@ -144,6 +144,18 @@ func (p *pizza) Build(_ context.Context, _, _ *yaml.Node, _ *index.SpecIndex) er
 	return nil
 }
 
+// refPizza embeds *Reference like real buildable types (Parameter, Header, etc.)
+// to test that SetReference initializes the nil *Reference before use.
+type refPizza struct {
+	*Reference
+	Description NodeReference[string]
+}
+
+func (p *refPizza) Build(_ context.Context, _, _ *yaml.Node, _ *index.SpecIndex) error {
+	p.Reference = new(Reference)
+	return nil
+}
+
 func TestExtractObject(t *testing.T) {
 	yml := `components:
   schemas:
@@ -3691,4 +3703,438 @@ func TestHashNodeTree_ConcurrentModification(t *testing.T) {
 	wg.Wait()
 
 	// If we get here without panic, the fix works
+}
+
+func TestLocateRefNodeWithContext_SkipExternalRef(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	// external ref should be skipped
+	refYml := `$ref: './models/Pet.yaml#/Pet'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	node, retIdx, err, _ := LocateRefNodeWithContext(context.Background(), cNode.Content[0], idx)
+	assert.Nil(t, node)
+	assert.Equal(t, idx, retIdx)
+	assert.ErrorIs(t, err, ErrExternalRefSkipped)
+}
+
+func TestLocateRefNodeWithContext_SkipExternalRef_LocalNotSkipped(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	// local ref should still resolve normally
+	refYml := `$ref: '#/components/schemas/cake'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	node, _, err, _ := LocateRefNodeWithContext(context.Background(), cNode.Content[0], idx)
+	assert.NotNil(t, node)
+	assert.Nil(t, err)
+}
+
+func TestLocateRefNodeWithContext_SkipExternalRef_FlagNotSet(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	// flag NOT set
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	// external ref without the flag: should try to resolve and fail
+	refYml := `$ref: './models/Pet.yaml#/Pet'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	node, _, err, _ := LocateRefNodeWithContext(context.Background(), cNode.Content[0], idx)
+	assert.Nil(t, node)
+	assert.NotNil(t, err)
+	assert.NotErrorIs(t, err, ErrExternalRefSkipped) // regular not-found error, not sentinel
+}
+
+func TestLocateRefEnd_SkipExternalRef_Propagates(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	refYml := `$ref: 'https://example.com/schema.yaml'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	node, retIdx, err, _ := LocateRefEnd(context.Background(), cNode.Content[0], idx, 0)
+	assert.Nil(t, node)
+	assert.Equal(t, idx, retIdx)
+	assert.ErrorIs(t, err, ErrExternalRefSkipped)
+}
+
+func TestExtractObjectRaw_SkipExternalRef(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	refYml := `$ref: './models/Pet.yaml#/Pet'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	tag, err, isRef, rv := ExtractObjectRaw[*pizza](context.Background(), nil, cNode.Content[0], idx)
+	assert.Nil(t, err)
+	assert.True(t, isRef)
+	assert.Equal(t, "./models/Pet.yaml#/Pet", rv)
+	assert.NotNil(t, tag)
+}
+
+func TestExtractObject_RootRef_SkipExternalRef(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	refYml := `$ref: './models/Pet.yaml#/Pet'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	// Pass the mapping node directly (not the document node)
+	res, err := ExtractObject[*pizza](context.Background(), "tags", cNode.Content[0], idx)
+	assert.Nil(t, err)
+	assert.NotNil(t, res.Value)
+	assert.True(t, res.IsReference())
+	assert.Equal(t, "./models/Pet.yaml#/Pet", res.GetReference())
+}
+
+func TestExtractObject_ValueRef_SkipExternalRef(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	refYml := `tags:
+  $ref: 'https://example.com/tags.yaml'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	// Pass the mapping node
+	res, err := ExtractObject[*pizza](context.Background(), "tags", cNode.Content[0], idx)
+	assert.Nil(t, err)
+	assert.NotNil(t, res.Value)
+	assert.True(t, res.IsReference())
+	assert.Equal(t, "https://example.com/tags.yaml", res.GetReference())
+}
+
+func TestExtractArray_RootRef_SkipExternalRef(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	// Pass the mapping node directly so IsNodeRefValue sees the $ref
+	refYml := `$ref: './models/Tags.yaml#/Tags'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	items, _, _, err := ExtractArray[*pizza](context.Background(), "tags", cNode.Content[0], idx)
+	assert.Nil(t, err)
+	assert.Empty(t, items)
+}
+
+func TestExtractArray_ValueRef_SkipExternalRef(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	refYml := `parameters:
+  $ref: './models/Params.yaml#/Params'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	items, _, _, err := ExtractArray[*pizza](context.Background(), "parameters", cNode.Content[0], idx)
+	assert.Nil(t, err)
+	assert.Empty(t, items)
+}
+
+func TestExtractArray_PerItem_SkipExternalRef(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	refYml := `tags:
+  - $ref: './models/Tag.yaml#/Tag'
+  - description: local tag`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	// Pass the mapping node (not the document node)
+	items, _, _, err := ExtractArray[*pizza](context.Background(), "tags", cNode.Content[0], idx)
+	assert.Nil(t, err)
+	assert.Len(t, items, 2)
+	assert.True(t, items[0].IsReference())
+	assert.Equal(t, "./models/Tag.yaml#/Tag", items[0].GetReference())
+}
+
+func TestExtractMapExtensions_RootRef_SkipExternalRef(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	refYml := `$ref: 'https://example.com/paths.yaml'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	m, _, _, err := ExtractMapExtensions[*pizza, pizza](context.Background(), "paths", cNode.Content[0], idx, false)
+	assert.Nil(t, err)
+	assert.Nil(t, m)
+}
+
+func TestExtractMapExtensions_ValueRef_SkipExternalRef(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	refYml := `paths:
+  $ref: 'https://example.com/paths.yaml'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	// Pass the mapping node
+	m, _, _, err := ExtractMapExtensions[*pizza, pizza](context.Background(), "paths", cNode.Content[0], idx, false)
+	assert.Nil(t, err)
+	assert.Nil(t, m)
+}
+
+func TestExtractMapExtensions_PerItem_SkipExternalRef(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	refYml := `responses:
+  pet:
+    $ref: './models/Pet.yaml#/Pet'
+  local:
+    description: local thing`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	m, _, _, err := ExtractMapExtensions[*pizza, pizza](context.Background(), "responses", cNode.Content[0], idx, false)
+	assert.Nil(t, err)
+	assert.NotNil(t, m)
+	assert.Equal(t, 2, m.Len())
+
+	petRef := FindItemInOrderedMap[*pizza]("pet", m)
+	assert.NotNil(t, petRef)
+	assert.True(t, petRef.IsReference())
+	assert.Equal(t, "./models/Pet.yaml#/Pet", petRef.GetReference())
+}
+
+func TestExtractMapNoLookupExtensions_PerItem_SkipExternalRef(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	refYml := `pet:
+  $ref: './models/Pet.yaml#/Pet'
+local:
+  description: local thing`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	m, err := ExtractMapNoLookupExtensions[*pizza, pizza](context.Background(), cNode.Content[0], idx, false)
+	assert.Nil(t, err)
+	assert.NotNil(t, m)
+	assert.Equal(t, 2, m.Len())
+
+	// check the external ref entry
+	petRef := FindItemInOrderedMap[*pizza]("pet", m)
+	assert.NotNil(t, petRef)
+	assert.True(t, petRef.IsReference())
+	assert.Equal(t, "./models/Pet.yaml#/Pet", petRef.GetReference())
+}
+
+func TestSetReference_NilEmbeddedReference(t *testing.T) {
+	// new(refPizza) has a nil *Reference. SetReference must not panic.
+	rp := new(refPizza)
+	assert.Nil(t, rp.Reference, "Reference should be nil before SetReference")
+
+	node := &yaml.Node{Value: "test"}
+	assert.NotPanics(t, func() {
+		SetReference(rp, "./models/Pet.yaml", node)
+	})
+	assert.NotNil(t, rp.Reference, "Reference should be initialized after SetReference")
+	assert.Equal(t, "./models/Pet.yaml", rp.GetReference())
+	assert.True(t, rp.IsReference())
+}
+
+func TestInitEmbeddedReference_NilObj(t *testing.T) {
+	// Should not panic on nil
+	assert.NotPanics(t, func() {
+		initEmbeddedReference(nil)
+	})
+}
+
+func TestInitEmbeddedReference_NonStruct(t *testing.T) {
+	// Should not panic on non-struct
+	s := "hello"
+	assert.NotPanics(t, func() {
+		initEmbeddedReference(&s)
+	})
+}
+
+func TestInitEmbeddedReference_NoReferenceField(t *testing.T) {
+	// pizza has no *Reference field, should be a no-op
+	p := new(pizza)
+	assert.NotPanics(t, func() {
+		initEmbeddedReference(p)
+	})
+}
+
+func TestInitEmbeddedReference_AlreadyInitialized(t *testing.T) {
+	rp := &refPizza{Reference: new(Reference)}
+	rp.Reference.SetReference("original", nil)
+
+	// Should not overwrite an already-initialized Reference
+	initEmbeddedReference(rp)
+	assert.Equal(t, "original", rp.GetReference())
+}
+
+func TestExtractObjectRaw_SkipExternalRef_EmbeddedReference(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	refYml := `$ref: './models/Pet.yaml#/Pet'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	tag, err, isRef, rv := ExtractObjectRaw[*refPizza](context.Background(), nil, cNode.Content[0], idx)
+	assert.Nil(t, err)
+	assert.True(t, isRef)
+	assert.Equal(t, "./models/Pet.yaml#/Pet", rv)
+	require.NotNil(t, tag)
+	assert.True(t, tag.IsReference())
+	assert.Equal(t, "./models/Pet.yaml#/Pet", tag.GetReference())
+}
+
+func TestExtractObject_RootRef_SkipExternalRef_EmbeddedReference(t *testing.T) {
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	refYml := `$ref: './models/Pet.yaml#/Pet'`
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(refYml), &cNode)
+
+	result, err := ExtractObject[*refPizza](context.Background(), "cake", cNode.Content[0], idx)
+	assert.Nil(t, err)
+	assert.True(t, result.IsReference())
+	assert.Equal(t, "./models/Pet.yaml#/Pet", result.GetReference())
+	require.NotNil(t, result.Value)
+	assert.True(t, result.Value.IsReference())
+	assert.Equal(t, "./models/Pet.yaml#/Pet", result.Value.GetReference())
 }
