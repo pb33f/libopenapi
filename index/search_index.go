@@ -170,13 +170,13 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 				if filepath.IsAbs(uri[0]) {
 					roloLookup = uri[0]
 				} else {
-				if filepath.Ext(absPath) != "" {
-					absPath = filepath.Dir(absPath)
+					if filepath.Ext(absPath) != "" {
+						absPath = filepath.Dir(absPath)
+					}
+					roloLookup = index.resolveRelativeFilePath(absPath, uri[0])
 				}
-				roloLookup = index.resolveRelativeFilePath(absPath, uri[0])
 			}
-		}
-	} else {
+		} else {
 
 			if filepath.Ext(uri[1]) != "" {
 				roloLookup = absPath
