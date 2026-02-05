@@ -150,6 +150,11 @@ func (index *SpecIndex) lookupRolodex(ctx context.Context, uri []string) *Refere
 		return nil
 	}
 
+	// If SkipExternalRefResolution is enabled, don't attempt rolodex lookups
+	if index.config != nil && index.config.SkipExternalRefResolution {
+		return nil
+	}
+
 	if len(uri) > 0 {
 
 		// split string to remove file reference
