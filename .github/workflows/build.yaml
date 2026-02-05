@@ -13,18 +13,26 @@ jobs:
     name: Build Windows
     runs-on: windows-latest
     steps:
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.23
-        id: go
+      - name: Force git to use LF
+        # This step is required on Windows to work around issues with go fmt.
+        # TODO: replace with a checkout option when https://github.com/actions/checkout/issues/226 is implemented
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
-      - name: Get dependencies
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+        id: go
+
+      - name: Format
         run: |
-          go get -v -t -d ./...
+          go fmt ./...
+          git diff --exit-code
       - name: Test
         run: go test ./...
   build:
@@ -32,22 +40,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
       - name: Set up Go 1.x
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.23
+          go-version-file: go.mod
         id: go
 
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Get dependencies
+      - name: Format
         run: |
-          go get -v -t -d ./...
-          if [ -f Gopkg.toml ]; then
-              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-              dep ensure
-          fi
+          go fmt ./...
+          git diff --exit-code
       - name: Test
         run: go test ./...
       - name: Coverage

@@ -22,7 +22,7 @@ import (
 //	select {
 //	case jobChan <- j:
 //	case <-ctx.Done():
-//	  return
+//		return
 //	}
 //
 // The ctx.Done() branch (lines 158-159) is only hit when the context is cancelled
