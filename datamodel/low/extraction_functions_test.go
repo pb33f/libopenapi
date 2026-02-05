@@ -5,7 +5,6 @@ package low
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"hash/maphash"
 	"net/url"
@@ -2466,8 +2465,10 @@ func TestAppendMapHashes(t *testing.T) {
 	m.Set(KeyReference[string]{Value: "baz"}, ValueReference[string]{Value: "qux"})
 	a := AppendMapHashes([]string{}, m)
 	assert.Equal(t, 2, len(a))
-	assert.Equal(t, "baz-21f58d27f827d295ffcd860c65045685e3baf1ad4506caa0140113b316647534", a[0])
-	assert.Equal(t, "foo-fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9", a[1])
+	assert.True(t, strings.HasPrefix(a[0], "baz-"), "first entry should start with baz-")
+	assert.True(t, strings.HasPrefix(a[1], "foo-"), "second entry should start with foo-")
+	assert.Greater(t, len(a[0]), 4, "hash should be non-empty")
+	assert.Greater(t, len(a[1]), 4, "hash should be non-empty")
 }
 
 // Tests for new performance optimization functions
@@ -2541,35 +2542,34 @@ func TestClearHashCache_Functionality(t *testing.T) {
 }
 
 func TestGenerateHashString_OptimizedPaths(t *testing.T) {
-	// Test different type conversions in optimized GenerateHashString
-	testCases := []struct {
-		name     string
-		input    interface{}
-		expected string
-	}{
-		{"int", 42, "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049"},
-		{"int8", int8(42), "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049"},
-		{"int16", int16(42), "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049"},
-		{"int32", int32(42), "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049"},
-		{"int64", int64(42), "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049"},
-		{"uint", uint(42), "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049"},
-		{"uint8", uint8(42), "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049"},
-		{"uint16", uint16(42), "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049"},
-		{"uint32", uint32(42), "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049"},
-		{"uint64", uint64(42), "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049"},
-		{"float32", float32(3.14), "2efff1261c25d94dd6698ea1047f5c0a7107ca98b0a6c2427ee6614143500215"},
-		{"float64", float64(3.14), "2efff1261c25d94dd6698ea1047f5c0a7107ca98b0a6c2427ee6614143500215"},
-		{"bool_true", true, "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b"},
-		{"bool_false", false, "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa"},
-		{"string", "hello", "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"},
+	// All integer types representing 42 should produce the same hash (all convert to string "42")
+	intHash := GenerateHashString(42)
+	assert.NotEmpty(t, intHash)
+
+	intVariants := []interface{}{
+		int8(42), int16(42), int32(42), int64(42),
+		uint(42), uint8(42), uint16(42), uint32(42), uint64(42),
+	}
+	for _, v := range intVariants {
+		assert.Equal(t, intHash, GenerateHashString(v), "all int variants of 42 should match")
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			result := GenerateHashString(tc.input)
-			assert.Equal(t, tc.expected, result)
-		})
-	}
+	// Both float types representing 3.14 should produce the same hash
+	floatHash := GenerateHashString(float64(3.14))
+	assert.NotEmpty(t, floatHash)
+	assert.Equal(t, floatHash, GenerateHashString(float32(3.14)))
+
+	// Booleans should produce non-empty, distinct hashes
+	trueHash := GenerateHashString(true)
+	falseHash := GenerateHashString(false)
+	assert.NotEmpty(t, trueHash)
+	assert.NotEmpty(t, falseHash)
+	assert.NotEqual(t, trueHash, falseHash)
+
+	// String should produce non-empty hash different from int
+	strHash := GenerateHashString("hello")
+	assert.NotEmpty(t, strHash)
+	assert.NotEqual(t, strHash, intHash)
 }
 
 func TestGenerateHashString_Caching(t *testing.T) {
@@ -2657,14 +2657,16 @@ func TestHashNodeTree_CircularReference(t *testing.T) {
 	node1.Content = []*yaml.Node{node2}
 	node2.Content = []*yaml.Node{node1}
 
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 
 	// Should not infinite loop
 	hashNodeTree(h, node1, visited)
 
-	result := h.Sum(nil)
-	assert.NotNil(t, result)
+	result := h.Sum64()
+	hasherPool.Put(h)
+	assert.NotZero(t, result)
 }
 
 func TestHashNodeTree_SequenceNode(t *testing.T) {
@@ -2678,12 +2680,14 @@ func TestHashNodeTree_SequenceNode(t *testing.T) {
 		},
 	}
 
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, node, visited)
 
-	result := h.Sum(nil)
-	assert.NotEmpty(t, result)
+	result := h.Sum64()
+	hasherPool.Put(h)
+	assert.NotZero(t, result)
 }
 
 func TestHashNodeTree_MappingNode(t *testing.T) {
@@ -2698,12 +2702,14 @@ func TestHashNodeTree_MappingNode(t *testing.T) {
 		},
 	}
 
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, node, visited)
 
-	result := h.Sum(nil)
-	assert.NotEmpty(t, result)
+	result := h.Sum64()
+	hasherPool.Put(h)
+	assert.NotZero(t, result)
 }
 
 func TestHashNodeTree_DocumentNode(t *testing.T) {
@@ -2714,12 +2720,14 @@ func TestHashNodeTree_DocumentNode(t *testing.T) {
 		},
 	}
 
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, node, visited)
 
-	result := h.Sum(nil)
-	assert.NotEmpty(t, result)
+	result := h.Sum64()
+	hasherPool.Put(h)
+	assert.NotZero(t, result)
 }
 
 func TestHashNodeTree_AliasNode(t *testing.T) {
@@ -2729,24 +2737,27 @@ func TestHashNodeTree_AliasNode(t *testing.T) {
 		Alias: aliasTarget,
 	}
 
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, node, visited)
 
-	result := h.Sum(nil)
-	assert.NotEmpty(t, result)
+	result := h.Sum64()
+	hasherPool.Put(h)
+	assert.NotZero(t, result)
 }
 
 func TestHashNodeTree_NilNode(t *testing.T) {
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 
 	// Should not crash
 	hashNodeTree(h, nil, visited)
 
 	// Hash should be unchanged (only initial state)
-	result := h.Sum(nil)
-	assert.NotNil(t, result)
+	_ = h.Sum64()
+	hasherPool.Put(h)
 }
 
 func TestCompareYAMLNodes_BothNil(t *testing.T) {
@@ -2896,13 +2907,14 @@ func TestHashNodeTree_EdgeCases(t *testing.T) {
 		},
 	}
 
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 
 	// Should not crash
 	hashNodeTree(h, node, visited)
-	result := h.Sum(nil)
-	assert.NotNil(t, result)
+	_ = h.Sum64()
+	hasherPool.Put(h)
 }
 
 func TestGenerateHashString_PointerDereference(t *testing.T) {
@@ -2920,7 +2932,8 @@ func TestHashNodeTree_VisitedTracking(t *testing.T) {
 	// Test that visited map prevents infinite loops
 
 	node := &yaml.Node{Kind: yaml.ScalarNode, Value: "test"}
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 
 	// Mark as visited
@@ -2929,8 +2942,8 @@ func TestHashNodeTree_VisitedTracking(t *testing.T) {
 	// Should detect as visited and add circular marker
 	hashNodeTree(h, node, visited)
 
-	result := h.Sum(nil)
-	assert.NotNil(t, result)
+	_ = h.Sum64()
+	hasherPool.Put(h)
 }
 
 func TestConcurrentHashGeneration(t *testing.T) {
@@ -3018,7 +3031,7 @@ func TestHashYAMLNodeSlice_SingleNode(t *testing.T) {
 
 	result := HashYAMLNodeSlice(nodes)
 	assert.NotEmpty(t, result)
-	assert.Len(t, result, 64) // SHA256 hex length
+	assert.Greater(t, len(result), 0)
 }
 
 func TestHashYAMLNodeSlice_MultipleNodes(t *testing.T) {
@@ -3137,7 +3150,7 @@ func TestAppendMapHashes_MediumMap_StringBuilder(t *testing.T) {
 		parts := strings.Split(hash, "-")
 		assert.Len(t, parts, 2)
 		assert.True(t, strings.HasPrefix(parts[0], "key"))
-		assert.Len(t, parts[1], 64) // SHA256 hex hash length
+		assert.Greater(t, len(parts[1]), 0)
 	}
 }
 
@@ -3210,7 +3223,7 @@ func TestGenerateHashString_DefaultCase(t *testing.T) {
 	obj := customType{field: "test"}
 	result := GenerateHashString(obj)
 	assert.NotEmpty(t, result)
-	assert.Len(t, result, 64) // SHA256 hex length
+	assert.Greater(t, len(result), 0)
 }
 
 func TestGenerateHashString_PointerToNonPrimitive(t *testing.T) {
@@ -3523,12 +3536,13 @@ func TestHashNodeTree_EmptyMappingNode(t *testing.T) {
 		Kind: yaml.MappingNode,
 		Tag:  "!!map",
 	}
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, node, visited)
-	result := h.Sum(nil)
-	assert.NotNil(t, result)
-	assert.Greater(t, len(result), 0)
+	result := h.Sum64()
+	hasherPool.Put(h)
+	assert.NotZero(t, result)
 }
 
 // TestHashNodeTree_EmptyMappingNodeEmptySlice tests hashing of empty MappingNode with empty Content slice
@@ -3539,12 +3553,13 @@ func TestHashNodeTree_EmptyMappingNodeEmptySlice(t *testing.T) {
 		Tag:     "!!map",
 		Content: []*yaml.Node{},
 	}
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, node, visited)
-	result := h.Sum(nil)
-	assert.NotNil(t, result)
-	assert.Greater(t, len(result), 0)
+	result := h.Sum64()
+	hasherPool.Put(h)
+	assert.NotZero(t, result)
 }
 
 // TestHashNodeTree_MappingNodeOddChildren tests hashing of MappingNode with odd number of children
@@ -3557,11 +3572,12 @@ func TestHashNodeTree_MappingNodeOddChildren(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "orphan_key"},
 		},
 	}
-	h := sha256.New()
+	h := hasherPool.Get().(*maphash.Hash)
+	h.Reset()
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, node, visited)
-	result := h.Sum(nil)
-	assert.NotNil(t, result)
+	_ = h.Sum64()
+	hasherPool.Put(h)
 }
 
 // TestHashYamlNodeFast_EmptyMappingNode tests fast hashing of empty MappingNode
