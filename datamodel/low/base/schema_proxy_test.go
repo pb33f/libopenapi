@@ -251,7 +251,7 @@ func TestSchemaProxy_HashRef(t *testing.T) {
 	r := low.Reference{}
 	r.SetReference("chicken", &yaml.Node{})
 	sp.Reference = r
-	sp.rendered = &Schema{}
+	sp.rendered.Store(&Schema{})
 
 	v := sp.Hash()
 	// maphash uses random seed per process, so just test non-zero
@@ -300,8 +300,9 @@ func TestSchemaProxy_QuickHash_Empty(t *testing.T) {
 	rolo.SetRootIndex(idx)
 
 	v := sp.Hash()
-	// Now returns uint64(0) instead of [32]byte{} for empty/error cases
-	assert.Equal(t, uint64(0), v)
+	// When Schema() returns nil for an unresolvable reference with UseSchemaQuickHash,
+	// we fall through to ref-string hash instead of calling nil.QuickHash().
+	assert.NotEqual(t, uint64(0), v, "should produce a ref-string hash for unresolvable reference")
 }
 
 func TestSchemaProxy_TestRolodexHasId(t *testing.T) {
@@ -362,7 +363,7 @@ properties:
 	assert.NotEqual(t, [32]byte{}, hash)
 
 	// Verify the schema was rendered and available
-	assert.NotNil(t, sch.rendered)
+	assert.NotNil(t, sch.rendered.Load())
 }
 
 func TestSchemaProxy_attemptPropertyMerging_NilConfig(t *testing.T) {
@@ -746,4 +747,164 @@ func TestSchemaProxy_SkipExternalRef_LocalRefNotBlocked(t *testing.T) {
 
 	assert.True(t, sp.IsReference())
 	assert.Equal(t, "#/components/schemas/Local", sp.GetReference())
+}
+
+func TestSchemaProxy_ConcurrentSchemaAccess(t *testing.T) {
+	yml := `type: object
+properties:
+  name:
+    type: string`
+
+	var sch SchemaProxy
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := sch.Build(context.Background(), nil, idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	// Launch multiple goroutines calling Schema() concurrently.
+	// The race detector will flag any data races.
+	const goroutines = 20
+	done := make(chan *Schema, goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			done <- sch.Schema()
+		}()
+	}
+
+	var first *Schema
+	for i := 0; i < goroutines; i++ {
+		s := <-done
+		assert.NotNil(t, s)
+		if first == nil {
+			first = s
+		} else {
+			// All goroutines must see the same Schema pointer
+			assert.Same(t, first, s)
+		}
+	}
+}
+
+func TestSchemaProxy_ConcurrentHashAccess(t *testing.T) {
+	yml := `type: object
+properties:
+  id:
+    type: integer`
+
+	var sch SchemaProxy
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := sch.Build(context.Background(), nil, idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	// Pre-render
+	s := sch.Schema()
+	assert.NotNil(t, s)
+
+	// Launch multiple goroutines calling Hash() concurrently.
+	const goroutines = 20
+	done := make(chan uint64, goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			done <- sch.Hash()
+		}()
+	}
+
+	var first uint64
+	for i := 0; i < goroutines; i++ {
+		h := <-done
+		assert.NotEqual(t, uint64(0), h)
+		if i == 0 {
+			first = h
+		} else {
+			assert.Equal(t, first, h)
+		}
+	}
+}
+
+func TestSchemaProxy_ConcurrentSchemaHashAddNode(t *testing.T) {
+	yml := `type: string`
+
+	var sch SchemaProxy
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := sch.Build(context.Background(), nil, idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	// Launch goroutines doing Schema(), Hash(), and AddNode() simultaneously.
+	// Use distinct line keys per goroutine to avoid the pre-existing NodeMap race.
+	const goroutines = 10
+	done := make(chan struct{}, goroutines*3)
+
+	for i := 0; i < goroutines; i++ {
+		lineKey := 1000 + i // distinct keys per goroutine
+		go func() {
+			_ = sch.Schema()
+			done <- struct{}{}
+		}()
+		go func() {
+			_ = sch.Hash()
+			done <- struct{}{}
+		}()
+		go func() {
+			sch.AddNode(lineKey, &yaml.Node{Value: "test"})
+			done <- struct{}{}
+		}()
+	}
+
+	for i := 0; i < goroutines*3; i++ {
+		<-done
+	}
+}
+
+func TestSchemaProxy_Hash_QuickHash_NilSchema_NoPanic(t *testing.T) {
+	// Regression test: UseSchemaQuickHash + unresolved reference where Schema() returns nil
+	// should NOT panic (was a nil-deref bug before the fix).
+	sp := new(SchemaProxy)
+	sp.vn = utils.CreateEmptyMapNode()
+
+	r := low.Reference{}
+	r.SetReference("broken_ref_that_wont_resolve", &yaml.Node{})
+	sp.Reference = r
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
+	cfg := &index.SpecIndexConfig{Logger: logger, UseSchemaQuickHash: true}
+	idx := index.NewSpecIndexWithConfig(nil, cfg)
+	rolo := index.NewRolodex(cfg)
+	idx.SetRolodex(rolo)
+	rolo.SetRootIndex(idx)
+	sp.idx = idx
+
+	// This should NOT panic — should fall back to ref-string hash
+	v := sp.Hash()
+	assert.NotEqual(t, uint64(0), v, "should produce a ref-string hash, not zero")
+}
+
+func TestSchemaProxy_HashInvalidationViaAddNode(t *testing.T) {
+	yml := `type: object
+properties:
+  name:
+    type: string`
+
+	var sch SchemaProxy
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := sch.Build(context.Background(), nil, idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	_ = sch.Schema()
+	firstHash := sch.Hash()
+	assert.NotEqual(t, uint64(0), firstHash)
+
+	// calling Hash() again should return cached result
+	cachedHash := sch.Hash()
+	assert.Equal(t, firstHash, cachedHash)
+
+	// AddNode invalidates the cache; next Hash() must recompute
+	sch.AddNode(999, &yaml.Node{Value: "invalidate"})
+	recomputedHash := sch.Hash()
+	assert.NotEqual(t, uint64(0), recomputedHash)
 }
