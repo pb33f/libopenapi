@@ -1124,6 +1124,193 @@ components:
 		"should not record errors for external refs when SkipExternalRefResolution is enabled")
 }
 
+// Tests for issue #519: external refs with URL fragments should not produce errors
+// when SkipExternalRefResolution is enabled. The bug was that ref.Definition gets
+// transformed to just the fragment (e.g., "#/components/schemas/Warehouse") which
+// looks local, so we must also check ref.RawRef.
+
+func TestSpecIndex_ExtractComponentsFromRefs_SkipExternalRef_HTTPFragment_Sequential(t *testing.T) {
+	yml := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    exists:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.ExtractRefsSequentially = true
+	config.SkipExternalRefResolution = true
+	index := NewSpecIndexWithConfig(&rootNode, config)
+
+	ref := &Reference{
+		FullDefinition: "https://example.com/schemas/warehouse.yaml#/components/schemas/Warehouse",
+		Definition:     "#/components/schemas/Warehouse",
+		RawRef:         "https://example.com/schemas/warehouse.yaml#/components/schemas/Warehouse",
+	}
+
+	result := index.ExtractComponentsFromRefs(context.Background(), []*Reference{ref})
+	assert.Empty(t, result)
+	assert.Len(t, index.GetReferenceIndexErrors(), 0,
+		"should not record errors for external HTTP refs with fragments when SkipExternalRefResolution is enabled")
+}
+
+func TestSpecIndex_ExtractComponentsFromRefs_SkipExternalRef_HTTPFragment_Async(t *testing.T) {
+	yml := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    exists:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.ExtractRefsSequentially = false
+	config.SkipExternalRefResolution = true
+	index := NewSpecIndexWithConfig(&rootNode, config)
+
+	ref := &Reference{
+		FullDefinition: "https://example.com/schemas/warehouse.yaml#/components/schemas/Warehouse",
+		Definition:     "#/components/schemas/Warehouse",
+		RawRef:         "https://example.com/schemas/warehouse.yaml#/components/schemas/Warehouse",
+	}
+
+	result := index.ExtractComponentsFromRefs(context.Background(), []*Reference{ref})
+	assert.Empty(t, result)
+	assert.Len(t, index.GetReferenceIndexErrors(), 0,
+		"should not record errors for external HTTP refs with fragments when SkipExternalRefResolution is enabled")
+}
+
+func TestSpecIndex_ExtractComponentsFromRefs_SkipExternalRef_RelativeFileFragment_Sequential(t *testing.T) {
+	yml := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    exists:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.ExtractRefsSequentially = true
+	config.SkipExternalRefResolution = true
+	index := NewSpecIndexWithConfig(&rootNode, config)
+
+	ref := &Reference{
+		FullDefinition: "/abs/path/models/product.yaml#/components/schemas/Product",
+		Definition:     "#/components/schemas/Product",
+		RawRef:         "./models/product.yaml#/components/schemas/Product",
+	}
+
+	result := index.ExtractComponentsFromRefs(context.Background(), []*Reference{ref})
+	assert.Empty(t, result)
+	assert.Len(t, index.GetReferenceIndexErrors(), 0,
+		"should not record errors for relative file refs with fragments when SkipExternalRefResolution is enabled")
+}
+
+func TestSpecIndex_ExtractComponentsFromRefs_SkipExternalRef_RelativeFileFragment_Async(t *testing.T) {
+	yml := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    exists:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.ExtractRefsSequentially = false
+	config.SkipExternalRefResolution = true
+	index := NewSpecIndexWithConfig(&rootNode, config)
+
+	ref := &Reference{
+		FullDefinition: "/abs/path/models/product.yaml#/components/schemas/Product",
+		Definition:     "#/components/schemas/Product",
+		RawRef:         "./models/product.yaml#/components/schemas/Product",
+	}
+
+	result := index.ExtractComponentsFromRefs(context.Background(), []*Reference{ref})
+	assert.Empty(t, result)
+	assert.Len(t, index.GetReferenceIndexErrors(), 0,
+		"should not record errors for relative file refs with fragments when SkipExternalRefResolution is enabled")
+}
+
+func TestSpecIndex_ExtractComponentsFromRefs_LocalMissingRef_StillErrors_Sequential(t *testing.T) {
+	yml := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    exists:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.ExtractRefsSequentially = true
+	config.SkipExternalRefResolution = true
+	index := NewSpecIndexWithConfig(&rootNode, config)
+
+	// Genuinely local ref that doesn't exist — should still produce an error
+	ref := &Reference{
+		FullDefinition: "/abs/path/spec.yaml#/components/schemas/DoesNotExist",
+		Definition:     "#/components/schemas/DoesNotExist",
+		RawRef:         "#/components/schemas/DoesNotExist",
+	}
+
+	result := index.ExtractComponentsFromRefs(context.Background(), []*Reference{ref})
+	assert.Empty(t, result)
+	assert.Len(t, index.GetReferenceIndexErrors(), 1,
+		"should still record errors for genuinely local refs that don't exist")
+}
+
+func TestSpecIndex_ExtractComponentsFromRefs_LocalMissingRef_StillErrors_Async(t *testing.T) {
+	yml := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    exists:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.ExtractRefsSequentially = false
+	config.SkipExternalRefResolution = true
+	index := NewSpecIndexWithConfig(&rootNode, config)
+
+	// Genuinely local ref that doesn't exist — should still produce an error
+	ref := &Reference{
+		FullDefinition: "/abs/path/spec.yaml#/components/schemas/DoesNotExist",
+		Definition:     "#/components/schemas/DoesNotExist",
+		RawRef:         "#/components/schemas/DoesNotExist",
+	}
+
+	result := index.ExtractComponentsFromRefs(context.Background(), []*Reference{ref})
+	assert.Empty(t, result)
+	assert.Len(t, index.GetReferenceIndexErrors(), 1,
+		"should still record errors for genuinely local refs that don't exist")
+}
+
 func TestSpecIndex_FindComponent_WithACrazyAssPath(t *testing.T) {
 	yml := `paths:
   /crazy/ass/references:
