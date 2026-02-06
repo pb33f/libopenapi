@@ -707,3 +707,7 @@ components:
 	assert.NotNil(t, idx)
 	assert.Greater(t, len(idx.GetAllReferences()), 0)
 }
+
+func TestSpecIndex_isExternalReference_Nil(t *testing.T) {
+	assert.False(t, isExternalReference(nil))
+}
