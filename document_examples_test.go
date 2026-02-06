@@ -700,9 +700,12 @@ components:
           $ref: './models/product.yaml'
         customer:
           $ref: 'https://example.com/schemas/customer.yaml'
+        warehouse:
+          $ref: 'https://example.com/schemas/warehouse.yaml#/components/schemas/Warehouse'
       required:
         - id
         - product
+        - warehouse
     Pet:
       $ref: './models/pet.yaml'
     ErrorResponse:
@@ -799,9 +802,21 @@ components:
 			assert.Nil(t, customerProxy.Schema(), "customer.Schema() should be nil (external ref not resolved)")
 		}
 
+		// The "warehouse" property is an external ref with a URL fragment (issue #519 core bug)
+		warehouseProxy := orderSchema.Properties.GetOrZero("warehouse")
+		assert.NotNil(t, warehouseProxy, "Order.properties.warehouse should exist")
+		if warehouseProxy != nil {
+			assert.True(t, warehouseProxy.IsReference(), "warehouse should report IsReference()=true")
+			assert.Equal(t, "https://example.com/schemas/warehouse.yaml#/components/schemas/Warehouse",
+				warehouseProxy.GetReference(),
+				"warehouse GetReference() should return the full URL with fragment")
+			assert.Nil(t, warehouseProxy.Schema(), "warehouse.Schema() should be nil (external ref not resolved)")
+		}
+
 		// Verify required fields are preserved
 		assert.Contains(t, orderSchema.Required, "id")
 		assert.Contains(t, orderSchema.Required, "product")
+		assert.Contains(t, orderSchema.Required, "warehouse")
 	}
 
 	// ---- Check the Pet schema (top-level external $ref) ----
