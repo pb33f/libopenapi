@@ -657,7 +657,7 @@ func FixContext(context string) string {
 	for i, t := range tokens {
 		if v, err := strconv.Atoi(t); err == nil {
 			if v < 200 { // codes start here
-				if cleaned[i-1] != "" {
+				if i-1 > len(cleaned) && cleaned[i-1] != "" {
 					cleaned[i-1] += fmt.Sprintf("[%v]", t)
 				}
 			} else {
