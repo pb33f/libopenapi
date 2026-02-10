@@ -2034,3 +2034,60 @@ components:
 	resolved := localSchemaComp.Schema()
 	require.NotNil(t, resolved)
 }
+
+func TestNewDocument_DefaultConfig_EnablesSiblingRefTransform(t *testing.T) {
+	// Verifies that NewDocument() (without explicit configuration) uses
+	// NewDocumentConfiguration() defaults, which enables TransformSiblingRefs.
+	// See: https://github.com/pb33f/libopenapi/issues/90
+	spec := `openapi: 3.1.0
+info:
+  title: Sibling Ref Default Config Test
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Base:
+      type: string
+      enum:
+        - ACTIVE
+        - PAUSED
+        - DELETED
+    WithSiblings:
+      $ref: '#/components/schemas/Base'
+      description: "A constrained version of Base"
+      enum:
+        - ACTIVE
+        - PAUSED`
+
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	require.NotNil(t, model)
+
+	// Verify the default config has TransformSiblingRefs enabled
+	config := doc.GetConfiguration()
+	require.NotNil(t, config)
+	assert.True(t, config.TransformSiblingRefs,
+		"TransformSiblingRefs should default to true even when using NewDocument()")
+
+	// Verify the sibling $ref was converted to allOf
+	withSiblings := model.Model.Components.Schemas.GetOrZero("WithSiblings")
+	require.NotNil(t, withSiblings)
+
+	schema := withSiblings.Schema()
+	require.NotNil(t, schema)
+	require.NotNil(t, schema.AllOf, "sibling $ref should be transformed into allOf")
+	assert.Len(t, schema.AllOf, 2, "allOf should have 2 items: sibling props + $ref")
+
+	// First allOf item should contain the sibling properties
+	siblingSchema := schema.AllOf[0].Schema()
+	require.NotNil(t, siblingSchema)
+	assert.Equal(t, "A constrained version of Base", siblingSchema.Description)
+	assert.Len(t, siblingSchema.Enum, 2)
+
+	// Second allOf item should be the $ref
+	refItem := schema.AllOf[1]
+	assert.Equal(t, "#/components/schemas/Base", refItem.GetReference())
+}
