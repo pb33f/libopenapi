@@ -152,18 +152,23 @@ func NewDocumentWithTypeCheck(specByteArray []byte, bypassCheck bool) (Document,
 // NewDocumentWithConfiguration is the same as NewDocument, except it's a convenience function that calls NewDocument
 // under the hood and then calls SetConfiguration() on the returned Document.
 func NewDocumentWithConfiguration(specByteArray []byte, configuration *datamodel.DocumentConfiguration) (Document, error) {
-	var d Document
+	var info *datamodel.SpecInfo
 	var err error
-	if configuration != nil && configuration.BypassDocumentCheck {
-		d, err = NewDocumentWithTypeCheck(specByteArray, true)
+
+	if configuration != nil {
+		info, err = datamodel.ExtractSpecInfoWithConfig(specByteArray, configuration)
 	} else {
-		d, err = NewDocument(specByteArray)
+		info, err = datamodel.ExtractSpecInfoWithDocumentCheck(specByteArray, false)
+	}
+	if err != nil {
+		return nil, err
 	}
 
-	if d != nil {
-		d.SetConfiguration(configuration)
-	}
-	return d, err
+	d := new(document)
+	d.version = info.Version
+	d.info = info
+	d.config = configuration
+	return d, nil
 }
 
 func (d *document) GetRolodex() *index.Rolodex {
