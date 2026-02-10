@@ -60,6 +60,74 @@ paths:
         '200':
           description: This is a duplicate key`
 
+var badYAMLDuplicateKey2 = `swagger: 2.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      summary: List all pets
+      responses:
+        '200':
+          description: Success
+    get:
+      summary: Duplicate get operation (invalid!)
+      responses:
+        '200':
+          description: This is a duplicate key`
+
+var badYAMLDuplicateKeyAsync = `asyncapi: 3.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      summary: List all pets
+      responses:
+        '200':
+          description: Success
+    get:
+      summary: Duplicate get operation (invalid!)
+      responses:
+        '200':
+          description: This is a duplicate key`
+
+var badYAMLDuplicateKeyUnknown = `chipchop: 3.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      summary: List all pets
+      responses:
+        '200':
+          description: Success
+    get:
+      summary: Duplicate get operation (invalid!)
+      responses:
+        '200':
+          description: This is a duplicate key`
+
+var badYAMLDuplicateUnknownType = `chipchop: 3.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      summary: List all pets
+      responses:
+        '200':
+          description: Success
+    get:
+      summary: Duplicate get operation (invalid!)
+      responses:
+        '200':
+          description: This is a duplicate key`
+
 var OpenApiWat = `openapi: 3.3
 info:
   title: Test API, valid, but not quite valid
@@ -486,4 +554,42 @@ paths:
 	assert.NoError(t, e)
 	assert.Equal(t, "3.0.0", r.Version)
 	assert.Equal(t, YAMLFileType, r.SpecFileType)
+}
+
+func TestExtractSpecInfo_NoConfig(t *testing.T) {
+	normalJSON := []byte(badYAMLDuplicateKey)
+
+	r, e := ExtractSpecInfoWithConfig([]byte(normalJSON), nil)
+	assert.Error(t, e)
+	assert.Nil(t, r)
+}
+
+func TestExtractSpecInfo_ConfigSkip(t *testing.T) {
+	normalJSON := []byte(badYAMLDuplicateKey2)
+
+	r, e := ExtractSpecInfoWithConfig([]byte(normalJSON), &DocumentConfiguration{
+		SkipJSONConversion: false,
+	})
+	assert.Error(t, e)
+	assert.Nil(t, r)
+}
+
+func TestExtractSpecInfo_ConfigSkipAsyncApi(t *testing.T) {
+	normalJSON := []byte(badYAMLDuplicateKeyAsync)
+
+	r, e := ExtractSpecInfoWithConfig([]byte(normalJSON), &DocumentConfiguration{
+		SkipJSONConversion: false,
+	})
+	assert.Error(t, e)
+	assert.Nil(t, r)
+}
+
+func TestExtractSpecInfo_ConfigSkipAsyncUnknown(t *testing.T) {
+	normalJSON := []byte(badYAMLDuplicateKeyUnknown)
+
+	r, e := ExtractSpecInfoWithConfig([]byte(normalJSON), &DocumentConfiguration{
+		SkipJSONConversion: false,
+	})
+	assert.Error(t, e)
+	assert.Nil(t, r)
 }
