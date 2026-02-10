@@ -41,7 +41,10 @@ type SpecInfo struct {
 }
 
 func ExtractSpecInfoWithConfig(spec []byte, config *DocumentConfiguration) (*SpecInfo, error) {
-	return ExtractSpecInfoWithDocumentCheck(spec, config.BypassDocumentCheck)
+	if config == nil {
+		return extractSpecInfoInternal(spec, false, false)
+	}
+	return extractSpecInfoInternal(spec, config.BypassDocumentCheck, config.SkipJSONConversion)
 }
 
 // ExtractSpecInfoWithDocumentCheckSync accepts an OpenAPI/Swagger specification that has been read into a byte array
@@ -59,6 +62,10 @@ func ExtractSpecInfoWithDocumentCheckSync(spec []byte, bypass bool) (*SpecInfo, 
 // and will return a SpecInfo pointer, which contains details on the version and an un-marshaled
 // ensures the document is an OpenAPI document.
 func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, error) {
+	return extractSpecInfoInternal(spec, bypass, false)
+}
+
+func extractSpecInfoInternal(spec []byte, bypass bool, skipJSON bool) (*SpecInfo, error) {
 	var parsedSpec yaml.Node
 
 	specInfo := &SpecInfo{}
@@ -182,9 +189,13 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			specInfo.APISchema = OpenAPI3SchemaData
 		}
 
-		// parse JSON
-		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil && !bypass {
-			return nil, err
+		// parse JSON (skipped when SkipJSONConversion is set; also skips structural
+		// validation like duplicate key detection — an explicit turbo trade-off since
+		// the rules consuming these errors are stripped in turbo mode)
+		if !skipJSON {
+			if err := parseJSON(spec, specInfo, &parsedSpec); err != nil && !bypass {
+				return nil, err
+			}
 		}
 		parsed = true
 
@@ -212,8 +223,10 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 		specInfo.APISchema = OpenAPI2SchemaData
 
 		// parse JSON
-		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil && !bypass {
-			return nil, err
+		if !skipJSON {
+			if err := parseJSON(spec, specInfo, &parsedSpec); err != nil && !bypass {
+				return nil, err
+			}
 		}
 		parsed = true
 
@@ -238,8 +251,10 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 		// TODO: format for AsyncAPI.
 
 		// parse JSON
-		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil && !bypass {
-			return nil, err
+		if !skipJSON {
+			if err := parseJSON(spec, specInfo, &parsedSpec); err != nil && !bypass {
+				return nil, err
+			}
 		}
 		parsed = true
 
@@ -255,8 +270,10 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 	if specInfo.SpecType == "" {
 		// parse JSON
 		if !bypass {
-			if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
-				return nil, err
+			if !skipJSON {
+				if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
+					return nil, err
+				}
 			}
 			specInfo.Error = errors.New("spec type not supported by libopenapi, sorry")
 			return specInfo, specInfo.Error
@@ -267,7 +284,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 	//	parseJSON(spec, specInfo, &parsedSpec)
 	//}
 
-	if !parsed {
+	if !parsed && !skipJSON {
 		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil && !bypass {
 			return nil, err
 		}
