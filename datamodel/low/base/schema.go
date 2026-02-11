@@ -7,6 +7,7 @@ import (
 	"hash/maphash"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -215,7 +216,16 @@ func (s *Schema) hash(quick bool) uint64 {
 			cfId = s.Index.GetConfig().GetId()
 		}
 	}
-	key := fmt.Sprintf("%s:%d:%d:%s", path, s.RootNode.Line, s.RootNode.Column, cfId)
+	var keyBuf strings.Builder
+	keyBuf.Grow(len(path) + len(cfId) + 16)
+	keyBuf.WriteString(path)
+	keyBuf.WriteByte(':')
+	keyBuf.WriteString(strconv.Itoa(s.RootNode.Line))
+	keyBuf.WriteByte(':')
+	keyBuf.WriteString(strconv.Itoa(s.RootNode.Column))
+	keyBuf.WriteByte(':')
+	keyBuf.WriteString(cfId)
+	key := keyBuf.String()
 	if quick {
 		if v, ok := SchemaQuickHashMap.Load(key); ok {
 			if r, k := v.(uint64); k {
@@ -238,23 +248,23 @@ func (s *Schema) hash(quick bool) uint64 {
 		sb.WriteByte('|')
 	}
 	if !s.MultipleOf.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.MultipleOf.Value))
+		sb.WriteString(strconv.FormatFloat(s.MultipleOf.Value, 'g', -1, 64))
 		sb.WriteByte('|')
 	}
 	if !s.Maximum.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.Maximum.Value))
+		sb.WriteString(strconv.FormatFloat(s.Maximum.Value, 'g', -1, 64))
 		sb.WriteByte('|')
 	}
 	if !s.Minimum.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.Minimum.Value))
+		sb.WriteString(strconv.FormatFloat(s.Minimum.Value, 'g', -1, 64))
 		sb.WriteByte('|')
 	}
 	if !s.MaxLength.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.MaxLength.Value))
+		sb.WriteString(strconv.FormatInt(s.MaxLength.Value, 10))
 		sb.WriteByte('|')
 	}
 	if !s.MinLength.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.MinLength.Value))
+		sb.WriteString(strconv.FormatInt(s.MinLength.Value, 10))
 		sb.WriteByte('|')
 	}
 	if !s.Pattern.IsEmpty() {
@@ -266,23 +276,23 @@ func (s *Schema) hash(quick bool) uint64 {
 		sb.WriteByte('|')
 	}
 	if !s.MaxItems.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.MaxItems.Value))
+		sb.WriteString(strconv.FormatInt(s.MaxItems.Value, 10))
 		sb.WriteByte('|')
 	}
 	if !s.MinItems.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.MinItems.Value))
+		sb.WriteString(strconv.FormatInt(s.MinItems.Value, 10))
 		sb.WriteByte('|')
 	}
 	if !s.UniqueItems.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.UniqueItems.Value))
+		sb.WriteString(strconv.FormatBool(s.UniqueItems.Value))
 		sb.WriteByte('|')
 	}
 	if !s.MaxProperties.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.MaxProperties.Value))
+		sb.WriteString(strconv.FormatInt(s.MaxProperties.Value, 10))
 		sb.WriteByte('|')
 	}
 	if !s.MinProperties.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.MinProperties.Value))
+		sb.WriteString(strconv.FormatInt(s.MinProperties.Value, 10))
 		sb.WriteByte('|')
 	}
 	if !s.AdditionalProperties.IsEmpty() {
@@ -310,35 +320,35 @@ func (s *Schema) hash(quick bool) uint64 {
 		sb.WriteByte('|')
 	}
 	if !s.Nullable.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.Nullable.Value))
+		sb.WriteString(strconv.FormatBool(s.Nullable.Value))
 		sb.WriteByte('|')
 	}
 	if !s.ReadOnly.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.ReadOnly.Value))
+		sb.WriteString(strconv.FormatBool(s.ReadOnly.Value))
 		sb.WriteByte('|')
 	}
 	if !s.WriteOnly.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.WriteOnly.Value))
+		sb.WriteString(strconv.FormatBool(s.WriteOnly.Value))
 		sb.WriteByte('|')
 	}
 	if !s.Deprecated.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.Deprecated.Value))
+		sb.WriteString(strconv.FormatBool(s.Deprecated.Value))
 		sb.WriteByte('|')
 	}
 	if !s.ExclusiveMaximum.IsEmpty() && s.ExclusiveMaximum.Value.IsA() {
-		sb.WriteString(fmt.Sprint(s.ExclusiveMaximum.Value.A))
+		sb.WriteString(strconv.FormatBool(s.ExclusiveMaximum.Value.A))
 		sb.WriteByte('|')
 	}
 	if !s.ExclusiveMaximum.IsEmpty() && s.ExclusiveMaximum.Value.IsB() {
-		sb.WriteString(fmt.Sprint(s.ExclusiveMaximum.Value.B))
+		sb.WriteString(strconv.FormatFloat(s.ExclusiveMaximum.Value.B, 'g', -1, 64))
 		sb.WriteByte('|')
 	}
 	if !s.ExclusiveMinimum.IsEmpty() && s.ExclusiveMinimum.Value.IsA() {
-		sb.WriteString(fmt.Sprint(s.ExclusiveMinimum.Value.A))
+		sb.WriteString(strconv.FormatBool(s.ExclusiveMinimum.Value.A))
 		sb.WriteByte('|')
 	}
 	if !s.ExclusiveMinimum.IsEmpty() && s.ExclusiveMinimum.Value.IsB() {
-		sb.WriteString(fmt.Sprint(s.ExclusiveMinimum.Value.B))
+		sb.WriteString(strconv.FormatFloat(s.ExclusiveMinimum.Value.B, 'g', -1, 64))
 		sb.WriteByte('|')
 	}
 	if !s.Type.IsEmpty() && s.Type.Value.IsA() {
@@ -406,16 +416,12 @@ func (s *Schema) hash(quick bool) uint64 {
 	// hash polymorphic data - OneOf
 	if len(s.OneOf.Value) > 0 {
 		oneOfKeys := make([]string, len(s.OneOf.Value))
-		oneOfEntities := make(map[string]*SchemaProxy, len(s.OneOf.Value))
 		for i := range s.OneOf.Value {
-			g := s.OneOf.Value[i].Value
-			r := low.GenerateHashString(g)
-			oneOfEntities[r] = g
-			oneOfKeys[i] = r
+			oneOfKeys[i] = low.GenerateHashString(s.OneOf.Value[i].Value)
 		}
 		sort.Strings(oneOfKeys)
 		for _, key := range oneOfKeys {
-			sb.WriteString(low.GenerateHashString(oneOfEntities[key]))
+			sb.WriteString(key)
 			sb.WriteByte('|')
 		}
 	}
@@ -423,16 +429,12 @@ func (s *Schema) hash(quick bool) uint64 {
 	// hash polymorphic data - AllOf
 	if len(s.AllOf.Value) > 0 {
 		allOfKeys := make([]string, len(s.AllOf.Value))
-		allOfEntities := make(map[string]*SchemaProxy, len(s.AllOf.Value))
 		for i := range s.AllOf.Value {
-			g := s.AllOf.Value[i].Value
-			r := low.GenerateHashString(g)
-			allOfEntities[r] = g
-			allOfKeys[i] = r
+			allOfKeys[i] = low.GenerateHashString(s.AllOf.Value[i].Value)
 		}
 		sort.Strings(allOfKeys)
 		for _, key := range allOfKeys {
-			sb.WriteString(low.GenerateHashString(allOfEntities[key]))
+			sb.WriteString(key)
 			sb.WriteByte('|')
 		}
 	}
@@ -440,16 +442,12 @@ func (s *Schema) hash(quick bool) uint64 {
 	// hash polymorphic data - AnyOf
 	if len(s.AnyOf.Value) > 0 {
 		anyOfKeys := make([]string, len(s.AnyOf.Value))
-		anyOfEntities := make(map[string]*SchemaProxy, len(s.AnyOf.Value))
 		for i := range s.AnyOf.Value {
-			g := s.AnyOf.Value[i].Value
-			r := low.GenerateHashString(g)
-			anyOfEntities[r] = g
-			anyOfKeys[i] = r
+			anyOfKeys[i] = low.GenerateHashString(s.AnyOf.Value[i].Value)
 		}
 		sort.Strings(anyOfKeys)
 		for _, key := range anyOfKeys {
-			sb.WriteString(low.GenerateHashString(anyOfEntities[key]))
+			sb.WriteString(key)
 			sb.WriteByte('|')
 		}
 	}
@@ -465,7 +463,7 @@ func (s *Schema) hash(quick bool) uint64 {
 		sb.WriteByte('|')
 	}
 	if !s.Items.IsEmpty() && s.Items.Value.IsB() {
-		sb.WriteString(fmt.Sprint(s.Items.Value.B))
+		sb.WriteString(strconv.FormatBool(s.Items.Value.B))
 		sb.WriteByte('|')
 	}
 	// 3.1 only props
@@ -531,7 +529,7 @@ func (s *Schema) hash(quick bool) uint64 {
 		for _, k := range vocabKeys {
 			sb.WriteString(k)
 			sb.WriteByte(':')
-			sb.WriteString(fmt.Sprint(vocabMap[k]))
+			sb.WriteString(strconv.FormatBool(vocabMap[k]))
 			sb.WriteByte('|')
 		}
 	}
@@ -575,16 +573,12 @@ func (s *Schema) hash(quick bool) uint64 {
 	// Process PrefixItems
 	if len(s.PrefixItems.Value) > 0 {
 		itemsKeys := make([]string, len(s.PrefixItems.Value))
-		itemsEntities := make(map[string]*SchemaProxy, len(s.PrefixItems.Value))
 		for i := range s.PrefixItems.Value {
-			g := s.PrefixItems.Value[i].Value
-			r := low.GenerateHashString(g)
-			itemsEntities[r] = g
-			itemsKeys[i] = r
+			itemsKeys[i] = low.GenerateHashString(s.PrefixItems.Value[i].Value)
 		}
 		sort.Strings(itemsKeys)
 		for _, key := range itemsKeys {
-			sb.WriteString(low.GenerateHashString(itemsEntities[key]))
+			sb.WriteString(key)
 			sb.WriteByte('|')
 		}
 	}
@@ -606,11 +600,11 @@ func (s *Schema) hash(quick bool) uint64 {
 		sb.WriteByte('|')
 	}
 	if !s.MinContains.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.MinContains.Value))
+		sb.WriteString(strconv.FormatInt(s.MinContains.Value, 10))
 		sb.WriteByte('|')
 	}
 	if !s.MaxContains.IsEmpty() {
-		sb.WriteString(fmt.Sprint(s.MaxContains.Value))
+		sb.WriteString(strconv.FormatInt(s.MaxContains.Value, 10))
 		sb.WriteByte('|')
 	}
 	if !s.Examples.IsEmpty() {

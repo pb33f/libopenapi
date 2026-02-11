@@ -86,11 +86,15 @@ func FindItemInOrderedMapWithKey[T any](item string, collection *orderedmap.Map[
 
 // HashExtensions will generate a hash from the low representation of extensions.
 func HashExtensions(ext *orderedmap.Map[KeyReference[string], ValueReference[*yaml.Node]]) []string {
-	f := []string{}
+	if ext == nil {
+		return nil
+	}
+	sorted := orderedmap.SortAlpha(ext)
+	f := make([]string, 0, sorted.Len())
 
-	for e, node := range orderedmap.SortAlpha(ext).FromOldest() {
+	for e, node := range sorted.FromOldest() {
 		// Use content-only hash (not index.HashNode which includes line/column)
-		f = append(f, fmt.Sprintf("%s-%s", e.Value, hashYamlNodeFast(node.GetValue())))
+		f = append(f, e.Value+"-"+hashYamlNodeFast(node.GetValue()))
 	}
 
 	return f
@@ -707,7 +711,7 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 		for i := 0; i < rlen; i++ {
 			node := root.Content[i]
 			if !includeExtensions {
-				if strings.HasPrefix(strings.ToLower(node.Value), "x-") {
+				if len(node.Value) >= 2 && (node.Value[0] == 'x' || node.Value[0] == 'X') && node.Value[1] == '-' {
 					skip = true
 					continue
 				}
