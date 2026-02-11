@@ -107,7 +107,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 						continue
 					}
 					items.Set(currentLabel, NodeReference[string]{
-						Value:     fmt.Sprintf("%v", sliceItem.Value),
+						Value:     sliceItem.Value,
 						ValueNode: sliceItem,
 						KeyNode:   valueNode,
 					})
@@ -143,7 +143,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 		if field.CanSet() {
 			nr := NodeReference[string]{
-				Value:     fmt.Sprintf("%v", valueNode.Value),
+				Value:     valueNode.Value,
 				ValueNode: valueNode,
 				KeyNode:   keyNode,
 			}
@@ -154,7 +154,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 		if field.CanSet() {
 			nr := ValueReference[string]{
-				Value:     fmt.Sprintf("%v", valueNode.Value),
+				Value:     valueNode.Value,
 				ValueNode: valueNode,
 			}
 			field.Set(reflect.ValueOf(nr))
