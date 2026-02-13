@@ -1826,6 +1826,66 @@ func TestRolodex_SetSafeCircularRefs(t *testing.T) {
 	assert.NotNil(t, r.GetSafeCircularReferences())
 }
 
+func TestRolodex_DebouncedSafeCircularReferences_CacheHit(t *testing.T) {
+	r := NewRolodex(CreateOpenAPIIndexConfig())
+	r.SetSafeCircularReferences([]*CircularReferenceResult{
+		{LoopIndex: 1, LoopPoint: &Reference{FullDefinition: "ref-a"}},
+		{LoopIndex: 2, LoopPoint: &Reference{FullDefinition: "ref-b"}},
+	})
+	// Mark as already checked so GetSafeCircularReferences skips resolver walk.
+	r.circChecked = true
+
+	first := r.GetSafeCircularReferences()
+	assert.Len(t, first, 2)
+
+	// Second call should return the cached slice.
+	second := r.GetSafeCircularReferences()
+	assert.Equal(t, first, second)
+}
+
+func TestRolodex_DebouncedIgnoredCircularReferences_CacheHit(t *testing.T) {
+	r := NewRolodex(CreateOpenAPIIndexConfig())
+	r.ignoredCircularReferences = []*CircularReferenceResult{
+		{LoopIndex: 1, LoopPoint: &Reference{FullDefinition: "ign-a"}},
+		{LoopIndex: 2, LoopPoint: &Reference{FullDefinition: "ign-b"}},
+	}
+
+	first := r.GetIgnoredCircularReferences()
+	assert.Len(t, first, 2)
+
+	// Second call should return the cached slice.
+	second := r.GetIgnoredCircularReferences()
+	assert.Equal(t, first, second)
+}
+
+func TestRolodex_DebouncedSafeCircularReferences_CacheInvalidation(t *testing.T) {
+	r := NewRolodex(CreateOpenAPIIndexConfig())
+	r.circChecked = true
+	r.SetSafeCircularReferences([]*CircularReferenceResult{
+		{LoopIndex: 1, LoopPoint: &Reference{FullDefinition: "old-ref"}},
+	})
+
+	first := r.GetSafeCircularReferences()
+	assert.Len(t, first, 1)
+	assert.Equal(t, "old-ref", first[0].LoopPoint.FullDefinition)
+
+	// SetSafeCircularReferences should invalidate the cache.
+	r.SetSafeCircularReferences([]*CircularReferenceResult{
+		{LoopIndex: 1, LoopPoint: &Reference{FullDefinition: "new-ref-a"}},
+		{LoopIndex: 2, LoopPoint: &Reference{FullDefinition: "new-ref-b"}},
+	})
+
+	second := r.GetSafeCircularReferences()
+	assert.Len(t, second, 2)
+	// Verify we got the new data, not stale cache.
+	defs := map[string]bool{}
+	for _, ref := range second {
+		defs[ref.LoopPoint.FullDefinition] = true
+	}
+	assert.True(t, defs["new-ref-a"])
+	assert.True(t, defs["new-ref-b"])
+}
+
 func TestRolodex_CheckSetRootIndex(t *testing.T) {
 	var r *Rolodex
 	r = NewRolodex(CreateOpenAPIIndexConfig())

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -19,6 +20,18 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 )
+
+// buildCacheKey builds a "path:line:col" string without fmt.Sprintf allocations.
+func buildCacheKey(path string, line, col int) string {
+	var b strings.Builder
+	b.Grow(len(path) + 12)
+	b.WriteString(path)
+	b.WriteByte(':')
+	b.WriteString(strconv.Itoa(line))
+	b.WriteByte(':')
+	b.WriteString(strconv.Itoa(col))
+	return b.String()
+}
 
 // inlineRenderingTracker tracks schemas during inline rendering to prevent infinite recursion.
 // Uses sync.Map for lock-free concurrent access - each goroutine works on different keys,
@@ -219,7 +232,7 @@ func (sp *SchemaProxy) Schema() *Schema {
 	idx := sp.schema.Value.GetIndex()
 	if idx != nil && sp.schema.Value != nil {
 		if sp.schema.Value.IsReference() && sp.schema.Value.GetReferenceNode() != nil && sp.schema.GetValueNode() != nil {
-			loc := fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
+			loc := buildCacheKey(idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
 			if seen, ok := idx.GetHighCache().Load(loc); ok {
 				idx.HighCacheHit()
 				// cache locally to avoid recreating on repeated access
@@ -238,21 +251,30 @@ func (sp *SchemaProxy) Schema() *Schema {
 	}
 	sch := NewSchema(s)
 
+	cached := false
 	if idx != nil {
 		// only store the schema in the cache if is a reference!
 		if sp.IsReference() && sp.GetReferenceNode() != nil && sp.schema != nil && sp.schema.GetValueNode() != nil {
-			// if sp.schema.GetValueNode() != nil {
-			loc := fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
+			loc := buildCacheKey(idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
 
 			// caching is only performed on traditional $ref nodes with a reference and a value node, any 3.1 additional
 			// will not be cached as libopenapi does not yet support them.
 			if len(sp.GetReferenceNode().Content) == 2 {
 				idx.GetHighCache().Store(loc, sch)
+				cached = true
 			}
 		}
 	}
 
-	sp.rendered = sp.copySchemaWithParentProxy(sch)
+	if cached {
+		// Schema was stored in shared cache — must copy to avoid races with
+		// concurrent readers that will read the cached schema.
+		sp.rendered = sp.copySchemaWithParentProxy(sch)
+	} else {
+		// Not cached — safe to set ParentProxy directly, avoiding a copy.
+		sch.ParentProxy = sp
+		sp.rendered = sch
+	}
 	return sp.rendered
 }
 

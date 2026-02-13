@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"hash/maphash"
 	"sync"
+
+	"go.yaml.in/yaml/v4"
 )
 
 // globalHashSeed ensures consistent hashes across all pooled instances.
@@ -24,6 +26,25 @@ var hasherPool = sync.Pool{
 		h.SetSeed(globalHashSeed)
 		return h
 	},
+}
+
+// visitedPool pools visited maps for hashNodeTree to reduce allocations.
+var visitedPool = sync.Pool{
+	New: func() any { return make(map[*yaml.Node]bool, 32) },
+}
+
+// getVisitedMap returns a cleared map from the pool.
+func getVisitedMap() map[*yaml.Node]bool {
+	return visitedPool.Get().(map[*yaml.Node]bool)
+}
+
+// putVisitedMap returns a map to the pool, discarding maps that grew too large.
+func putVisitedMap(m map[*yaml.Node]bool) {
+	if len(m) > 1024 {
+		return // let GC collect oversized maps
+	}
+	clear(m)
+	visitedPool.Put(m)
 }
 
 // WithHasher provides a pooled hasher for the duration of fn.

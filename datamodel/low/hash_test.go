@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestHashBool_True(t *testing.T) {
@@ -85,4 +86,32 @@ func TestHashUint64_MaxValue(t *testing.T) {
 		return h.Sum64()
 	})
 	assert.NotZero(t, result)
+}
+
+func TestPutVisitedMap_OversizedDiscard(t *testing.T) {
+	// Build a map with >1024 entries so putVisitedMap discards it.
+	m := make(map[*yaml.Node]bool, 1100)
+	for i := 0; i < 1025; i++ {
+		m[&yaml.Node{Value: "n"}] = true
+	}
+	putVisitedMap(m)
+
+	// The next getVisitedMap should return a fresh/empty map, not the oversized one.
+	fresh := getVisitedMap()
+	assert.Empty(t, fresh)
+	putVisitedMap(fresh)
+}
+
+func TestGetPutVisitedMap_Reuse(t *testing.T) {
+	m := getVisitedMap()
+	assert.Empty(t, m)
+
+	// Populate and return it.
+	m[&yaml.Node{Value: "x"}] = true
+	putVisitedMap(m)
+
+	// Next retrieval should be cleared.
+	m2 := getVisitedMap()
+	assert.Empty(t, m2)
+	putVisitedMap(m2)
 }

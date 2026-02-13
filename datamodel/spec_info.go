@@ -73,19 +73,18 @@ func extractSpecInfoInternal(spec []byte, bypass bool, skipJSON bool) (*SpecInfo
 	// set original bytes
 	specInfo.SpecBytes = &spec
 
-	stringSpec := string(spec)
-	runes := []rune(strings.TrimSpace(stringSpec))
-	if len(runes) <= 0 {
+	trimmed := bytes.TrimSpace(spec)
+	if len(trimmed) == 0 {
 		return specInfo, errors.New("there is nothing in the spec, it's empty - so there is nothing to be done")
 	}
 
-	if runes[0] == '{' && runes[len(runes)-1] == '}' {
+	if trimmed[0] == '{' && trimmed[len(trimmed)-1] == '}' {
 		specInfo.SpecFileType = JSONFileType
 	} else {
 		specInfo.SpecFileType = YAMLFileType
 	}
 
-	specInfo.NumLines = strings.Count(stringSpec, "\n") + 1
+	specInfo.NumLines = bytes.Count(spec, []byte{'\n'}) + 1
 
 	// Pre-process JSON to handle \/ escape sequences that YAML parser doesn't recognize.
 	// JSON (RFC 8259) allows \/ as an optional escape for forward slash, but YAML does not.
@@ -123,7 +122,7 @@ func extractSpecInfoInternal(spec []byte, bypass bool, skipJSON bool) (*SpecInfo
 
 	parseJSON := func(bytes []byte, spec *SpecInfo, parsedNode *yaml.Node) error {
 		var jsonSpec map[string]interface{}
-		if utils.IsYAML(string(bytes)) {
+		if spec.SpecFileType == YAMLFileType {
 			// Decode YAML to map - this is critical to catch structural errors like duplicate keys
 			if err := parsedNode.Decode(&jsonSpec); err != nil {
 				return fmt.Errorf("failed to decode YAML to JSON: %w", err)
@@ -291,7 +290,7 @@ func extractSpecInfoInternal(spec []byte, bypass bool, skipJSON bool) (*SpecInfo
 	}
 
 	// detect the original whitespace indentation
-	specInfo.OriginalIndentation = utils.DetermineWhitespaceLength(string(spec))
+	specInfo.OriginalIndentation = utils.DetermineWhitespaceLengthBytes(spec)
 
 	return specInfo, nil
 }

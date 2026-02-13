@@ -1877,3 +1877,57 @@ func TestIsExternalRef_AnchorOnly(t *testing.T) {
 func TestIsExternalRef_Empty(t *testing.T) {
 	assert.False(t, IsExternalRef(""))
 }
+
+func TestParseSmallUint(t *testing.T) {
+	t.Run("empty string", func(t *testing.T) {
+		n, ok := parseSmallUint("")
+		assert.False(t, ok)
+		assert.Equal(t, 0, n)
+	})
+	t.Run("single digit", func(t *testing.T) {
+		n, ok := parseSmallUint("5")
+		assert.True(t, ok)
+		assert.Equal(t, 5, n)
+	})
+	t.Run("multi digit", func(t *testing.T) {
+		n, ok := parseSmallUint("42")
+		assert.True(t, ok)
+		assert.Equal(t, 42, n)
+	})
+	t.Run("zero", func(t *testing.T) {
+		n, ok := parseSmallUint("0")
+		assert.True(t, ok)
+		assert.Equal(t, 0, n)
+	})
+	t.Run("non-numeric", func(t *testing.T) {
+		n, ok := parseSmallUint("abc")
+		assert.False(t, ok)
+		assert.Equal(t, 0, n)
+	})
+	t.Run("mixed", func(t *testing.T) {
+		n, ok := parseSmallUint("12x")
+		assert.False(t, ok)
+		assert.Equal(t, 0, n)
+	})
+}
+
+func TestDetermineWhitespaceLengthBytes(t *testing.T) {
+	t.Run("yaml file", func(t *testing.T) {
+		someBytes, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
+		assert.Equal(t, 2, DetermineWhitespaceLengthBytes(someBytes))
+	})
+	t.Run("json file", func(t *testing.T) {
+		someBytes, _ := os.ReadFile("../test_specs/petstorev3.json")
+		assert.Equal(t, 2, DetermineWhitespaceLengthBytes(someBytes))
+	})
+	t.Run("no indentation", func(t *testing.T) {
+		assert.Equal(t, 0, DetermineWhitespaceLengthBytes([]byte(`{"hello": "world"}`)))
+	})
+	t.Run("empty", func(t *testing.T) {
+		assert.Equal(t, 0, DetermineWhitespaceLengthBytes([]byte{}))
+	})
+	t.Run("four space indent", func(t *testing.T) {
+		input := []byte("root:\n    child: value\n        grandchild: value")
+		assert.Equal(t, 4, DetermineWhitespaceLengthBytes(input))
+	})
+}
