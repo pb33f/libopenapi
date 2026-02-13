@@ -5,6 +5,7 @@ package v2
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -46,6 +47,32 @@ func TestPathItem_Build_MethodFail(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
+}
+
+func TestPathItem_Build_MethodModelBuildFail(t *testing.T) {
+	origBuildFn := buildPathItemOperationModel
+	buildPathItemOperationModel = func(_ *yaml.Node, _ interface{}) error {
+		return errors.New("model boom")
+	}
+	defer func() {
+		buildPathItemOperationModel = origBuildFn
+	}()
+
+	yml := `get:
+  description: hi`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "model boom")
 }
 
 func TestPathItem_Hash(t *testing.T) {
