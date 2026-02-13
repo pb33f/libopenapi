@@ -4,11 +4,11 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"net/http"
 	"net/url"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -812,6 +812,22 @@ func appendSegmentOptimized(segs []string, cleaned []string, i int, wrapInQuotes
 	cleaned[len(cleaned)-1] = builder.String()
 }
 
+// parseSmallUint returns the unsigned integer value and true if s is a string of
+// digits representing a non-negative integer. Returns 0, false otherwise.
+func parseSmallUint(s string) (int, bool) {
+	if len(s) == 0 {
+		return 0, false
+	}
+	n := 0
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return 0, false
+		}
+		n = n*10 + int(s[i]-'0')
+	}
+	return n, true
+}
+
 // ConvertComponentIdIntoFriendlyPathSearch will convert a JSON Path into a friendly path search string.
 // the friendliness comes from it being suitable for use with any JSON Path parser.
 //
@@ -823,7 +839,14 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 		return "", "$."
 	}
 	segs := strings.Split(id, "/")
-	name, _ := url.QueryUnescape(strings.ReplaceAll(segs[len(segs)-1], "~1", "/"))
+	lastSeg := segs[len(segs)-1]
+	if strings.Contains(lastSeg, "~1") {
+		lastSeg = strings.ReplaceAll(lastSeg, "~1", "/")
+	}
+	if strings.ContainsRune(lastSeg, '%') {
+		lastSeg, _ = url.QueryUnescape(lastSeg)
+	}
+	name := lastSeg
 
 	// Pre-allocate with estimated capacity
 	estimatedCap := len(segs) + (len(segs) / 2)
@@ -836,7 +859,12 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 		}
 		if !isPathChar(segs[i]) {
 
-			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
+			if strings.Contains(segs[i], "~1") {
+				segs[i] = strings.ReplaceAll(segs[i], "~1", "/")
+			}
+			if strings.ContainsRune(segs[i], '%') {
+				segs[i], _ = url.QueryUnescape(segs[i])
+			}
 
 			// Use string builder for bracket wrapping
 			var bracketBuilder strings.Builder
@@ -882,8 +910,8 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 				continue
 			}
 
-			intVal, err := strconv.Atoi(segs[i])
-			if err == nil {
+			intVal, isNum := parseSmallUint(segs[i])
+			if isNum {
 				if intVal <= 99 {
 					if len(cleaned) > 0 {
 						appendSegmentOptimized(segs, cleaned, i, false)
@@ -1082,21 +1110,50 @@ func CheckEnumForDuplicates(seq []*yaml.Node) []*yaml.Node {
 	return res
 }
 
-var whitespaceExp = regexp.MustCompile(`\n( +)`)
+// DetermineWhitespaceLengthBytes determines the minimum leading-space indentation
+// in the input, working directly on []byte without allocating strings or regex matches.
+// Matches the semantics of the regex `\n( +)`: only considers lines after a newline.
+func DetermineWhitespaceLengthBytes(input []byte) int {
+	minIndent := math.MaxInt
+	i := 0
+
+	// Skip the first line — the original regex `\n( +)` only matches after newlines.
+	for i < len(input) && input[i] != '\n' {
+		i++
+	}
+
+	// Process remaining lines: at the top of each iteration, i is at a '\n'.
+	for i < len(input) {
+		i++ // skip the '\n'
+
+		// Count leading spaces on this line.
+		spaces := 0
+		for i < len(input) && input[i] == ' ' {
+			spaces++
+			i++
+		}
+		// Only consider lines that have at least one leading space followed by
+		// non-whitespace content (matching the original regex `\n( +)` semantics).
+		if spaces > 0 && i < len(input) && input[i] != '\n' && input[i] != '\r' {
+			if spaces < minIndent {
+				minIndent = spaces
+			}
+		}
+
+		// Advance to end of this line.
+		for i < len(input) && input[i] != '\n' {
+			i++
+		}
+	}
+	if minIndent == math.MaxInt {
+		return 0
+	}
+	return minIndent
+}
 
 // DetermineWhitespaceLength will determine the length of the whitespace for a JSON or YAML file.
 func DetermineWhitespaceLength(input string) int {
-	whiteSpace := whitespaceExp.FindAllStringSubmatch(input, -1)
-	var filtered []string
-	for i := range whiteSpace {
-		filtered = append(filtered, whiteSpace[i][1])
-	}
-	sort.Strings(filtered)
-	if len(filtered) > 0 {
-		return len(filtered[0])
-	} else {
-		return 0
-	}
+	return DetermineWhitespaceLengthBytes([]byte(input))
 }
 
 // CheckForMergeNodes will check the top level of the schema for merge nodes. If any are found, then the merged nodes

@@ -47,6 +47,7 @@ var ErrExternalRefSkipped = errors.New("external reference resolution skipped")
 // starting a new document comparison to ensure clean state.
 func ClearHashCache() {
 	hashCache = sync.Map{}
+	indexCollectionCache = sync.Map{}
 }
 
 // GetStringBuilder retrieves a strings.Builder from the pool, resets it, and returns it.
@@ -89,20 +90,37 @@ func HashExtensions(ext *orderedmap.Map[KeyReference[string], ValueReference[*ya
 	if ext == nil {
 		return nil
 	}
-	sorted := orderedmap.SortAlpha(ext)
-	f := make([]string, 0, sorted.Len())
 
-	for e, node := range sorted.FromOldest() {
-		// Use content-only hash (not index.HashNode which includes line/column)
-		f = append(f, e.Value+"-"+hashYamlNodeFast(node.GetValue()))
+	// Collect key-value entries and sort by key, avoiding a full map copy via SortAlpha.
+	type entry struct {
+		key  string
+		node *yaml.Node
 	}
+	entries := make([]entry, 0, ext.Len())
+	for k, v := range ext.FromOldest() {
+		entries = append(entries, entry{key: k.Value, node: v.GetValue()})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].key < entries[j].key
+	})
 
+	f := make([]string, 0, len(entries))
+	for _, e := range entries {
+		f = append(f, e.key+"-"+hashYamlNodeFast(e.node))
+	}
 	return f
 }
 
+// indexCollectionCache caches the result of generateIndexCollection per SpecIndex.
+var indexCollectionCache sync.Map
+
 // helper function to generate a list of all the things an index should be searched for.
+// Cached per SpecIndex instance to avoid repeated slice+closure allocations.
 func generateIndexCollection(idx *index.SpecIndex) []func() map[string]*index.Reference {
-	return []func() map[string]*index.Reference{
+	if cached, ok := indexCollectionCache.Load(idx); ok {
+		return cached.([]func() map[string]*index.Reference)
+	}
+	collection := []func() map[string]*index.Reference{
 		idx.GetAllComponentSchemas,
 		idx.GetMappedReferences,
 		idx.GetAllExternalDocuments,
@@ -115,6 +133,8 @@ func generateIndexCollection(idx *index.SpecIndex) []func() map[string]*index.Re
 		idx.GetAllResponses,
 		idx.GetAllSecuritySchemes,
 	}
+	indexCollectionCache.Store(idx, collection)
+	return collection
 }
 
 func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, *index.SpecIndex, error, context.Context) {
@@ -1193,8 +1213,9 @@ func hashYamlNodeFast(n *yaml.Node) string {
 
 	h := hasherPool.Get().(*maphash.Hash)
 	h.Reset()
-	visited := make(map[*yaml.Node]bool)
+	visited := getVisitedMap()
 	hashNodeTree(h, n, visited)
+	putVisitedMap(visited)
 	result := strconv.FormatUint(h.Sum64(), 16)
 	hasherPool.Put(h)
 
@@ -1324,14 +1345,16 @@ func CompareYAMLNodes(left, right *yaml.Node) bool {
 	rightH := hasherPool.Get().(*maphash.Hash)
 	rightH.Reset()
 
-	leftVisited := make(map[*yaml.Node]bool)
-	rightVisited := make(map[*yaml.Node]bool)
+	leftVisited := getVisitedMap()
+	rightVisited := getVisitedMap()
 
 	hashNodeTree(leftH, left, leftVisited)
 	hashNodeTree(rightH, right, rightVisited)
 
 	result := leftH.Sum64() == rightH.Sum64()
 
+	putVisitedMap(leftVisited)
+	putVisitedMap(rightVisited)
 	hasherPool.Put(leftH)
 	hasherPool.Put(rightH)
 	return result
@@ -1358,12 +1381,13 @@ func HashYAMLNodeSlice(nodes []*yaml.Node) string {
 
 	h := hasherPool.Get().(*maphash.Hash)
 	h.Reset()
-	visited := make(map[*yaml.Node]bool)
+	visited := getVisitedMap()
 
 	for _, node := range nodes {
 		hashNodeTree(h, node, visited)
 	}
 
+	putVisitedMap(visited)
 	result := strconv.FormatUint(h.Sum64(), 16)
 	hasherPool.Put(h)
 	return result
