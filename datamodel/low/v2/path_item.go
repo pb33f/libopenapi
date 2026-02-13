@@ -16,6 +16,8 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+var buildPathItemOperationModel = low.BuildModel
+
 // PathItem represents a low-level Swagger / OpenAPI 2 PathItem object.
 //
 // Describes the operations available on a single path. A Path Item may be empty, due to ACL constraints.
@@ -111,7 +113,7 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 		}
 
 		var op Operation
-		if err := low.BuildModel(pathNode, &op); err != nil {
+		if err := buildPathItemOperationModel(pathNode, &op); err != nil {
 			return err
 		}
 
