@@ -13,6 +13,72 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTranslateMapParallel_EmptyMap(t *testing.T) {
+	m := orderedmap.New[string, int]()
+	var translateCalled atomic.Bool
+	var resultCalled atomic.Bool
+
+	err := datamodel.TranslateMapParallel[string, int, string](
+		m,
+		func(pair orderedmap.Pair[string, int]) (string, error) {
+			translateCalled.Store(true)
+			return "", nil
+		},
+		func(value string) error {
+			resultCalled.Store(true)
+			return nil
+		},
+	)
+
+	require.NoError(t, err)
+	assert.False(t, translateCalled.Load())
+	assert.False(t, resultCalled.Load())
+}
+
+// TestTranslatePipeline_CancelWhileOutputBlocked targets cancellation branches
+// that only trigger when result delivery blocks and workers are back-pressured.
+func TestTranslatePipeline_CancelWhileOutputBlocked(t *testing.T) {
+	workers := runtime.NumCPU()
+	if workers < 2 {
+		workers = 2
+	}
+
+	for iteration := 0; iteration < 8; iteration++ {
+		in := make(chan int, workers*64)
+		for i := 0; i < cap(in); i++ {
+			in <- i
+		}
+		close(in)
+
+		// Intentionally unconsumed so the collector blocks on `out <-`.
+		out := make(chan string)
+
+		errChan := make(chan error, 1)
+		go func() {
+			errChan <- datamodel.TranslatePipeline[int, string](in, out, func(value int) (string, error) {
+				switch value {
+				case 0:
+					// The first sequence value must be available so the collector reaches out-send.
+					return "first", nil
+				case 1:
+					// Delay cancellation long enough for workers to saturate resultChan.
+					time.Sleep(25 * time.Millisecond)
+					return "", errors.New("forced cancellation while blocked")
+				default:
+					return "filler", nil
+				}
+			})
+		}()
+
+		select {
+		case err := <-errChan:
+			require.ErrorContains(t, err, "forced cancellation while blocked")
+		case <-time.After(3 * time.Second):
+			t.Fatalf("iteration %d: timed out waiting for TranslatePipeline to return", iteration)
+		}
+	}
+}
+
 // TestTranslateMapParallel_ContextCancellation specifically targets lines 158-159
 // in translate.go which handle context cancellation during job dispatch.
 // This test ensures 100% coverage even on single-CPU systems like GitHub runners.

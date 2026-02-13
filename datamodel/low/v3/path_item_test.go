@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
@@ -278,4 +279,102 @@ func TestPathItem_AdditionalOperations_BadRef_AtRoot(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, n.AdditionalOperations.Value)
 
+}
+
+func TestPathItem_Build_StandardOperationBuildModelFail(t *testing.T) {
+	yml := `get:
+  context: nope`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	err := n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "unable to parse unsupported type")
+}
+
+func TestPathItem_Build_AdditionalOperationsBuildModelFail(t *testing.T) {
+	yml := `additionalOperations:
+  purge:
+    context: nope`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	err := n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "unable to parse unsupported type")
+}
+
+func TestResolveOperationReference_DocumentNode(t *testing.T) {
+	refValue := "#/components/operations/getOp"
+	refNode := utils.CreateRefNode(refValue)
+	var resolvedDoc yaml.Node
+	_ = yaml.Unmarshal([]byte("description: from-document-node"), &resolvedDoc)
+
+	idx := index.NewSpecIndex(refNode)
+	idx.SetMappedReferences(map[string]*index.Reference{
+		refValue: {
+			FullDefinition: refValue,
+			Node:           &resolvedDoc,
+			Index:          idx,
+		},
+	})
+
+	foundCtx, resolvedNode, isRef, foundRef, foundRefNode, err := resolveOperationReference(context.Background(), refNode, idx)
+	assert.NoError(t, err)
+	assert.True(t, isRef)
+	assert.Equal(t, refValue, foundRef)
+	assert.Equal(t, refNode, foundRefNode)
+	assert.Equal(t, yaml.MappingNode, resolvedNode.Kind)
+	assert.Equal(t, "description", resolvedNode.Content[0].Value)
+	assert.Equal(t, "from-document-node", resolvedNode.Content[1].Value)
+	assert.NotNil(t, foundCtx.Value(index.FoundIndexKey))
+}
+
+func TestResolveOperationReference_EmptyTagNode(t *testing.T) {
+	refValue := "#/components/operations/emptyTag"
+	refNode := utils.CreateRefNode(refValue)
+
+	resolved := &yaml.Node{
+		Kind: yaml.SequenceNode,
+		Tag:  "",
+		Content: []*yaml.Node{
+			{
+				Kind: yaml.MappingNode,
+				Tag:  "!!map",
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Tag: "!!str", Value: "description"},
+					{Kind: yaml.ScalarNode, Tag: "!!str", Value: "from-empty-tag-node"},
+				},
+			},
+		},
+	}
+
+	idx := index.NewSpecIndex(refNode)
+	idx.SetMappedReferences(map[string]*index.Reference{
+		refValue: {
+			FullDefinition: refValue,
+			Node:           resolved,
+			Index:          idx,
+		},
+	})
+
+	foundCtx, resolvedNode, isRef, foundRef, foundRefNode, err := resolveOperationReference(context.Background(), refNode, idx)
+	assert.NoError(t, err)
+	assert.True(t, isRef)
+	assert.Equal(t, refValue, foundRef)
+	assert.Equal(t, refNode, foundRefNode)
+	assert.Equal(t, yaml.MappingNode, resolvedNode.Kind)
+	assert.Equal(t, "description", resolvedNode.Content[0].Value)
+	assert.Equal(t, "from-empty-tag-node", resolvedNode.Content[1].Value)
+	assert.NotNil(t, foundCtx.Value(index.FoundIndexKey))
 }
