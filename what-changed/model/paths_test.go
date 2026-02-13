@@ -46,6 +46,9 @@ func TestComparePaths_v2(t *testing.T) {
 }
 
 func TestComparePaths_v2_ModifyOp(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in repeated/covered runs.
+	low.ClearHashCache()
+
 	left := `/fresh/cake:
   get:
     description: a thing?
