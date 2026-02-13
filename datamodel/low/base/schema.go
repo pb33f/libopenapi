@@ -1128,31 +1128,36 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	_, sthenLabel, sthenValue := utils.FindKeyNodeFullTop(ThenLabel, root.Content)
 	_, propNamesLabel, propNamesValue := utils.FindKeyNodeFullTop(PropertyNamesLabel, root.Content)
 	_, unevalItemsLabel, unevalItemsValue := utils.FindKeyNodeFullTop(UnevaluatedItemsLabel, root.Content)
-	_, unevalPropsLabel, unevalPropsValue := utils.FindKeyNodeFullTop(UnevaluatedPropertiesLabel, root.Content)
-	_, addPropsLabel, addPropsValue := utils.FindKeyNodeFullTop(AdditionalPropertiesLabel, root.Content)
+	// Reuse earlier lookups for unevaluatedProperties and additionalProperties instead of re-scanning.
+	unevalPropsLabel, unevalPropsValue := unevalLabel, unevalValue
+	addPropsLabel, addPropsValue := addPLabel, addPValue
 	_, contentSchLabel, contentSchValue := utils.FindKeyNodeFullTop(ContentSchemaLabel, root.Content)
 
-	errorChan := make(chan error)
-	allOfChan := make(chan schemaProxyBuildResult)
-	anyOfChan := make(chan schemaProxyBuildResult)
-	oneOfChan := make(chan schemaProxyBuildResult)
-	itemsChan := make(chan schemaProxyBuildResult)
-	prefixItemsChan := make(chan schemaProxyBuildResult)
-	notChan := make(chan schemaProxyBuildResult)
-	containsChan := make(chan schemaProxyBuildResult)
-	ifChan := make(chan schemaProxyBuildResult)
-	elseChan := make(chan schemaProxyBuildResult)
-	thenChan := make(chan schemaProxyBuildResult)
-	propNamesChan := make(chan schemaProxyBuildResult)
-	unevalItemsChan := make(chan schemaProxyBuildResult)
-	unevalPropsChan := make(chan schemaProxyBuildResult)
-	addPropsChan := make(chan schemaProxyBuildResult)
-	contentSchChan := make(chan schemaProxyBuildResult)
+	// Buffer channels to prevent goroutine leaks: if the select loop exits early on error,
+	// goroutines can still send their results to the buffered channel and exit cleanly.
+	allOfCount := countSubSchemaItems(allOfValue)
+	anyOfCount := countSubSchemaItems(anyOfValue)
+	oneOfCount := countSubSchemaItems(oneOfValue)
+	prefixItemsCount := countSubSchemaItems(prefixItemsValue)
 
-	totalBuilds := countSubSchemaItems(allOfValue) +
-		countSubSchemaItems(anyOfValue) +
-		countSubSchemaItems(oneOfValue) +
-		countSubSchemaItems(prefixItemsValue)
+	errorChan := make(chan error, allOfCount+anyOfCount+oneOfCount+prefixItemsCount+11)
+	allOfChan := make(chan schemaProxyBuildResult, max(allOfCount, 1))
+	anyOfChan := make(chan schemaProxyBuildResult, max(anyOfCount, 1))
+	oneOfChan := make(chan schemaProxyBuildResult, max(oneOfCount, 1))
+	itemsChan := make(chan schemaProxyBuildResult, 1)
+	prefixItemsChan := make(chan schemaProxyBuildResult, max(prefixItemsCount, 1))
+	notChan := make(chan schemaProxyBuildResult, 1)
+	containsChan := make(chan schemaProxyBuildResult, 1)
+	ifChan := make(chan schemaProxyBuildResult, 1)
+	elseChan := make(chan schemaProxyBuildResult, 1)
+	thenChan := make(chan schemaProxyBuildResult, 1)
+	propNamesChan := make(chan schemaProxyBuildResult, 1)
+	unevalItemsChan := make(chan schemaProxyBuildResult, 1)
+	unevalPropsChan := make(chan schemaProxyBuildResult, 1)
+	addPropsChan := make(chan schemaProxyBuildResult, 1)
+	contentSchChan := make(chan schemaProxyBuildResult, 1)
+
+	totalBuilds := allOfCount + anyOfCount + oneOfCount + prefixItemsCount
 
 	if allOfValue != nil {
 		go buildSchema(ctx, allOfChan, allOfLabel, allOfValue, errorChan, idx)

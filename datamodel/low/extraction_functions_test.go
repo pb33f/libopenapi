@@ -2370,6 +2370,10 @@ func TestArray_NotRefNotArray(t *testing.T) {
 	assert.Len(t, things, 0)
 }
 
+func TestHashExtensions_Nil(t *testing.T) {
+	assert.Nil(t, HashExtensions(nil))
+}
+
 func TestHashExtensions(t *testing.T) {
 	// Test empty extensions
 	t.Run("empty", func(t *testing.T) {
