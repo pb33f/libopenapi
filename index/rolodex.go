@@ -79,12 +79,12 @@ type Rolodex struct {
 	rootIndex                  *SpecIndex
 	rootNode                   *yaml.Node
 	caughtErrors               []error
-	safeCircularReferences        []*CircularReferenceResult
-	infiniteCircularReferences    []*CircularReferenceResult
-	ignoredCircularReferences     []*CircularReferenceResult
-	debouncedSafeCircRefs         []*CircularReferenceResult // cached result from GetSafeCircularReferences
-	debouncedIgnoredCircRefs      []*CircularReferenceResult // cached result from GetIgnoredCircularReferences
-	circRefCacheLock              sync.Mutex                  // protects debounced cache fields
+	safeCircularReferences     []*CircularReferenceResult
+	infiniteCircularReferences []*CircularReferenceResult
+	ignoredCircularReferences  []*CircularReferenceResult
+	debouncedSafeCircRefs      []*CircularReferenceResult // cached result from GetSafeCircularReferences
+	debouncedIgnoredCircRefs   []*CircularReferenceResult // cached result from GetIgnoredCircularReferences
+	circRefCacheLock           sync.Mutex                 // protects debounced cache fields
 	logger                     *slog.Logger
 	id                         string // unique ID for the rolodex, can be used to identify it in logs or other contexts.
 	globalSchemaIdRegistry     map[string]*SchemaIdEntry
