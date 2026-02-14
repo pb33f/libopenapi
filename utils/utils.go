@@ -62,7 +62,7 @@ func getJSONPath(rawPath string) (*jsonpath.JSONPath, error) {
 		return entry.path, entry.err
 	}
 
-	path, err := jsonpath.NewPath(cleaned, jsonpathconfig.WithPropertyNameExtension())
+	path, err := jsonpath.NewPath(cleaned, jsonpathconfig.WithPropertyNameExtension(), jsonpathconfig.WithLazyContextTracking())
 	jsonPathCache.Store(cleaned, cachedJSONPath{
 		path: path,
 		err:  err,

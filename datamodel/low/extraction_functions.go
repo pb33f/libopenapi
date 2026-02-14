@@ -339,7 +339,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 		// cant be found? last resort is to try a path lookup
 		_, friendly := utils.ConvertComponentIdIntoFriendlyPathSearch(rv)
 		if friendly != "" {
-			path, err := jsonpath.NewPath(friendly, jsonpathconfig.WithPropertyNameExtension())
+			path, err := jsonpath.NewPath(friendly, jsonpathconfig.WithPropertyNameExtension(), jsonpathconfig.WithLazyContextTracking())
 			if err == nil {
 				nodes := path.Query(idx.GetRootNode())
 				if len(nodes) > 0 {
