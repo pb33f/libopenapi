@@ -79,7 +79,7 @@ components:
 		require.NoError(t, err)
 
 		// Clear cache to ensure fresh detection
-		clearContentDetectionCache()
+		ClearContentDetectionCache()
 
 		file, err := rfs.Open(server.URL + "/yaml-no-ext")
 		assert.NoError(t, err)
@@ -99,7 +99,7 @@ components:
 		require.NoError(t, err)
 
 		// Clear cache to ensure fresh detection
-		clearContentDetectionCache()
+		ClearContentDetectionCache()
 
 		file, err := rfs.Open(server.URL + "/json-no-ext")
 		assert.NoError(t, err)
@@ -119,7 +119,7 @@ components:
 		require.NoError(t, err)
 
 		// Clear cache to ensure fresh detection
-		clearContentDetectionCache()
+		ClearContentDetectionCache()
 
 		file, err := rfs.Open(server.URL + "/yaml-no-ext")
 		assert.Error(t, err)
@@ -134,7 +134,7 @@ components:
 		require.NoError(t, err)
 
 		// Clear cache to ensure fresh detection
-		clearContentDetectionCache()
+		ClearContentDetectionCache()
 
 		file, err := rfs.Open(server.URL + "/invalid-content")
 		assert.Error(t, err)
@@ -149,7 +149,7 @@ components:
 		require.NoError(t, err)
 
 		// Clear cache to ensure fresh detection
-		clearContentDetectionCache()
+		ClearContentDetectionCache()
 
 		file, err := rfs.Open(server.URL + "/binary-content")
 		assert.Error(t, err)
@@ -366,7 +366,7 @@ func TestContentDetectionCache(t *testing.T) {
 	require.NoError(t, err)
 
 	// Clear cache
-	clearContentDetectionCache()
+	ClearContentDetectionCache()
 
 	url := server.URL + "/test"
 
@@ -379,7 +379,7 @@ func TestContentDetectionCache(t *testing.T) {
 	assert.Equal(t, YAML, result2)
 
 	// Clear cache and verify it's cleared
-	clearContentDetectionCache()
+	ClearContentDetectionCache()
 
 	// Verify cache is actually cleared by checking if we can detect again
 	result3 := detectRemoteContentType(url, rfs.RemoteHandlerFunc, nil)
@@ -425,7 +425,7 @@ func TestIssue438_PastebinExample(t *testing.T) {
 		require.NoError(t, err)
 
 		// Clear cache
-		clearContentDetectionCache()
+		ClearContentDetectionCache()
 
 		// This URL has no file extension, mimicking the Pastebin example
 		file, err := rfs.Open(server.URL + "/raw/LAvtwJn6")
@@ -447,7 +447,7 @@ func TestIssue438_PastebinExample(t *testing.T) {
 		require.NoError(t, err)
 
 		// Clear cache
-		clearContentDetectionCache()
+		ClearContentDetectionCache()
 
 		file, err := rfs.Open(server.URL + "/raw/LAvtwJn6")
 		assert.Error(t, err)

@@ -57,8 +57,31 @@ func TestFindNodes_BadPath(t *testing.T) {
 	assert.Nil(t, nodes)
 }
 
+func TestClearJSONPathCache(t *testing.T) {
+	// populate the cache
+	_, _ = getJSONPath("$.info.contact")
+	_, _ = getJSONPath("$.paths")
+
+	// verify entries exist
+	count := 0
+	jsonPathCache.Range(func(_, _ interface{}) bool { count++; return true })
+	assert.GreaterOrEqual(t, count, 2)
+
+	// clear and verify empty
+	ClearJSONPathCache()
+
+	count = 0
+	jsonPathCache.Range(func(_, _ interface{}) bool { count++; return true })
+	assert.Equal(t, 0, count)
+
+	// verify cache still works after clearing
+	p, err := getJSONPath("$.info.contact")
+	assert.NoError(t, err)
+	assert.NotNil(t, p)
+}
+
 func TestGetJSONPath_CacheHit(t *testing.T) {
-	jsonPathCache = sync.Map{}
+	ClearJSONPathCache()
 
 	path1, err := getJSONPath("$.info.contact")
 	assert.NoError(t, err)
@@ -70,7 +93,7 @@ func TestGetJSONPath_CacheHit(t *testing.T) {
 }
 
 func TestGetJSONPath_CacheHit_Invalid(t *testing.T) {
-	jsonPathCache = sync.Map{}
+	ClearJSONPathCache()
 
 	path1, err := getJSONPath("I am not valid")
 	assert.Error(t, err)

@@ -2,7 +2,6 @@ package base
 
 import (
 	"context"
-	"sync"
 	"testing"
 	timeStd "time"
 
@@ -1983,7 +1982,7 @@ func TestSchema_Hash_Empty(t *testing.T) {
 }
 
 func TestSetup(t *testing.T) {
-	SchemaQuickHashMap = sync.Map{}
+	ClearSchemaQuickHashMap()
 }
 
 func TestSchema_QuickHash(t *testing.T) {
@@ -3205,4 +3204,21 @@ func TestExtractSchema_SchemaKeyRef_SkipExternalRef(t *testing.T) {
 	assert.Equal(t, "./models/Pet.yaml#/Pet", result.Value.GetReference())
 	assert.Nil(t, result.Value.Schema())
 	assert.Nil(t, result.Value.GetBuildError())
+}
+
+func TestClearSchemaQuickHashMap(t *testing.T) {
+	// Store a value.
+	SchemaQuickHashMap.Store("test-key", "test-value")
+
+	// Verify it's there.
+	_, ok := SchemaQuickHashMap.Load("test-key")
+	assert.True(t, ok)
+
+	// Clear and verify it's gone.
+	ClearSchemaQuickHashMap()
+	_, ok = SchemaQuickHashMap.Load("test-key")
+	assert.False(t, ok)
+
+	// Idempotent: clearing an empty map should not panic.
+	ClearSchemaQuickHashMap()
 }
