@@ -41,10 +41,7 @@ var inlineRenderingTracker sync.Map
 // ClearInlineRenderingTracker resets the inline rendering tracker.
 // Call this between document lifecycles in long-running processes to bound memory.
 func ClearInlineRenderingTracker() {
-	inlineRenderingTracker.Range(func(key, _ interface{}) bool {
-		inlineRenderingTracker.Delete(key)
-		return true
-	})
+	inlineRenderingTracker.Clear()
 }
 
 // bundlingModeCount tracks the number of active bundling operations.

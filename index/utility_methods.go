@@ -645,10 +645,7 @@ func syncMapToMap[K comparable, V any](sm *sync.Map) map[K]V {
 
 // ClearHashCache clears the hash cache - useful for testing and memory management
 func ClearHashCache() {
-	nodeHashCache.Range(func(key, value interface{}) bool {
-		nodeHashCache.Delete(key)
-		return true
-	})
+	nodeHashCache.Clear()
 }
 
 // hasherPool pools maphash.Hash instances to avoid allocations.

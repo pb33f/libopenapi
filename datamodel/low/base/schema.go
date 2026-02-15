@@ -199,10 +199,7 @@ var SchemaQuickHashMap sync.Map
 // ClearSchemaQuickHashMap resets the schema quick-hash cache.
 // Call this between document lifecycles in long-running processes to bound memory.
 func ClearSchemaQuickHashMap() {
-	SchemaQuickHashMap.Range(func(key, _ interface{}) bool {
-		SchemaQuickHashMap.Delete(key)
-		return true
-	})
+	SchemaQuickHashMap.Clear()
 }
 
 func (s *Schema) hash(quick bool) uint64 {

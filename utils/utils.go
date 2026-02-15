@@ -76,7 +76,7 @@ func ClearJSONPathCache() {
 	jsonPathCacheEager.Range(func(key, _ interface{}) bool {
 		jsonPathCacheEager.Delete(key)
 		return true
-	})
+	jsonPathCache.Clear()
 }
 
 var jsonPathQuery = func(path *jsonpath.JSONPath, node *yaml.Node) []*yaml.Node {
