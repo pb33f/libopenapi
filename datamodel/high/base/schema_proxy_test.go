@@ -1389,3 +1389,20 @@ func TestInlineRenderContext_ModePreservedDuringOperations(t *testing.T) {
 	ctx.StopRendering("test-key")
 	assert.Equal(t, RenderingModeValidation, ctx.Mode)
 }
+
+func TestClearInlineRenderingTracker(t *testing.T) {
+	// Store a value.
+	inlineRenderingTracker.Store("test-key", true)
+
+	// Verify it's there.
+	_, ok := inlineRenderingTracker.Load("test-key")
+	assert.True(t, ok)
+
+	// Clear and verify it's gone.
+	ClearInlineRenderingTracker()
+	_, ok = inlineRenderingTracker.Load("test-key")
+	assert.False(t, ok)
+
+	// Idempotent: clearing an empty map should not panic.
+	ClearInlineRenderingTracker()
+}

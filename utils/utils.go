@@ -50,6 +50,15 @@ type cachedJSONPath struct {
 // jsonPathCache stores compiled JSONPath expressions keyed by normalized string.
 var jsonPathCache sync.Map
 
+// ClearJSONPathCache resets the compiled JSONPath cache.
+// Call this between document lifecycles in long-running processes to bound memory.
+func ClearJSONPathCache() {
+	jsonPathCache.Range(func(key, _ interface{}) bool {
+		jsonPathCache.Delete(key)
+		return true
+	})
+}
+
 var jsonPathQuery = func(path *jsonpath.JSONPath, node *yaml.Node) []*yaml.Node {
 	return path.Query(node)
 }

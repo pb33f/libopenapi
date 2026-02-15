@@ -103,7 +103,7 @@ other: test`,
 	})
 
 	t.Run("DetectRemoteContentType with caching", func(t *testing.T) {
-		clearContentDetectionCache()
+		ClearContentDetectionCache()
 
 		// Test cache miss and population
 		server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -129,7 +129,7 @@ other: test`,
 	})
 
 	t.Run("Content detection with unsupported result", func(t *testing.T) {
-		clearContentDetectionCache()
+		ClearContentDetectionCache()
 
 		config := CreateOpenAPIIndexConfig()
 		config.AllowUnknownExtensionContentDetection = true

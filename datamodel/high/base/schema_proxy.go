@@ -38,6 +38,15 @@ func buildCacheKey(path string, line, col int) string {
 // so sync.Map's internal sharding reduces contention compared to a single mutex.
 var inlineRenderingTracker sync.Map
 
+// ClearInlineRenderingTracker resets the inline rendering tracker.
+// Call this between document lifecycles in long-running processes to bound memory.
+func ClearInlineRenderingTracker() {
+	inlineRenderingTracker.Range(func(key, _ interface{}) bool {
+		inlineRenderingTracker.Delete(key)
+		return true
+	})
+}
+
 // bundlingModeCount tracks the number of active bundling operations.
 // Uses reference counting to support concurrent BundleDocument calls safely.
 //

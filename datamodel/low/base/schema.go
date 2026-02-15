@@ -195,6 +195,15 @@ func (s *Schema) Hash() uint64 {
 // The hash map means each schema is hashed once, and then the hash is reused for quick equality checking.
 var SchemaQuickHashMap sync.Map
 
+// ClearSchemaQuickHashMap resets the schema quick-hash cache.
+// Call this between document lifecycles in long-running processes to bound memory.
+func ClearSchemaQuickHashMap() {
+	SchemaQuickHashMap.Range(func(key, _ interface{}) bool {
+		SchemaQuickHashMap.Delete(key)
+		return true
+	})
+}
+
 func (s *Schema) hash(quick bool) uint64 {
 	if s == nil {
 		return 0
