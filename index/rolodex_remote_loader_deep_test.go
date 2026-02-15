@@ -161,7 +161,7 @@ func TestFetchWithRetryComprehensive(t *testing.T) {
 // TestDetectRemoteContentTypeComprehensive tests caching and error scenarios
 func TestDetectRemoteContentTypeComprehensive(t *testing.T) {
 	// Clear cache before test
-	clearContentDetectionCache()
+	ClearContentDetectionCache()
 
 	t.Run("Network error that gets cached", func(t *testing.T) {
 		handler := func(url string) (*http.Response, error) {
@@ -199,7 +199,7 @@ func TestDetectRemoteContentTypeComprehensive(t *testing.T) {
 	})
 
 	// Clear cache after test
-	clearContentDetectionCache()
+	ClearContentDetectionCache()
 }
 
 // TestRemoteFSOpenWithContextComprehensive tests all edge cases for the main OpenWithContext method

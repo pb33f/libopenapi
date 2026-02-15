@@ -46,8 +46,14 @@ var ErrExternalRefSkipped = errors.New("external reference resolution skipped")
 // ClearHashCache clears the global hash cache. This should be called before
 // starting a new document comparison to ensure clean state.
 func ClearHashCache() {
-	hashCache = sync.Map{}
-	indexCollectionCache = sync.Map{}
+	hashCache.Range(func(key, _ interface{}) bool {
+		hashCache.Delete(key)
+		return true
+	})
+	indexCollectionCache.Range(func(key, _ interface{}) bool {
+		indexCollectionCache.Delete(key)
+		return true
+	})
 }
 
 // GetStringBuilder retrieves a strings.Builder from the pool, resets it, and returns it.
