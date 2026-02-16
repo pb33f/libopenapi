@@ -2625,3 +2625,64 @@ paths: {}
 		assert.True(t, strings.HasSuffix(rolodex.indexConfig.SpecAbsolutePath, filepath.Join("dir2", "doc.yaml")))
 	})
 }
+
+func TestRolodex_Release(t *testing.T) {
+	cfg := CreateOpenAPIIndexConfig()
+	rolodex := NewRolodex(cfg)
+	idx := &SpecIndex{config: cfg}
+	rolodex.AddIndex(idx)
+	rolodex.rootNode = &yaml.Node{Value: "root"}
+	rolodex.rootIndex = idx
+	rolodex.caughtErrors = []error{fmt.Errorf("test")}
+	rolodex.safeCircularReferences = []*CircularReferenceResult{{}}
+	rolodex.infiniteCircularReferences = []*CircularReferenceResult{{}}
+	rolodex.ignoredCircularReferences = []*CircularReferenceResult{{}}
+	rolodex.debouncedSafeCircRefs = []*CircularReferenceResult{{}}
+	rolodex.debouncedIgnoredCircRefs = []*CircularReferenceResult{{}}
+	rolodex.globalSchemaIdRegistry = map[string]*SchemaIdEntry{"test": {}}
+
+	rolodex.Release()
+
+	assert.Nil(t, rolodex.indexes)
+	assert.Nil(t, rolodex.indexMap)
+	assert.Nil(t, rolodex.rootIndex)
+	assert.Nil(t, rolodex.rootNode)
+	assert.Nil(t, rolodex.caughtErrors)
+	assert.Nil(t, rolodex.safeCircularReferences)
+	assert.Nil(t, rolodex.infiniteCircularReferences)
+	assert.Nil(t, rolodex.ignoredCircularReferences)
+	assert.Nil(t, rolodex.debouncedSafeCircRefs)
+	assert.Nil(t, rolodex.debouncedIgnoredCircRefs)
+	assert.Nil(t, rolodex.globalSchemaIdRegistry)
+}
+
+func TestRolodex_Release_Nil(t *testing.T) {
+	var r *Rolodex
+	r.Release() // must not panic
+}
+
+func TestRolodex_Release_Idempotent(t *testing.T) {
+	cfg := CreateOpenAPIIndexConfig()
+	rolodex := NewRolodex(cfg)
+	rolodex.rootNode = &yaml.Node{}
+	rolodex.Release()
+	rolodex.Release() // second call must not panic
+	assert.Nil(t, rolodex.rootNode)
+}
+
+func TestRolodex_Release_ConcurrentSafe(t *testing.T) {
+	cfg := CreateOpenAPIIndexConfig()
+	rolodex := NewRolodex(cfg)
+	idx := &SpecIndex{config: cfg}
+	rolodex.AddIndex(idx)
+
+	// Release acquires locks, so calling it concurrently with GetIndexes must not race.
+	done := make(chan struct{})
+	go func() {
+		rolodex.Release()
+		close(done)
+	}()
+	// GetIndexes also acquires indexLock, so this tests lock correctness.
+	_ = rolodex.GetIndexes()
+	<-done
+}
