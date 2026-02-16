@@ -104,6 +104,11 @@ type Document interface {
 	// Deprecated: This method is deprecated and will be removed in a future release. Use RenderAndReload() instead.
 	// This method does not support mutations correctly.
 	Serialize() ([]byte, error)
+
+	// Release nils all internal state so that the YAML tree, SpecIndex, Rolodex,
+	// and model objects can be garbage-collected even if something still holds
+	// a reference to the Document interface value.
+	Release()
 }
 
 type document struct {
@@ -169,6 +174,26 @@ func NewDocumentWithConfiguration(specByteArray []byte, configuration *datamodel
 	d.info = info
 	d.config = configuration
 	return d, nil
+}
+
+func (d *document) Release() {
+	if d == nil {
+		return
+	}
+	if d.info != nil {
+		d.info.Release()
+		d.info = nil
+	}
+	// This method intentionally does not call SpecIndex.Release(). Low-level
+	// model objects (Schema, PathItem, etc.) retain their own references to the
+	// SpecIndex and require its config and root node for hashing and comparison
+	// operations that may run after a Document is released. Callers that own the
+	// full lifecycle should call SpecIndex.Release() separately once all model
+	// consumers are finished.
+	d.rolodex = nil
+	d.config = nil
+	d.highOpenAPI3Model = nil
+	d.highSwaggerModel = nil
 }
 
 func (d *document) GetRolodex() *index.Rolodex {

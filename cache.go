@@ -22,4 +22,9 @@ func ClearAllCaches() {
 	index.ClearContentDetectionCache()
 	highbase.ClearInlineRenderingTracker()
 	utils.ClearJSONPathCache()
+
+	// Drain sync.Pool instances that hold *yaml.Node pointers.
+	// Pooled slices/maps keep the entire YAML parse tree alive.
+	index.ClearNodePools()
+	low.ClearNodePools()
 }
