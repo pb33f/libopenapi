@@ -455,6 +455,7 @@ func (m *mockDocument) Serialize() ([]byte, error) { return nil, nil }
 func (m *mockDocument) RenderAndReload() ([]byte, Document, *DocumentModel[v3.Document], error) {
 	return nil, nil, nil, nil
 }
+func (m *mockDocument) Release() {}
 
 func TestApplyOverlay_NilSpecBytes(t *testing.T) {
 	// Test line 63: specBytes == nil

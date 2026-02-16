@@ -91,6 +91,32 @@ type Rolodex struct {
 	schemaIdRegistryLock       sync.RWMutex
 }
 
+// Release nils all fields that can pin YAML node trees, SpecIndex objects, or
+// circular reference results in memory. Acquires locks for fields that are
+// protected elsewhere. Call this once all consumers of the rolodex are finished.
+func (r *Rolodex) Release() {
+	if r == nil {
+		return
+	}
+	r.indexLock.Lock()
+	r.indexes = nil
+	r.indexMap = nil
+	r.rootIndex = nil
+	r.indexLock.Unlock()
+
+	r.circRefCacheLock.Lock()
+	r.debouncedSafeCircRefs = nil
+	r.debouncedIgnoredCircRefs = nil
+	r.circRefCacheLock.Unlock()
+
+	r.rootNode = nil
+	r.caughtErrors = nil
+	r.safeCircularReferences = nil
+	r.infiniteCircularReferences = nil
+	r.ignoredCircularReferences = nil
+	r.globalSchemaIdRegistry = nil
+}
+
 // NewRolodex creates a new rolodex with the provided index configuration.
 func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
 	logger := indexConfig.Logger

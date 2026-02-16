@@ -1820,4 +1820,34 @@ components:
 	}
 }
 
+func TestResolver_Release(t *testing.T) {
+	idx := &SpecIndex{config: CreateOpenAPIIndexConfig()}
+	resolver := NewResolver(idx)
+	resolver.resolvingErrors = []*ResolvingError{{}}
+	resolver.circularReferences = []*CircularReferenceResult{{}}
+	resolver.ignoredPolyReferences = []*CircularReferenceResult{{}}
+	resolver.ignoredArrayReferences = []*CircularReferenceResult{{}}
+
+	resolver.Release()
+
+	assert.Nil(t, resolver.specIndex)
+	assert.Nil(t, resolver.resolvedRoot)
+	assert.Nil(t, resolver.resolvingErrors)
+	assert.Nil(t, resolver.circularReferences)
+	assert.Nil(t, resolver.ignoredPolyReferences)
+	assert.Nil(t, resolver.ignoredArrayReferences)
+}
+
+func TestResolver_Release_Nil(t *testing.T) {
+	var r *Resolver
+	r.Release() // must not panic
+}
+
+func TestResolver_Release_Idempotent(t *testing.T) {
+	resolver := &Resolver{resolvedRoot: &yaml.Node{}}
+	resolver.Release()
+	resolver.Release() // second call must not panic
+	assert.Nil(t, resolver.resolvedRoot)
+}
+
 // func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, journey []*Reference, resolve bool) []*yaml.Node {

@@ -648,6 +648,24 @@ func ClearHashCache() {
 	nodeHashCache.Clear()
 }
 
+// ClearNodePools replaces the sync.Pool instances that hold *yaml.Node pointers
+// with fresh pools. After a document lifecycle ends, pooled slices and maps
+// still reference the parsed YAML tree, preventing GC from collecting it.
+// Call this (via libopenapi.ClearAllCaches) to release those references.
+func ClearNodePools() {
+	stackPool = sync.Pool{
+		New: func() interface{} {
+			s := make([]*yaml.Node, 0, 128)
+			return &s
+		},
+	}
+	visitedPool = sync.Pool{
+		New: func() interface{} {
+			return make(map[*yaml.Node]struct{}, 64)
+		},
+	}
+}
+
 // hasherPool pools maphash.Hash instances to avoid allocations.
 // maphash is ~15x faster than SHA256 and has native WriteString support.
 var hasherPool = sync.Pool{

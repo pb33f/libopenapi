@@ -47,6 +47,15 @@ func putVisitedMap(m map[*yaml.Node]bool) {
 	visitedPool.Put(m)
 }
 
+// ClearNodePools replaces the sync.Pool instances in this package that hold
+// *yaml.Node pointers (visitedPool maps). After a document lifecycle ends,
+// pooled maps still reference parsed YAML nodes, preventing GC collection.
+func ClearNodePools() {
+	visitedPool = sync.Pool{
+		New: func() any { return make(map[*yaml.Node]bool, 32) },
+	}
+}
+
 // WithHasher provides a pooled hasher for the duration of fn.
 // The hasher is automatically returned to the pool after fn completes.
 // This pattern eliminates forgotten PutHasher() bugs.

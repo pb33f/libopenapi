@@ -2091,3 +2091,74 @@ components:
 	refItem := schema.AllOf[1]
 	assert.Equal(t, "#/components/schemas/Base", refItem.GetReference())
 }
+
+func TestDocument_Release(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}`
+
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+
+	// build model so rolodex and high model are populated
+	_, _ = doc.BuildV3Model()
+
+	// confirm fields are populated before release
+	assert.NotNil(t, doc.GetSpecInfo())
+	assert.NotNil(t, doc.GetRolodex())
+
+	doc.Release()
+
+	// after release, internal state is cleared
+	d := doc.(*document)
+	assert.Nil(t, d.info)
+	assert.Nil(t, d.rolodex)
+	assert.Nil(t, d.config)
+	assert.Nil(t, d.highOpenAPI3Model)
+}
+
+func TestDocument_Release_Nil(t *testing.T) {
+	var d *document
+	d.Release() // must not panic
+}
+
+func TestDocument_Release_Idempotent(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}`
+
+	doc, _ := NewDocument([]byte(spec))
+	doc.Release()
+	doc.Release() // second call must not panic
+
+	d := doc.(*document)
+	assert.Nil(t, d.info)
+}
+
+func TestDocument_Release_PreservesSpecIndexForComparison(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test
+  version: "1.0"
+paths: {}`
+
+	doc, _ := NewDocument([]byte(spec))
+	_, _ = doc.BuildV3Model()
+
+	rolodex := doc.GetRolodex()
+	require.NotNil(t, rolodex)
+	rootIdx := rolodex.GetRootIndex()
+	require.NotNil(t, rootIdx)
+
+	// Release the document
+	doc.Release()
+
+	// SpecIndex internals must NOT be released by Document.Release()
+	// (they're needed for hashing during what-changed comparisons)
+	assert.NotNil(t, rootIdx.GetConfig())
+}

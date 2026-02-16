@@ -40,6 +40,17 @@ type SpecInfo struct {
 	Self                string                  `json:"-"` // the $self field for OpenAPI 3.2+ documents (base URI)
 }
 
+// Release nils fields that pin the YAML node tree and large byte arrays in memory.
+func (s *SpecInfo) Release() {
+	if s == nil {
+		return
+	}
+	s.RootNode = nil
+	s.SpecBytes = nil
+	s.SpecJSONBytes = nil
+	s.SpecJSON = nil
+}
+
 func ExtractSpecInfoWithConfig(spec []byte, config *DocumentConfiguration) (*SpecInfo, error) {
 	if config == nil {
 		return extractSpecInfoInternal(spec, false, false)
