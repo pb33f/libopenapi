@@ -1883,20 +1883,9 @@ func TestBuildSchema_BadNodeTypes(t *testing.T) {
 		Column: 2,
 	}
 
-	eChan := make(chan error, 1)
-	doneChan := make(chan struct{}, 1)
-	bChan := make(chan schemaProxyBuildResult, 1)
-	var err error
-	go func() {
-		for {
-			e := <-eChan
-			err = e
-			doneChan <- struct{}{}
-		}
-	}()
-
-	buildSchema(context.Background(), bChan, n, n, eChan, nil)
-	<-doneChan
+	res, err := buildSchema(context.Background(), n, n, nil)
+	assert.Error(t, err)
+	assert.Nil(t, res)
 	assert.Equal(t, "build schema failed: unexpected data type: 'unknown', line 1, col 2", err.Error())
 }
 

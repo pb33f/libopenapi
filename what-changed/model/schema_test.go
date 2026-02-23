@@ -2018,7 +2018,7 @@ components:
     OK:
       type: string
       items:
-        - type: bool`
+        type: bool`
 
 	right := `openapi: 3.0
 components:
@@ -2026,7 +2026,7 @@ components:
     OK:
       type: string
       items:
-        - type: string`
+        type: string`
 
 	leftDoc, rightDoc := test_BuildDoc(left, right)
 
