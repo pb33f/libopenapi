@@ -399,29 +399,29 @@ allOf:
         description: allOfB description
         example: 'allOfBExp'
 oneOf:
-  type: object
-  description: a oneof thing
-  properties:
-    oneOfA:
-      type: string
-      description: oneOfA description
-      example: 'oneOfAExp'
-    oneOfB:
-      type: string
-      description: oneOfB description
-      example: 'oneOfBExp'
+  - type: object
+    description: a oneof thing
+    properties:
+      oneOfA:
+        type: string
+        description: oneOfA description
+        example: 'oneOfAExp'
+      oneOfB:
+        type: string
+        description: oneOfB description
+        example: 'oneOfBExp'
 anyOf:
-  type: object
-  description: an anyOf thing
-  properties:
-    anyOfA:
-      type: string
-      description: anyOfA description
-      example: 'anyOfAExp'
-    anyOfB:
-      type: string
-      description: anyOfB description
-      example: 'anyOfBExp'
+  - type: object
+    description: an anyOf thing
+    properties:
+      anyOfA:
+        type: string
+        description: anyOfA description
+        example: 'anyOfAExp'
+      anyOfB:
+        type: string
+        description: anyOfB description
+        example: 'anyOfBExp'
 not:
   type: object
   description: a not thing
