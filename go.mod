@@ -1,6 +1,6 @@
 module github.com/pb33f/libopenapi
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/lucasjones/reggen v0.0.0-20200904144131-37ba4fa293bb

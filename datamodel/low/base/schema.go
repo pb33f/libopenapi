@@ -15,6 +15,7 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
+	"golang.org/x/sync/errgroup"
 )
 
 // SchemaDynamicValue is used to hold multiple possible types for a schema property. There are two values, a left
@@ -1142,140 +1143,150 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	addPropsLabel, addPropsValue := addPLabel, addPValue
 	_, contentSchLabel, contentSchValue := utils.FindKeyNodeFullTop(ContentSchemaLabel, root.Content)
 
-	// Buffer channels to prevent goroutine leaks: if the select loop exits early on error,
-	// goroutines can still send their results to the buffered channel and exit cleanly.
-	allOfCount := countSubSchemaItems(allOfValue)
-	anyOfCount := countSubSchemaItems(anyOfValue)
-	oneOfCount := countSubSchemaItems(oneOfValue)
-	prefixItemsCount := countSubSchemaItems(prefixItemsValue)
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
-	errorChan := make(chan error, allOfCount+anyOfCount+oneOfCount+prefixItemsCount+11)
-	allOfChan := make(chan schemaProxyBuildResult, max(allOfCount, 1))
-	anyOfChan := make(chan schemaProxyBuildResult, max(anyOfCount, 1))
-	oneOfChan := make(chan schemaProxyBuildResult, max(oneOfCount, 1))
-	itemsChan := make(chan schemaProxyBuildResult, 1)
-	prefixItemsChan := make(chan schemaProxyBuildResult, max(prefixItemsCount, 1))
-	notChan := make(chan schemaProxyBuildResult, 1)
-	containsChan := make(chan schemaProxyBuildResult, 1)
-	ifChan := make(chan schemaProxyBuildResult, 1)
-	elseChan := make(chan schemaProxyBuildResult, 1)
-	thenChan := make(chan schemaProxyBuildResult, 1)
-	propNamesChan := make(chan schemaProxyBuildResult, 1)
-	unevalItemsChan := make(chan schemaProxyBuildResult, 1)
-	unevalPropsChan := make(chan schemaProxyBuildResult, 1)
-	addPropsChan := make(chan schemaProxyBuildResult, 1)
-	contentSchChan := make(chan schemaProxyBuildResult, 1)
-
-	totalBuilds := allOfCount + anyOfCount + oneOfCount + prefixItemsCount
+	g, gCtx := errgroup.WithContext(ctx)
 
 	if allOfValue != nil {
-		go buildSchema(ctx, allOfChan, allOfLabel, allOfValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchemaList(gCtx, allOfLabel, allOfValue, idx)
+			if err == nil {
+				allOf = res
+			}
+			return err
+		})
 	}
 	if anyOfValue != nil {
-		go buildSchema(ctx, anyOfChan, anyOfLabel, anyOfValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchemaList(gCtx, anyOfLabel, anyOfValue, idx)
+			if err == nil {
+				anyOf = res
+			}
+			return err
+		})
 	}
 	if oneOfValue != nil {
-		go buildSchema(ctx, oneOfChan, oneOfLabel, oneOfValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchemaList(gCtx, oneOfLabel, oneOfValue, idx)
+			if err == nil {
+				oneOf = res
+			}
+			return err
+		})
 	}
 	if prefixItemsValue != nil {
-		go buildSchema(ctx, prefixItemsChan, prefixItemsLabel, prefixItemsValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchemaList(gCtx, prefixItemsLabel, prefixItemsValue, idx)
+			if err == nil {
+				prefixItems = res
+			}
+			return err
+		})
 	}
 	if notValue != nil {
-		totalBuilds++
-		go buildSchema(ctx, notChan, notLabel, notValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchema(gCtx, notLabel, notValue, idx)
+			if err == nil {
+				not = res
+			}
+			return err
+		})
 	}
 	if containsValue != nil {
-		totalBuilds++
-		go buildSchema(ctx, containsChan, containsLabel, containsValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchema(gCtx, containsLabel, containsValue, idx)
+			if err == nil {
+				contains = res
+			}
+			return err
+		})
 	}
 	if !itemsIsBool && itemsValue != nil {
-		totalBuilds++
-		go buildSchema(ctx, itemsChan, itemsLabel, itemsValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchema(gCtx, itemsLabel, itemsValue, idx)
+			if err == nil {
+				items = res
+			}
+			return err
+		})
 	}
 	if sifValue != nil {
-		totalBuilds++
-		go buildSchema(ctx, ifChan, sifLabel, sifValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchema(gCtx, sifLabel, sifValue, idx)
+			if err == nil {
+				sif = res
+			}
+			return err
+		})
 	}
 	if selseValue != nil {
-		totalBuilds++
-		go buildSchema(ctx, elseChan, selseLabel, selseValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchema(gCtx, selseLabel, selseValue, idx)
+			if err == nil {
+				selse = res
+			}
+			return err
+		})
 	}
 	if sthenValue != nil {
-		totalBuilds++
-		go buildSchema(ctx, thenChan, sthenLabel, sthenValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchema(gCtx, sthenLabel, sthenValue, idx)
+			if err == nil {
+				sthen = res
+			}
+			return err
+		})
 	}
 	if propNamesValue != nil {
-		totalBuilds++
-		go buildSchema(ctx, propNamesChan, propNamesLabel, propNamesValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchema(gCtx, propNamesLabel, propNamesValue, idx)
+			if err == nil {
+				propertyNames = res
+			}
+			return err
+		})
 	}
 	if unevalItemsValue != nil {
-		totalBuilds++
-		go buildSchema(ctx, unevalItemsChan, unevalItemsLabel, unevalItemsValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchema(gCtx, unevalItemsLabel, unevalItemsValue, idx)
+			if err == nil {
+				unevalItems = res
+			}
+			return err
+		})
 	}
 	if !unevalIsBool && unevalPropsValue != nil {
-		totalBuilds++
-		go buildSchema(ctx, unevalPropsChan, unevalPropsLabel, unevalPropsValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchema(gCtx, unevalPropsLabel, unevalPropsValue, idx)
+			if err == nil {
+				unevalProperties = res
+			}
+			return err
+		})
 	}
 	if !addPropsIsBool && addPropsValue != nil {
-		totalBuilds++
-		go buildSchema(ctx, addPropsChan, addPropsLabel, addPropsValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchema(gCtx, addPropsLabel, addPropsValue, idx)
+			if err == nil {
+				addProperties = res
+			}
+			return err
+		})
 	}
 	if contentSchValue != nil {
-		totalBuilds++
-		go buildSchema(ctx, contentSchChan, contentSchLabel, contentSchValue, errorChan, idx)
+		g.Go(func() error {
+			res, err := buildSchema(gCtx, contentSchLabel, contentSchValue, idx)
+			if err == nil {
+				contentSch = res
+			}
+			return err
+		})
 	}
 
-	completeCount := 0
-	for completeCount < totalBuilds {
-		select {
-		case e := <-errorChan:
-			return e
-		case r := <-allOfChan:
-			completeCount++
-			allOf = append(allOf, r.v)
-		case r := <-anyOfChan:
-			completeCount++
-			anyOf = append(anyOf, r.v)
-		case r := <-oneOfChan:
-			completeCount++
-			oneOf = append(oneOf, r.v)
-		case r := <-itemsChan:
-			completeCount++
-			items = r.v
-		case r := <-prefixItemsChan:
-			completeCount++
-			prefixItems = append(prefixItems, r.v)
-		case r := <-notChan:
-			completeCount++
-			not = r.v
-		case r := <-containsChan:
-			completeCount++
-			contains = r.v
-		case r := <-ifChan:
-			completeCount++
-			sif = r.v
-		case r := <-elseChan:
-			completeCount++
-			selse = r.v
-		case r := <-thenChan:
-			completeCount++
-			sthen = r.v
-		case r := <-propNamesChan:
-			completeCount++
-			propertyNames = r.v
-		case r := <-unevalItemsChan:
-			completeCount++
-			unevalItems = r.v
-		case r := <-unevalPropsChan:
-			completeCount++
-			unevalProperties = r.v
-		case r := <-addPropsChan:
-			completeCount++
-			addProperties = r.v
-		case r := <-contentSchChan:
-			completeCount++
-			contentSch = r.v
-		}
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("failed to build schema: %w", err)
 	}
 
 	if len(anyOf) > 0 {
@@ -1494,143 +1505,112 @@ func buildDependentRequiredMap(root *yaml.Node, label string) (*low.NodeReferenc
 	return nil, nil
 }
 
-// count the number of sub-schemas in a node.
-func countSubSchemaItems(node *yaml.Node) int {
-	if utils.IsNodeMap(node) {
-		return 1
-	}
-	if utils.IsNodeArray(node) {
-		return len(node.Content)
-	}
-	return 0
-}
-
-// schema build result container used for async building.
-type schemaProxyBuildResult struct {
-	k low.KeyReference[string]
-	v low.ValueReference[*SchemaProxy]
-}
-
 // extract extensions from schema
 func (s *Schema) extractExtensions(root *yaml.Node) {
 	s.Extensions = low.ExtractExtensions(root)
 }
 
-// build out a child schema for parent schema.
-func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml.Node, errors chan error, idx *index.SpecIndex) {
-	if valueNode != nil {
-		type buildResult struct {
-			res *low.ValueReference[*SchemaProxy]
-			idx int
+// buildSchemaProxy builds out a SchemaProxy for a single node.
+func buildSchemaProxy(ctx context.Context, idx *index.SpecIndex, kn, vn *yaml.Node, rf *yaml.Node, isRef bool, refLocation string) low.ValueReference[*SchemaProxy] {
+	// a proxy design works best here. polymorphism, pretty much guarantees that a sub-schema can
+	// take on circular references through polymorphism. Like the resolver, if we try and follow these
+	// journey's through hyperspace, we will end up creating endless amounts of threads, spinning off
+	// chasing down circles, that in turn spin up endless threads.
+	// In order to combat this, we need a schema proxy that will only resolve the schema when asked, and then
+	// it will only do it one level at a time.
+	sp := new(SchemaProxy)
+
+	// call Build to ensure transformation happens
+	_ = sp.Build(ctx, kn, vn, idx)
+
+	if isRef {
+		sp.SetReference(refLocation, rf)
+	}
+	return low.ValueReference[*SchemaProxy]{
+		Value:     sp,
+		ValueNode: sp.vn, // use transformed node
+	}
+}
+
+// buildSchema builds out a child schema for parent schema. Expected to be a singular schema object.
+func buildSchema(ctx context.Context, labelNode, valueNode *yaml.Node, idx *index.SpecIndex) (low.ValueReference[*SchemaProxy], error) {
+	if valueNode == nil {
+		return low.ValueReference[*SchemaProxy]{}, nil
+	}
+
+	if !utils.IsNodeMap(valueNode) {
+		return low.ValueReference[*SchemaProxy]{}, fmt.Errorf("build schema failed: expected a single schema object for '%s', but found an array or scalar at line %d, col %d",
+			labelNode.Value, valueNode.Line, valueNode.Column)
+	}
+
+	isRef := false
+	refLocation := ""
+	var refNode *yaml.Node
+	foundCtx := ctx
+	foundIdx := idx
+
+	h := false
+	if h, _, refLocation = utils.IsNodeRefValue(valueNode); h {
+		isRef = true
+		ref, fIdx, err, fctx := low.LocateRefNodeWithContext(foundCtx, valueNode, foundIdx)
+		if ref != nil {
+			refNode = valueNode
+			valueNode = ref
+			foundCtx = fctx
+			foundIdx = fIdx
+		} else if errors.Is(err, low.ErrExternalRefSkipped) {
+			refNode = valueNode
+		} else {
+			return low.ValueReference[*SchemaProxy]{}, fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
+				valueNode.Content[1].Value, valueNode.Content[1].Line, valueNode.Content[1].Column)
 		}
+	}
 
-		syncChan := make(chan buildResult)
+	return buildSchemaProxy(foundCtx, foundIdx, labelNode, valueNode, refNode, isRef, refLocation), nil
+}
 
-		// build out a SchemaProxy for every sub-schema.
-		build := func(pctx context.Context, fIdx *index.SpecIndex, kn, vn *yaml.Node, rf *yaml.Node, schemaIdx int, c chan buildResult,
-			isRef bool, refLocation string,
-		) buildResult {
-			// a proxy design works best here. polymorphism, pretty much guarantees that a sub-schema can
-			// take on circular references through polymorphism. Like the resolver, if we try and follow these
-			// journey's through hyperspace, we will end up creating endless amounts of threads, spinning off
-			// chasing down circles, that in turn spin up endless threads.
-			// In order to combat this, we need a schema proxy that will only resolve the schema when asked, and then
-			// it will only do it one level at a time.
-			sp := new(SchemaProxy)
+// buildSchemaList builds out child schemas for a parent schema. Expected to be an array of schema objects.
+func buildSchemaList(ctx context.Context, labelNode, valueNode *yaml.Node, idx *index.SpecIndex) ([]low.ValueReference[*SchemaProxy], error) {
+	if valueNode == nil {
+		return nil, nil
+	}
 
-			// call Build to ensure transformation happens
-			_ = sp.Build(pctx, kn, vn, fIdx)
+	if !utils.IsNodeArray(valueNode) {
+		return nil, fmt.Errorf("build schema failed: expected an array of schemas for '%s', but found an object or scalar at line %d, col %d",
+			labelNode.Value, valueNode.Line, valueNode.Column)
+	}
 
-			if isRef {
-				sp.SetReference(refLocation, rf)
-			}
-			res := &low.ValueReference[*SchemaProxy]{
-				Value:     sp,
-				ValueNode: sp.vn, // use transformed node
-			}
-			return buildResult{
-				res: res,
-				idx: schemaIdx,
-			}
-		}
+	results := make([]low.ValueReference[*SchemaProxy], 0, len(valueNode.Content))
 
+	for _, vn := range valueNode.Content {
 		isRef := false
 		refLocation := ""
 		var refNode *yaml.Node
 		foundCtx := ctx
 		foundIdx := idx
-		if utils.IsNodeMap(valueNode) {
-			h := false
-			if h, _, refLocation = utils.IsNodeRefValue(valueNode); h {
-				isRef = true
-				ref, fIdx, err, fctx := low.LocateRefNodeWithContext(foundCtx, valueNode, foundIdx)
-				if ref != nil {
-					refNode = valueNode
-					valueNode = ref
-					foundCtx = fctx
-					foundIdx = fIdx
-				} else if err == low.ErrExternalRefSkipped {
-					refNode = valueNode
-				} else {
-					errors <- fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
-						valueNode.Content[1].Value, valueNode.Content[1].Line, valueNode.Content[1].Column)
-				}
-			}
 
-			// this only runs once, however to keep things consistent, it makes sense to use the same async method
-			// that arrays will use.
-			r := build(foundCtx, foundIdx, labelNode, valueNode, refNode, -1, syncChan, isRef, refLocation)
-			schemas <- schemaProxyBuildResult{
-				k: low.KeyReference[string]{
-					KeyNode: labelNode,
-					Value:   labelNode.Value,
-				},
-				v: *r.res,
+		h := false
+		if h, _, refLocation = utils.IsNodeRefValue(vn); h {
+			isRef = true
+			ref, fIdx, err, fctx := low.LocateRefNodeWithContext(foundCtx, vn, foundIdx)
+			if ref != nil {
+				refNode = vn
+				vn = ref
+				foundCtx = fctx
+				foundIdx = fIdx
+			} else if errors.Is(err, low.ErrExternalRefSkipped) {
+				refNode = vn
+			} else {
+				return nil, fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
+					vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column)
 			}
-		} else if utils.IsNodeArray(valueNode) {
-			refBuilds := 0
-			results := make([]*low.ValueReference[*SchemaProxy], len(valueNode.Content))
-
-			for i, vn := range valueNode.Content {
-				isRef = false
-				h := false
-				foundIdx = idx
-				foundCtx = ctx
-				if h, _, refLocation = utils.IsNodeRefValue(vn); h {
-					isRef = true
-					ref, fIdx, err, fctx := low.LocateRefNodeWithContext(foundCtx, vn, foundIdx)
-					if ref != nil {
-						refNode = vn
-						vn = ref
-						foundCtx = fctx
-						foundIdx = fIdx
-					} else if err == low.ErrExternalRefSkipped {
-						refNode = vn
-					} else {
-						errors <- fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
-							vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column)
-						return
-					}
-				}
-				refBuilds++
-				r := build(foundCtx, foundIdx, vn, vn, refNode, i, syncChan, isRef, refLocation)
-				results[r.idx] = r.res
-			}
-
-			for _, r := range results {
-				schemas <- schemaProxyBuildResult{
-					k: low.KeyReference[string]{
-						KeyNode: labelNode,
-						Value:   labelNode.Value,
-					},
-					v: *r,
-				}
-			}
-		} else {
-			errors <- fmt.Errorf("build schema failed: unexpected data type: '%s', line %d, col %d",
-				utils.MakeTagReadable(valueNode), valueNode.Line, valueNode.Column)
 		}
+
+		r := buildSchemaProxy(foundCtx, foundIdx, vn, vn, refNode, isRef, refLocation)
+		results = append(results, r)
 	}
+
+	return results, nil
 }
 
 // ExtractSchema will return a pointer to a NodeReference that contains a *SchemaProxy if successful. The function
