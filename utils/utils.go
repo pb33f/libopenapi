@@ -47,6 +47,17 @@ type cachedJSONPath struct {
 	err  error
 }
 
+// JSONPathLookupOptions configures JSONPath lookup behavior.
+type JSONPathLookupOptions struct {
+	// Timeout controls maximum execution time for JSONPath lookup.
+	// If zero or negative, a default of 500ms is used.
+	Timeout time.Duration
+
+	// LazyContextTracking toggles on-demand tracking for JSONPath context variables.
+	// If nil, the package default (true) is used to preserve existing behavior.
+	LazyContextTracking *bool
+}
+
 // jsonPathCache stores compiled JSONPath expressions keyed by normalized string.
 var jsonPathCache sync.Map
 
@@ -65,14 +76,29 @@ var jsonPathQuery = func(path *jsonpath.JSONPath, node *yaml.Node) []*yaml.Node 
 
 // getJSONPath returns a cached JSONPath when available, compiling and caching otherwise.
 func getJSONPath(rawPath string) (*jsonpath.JSONPath, error) {
+	return getJSONPathWithOptions(rawPath, defaultJSONPathLookupOptions())
+}
+
+// getJSONPathWithOptions returns a cached JSONPath using the provided options.
+func getJSONPathWithOptions(rawPath string, options JSONPathLookupOptions) (*jsonpath.JSONPath, error) {
 	cleaned := FixContext(rawPath)
-	if cached, ok := jsonPathCache.Load(cleaned); ok {
+	lazy := true
+	if options.LazyContextTracking != nil {
+		lazy = *options.LazyContextTracking
+	}
+	cacheKey := fmt.Sprintf("%s::lazy=%t", cleaned, lazy)
+	if cached, ok := jsonPathCache.Load(cacheKey); ok {
 		entry := cached.(cachedJSONPath)
 		return entry.path, entry.err
 	}
 
-	path, err := jsonpath.NewPath(cleaned, jsonpathconfig.WithPropertyNameExtension(), jsonpathconfig.WithLazyContextTracking())
-	jsonPathCache.Store(cleaned, cachedJSONPath{
+	pathOptions := []jsonpathconfig.Option{jsonpathconfig.WithPropertyNameExtension()}
+	if lazy {
+		pathOptions = append(pathOptions, jsonpathconfig.WithLazyContextTracking())
+	}
+
+	path, err := jsonpath.NewPath(cleaned, pathOptions...)
+	jsonPathCache.Store(cacheKey, cachedJSONPath{
 		path: path,
 		err:  err,
 	})
@@ -151,7 +177,16 @@ func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.No
 // FindNodesWithoutDeserializingWithTimeout will find a node based on JSONPath, without deserializing from yaml/json
 // This function can be customized with a timeout.
 func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, timeout time.Duration) ([]*yaml.Node, error) {
-	path, err := getJSONPath(jsonPath)
+	options := defaultJSONPathLookupOptions()
+	options.Timeout = timeout
+	return FindNodesWithoutDeserializingWithOptions(node, jsonPath, options)
+}
+
+// FindNodesWithoutDeserializingWithOptions will find a node based on JSONPath, without deserializing from yaml/json.
+// Behavior can be customized using JSONPathLookupOptions.
+func FindNodesWithoutDeserializingWithOptions(node *yaml.Node, jsonPath string, options JSONPathLookupOptions) ([]*yaml.Node, error) {
+	options = normalizeJSONPathLookupOptions(options)
+	path, err := getJSONPathWithOptions(jsonPath, options)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +194,7 @@ func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, 
 	// this can spin out, to lets gatekeep it.
 	done := make(chan struct{}, 1)
 	var results []*yaml.Node
-	timer := time.NewTimer(timeout)
+	timer := time.NewTimer(options.Timeout)
 	defer timer.Stop()
 	queryFn := jsonPathQuery
 	go func() {
@@ -171,8 +206,27 @@ func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, 
 	case <-done:
 		return results, nil
 	case <-timer.C:
-		return nil, fmt.Errorf("node lookup timeout exceeded (%v)", timeout)
+		return nil, fmt.Errorf("node lookup timeout exceeded (%v)", options.Timeout)
 	}
+}
+
+func defaultJSONPathLookupOptions() JSONPathLookupOptions {
+	defaultLazy := true
+	return JSONPathLookupOptions{
+		Timeout:             500 * time.Millisecond,
+		LazyContextTracking: &defaultLazy,
+	}
+}
+
+func normalizeJSONPathLookupOptions(options JSONPathLookupOptions) JSONPathLookupOptions {
+	defaults := defaultJSONPathLookupOptions()
+	if options.Timeout <= 0 {
+		options.Timeout = defaults.Timeout
+	}
+	if options.LazyContextTracking == nil {
+		options.LazyContextTracking = defaults.LazyContextTracking
+	}
+	return options
 }
 
 // ConvertInterfaceIntoStringMap will convert an unknown input into a string map.

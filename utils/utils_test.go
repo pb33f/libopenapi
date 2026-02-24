@@ -174,6 +174,48 @@ func TestFindNodesWithoutDeserializing_InvalidPath(t *testing.T) {
 	assert.Nil(t, nodes)
 }
 
+func TestFindNodesWithoutDeserializingWithOptions_LazyToggle(t *testing.T) {
+	root, _ := FindNodes(getPetstore(), "$")
+	lazyDisabled := false
+	nodes, err := FindNodesWithoutDeserializingWithOptions(root[0], "$.info.contact", JSONPathLookupOptions{
+		Timeout:             100 * time.Millisecond,
+		LazyContextTracking: &lazyDisabled,
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, nodes)
+	assert.Len(t, nodes, 1)
+}
+
+func TestGetJSONPathWithOptions_CacheKeyIncludesLazyMode(t *testing.T) {
+	ClearJSONPathCache()
+
+	lazyDisabled := false
+	_, err := getJSONPathWithOptions("$.info.contact", JSONPathLookupOptions{
+		Timeout:             100 * time.Millisecond,
+		LazyContextTracking: &lazyDisabled,
+	})
+	assert.NoError(t, err)
+
+	lazyEnabled := true
+	_, err = getJSONPathWithOptions("$.info.contact", JSONPathLookupOptions{
+		Timeout:             100 * time.Millisecond,
+		LazyContextTracking: &lazyEnabled,
+	})
+	assert.NoError(t, err)
+
+	count := 0
+	jsonPathCache.Range(func(_, _ interface{}) bool { count++; return true })
+	assert.Equal(t, 2, count)
+}
+
+func TestFindNodesWithoutDeserializingWithOptions_ZeroValueUsesDefaults(t *testing.T) {
+	root, _ := FindNodes(getPetstore(), "$")
+	nodes, err := FindNodesWithoutDeserializingWithOptions(root[0], "$.info.contact", JSONPathLookupOptions{})
+	assert.NoError(t, err)
+	assert.NotNil(t, nodes)
+	assert.Len(t, nodes, 1)
+}
+
 func TestConvertInterfaceIntoStringMap(t *testing.T) {
 	var d interface{}
 	n := make(map[string]string)
