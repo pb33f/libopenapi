@@ -1540,7 +1540,7 @@ func buildSchema(ctx context.Context, labelNode, valueNode *yaml.Node, idx *inde
 
 	if !utils.IsNodeMap(valueNode) {
 		return low.ValueReference[*SchemaProxy]{}, fmt.Errorf("build schema failed: expected a single schema object for '%s', but found an array or scalar at line %d, col %d",
-			labelNode.Value, valueNode.Line, valueNode.Column)
+			utils.MakeTagReadable(valueNode), valueNode.Line, valueNode.Column)
 	}
 
 	isRef := false
@@ -1577,7 +1577,7 @@ func buildSchemaList(ctx context.Context, labelNode, valueNode *yaml.Node, idx *
 
 	if !utils.IsNodeArray(valueNode) {
 		return nil, fmt.Errorf("build schema failed: expected an array of schemas for '%s', but found an object or scalar at line %d, col %d",
-			labelNode.Value, valueNode.Line, valueNode.Column)
+			utils.MakeTagReadable(valueNode), valueNode.Line, valueNode.Column)
 	}
 
 	results := make([]low.ValueReference[*SchemaProxy], 0, len(valueNode.Content))
