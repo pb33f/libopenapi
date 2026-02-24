@@ -3210,3 +3210,68 @@ func TestClearSchemaQuickHashMap(t *testing.T) {
 	// Idempotent: clearing an empty map should not panic.
 	ClearSchemaQuickHashMap()
 }
+
+func TestBuildSchema_NilNode(t *testing.T) {
+	res, err := buildSchema(context.Background(), nil, nil, nil)
+	assert.NoError(t, err)
+	assert.Nil(t, res.Value)
+}
+
+func TestBuildSchemaList_NilNode(t *testing.T) {
+	res, err := buildSchemaList(context.Background(), nil, nil, nil)
+	assert.NoError(t, err)
+	assert.Nil(t, res)
+}
+
+func TestBuildSchema_RefNotFound(t *testing.T) {
+	yml := `additionalProperties:
+  $ref: '#/components/schemas/Missing'`
+
+	var schemaNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &schemaNode)
+	cfg := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&schemaNode, cfg)
+
+	var schema Schema
+	_ = low.BuildModel(schemaNode.Content[0], &schema)
+	err := schema.Build(context.Background(), schemaNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "reference cannot be found")
+}
+
+func TestBuildSchemaList_RefNotFound(t *testing.T) {
+	yml := `allOf:
+  - $ref: '#/components/schemas/Missing'`
+
+	var schemaNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &schemaNode)
+	cfg := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&schemaNode, cfg)
+
+	var schema Schema
+	_ = low.BuildModel(schemaNode.Content[0], &schema)
+	err := schema.Build(context.Background(), schemaNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "reference cannot be found")
+}
+
+func TestBuildSchema_SkipExternalRef(t *testing.T) {
+	schemaYml := `additionalProperties:
+  $ref: './models/Pet.yaml#/Pet'`
+
+	var schemaNode yaml.Node
+	_ = yaml.Unmarshal([]byte(schemaYml), &schemaNode)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&schemaNode, cfg)
+
+	var schema Schema
+	_ = low.BuildModel(schemaNode.Content[0], &schema)
+	err := schema.Build(context.Background(), schemaNode.Content[0], idx)
+	assert.Nil(t, err)
+
+	assert.NotNil(t, schema.AdditionalProperties.Value)
+	assert.True(t, schema.AdditionalProperties.Value.IsA())
+	assert.True(t, schema.AdditionalProperties.Value.A.IsReference())
+	assert.Equal(t, "./models/Pet.yaml#/Pet", schema.AdditionalProperties.Value.A.GetReference())
+}
