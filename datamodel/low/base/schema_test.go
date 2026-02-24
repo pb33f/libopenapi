@@ -53,29 +53,29 @@ allOf:
         description: allOfB description
         example: 'allOfBExp'
 oneOf:
-  type: object
-  description: a oneof thing
-  properties:
-    oneOfA:
-      type: string
-      description: oneOfA description
-      example: 'oneOfAExp'
-    oneOfB:
-      type: string
-      description: oneOfB description
-      example: 'oneOfBExp'
+  - type: object
+    description: a oneof thing
+    properties:
+      oneOfA:
+        type: string
+        description: oneOfA description
+        example: 'oneOfAExp'
+      oneOfB:
+        type: string
+        description: oneOfB description
+        example: 'oneOfBExp'
 anyOf:
-  type: object
-  description: an anyOf thing
-  properties:
-    anyOfA:
-      type: string
-      description: anyOfA description
-      example: 'anyOfAExp'
-    anyOfB:
-      type: string
-      description: anyOfB description
-      example: 'anyOfBExp'
+  - type: object
+    description: an anyOf thing
+    properties:
+      anyOfA:
+        type: string
+        description: anyOfA description
+        example: 'anyOfAExp'
+      anyOfB:
+        type: string
+        description: anyOfB description
+        example: 'anyOfBExp'
 not:
   type: object
   description: a not thing
@@ -101,17 +101,17 @@ items:
       description: itemsB description
       example: 'itemsBExp'
 prefixItems:
-  type: object
-  description: an items thing
-  properties:
-    itemsA:
-      type: string
-      description: itemsA description
-      example: 'itemsAExp'
-    itemsB:
-      type: string
-      description: itemsB description
-      example: 'itemsBExp'
+  - type: object
+    description: an items thing
+    properties:
+      itemsA:
+        type: string
+        description: itemsA description
+        example: 'itemsAExp'
+      itemsB:
+        type: string
+        description: itemsB description
+        example: 'itemsBExp'
 properties:
   somethingA:
     type: number
@@ -611,9 +611,9 @@ oneOf:
 anyOf:
   - $ref: '#/components/schemas/Something'
 not:
-  - $ref: '#/components/schemas/Something'
+  $ref: '#/components/schemas/Something'
 items:
-  - $ref: '#/components/schemas/Something'`
+  $ref: '#/components/schemas/Something'`
 
 	var sch Schema
 	var idxNode yaml.Node
@@ -692,11 +692,11 @@ func Test_Schema_Polymorphism_Map_Ref(t *testing.T) {
 
 	yml = `type: object
 allOf:
-  $ref: '#/components/schemas/Something'
+  - $ref: '#/components/schemas/Something'
 oneOf:
-  $ref: '#/components/schemas/Something'
+  - $ref: '#/components/schemas/Something'
 anyOf:
-  $ref: '#/components/schemas/Something'
+  - $ref: '#/components/schemas/Something'
 not:
   $ref: '#/components/schemas/Something'
 items:
@@ -857,7 +857,7 @@ func Test_Schema_Polymorphism_RefMadness(t *testing.T) {
 
 	yml = `type: object
 allOf:
-  $ref: '#/components/schemas/Something'`
+  - $ref: '#/components/schemas/Something'`
 
 	var sch Schema
 	var idxNode yaml.Node
@@ -1883,10 +1883,9 @@ func TestBuildSchema_BadNodeTypes(t *testing.T) {
 		Column: 2,
 	}
 
-	res, err := buildSchema(context.Background(), n, n, nil)
+	_, err := buildSchema(context.Background(), n, n, nil)
 	assert.Error(t, err)
-	assert.Nil(t, res)
-	assert.Equal(t, "build schema failed: unexpected data type: 'unknown', line 1, col 2", err.Error())
+	assert.Equal(t, "build schema failed: expected a single schema object for 'unknown', but found an array or scalar at line 1, col 2", err.Error())
 }
 
 func TestExtractSchema_CheckPathAndSpec(t *testing.T) {
@@ -3133,7 +3132,7 @@ func TestBuildSchema_OneOf_SkipExternalRef(t *testing.T) {
 func TestBuildSchema_AllOfMap_SkipExternalRef(t *testing.T) {
 	// allOf as a single map $ref (not an array) exercises the map branch of buildSchema (Site B)
 	schemaYml := `allOf:
-  $ref: './models/Base.yaml#/Base'`
+  - $ref: './models/Base.yaml#/Base'`
 
 	var schemaNode yaml.Node
 	_ = yaml.Unmarshal([]byte(schemaYml), &schemaNode)
