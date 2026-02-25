@@ -58,14 +58,23 @@ type JSONPathLookupOptions struct {
 	LazyContextTracking *bool
 }
 
-// jsonPathCache stores compiled JSONPath expressions keyed by normalized string.
-var jsonPathCache sync.Map
+// jsonPathCacheLazy stores compiled JSONPath expressions keyed by normalized string
+// when lazy context tracking is enabled.
+var jsonPathCacheLazy sync.Map
+
+// jsonPathCacheEager stores compiled JSONPath expressions keyed by normalized string
+// when lazy context tracking is disabled.
+var jsonPathCacheEager sync.Map
 
 // ClearJSONPathCache resets the compiled JSONPath cache.
 // Call this between document lifecycles in long-running processes to bound memory.
 func ClearJSONPathCache() {
-	jsonPathCache.Range(func(key, _ interface{}) bool {
-		jsonPathCache.Delete(key)
+	jsonPathCacheLazy.Range(func(key, _ interface{}) bool {
+		jsonPathCacheLazy.Delete(key)
+		return true
+	})
+	jsonPathCacheEager.Range(func(key, _ interface{}) bool {
+		jsonPathCacheEager.Delete(key)
 		return true
 	})
 }
@@ -86,8 +95,11 @@ func getJSONPathWithOptions(rawPath string, options JSONPathLookupOptions) (*jso
 	if options.LazyContextTracking != nil {
 		lazy = *options.LazyContextTracking
 	}
-	cacheKey := fmt.Sprintf("%s::lazy=%t", cleaned, lazy)
-	if cached, ok := jsonPathCache.Load(cacheKey); ok {
+	cache := &jsonPathCacheLazy
+	if !lazy {
+		cache = &jsonPathCacheEager
+	}
+	if cached, ok := cache.Load(cleaned); ok {
 		entry := cached.(cachedJSONPath)
 		return entry.path, entry.err
 	}
@@ -98,7 +110,7 @@ func getJSONPathWithOptions(rawPath string, options JSONPathLookupOptions) (*jso
 	}
 
 	path, err := jsonpath.NewPath(cleaned, pathOptions...)
-	jsonPathCache.Store(cacheKey, cachedJSONPath{
+	cache.Store(cleaned, cachedJSONPath{
 		path: path,
 		err:  err,
 	})

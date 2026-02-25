@@ -26,6 +26,13 @@ func getPetstore() petstore {
 	return psBytes
 }
 
+func countJSONPathCacheEntries() int {
+	count := 0
+	jsonPathCacheLazy.Range(func(_, _ interface{}) bool { count++; return true })
+	jsonPathCacheEager.Range(func(_, _ interface{}) bool { count++; return true })
+	return count
+}
+
 func TestRenderCodeSnippet(t *testing.T) {
 	code := []string{"hey", "ho", "let's", "go!"}
 	startNode := &yaml.Node{
@@ -63,15 +70,13 @@ func TestClearJSONPathCache(t *testing.T) {
 	_, _ = getJSONPath("$.paths")
 
 	// verify entries exist
-	count := 0
-	jsonPathCache.Range(func(_, _ interface{}) bool { count++; return true })
+	count := countJSONPathCacheEntries()
 	assert.GreaterOrEqual(t, count, 2)
 
 	// clear and verify empty
 	ClearJSONPathCache()
 
-	count = 0
-	jsonPathCache.Range(func(_, _ interface{}) bool { count++; return true })
+	count = countJSONPathCacheEntries()
 	assert.Equal(t, 0, count)
 
 	// verify cache still works after clearing
@@ -203,8 +208,7 @@ func TestGetJSONPathWithOptions_CacheKeyIncludesLazyMode(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	count := 0
-	jsonPathCache.Range(func(_, _ interface{}) bool { count++; return true })
+	count := countJSONPathCacheEntries()
 	assert.Equal(t, 2, count)
 }
 
