@@ -242,6 +242,31 @@ func TestClearHashCache_ComprehensiveTest(t *testing.T) {
 	}
 }
 
+func TestClearNodePools(t *testing.T) {
+	// Seed current pools with data so a reset must provide fresh containers.
+	oldStack := stackPool.Get().(*[]*yaml.Node)
+	*oldStack = append(*oldStack, &yaml.Node{Value: "stale"})
+	stackPool.Put(oldStack)
+
+	oldVisited := visitedPool.Get().(map[*yaml.Node]struct{})
+	oldVisited[&yaml.Node{Value: "stale"}] = struct{}{}
+	visitedPool.Put(oldVisited)
+
+	ClearNodePools()
+
+	newStack := stackPool.Get().(*[]*yaml.Node)
+	assert.NotNil(t, newStack)
+	assert.Empty(t, *newStack)
+	assert.GreaterOrEqual(t, cap(*newStack), 128)
+
+	newVisited := visitedPool.Get().(map[*yaml.Node]struct{})
+	assert.NotNil(t, newVisited)
+	assert.Empty(t, newVisited)
+
+	stackPool.Put(newStack)
+	visitedPool.Put(newVisited)
+}
+
 // Test HashNode with large node that triggers caching
 func TestHashNode_LargeNodeCaching(t *testing.T) {
 	// Create a node with >= 200 content items to trigger caching

@@ -115,3 +115,17 @@ func TestGetPutVisitedMap_Reuse(t *testing.T) {
 	assert.Empty(t, m2)
 	putVisitedMap(m2)
 }
+
+func TestClearNodePools(t *testing.T) {
+	// Ensure existing pool values are in use before replacing the pool.
+	initial := getVisitedMap()
+	initial[&yaml.Node{Value: "old"}] = true
+	putVisitedMap(initial)
+
+	ClearNodePools()
+
+	fresh := getVisitedMap()
+	assert.NotNil(t, fresh)
+	assert.Empty(t, fresh)
+	putVisitedMap(fresh)
+}
