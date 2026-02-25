@@ -1406,3 +1406,244 @@ func TestClearInlineRenderingTracker(t *testing.T) {
 	// Idempotent: clearing an empty map should not panic.
 	ClearInlineRenderingTracker()
 }
+
+// --- Tests for CreateSchemaProxyRefWithSchema ---
+
+func TestCreateSchemaProxyRefWithSchema(t *testing.T) {
+	schema := &Schema{Description: "A pet with extra context"}
+	sp := CreateSchemaProxyRefWithSchema("#/components/schemas/Pet", schema)
+
+	assert.True(t, sp.IsReference())
+	assert.Equal(t, "#/components/schemas/Pet", sp.GetReference())
+	assert.Equal(t, schema, sp.Schema())
+	assert.NotNil(t, sp.GetReferenceNode())
+	assert.Nil(t, sp.GoLow())
+}
+
+func TestCreateSchemaProxyRefWithSchema_Render(t *testing.T) {
+	schema := &Schema{
+		Description: "A pet with extra context",
+		Type:        []string{"object"},
+	}
+	sp := CreateSchemaProxyRefWithSchema("#/components/schemas/Pet", schema)
+
+	result, err := sp.MarshalYAML()
+	require.NoError(t, err)
+
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+
+	// $ref should be the first key
+	require.GreaterOrEqual(t, len(node.Content), 2)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Pet", node.Content[1].Value)
+
+	// Render to YAML bytes to verify full output
+	rendered, err := sp.Render()
+	require.NoError(t, err)
+	renderedStr := string(rendered)
+	assert.Contains(t, renderedStr, "$ref")
+	assert.Contains(t, renderedStr, "#/components/schemas/Pet")
+	assert.Contains(t, renderedStr, "description: A pet with extra context")
+}
+
+func TestCreateSchemaProxyRefWithSchema_NilSchema(t *testing.T) {
+	// When schema is nil, behaves like CreateSchemaProxyRef
+	sp := CreateSchemaProxyRefWithSchema("#/components/schemas/Pet", nil)
+
+	assert.True(t, sp.IsReference())
+	assert.Equal(t, "#/components/schemas/Pet", sp.GetReference())
+	assert.Nil(t, sp.Schema())
+	assert.False(t, sp.isRefWithSiblings())
+
+	// MarshalYAML should produce ref-only output
+	result, err := sp.MarshalYAML()
+	require.NoError(t, err)
+
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, 2, len(node.Content))
+	assert.Equal(t, "$ref", node.Content[0].Value)
+}
+
+func TestCreateSchemaProxyRefWithSchema_RoundTrip(t *testing.T) {
+	schema := &Schema{
+		Description: "Round trip test",
+	}
+	sp := CreateSchemaProxyRefWithSchema("#/components/schemas/Example", schema)
+
+	rendered, err := sp.Render()
+	require.NoError(t, err)
+
+	// Unmarshal and verify both $ref and sibling properties are present
+	var result map[string]interface{}
+	err = yaml.Unmarshal(rendered, &result)
+	require.NoError(t, err)
+	assert.Equal(t, "#/components/schemas/Example", result["$ref"])
+	assert.Equal(t, "Round trip test", result["description"])
+}
+
+func TestCreateSchemaProxyRefWithSchema_InlineRender(t *testing.T) {
+	schema := &Schema{
+		Description: "Inline test",
+	}
+	sp := CreateSchemaProxyRefWithSchema("#/components/schemas/Pet", schema)
+
+	result, err := sp.MarshalYAMLInline()
+	require.NoError(t, err)
+
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+
+	// Should have $ref as first key and description
+	require.GreaterOrEqual(t, len(node.Content), 4)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Pet", node.Content[1].Value)
+}
+
+func TestCreateSchemaProxyRefWithSchema_InlinePreservedRef(t *testing.T) {
+	schema := &Schema{
+		Description: "Preserved ref test",
+	}
+	sp := CreateSchemaProxyRefWithSchema("#/components/schemas/Pet", schema)
+
+	ctx := NewInlineRenderContext()
+	ctx.MarkRefAsPreserved("#/components/schemas/Pet")
+
+	result, err := sp.MarshalYAMLInlineWithContext(ctx)
+	require.NoError(t, err)
+
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+
+	// Even with preservation, siblings should still be present because
+	// refNode() returns renderRefWithSiblings() for ref+siblings proxies
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Pet", node.Content[1].Value)
+	require.GreaterOrEqual(t, len(node.Content), 4) // $ref key+val + description key+val
+}
+
+func TestCreateSchemaProxyRefWithSchema_CircularRefSafe(t *testing.T) {
+	// Verify inline rendering doesn't panic when rendered Schema has a non-nil low-level
+	const ymlComponents = `components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	var idxNode yaml.Node
+	err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+	require.NoError(t, err)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	// Build a real schema from the spec
+	const ymlSchema = `type: object
+properties:
+  name:
+    type: string`
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err = lowProxy.Build(context.Background(), nil, node.Content[0], idx)
+	require.NoError(t, err)
+
+	parsedProxy := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: node.Content[0],
+	})
+	parsedSchema := parsedProxy.Schema()
+	require.NotNil(t, parsedSchema)
+
+	// Create ref+siblings proxy using the parsed schema (which has non-nil low)
+	sp := CreateSchemaProxyRefWithSchema("#/components/schemas/Pet", parsedSchema)
+
+	// MarshalYAML should not panic
+	result, err := sp.MarshalYAML()
+	require.NoError(t, err)
+	yamlNode := result.(*yaml.Node)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+}
+
+func TestCreateSchemaProxyRefWithSchema_NilLowInline(t *testing.T) {
+	// Plain high-level schema with low == nil must not panic during inline rendering
+	sp := CreateSchemaProxyRefWithSchema("#/components/schemas/Test", &Schema{Description: "test"})
+
+	// MarshalYAMLInline must not panic (the schema.go:628 nil-deref path is avoided)
+	result, err := sp.MarshalYAMLInline()
+	require.NoError(t, err)
+
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Test", node.Content[1].Value)
+}
+
+func TestCreateSchemaProxyRefWithSchema_CycleDetection(t *testing.T) {
+	// Verify the refNode() closure is used when a cycle is detected for a ref+siblings proxy
+	schema := &Schema{Description: "cyclic sibling"}
+	sp := CreateSchemaProxyRefWithSchema("#/components/schemas/Pet", schema)
+
+	ctx := NewInlineRenderContext()
+	// Pre-mark the ref as being rendered to simulate a cycle
+	ctx.StartRendering("#/components/schemas/Pet")
+
+	result, err := sp.MarshalYAMLInlineWithContext(ctx)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "circular reference")
+
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	// Should include siblings in the ref node via refNode() -> renderRefWithSiblings()
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Pet", node.Content[1].Value)
+	// Description sibling must be present
+	rendered, renderErr := yaml.Marshal(node)
+	require.NoError(t, renderErr)
+	assert.Contains(t, string(rendered), "description: cyclic sibling")
+}
+
+func TestCreateSchemaProxyRefWithSchema_BundlingMode(t *testing.T) {
+	// Verify ref+siblings proxy works in bundling mode without panic.
+	// Since there is no low-level backing, the bundling mode check passes through.
+	for IsBundlingMode() {
+		SetBundlingMode(false)
+	}
+	SetBundlingMode(true)
+	defer SetBundlingMode(false)
+
+	schema := &Schema{Description: "bundled sibling"}
+	sp := CreateSchemaProxyRefWithSchema("#/components/schemas/Pet", schema)
+
+	result, err := sp.MarshalYAMLInline()
+	require.NoError(t, err)
+
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Pet", node.Content[1].Value)
+	rendered, renderErr := yaml.Marshal(node)
+	require.NoError(t, renderErr)
+	assert.Contains(t, string(rendered), "description: bundled sibling")
+}
+
+func TestCreateSchemaProxyRefWithSchema_IsRefWithSiblings(t *testing.T) {
+	// Verify isRefWithSiblings() returns correct values for all factory types
+	refOnly := CreateSchemaProxyRef("#/components/schemas/Pet")
+	assert.False(t, refOnly.isRefWithSiblings())
+
+	schemaOnly := CreateSchemaProxy(&Schema{Description: "test"})
+	assert.False(t, schemaOnly.isRefWithSiblings())
+
+	refWithSchema := CreateSchemaProxyRefWithSchema("#/components/schemas/Pet", &Schema{Description: "test"})
+	assert.True(t, refWithSchema.isRefWithSiblings())
+
+	refWithNilSchema := CreateSchemaProxyRefWithSchema("#/components/schemas/Pet", nil)
+	assert.False(t, refWithNilSchema.isRefWithSiblings())
+}
