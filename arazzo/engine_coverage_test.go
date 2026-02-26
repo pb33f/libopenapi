@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -1760,7 +1761,9 @@ func TestFetchSourceBytes_FileSchemeSuccess(t *testing.T) {
 		MaxBodySize: 10 * 1024 * 1024,
 		FSRoots:     []string{tmpDir},
 	}
-	u, _ := parseAndResolveSourceURL("file://"+testFile, "")
+	fileURL := (&url.URL{Scheme: "file", Path: filepath.ToSlash(testFile)}).String()
+	u, err := parseAndResolveSourceURL(fileURL, "")
+	require.NoError(t, err)
 	data, resolvedURL, err := fetchSourceBytes(u, config)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("openapi: 3.0.0"), data)
