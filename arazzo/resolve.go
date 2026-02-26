@@ -182,7 +182,14 @@ func fetchSourceBytes(sourceURL *url.URL, config *ResolveConfig) ([]byte, string
 		}
 		return b, sourceURL.String(), nil
 	case "file":
-		path, err := resolveFilePath(sourceURL.Path, config.FSRoots)
+		filePath := sourceURL.Path
+		// On Windows, file URLs without a leading slash (e.g. "file://C:/path")
+		// cause url.Parse to place the drive letter in Host ("C:") and strip it
+		// from Path ("/path"). Reconstruct the full path.
+		if len(sourceURL.Host) == 2 && sourceURL.Host[1] == ':' {
+			filePath = sourceURL.Host + filePath
+		}
+		path, err := resolveFilePath(filePath, config.FSRoots)
 		if err != nil {
 			return nil, "", err
 		}
