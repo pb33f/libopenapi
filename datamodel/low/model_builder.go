@@ -47,7 +47,14 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 	num := v.NumField()
 	for i := 0; i < num; i++ {
 
-		fName := v.Type().Field(i).Name
+		structField := v.Type().Field(i)
+		fName := structField.Name
+
+		// Skip unexported fields and embedded structs — they are not YAML-mappable
+		// and can cause reflect.Kind mismatches (e.g., interface fields).
+		if !structField.IsExported() || structField.Anonymous {
+			continue
+		}
 
 		if fName == "Extensions" {
 			continue // internal construct
