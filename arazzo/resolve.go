@@ -16,20 +16,25 @@ import (
 	"time"
 
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
+	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/datamodel/low/arazzo"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
 var resolveFilepathAbs = filepath.Abs
 
-// DocumentFactory is a function that creates a parsed document from raw bytes.
+// OpenAPIDocumentFactory creates a parsed OpenAPI document from raw bytes.
 // The sourceURL provides location context for relative reference resolution.
-type DocumentFactory func(sourceURL string, bytes []byte) (any, error)
+type OpenAPIDocumentFactory func(sourceURL string, bytes []byte) (*v3high.Document, error)
+
+// ArazzoDocumentFactory creates a parsed Arazzo document from raw bytes.
+// The sourceURL provides location context for relative reference resolution.
+type ArazzoDocumentFactory func(sourceURL string, bytes []byte) (*high.Arazzo, error)
 
 // ResolveConfig configures how source descriptions are resolved.
 type ResolveConfig struct {
-	OpenAPIFactory DocumentFactory // Wraps libopenapi.NewDocument()
-	ArazzoFactory  DocumentFactory // Wraps libopenapi.NewArazzoDocument()
+	OpenAPIFactory OpenAPIDocumentFactory // Creates *v3high.Document from bytes
+	ArazzoFactory  ArazzoDocumentFactory  // Creates *high.Arazzo from bytes
 	BaseURL        string
 	HTTPHandler    func(url string) ([]byte, error)
 	HTTPClient     *http.Client
@@ -44,10 +49,11 @@ type ResolveConfig struct {
 
 // ResolvedSource represents a successfully resolved source description.
 type ResolvedSource struct {
-	Name     string // SourceDescription name
-	URL      string // Resolved URL
-	Type     string // "openapi" or "arazzo"
-	Document any    // Resolved document (consumer type-asserts)
+	Name            string           // SourceDescription name
+	URL             string           // Resolved URL
+	Type            string           // "openapi" or "arazzo"
+	OpenAPIDocument *v3high.Document // Non-nil when Type == "openapi"
+	ArazzoDocument  *high.Arazzo     // Non-nil when Type == "arazzo"
 }
 
 // ResolveSources resolves all source descriptions in an Arazzo document.
@@ -109,17 +115,39 @@ func ResolveSources(doc *high.Arazzo, config *ResolveConfig) ([]*ResolvedSource,
 			rs.Type = "openapi" // Default per spec
 		}
 
-		factory, err := factoryForType(rs.Type, config)
-		if err != nil {
-			return nil, fmt.Errorf("%w (%q): %v", ErrSourceDescLoadFailed, sd.Name, err)
-		}
-
-		rs.Document, err = factory(resolvedURL, docBytes)
-		if err != nil {
-			return nil, fmt.Errorf("%w (%q): %v", ErrSourceDescLoadFailed, sd.Name, err)
+		switch rs.Type {
+		case v3.OpenAPILabel:
+			if config.OpenAPIFactory == nil {
+				return nil, fmt.Errorf("%w (%q): no OpenAPIFactory configured", ErrSourceDescLoadFailed, sd.Name)
+			}
+			openDoc, factoryErr := config.OpenAPIFactory(resolvedURL, docBytes)
+			if factoryErr != nil {
+				return nil, fmt.Errorf("%w (%q): %v", ErrSourceDescLoadFailed, sd.Name, factoryErr)
+			}
+			rs.OpenAPIDocument = openDoc
+		case arazzo.ArazzoLabel:
+			if config.ArazzoFactory == nil {
+				return nil, fmt.Errorf("%w (%q): no ArazzoFactory configured", ErrSourceDescLoadFailed, sd.Name)
+			}
+			arazzoDoc, factoryErr := config.ArazzoFactory(resolvedURL, docBytes)
+			if factoryErr != nil {
+				return nil, fmt.Errorf("%w (%q): %v", ErrSourceDescLoadFailed, sd.Name, factoryErr)
+			}
+			rs.ArazzoDocument = arazzoDoc
+		default:
+			return nil, fmt.Errorf("%w (%q): unknown source type %q", ErrSourceDescLoadFailed, sd.Name, rs.Type)
 		}
 
 		resolved = append(resolved, rs)
+	}
+
+	// Auto-attach OpenAPI source documents to the Arazzo model so that
+	// validation and the engine can resolve operation references without
+	// the caller needing to wire this up manually.
+	for _, rs := range resolved {
+		if rs.OpenAPIDocument != nil {
+			doc.AddOpenAPISourceDocument(rs.OpenAPIDocument)
+		}
 	}
 
 	return resolved, nil
@@ -387,22 +415,6 @@ func ensureResolvedPathWithinRoots(path string, roots []string) error {
 	return nil
 }
 
-func factoryForType(sourceType string, config *ResolveConfig) (DocumentFactory, error) {
-	switch sourceType {
-	case v3.OpenAPILabel:
-		if config.OpenAPIFactory == nil {
-			return nil, fmt.Errorf("no OpenAPIFactory configured")
-		}
-		return config.OpenAPIFactory, nil
-	case arazzo.ArazzoLabel:
-		if config.ArazzoFactory == nil {
-			return nil, fmt.Errorf("no ArazzoFactory configured")
-		}
-		return config.ArazzoFactory, nil
-	default:
-		return nil, fmt.Errorf("unknown source type %q", sourceType)
-	}
-}
 
 func containsFold(values []string, value string) bool {
 	for _, v := range values {

@@ -16,6 +16,7 @@ import (
 
 	"github.com/pb33f/libopenapi/arazzo/expression"
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
+	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1486,7 +1487,7 @@ func TestResolveSources_FactoryError(t *testing.T) {
 		HTTPHandler: func(_ string) ([]byte, error) {
 			return []byte("content"), nil
 		},
-		OpenAPIFactory: func(_ string, _ []byte) (any, error) {
+		OpenAPIFactory: func(_ string, _ []byte) (*v3high.Document, error) {
 			return nil, fmt.Errorf("parse failed")
 		},
 	}
@@ -1506,8 +1507,8 @@ func TestResolveSources_DefaultTypeIsOpenAPI(t *testing.T) {
 		HTTPHandler: func(_ string) ([]byte, error) {
 			return []byte("content"), nil
 		},
-		OpenAPIFactory: func(u string, b []byte) (any, error) {
-			return "doc", nil
+		OpenAPIFactory: func(u string, b []byte) (*v3high.Document, error) {
+			return &v3high.Document{}, nil
 		},
 	}
 	resolved, err := ResolveSources(doc, config)
@@ -1911,54 +1912,53 @@ func TestResolveFilePath_EncodedPath(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// factoryForType
+// ResolveSources - missing factory and unknown type
 // ---------------------------------------------------------------------------
 
-func TestFactoryForType_OpenAPIWithFactory(t *testing.T) {
-	config := &ResolveConfig{
-		OpenAPIFactory: func(u string, b []byte) (any, error) {
-			return "openapi-doc", nil
+func TestResolveSources_MissingOpenAPIFactory(t *testing.T) {
+	doc := &high.Arazzo{
+		SourceDescriptions: []*high.SourceDescription{
+			{Name: "api", URL: "https://example.com/api.yaml", Type: "openapi"},
 		},
 	}
-	factory, err := factoryForType("openapi", config)
-	require.NoError(t, err)
-	require.NotNil(t, factory)
-	doc, err := factory("url", nil)
-	require.NoError(t, err)
-	assert.Equal(t, "openapi-doc", doc)
-}
-
-func TestFactoryForType_ArazzoWithFactory(t *testing.T) {
 	config := &ResolveConfig{
-		ArazzoFactory: func(u string, b []byte) (any, error) {
-			return "arazzo-doc", nil
+		HTTPHandler: func(_ string) ([]byte, error) {
+			return []byte("content"), nil
 		},
 	}
-	factory, err := factoryForType("arazzo", config)
-	require.NoError(t, err)
-	require.NotNil(t, factory)
-	doc, err := factory("url", nil)
-	require.NoError(t, err)
-	assert.Equal(t, "arazzo-doc", doc)
-}
-
-func TestFactoryForType_OpenAPINilFactory(t *testing.T) {
-	config := &ResolveConfig{}
-	_, err := factoryForType("openapi", config)
+	_, err := ResolveSources(doc, config)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no OpenAPIFactory configured")
 }
 
-func TestFactoryForType_ArazzoNilFactory(t *testing.T) {
-	config := &ResolveConfig{}
-	_, err := factoryForType("arazzo", config)
+func TestResolveSources_MissingArazzoFactory(t *testing.T) {
+	doc := &high.Arazzo{
+		SourceDescriptions: []*high.SourceDescription{
+			{Name: "flows", URL: "https://example.com/flows.yaml", Type: "arazzo"},
+		},
+	}
+	config := &ResolveConfig{
+		HTTPHandler: func(_ string) ([]byte, error) {
+			return []byte("content"), nil
+		},
+	}
+	_, err := ResolveSources(doc, config)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no ArazzoFactory configured")
 }
 
-func TestFactoryForType_UnknownType(t *testing.T) {
-	config := &ResolveConfig{}
-	_, err := factoryForType("graphql", config)
+func TestResolveSources_UnknownSourceType_Coverage(t *testing.T) {
+	doc := &high.Arazzo{
+		SourceDescriptions: []*high.SourceDescription{
+			{Name: "api", URL: "https://example.com/api.graphql", Type: "graphql"},
+		},
+	}
+	config := &ResolveConfig{
+		HTTPHandler: func(_ string) ([]byte, error) {
+			return []byte("content"), nil
+		},
+	}
+	_, err := ResolveSources(doc, config)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown source type")
 }
@@ -1999,15 +1999,16 @@ func TestResolveSources_HTTPTest_Integration(t *testing.T) {
 			{Name: "api", URL: server.URL + "/api.yaml", Type: "openapi"},
 		},
 	}
+	openAPIDoc := &v3high.Document{}
 	config := &ResolveConfig{
-		OpenAPIFactory: func(u string, b []byte) (any, error) {
-			return string(b), nil
+		OpenAPIFactory: func(u string, b []byte) (*v3high.Document, error) {
+			return openAPIDoc, nil
 		},
 	}
 	resolved, err := ResolveSources(doc, config)
 	require.NoError(t, err)
 	require.Len(t, resolved, 1)
-	assert.Equal(t, "openapi: 3.1.0", resolved[0].Document)
+	assert.Same(t, openAPIDoc, resolved[0].OpenAPIDocument)
 }
 
 func TestResolveSources_FileSource_Integration(t *testing.T) {
@@ -2020,15 +2021,16 @@ func TestResolveSources_FileSource_Integration(t *testing.T) {
 			{Name: "local", URL: filePath, Type: "openapi"},
 		},
 	}
+	openAPIDoc := &v3high.Document{}
 	config := &ResolveConfig{
-		OpenAPIFactory: func(u string, b []byte) (any, error) {
-			return string(b), nil
+		OpenAPIFactory: func(u string, b []byte) (*v3high.Document, error) {
+			return openAPIDoc, nil
 		},
 	}
 	resolved, err := ResolveSources(doc, config)
 	require.NoError(t, err)
 	require.Len(t, resolved, 1)
-	assert.Equal(t, "openapi: 3.1.0", resolved[0].Document)
+	assert.Same(t, openAPIDoc, resolved[0].OpenAPIDocument)
 }
 
 func TestResolveSources_URLValidationFails(t *testing.T) {
