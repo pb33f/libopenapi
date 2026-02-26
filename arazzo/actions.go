@@ -102,19 +102,16 @@ func (e *Engine) processActionTypeResult(
 		result.endWorkflow = true
 	case "goto":
 		if req.workflowId != "" {
-			wfResult, runErr := e.runWorkflow(ctx, req.workflowId, nil, state)
-			if runErr != nil {
-				return nil, runErr
-			}
-			exprCtx.Workflows = copyWorkflowContexts(state.workflowContexts)
-			if wfResult != nil && !wfResult.Success {
-				if wfResult.Error != nil {
-					return nil, wfResult.Error
+				wfResult, runErr := e.runWorkflow(ctx, req.workflowId, nil, state)
+				if runErr != nil {
+					return nil, runErr
 				}
-				return nil, fmt.Errorf("workflow %q failed", req.workflowId)
-			}
-			result.endWorkflow = true
-			return result, nil
+				exprCtx.Workflows = copyWorkflowContexts(state.workflowContexts)
+				if wfResult != nil && !wfResult.Success {
+					return nil, workflowFailureError(req.workflowId, wfResult)
+				}
+				result.endWorkflow = true
+				return result, nil
 		}
 		if req.stepId != "" {
 			idx, ok := stepIndexByID[req.stepId]
@@ -254,4 +251,11 @@ func (e *Engine) evaluateActionCriteria(criteria []*high.Criterion, exprCtx *exp
 		}
 	}
 	return true, nil
+}
+
+func workflowFailureError(workflowID string, wfResult *WorkflowResult) error {
+	if wfResult != nil && wfResult.Error != nil {
+		return wfResult.Error
+	}
+	return fmt.Errorf("workflow %q failed", workflowID)
 }

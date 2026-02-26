@@ -32,6 +32,8 @@ type SuccessAction struct {
 	low.NodeMap
 }
 
+var extractSuccessActionCriteria = extractArray[Criterion]
+
 // IsReusable returns true if this success action is a Reusable Object (has a reference field).
 func (s *SuccessAction) IsReusable() bool {
 	return !s.ComponentRef.IsEmpty()
@@ -79,7 +81,7 @@ func (s *SuccessAction) Build(ctx context.Context, keyNode, root *yaml.Node, idx
 	s.ComponentRef = extractComponentRef(ReferenceLabel, root)
 
 	// Extract criteria array
-	criteria, err := extractArray[Criterion](ctx, CriteriaLabel, root, idx)
+	criteria, err := extractSuccessActionCriteria(ctx, CriteriaLabel, root, idx)
 	if err != nil {
 		return err
 	}

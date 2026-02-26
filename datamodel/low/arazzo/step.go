@@ -36,6 +36,10 @@ type Step struct {
 	low.NodeMap
 }
 
+var extractStepParameters = extractArray[Parameter]
+var extractStepSuccessCriteria = extractArray[Criterion]
+var extractStepOnSuccess = extractArray[SuccessAction]
+
 // GetIndex returns the index.SpecIndex instance attached to the Step object.
 // For Arazzo low models this is typically nil, because Arazzo parsing does not build a SpecIndex.
 // The index parameter is still required to satisfy the shared low.Buildable interface and generic extractors.
@@ -75,7 +79,7 @@ func (s *Step) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 		Context:    &s.context,
 	}, ctx, keyNode, root, idx)
 
-	params, err := extractArray[Parameter](ctx, ParametersLabel, root, idx)
+	params, err := extractStepParameters(ctx, ParametersLabel, root, idx)
 	if err != nil {
 		return err
 	}
@@ -87,13 +91,13 @@ func (s *Step) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 	}
 	s.RequestBody = reqBody
 
-	criteria, err := extractArray[Criterion](ctx, SuccessCriteriaLabel, root, idx)
+	criteria, err := extractStepSuccessCriteria(ctx, SuccessCriteriaLabel, root, idx)
 	if err != nil {
 		return err
 	}
 	s.SuccessCriteria = criteria
 
-	onSuccess, err := extractArray[SuccessAction](ctx, OnSuccessLabel, root, idx)
+	onSuccess, err := extractStepOnSuccess(ctx, OnSuccessLabel, root, idx)
 	if err != nil {
 		return err
 	}

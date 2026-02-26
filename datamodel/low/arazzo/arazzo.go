@@ -30,6 +30,8 @@ type Arazzo struct {
 	low.NodeMap
 }
 
+var extractArazzoSourceDescriptions = extractArray[SourceDescription]
+
 // GetIndex returns the index.SpecIndex instance attached to the Arazzo object.
 // For Arazzo low models this is typically nil, because Arazzo parsing does not build a SpecIndex.
 // The index parameter is still required to satisfy the shared low.Buildable interface and generic extractors.
@@ -75,7 +77,7 @@ func (a *Arazzo) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index
 	}
 	a.Info = info
 
-	sourceDescs, err := extractArray[SourceDescription](ctx, SourceDescriptionsLabel, root, idx)
+	sourceDescs, err := extractArazzoSourceDescriptions(ctx, SourceDescriptionsLabel, root, idx)
 	if err != nil {
 		return err
 	}
