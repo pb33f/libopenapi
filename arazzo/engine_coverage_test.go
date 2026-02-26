@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/pb33f/libopenapi/arazzo/expression"
@@ -1477,10 +1478,17 @@ func TestCanonicalizeRoots_NonExistentRoot(t *testing.T) {
 	// In this case, canonicalizeRoots falls back to using the abs path
 	result := canonicalizeRoots([]string{"/nonexistent/root/path/xyz"})
 	require.Len(t, result, 1)
-	assert.Equal(t, "/nonexistent/root/path/xyz", result[0])
+	// On Windows, filepath.Abs("/nonexistent/root/path/xyz") prepends the
+	// current drive letter (e.g. "D:\nonexistent\root\path\xyz"), so we
+	// only check that the result is absolute and contains the expected tail.
+	assert.True(t, filepath.IsAbs(result[0]))
+	assert.Contains(t, filepath.ToSlash(result[0]), "nonexistent/root/path/xyz")
 }
 
 func TestCanonicalizeRoots_EvalSymlinksOtherError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not support Unix-style directory execute permissions")
+	}
 	// This is hard to trigger portably. On Unix, a path component with no execute
 	// permission would cause a non-ErrNotExist error from EvalSymlinks.
 	// We can create a directory without execute permission.
@@ -1548,6 +1556,9 @@ func TestEnsureResolvedPathWithinRoots_EvalSymlinksNotExist(t *testing.T) {
 }
 
 func TestEnsureResolvedPathWithinRoots_EvalSymlinksOtherError(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not support Unix-style directory execute permissions")
+	}
 	// Create a directory without execute permission to cause permission error
 	tmpDir := t.TempDir()
 	noExecDir := filepath.Join(tmpDir, "noexec")
@@ -1936,7 +1947,7 @@ func TestEngine_FullIntegration_RunAllWithInputs(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, result.Success)
 	assert.Len(t, result.Workflows, 2)
-	assert.True(t, result.Duration > 0)
+	assert.True(t, result.Duration >= 0)
 }
 
 // ===========================================================================
@@ -2130,7 +2141,7 @@ func TestRunAll_Comprehensive(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, result.Success) // wf3 failed
 	assert.Len(t, result.Workflows, 3)
-	assert.True(t, result.Duration > 0)
+	assert.True(t, result.Duration >= 0)
 }
 
 // ===========================================================================

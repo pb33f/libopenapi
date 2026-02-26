@@ -10,6 +10,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -189,7 +191,9 @@ func TestParseAndResolveSourceURL_InvalidURL(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestFetchSourceBytes_FileSchemeResolveError(t *testing.T) {
-	// Use FSRoots that restrict path access, and an absolute path outside those roots
+	// Use FSRoots that restrict path access, and an absolute path outside those roots.
+	// On Windows, /etc/passwd has no drive letter so filepath.IsAbs returns false,
+	// causing the code to take the relative-path branch with a different error message.
 	config := &ResolveConfig{
 		MaxBodySize: 10 * 1024 * 1024,
 		FSRoots:     []string{"/nonexistent-root-dir-xyz"},
@@ -197,7 +201,15 @@ func TestFetchSourceBytes_FileSchemeResolveError(t *testing.T) {
 	u := mustParseURL("file:///etc/passwd")
 	_, _, err := fetchSourceBytes(u, config)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "outside configured roots")
+	errMsg := err.Error()
+	if runtime.GOOS == "windows" {
+		assert.True(t,
+			strings.Contains(errMsg, "outside configured roots") ||
+				strings.Contains(errMsg, "not found within configured roots"),
+			"unexpected error: %s", errMsg)
+	} else {
+		assert.Contains(t, errMsg, "outside configured roots")
+	}
 }
 
 // ---------------------------------------------------------------------------

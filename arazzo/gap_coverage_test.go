@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 	"unsafe"
@@ -983,6 +984,9 @@ func TestGap_ValidationStandaloneHelpers(t *testing.T) {
 }
 
 func TestGap_PathAbsErrorBranches(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows locks the CWD directory, preventing os.Remove while chdir'd into it")
+	}
 	orig, err := os.Getwd()
 	require.NoError(t, err)
 
