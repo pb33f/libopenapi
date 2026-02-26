@@ -106,7 +106,7 @@ func (e *Engine) processActionTypeResult(
 			if runErr != nil {
 				return nil, runErr
 			}
-			exprCtx.Workflows = buildWorkflowContexts(state.workflowResults)
+			exprCtx.Workflows = copyWorkflowContexts(state.workflowContexts)
 			if wfResult != nil && !wfResult.Success {
 				if wfResult.Error != nil {
 					return nil, wfResult.Error

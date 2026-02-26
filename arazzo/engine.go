@@ -5,6 +5,7 @@ package arazzo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -51,8 +52,8 @@ type Engine struct {
 	document         *high.Arazzo
 	executor         Executor
 	sources          map[string]*ResolvedSource
-	defaultSource    *ResolvedSource   // cached for single-source fast path
-	sourceOrder      []string          // deterministic source ordering from document
+	defaultSource    *ResolvedSource // cached for single-source fast path
+	sourceOrder      []string        // deterministic source ordering from document
 	workflows        map[string]*high.Workflow
 	config           *EngineConfig
 	exprCache        map[string]expression.Expression
@@ -99,15 +100,15 @@ func NewEngine(doc *high.Arazzo, executor Executor, sources []*ResolvedSource) *
 		workflowMap = make(map[string]*high.Workflow)
 	}
 	e := &Engine{
-		document:         doc,
-		executor:         executor,
-		sources:          sourceMap,
-		defaultSource:    defaultSource,
-		sourceOrder:      sourceOrder,
-		workflows:        workflowMap,
-		config:           &EngineConfig{},
-		exprCache:        make(map[string]expression.Expression),
-		criterionCaches:  newCriterionCaches(),
+		document:        doc,
+		executor:        executor,
+		sources:         sourceMap,
+		defaultSource:   defaultSource,
+		sourceOrder:     sourceOrder,
+		workflows:       workflowMap,
+		config:          &EngineConfig{},
+		exprCache:       make(map[string]expression.Expression),
+		criterionCaches: newCriterionCaches(),
 	}
 	e.criterionCaches.parseExpr = e.parseExpression
 	e.cachedComponents = e.buildCachedComponents()
@@ -187,6 +188,7 @@ func (e *Engine) RunAll(ctx context.Context, inputs map[string]map[string]any) (
 			failedResult := &WorkflowResult{
 				WorkflowId: wfId,
 				Success:    false,
+				Inputs:     wfInputs,
 				Error:      execErr,
 			}
 			state.workflowResults[wfId] = failedResult
@@ -235,10 +237,12 @@ func (e *Engine) runWorkflow(ctx context.Context, workflowId string, inputs map[
 	result := &WorkflowResult{
 		WorkflowId: workflowId,
 		Success:    true,
+		Inputs:     inputs,
 		Outputs:    make(map[string]any),
 	}
 
-	exprCtx := e.newExpressionContext(inputs, state)
+	exprCtx, _ := e.newExpressionContext(inputs, state)
+	// Error is non-fatal: unresolvable component input expressions fall back to raw YAML nodes.
 
 	stepIdx := 0
 	stepTransitions := 0
@@ -331,6 +335,7 @@ func (e *Engine) runWorkflow(ctx context.Context, workflowId string, inputs map[
 	result.Duration = time.Since(start)
 	state.workflowResults[workflowId] = result
 	state.workflowContexts[workflowId] = &expression.WorkflowContext{
+		Inputs:  result.Inputs,
 		Outputs: result.Outputs,
 	}
 	return result, nil
@@ -458,7 +463,7 @@ func (e *Engine) buildCachedComponents() *expression.ComponentsContext {
 	return components
 }
 
-func (e *Engine) newExpressionContext(inputs map[string]any, state *executionState) *expression.Context {
+func (e *Engine) newExpressionContext(inputs map[string]any, state *executionState) (*expression.Context, error) {
 	ctx := &expression.Context{
 		Inputs:      inputs,
 		Outputs:     make(map[string]any),
@@ -475,11 +480,13 @@ func (e *Engine) newExpressionContext(inputs map[string]any, state *executionSta
 			SuccessActions: e.cachedComponents.SuccessActions,
 			FailureActions: e.cachedComponents.FailureActions,
 		}
+		var inputErrors []error
 		if e.document.Components.Inputs != nil {
 			components.Inputs = make(map[string]any, e.document.Components.Inputs.Len())
 			for name, input := range e.document.Components.Inputs.FromOldest() {
 				decoded, err := e.resolveYAMLNodeValue(input, ctx)
 				if err != nil {
+					inputErrors = append(inputErrors, fmt.Errorf("component input %q: %w", name, err))
 					components.Inputs[name] = input
 					continue
 				}
@@ -487,8 +494,11 @@ func (e *Engine) newExpressionContext(inputs map[string]any, state *executionSta
 			}
 		}
 		ctx.Components = components
+		if len(inputErrors) > 0 {
+			return ctx, fmt.Errorf("failed to resolve component inputs: %w", errors.Join(inputErrors...))
+		}
 	}
-	return ctx
+	return ctx, nil
 }
 
 func copyWorkflowContexts(src map[string]*expression.WorkflowContext) map[string]*expression.WorkflowContext {
@@ -502,15 +512,3 @@ func copyWorkflowContexts(src map[string]*expression.WorkflowContext) map[string
 	return dst
 }
 
-func buildWorkflowContexts(results map[string]*WorkflowResult) map[string]*expression.WorkflowContext {
-	if len(results) == 0 {
-		return make(map[string]*expression.WorkflowContext)
-	}
-	contexts := make(map[string]*expression.WorkflowContext, len(results))
-	for workflowID, result := range results {
-		contexts[workflowID] = &expression.WorkflowContext{
-			Outputs: result.Outputs,
-		}
-	}
-	return contexts
-}

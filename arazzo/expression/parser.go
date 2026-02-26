@@ -244,8 +244,8 @@ func ParseEmbedded(input string) ([]Token, error) {
 	pos := 0
 
 	for pos < len(input) {
-		// Find next opening brace
-		openIdx := strings.IndexByte(input[pos:], '{')
+		// Find the next embedded expression start.
+		openIdx := strings.Index(input[pos:], "{$")
 		if openIdx == -1 {
 			// No more expressions, rest is literal
 			tokens = append(tokens, Token{Literal: input[pos:]})
@@ -257,21 +257,23 @@ func ParseEmbedded(input string) ([]Token, error) {
 			tokens = append(tokens, Token{Literal: input[pos : pos+openIdx]})
 		}
 
+		exprStart := pos + openIdx + 1
+
 		// Find closing brace
-		closeIdx := strings.IndexByte(input[pos+openIdx:], '}')
+		closeIdx := strings.IndexByte(input[exprStart:], '}')
 		if closeIdx == -1 {
 			return nil, fmt.Errorf("unclosed expression brace at position %d", pos+openIdx)
 		}
 
-		// Extract and parse the expression (without the braces)
-		exprStr := input[pos+openIdx+1 : pos+openIdx+closeIdx]
+		// Extract and parse the expression (without the surrounding braces).
+		exprStr := input[exprStart : exprStart+closeIdx]
 		expr, err := Parse(exprStr)
 		if err != nil {
 			return nil, fmt.Errorf("invalid embedded expression at position %d: %w", pos+openIdx, err)
 		}
 
 		tokens = append(tokens, Token{Expression: expr, IsExpression: true})
-		pos = pos + openIdx + closeIdx + 1
+		pos = exprStart + closeIdx + 1
 	}
 
 	return tokens, nil

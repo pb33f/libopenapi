@@ -118,6 +118,44 @@ func TestEngine_RunAll_RespectsWorkflowDependencies(t *testing.T) {
 	assert.Equal(t, []string{"op1", "op2"}, executor.operationIDs)
 }
 
+func TestEngine_RunAll_ExposesDependencyWorkflowInputsViaWorkflowsContext(t *testing.T) {
+	doc := &high.Arazzo{
+		Workflows: []*high.Workflow{
+			{
+				WorkflowId: "wf1",
+				Steps: []*high.Step{
+					{StepId: "s1", OperationId: "seed"},
+				},
+			},
+			{
+				WorkflowId: "wf2",
+				DependsOn:  []string{"wf1"},
+				Steps: []*high.Step{
+					{
+						StepId:      "s2",
+						OperationId: "use-dependency-input",
+						Parameters: []*high.Parameter{
+							{Name: "auth", In: "header", Value: &yaml.Node{Kind: yaml.ScalarNode, Value: "$workflows.wf1.inputs.token"}},
+						},
+					},
+				},
+			},
+		},
+	}
+	executor := &captureExecutor{}
+	engine := NewEngine(doc, executor, nil)
+
+	result, err := engine.RunAll(context.Background(), map[string]map[string]any{
+		"wf1": {"token": "secret"},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.True(t, result.Success)
+	require.NotNil(t, executor.lastRequest)
+	assert.Equal(t, "use-dependency-input", executor.lastRequest.OperationID)
+	assert.Equal(t, "secret", executor.lastRequest.Parameters["auth"])
+}
+
 func TestEngine_RunAll_MissingDependencyIsNotExecutedAndDependentFails(t *testing.T) {
 	doc := &high.Arazzo{
 		Workflows: []*high.Workflow{
@@ -266,6 +304,52 @@ func TestEngine_RunWorkflow_PassesStepParametersToNestedWorkflowInputs(t *testin
 	assert.True(t, result.Success)
 	require.NotNil(t, executor.lastRequest)
 	assert.Equal(t, "op-sub", executor.lastRequest.OperationID)
+	assert.Equal(t, "secret", executor.lastRequest.Parameters["auth"])
+}
+
+func TestEngine_RunWorkflow_ExposesNestedWorkflowInputsViaWorkflowsContext(t *testing.T) {
+	doc := &high.Arazzo{
+		Workflows: []*high.Workflow{
+			{
+				WorkflowId: "main",
+				Steps: []*high.Step{
+					{
+						StepId:     "callSub",
+						WorkflowId: "sub",
+						Parameters: []*high.Parameter{
+							{Name: "token", Value: &yaml.Node{Kind: yaml.ScalarNode, Value: "$inputs.token"}},
+						},
+					},
+					{
+						StepId:      "useSubInput",
+						OperationId: "op-main",
+						Parameters: []*high.Parameter{
+							{Name: "auth", In: "header", Value: &yaml.Node{Kind: yaml.ScalarNode, Value: "$workflows.sub.inputs.token"}},
+						},
+					},
+				},
+			},
+			{
+				WorkflowId: "sub",
+				Steps: []*high.Step{
+					{
+						StepId:      "sub-step",
+						OperationId: "op-sub",
+					},
+				},
+			},
+		},
+	}
+
+	executor := &captureExecutor{}
+	engine := NewEngine(doc, executor, nil)
+
+	result, err := engine.RunWorkflow(context.Background(), "main", map[string]any{"token": "secret"})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.True(t, result.Success)
+	require.NotNil(t, executor.lastRequest)
+	assert.Equal(t, "op-main", executor.lastRequest.OperationID)
 	assert.Equal(t, "secret", executor.lastRequest.Parameters["auth"])
 }
 

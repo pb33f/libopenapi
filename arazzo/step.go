@@ -59,7 +59,7 @@ func (e *Engine) executeStep(ctx context.Context, step *high.Step, wf *high.Work
 				result.Success = false
 				result.Error = wfResult.Error
 			}
-			exprCtx.Workflows = buildWorkflowContexts(state.workflowResults)
+			exprCtx.Workflows = copyWorkflowContexts(state.workflowContexts)
 		}
 	} else {
 		req, err := e.buildExecutionRequest(step, exprCtx)
@@ -206,22 +206,9 @@ func (e *Engine) resolveStepSource(step *high.Step) *ResolvedSource {
 	if e.defaultSource != nil {
 		return e.defaultSource
 	}
-	const exprPrefix = "$sourceDescriptions."
-	if idx := strings.Index(step.OperationPath, exprPrefix); idx >= 0 {
-		start := idx + len(exprPrefix)
-		end := start
-		for end < len(step.OperationPath) {
-			c := step.OperationPath[end]
-			if c == '.' || c == '}' || c == '/' || c == '#' {
-				break
-			}
-			end++
-		}
-		if end > start {
-			name := step.OperationPath[start:end]
-			if source, ok := e.sources[name]; ok {
-				return source
-			}
+	if name, found := extractSourceNameFromOperationPath(step.OperationPath); found {
+		if source, ok := e.sources[name]; ok {
+			return source
 		}
 	}
 	// Deterministic fallback: use the first source from the document's ordered list.
@@ -306,12 +293,18 @@ func (e *Engine) resolveExpressionValues(value any, exprCtx *expression.Context)
 		return items, nil
 	case map[any]any:
 		items := make(map[string]any, len(typed))
+		resolve := mapAnyNeedsResolution(typed)
 		for k, v := range typed {
+			ks := sprintMapKey(k)
+			if !resolve {
+				items[ks] = v
+				continue
+			}
 			resolved, err := e.resolveExpressionValues(v, exprCtx)
 			if err != nil {
 				return nil, err
 			}
-			items[fmt.Sprint(k)] = resolved
+			items[ks] = resolved
 		}
 		return items, nil
 	default:
@@ -349,7 +342,7 @@ func setJSONPointerValue(root map[string]any, pointer string, value any) error {
 
 	segments := strings.Split(pointer[1:], "/")
 	for i := range segments {
-		segments[i] = unescapeJSONPointerSegment(segments[i])
+		segments[i] = expression.UnescapeJSONPointer(segments[i])
 	}
 
 	current := any(root)
@@ -380,15 +373,6 @@ func setJSONPointerValue(root map[string]any, pointer string, value any) error {
 	}
 }
 
-func unescapeJSONPointerSegment(s string) string {
-	if !strings.Contains(s, "~") {
-		return s
-	}
-	s = strings.ReplaceAll(s, "~1", "/")
-	s = strings.ReplaceAll(s, "~0", "~")
-	return s
-}
-
 func valueNeedsResolution(v any) bool {
 	switch s := v.(type) {
 	case string:
@@ -401,6 +385,15 @@ func valueNeedsResolution(v any) bool {
 }
 
 func sliceNeedsResolution(items []any) bool {
+	for _, v := range items {
+		if valueNeedsResolution(v) {
+			return true
+		}
+	}
+	return false
+}
+
+func mapAnyNeedsResolution(items map[any]any) bool {
 	for _, v := range items {
 		if valueNeedsResolution(v) {
 			return true

@@ -48,7 +48,7 @@ func TestNewExpressionContext_NilDocument(t *testing.T) {
 	state := &executionState{
 		workflowResults: make(map[string]*WorkflowResult),
 	}
-	ctx := engine.newExpressionContext(nil, state)
+	ctx, _ := engine.newExpressionContext(nil, state)
 	require.NotNil(t, ctx)
 	assert.Nil(t, ctx.Components)
 }
@@ -62,7 +62,7 @@ func TestNewExpressionContext_DocumentWithNilComponents(t *testing.T) {
 	state := &executionState{
 		workflowResults: make(map[string]*WorkflowResult),
 	}
-	ctx := engine.newExpressionContext(map[string]any{"key": "val"}, state)
+	ctx, _ := engine.newExpressionContext(map[string]any{"key": "val"}, state)
 	require.NotNil(t, ctx)
 	assert.Nil(t, ctx.Components)
 	assert.Equal(t, "val", ctx.Inputs["key"])
@@ -82,7 +82,7 @@ func TestNewExpressionContext_WithComponents_Parameters(t *testing.T) {
 	state := &executionState{
 		workflowResults: make(map[string]*WorkflowResult),
 	}
-	ctx := engine.newExpressionContext(nil, state)
+	ctx, _ := engine.newExpressionContext(nil, state)
 	require.NotNil(t, ctx.Components)
 	require.NotNil(t, ctx.Components.Parameters)
 	assert.Contains(t, ctx.Components.Parameters, "token")
@@ -102,7 +102,7 @@ func TestNewExpressionContext_WithComponents_SuccessActions(t *testing.T) {
 	state := &executionState{
 		workflowResults: make(map[string]*WorkflowResult),
 	}
-	ctx := engine.newExpressionContext(nil, state)
+	ctx, _ := engine.newExpressionContext(nil, state)
 	require.NotNil(t, ctx.Components)
 	require.NotNil(t, ctx.Components.SuccessActions)
 	assert.Contains(t, ctx.Components.SuccessActions, "logIt")
@@ -122,7 +122,7 @@ func TestNewExpressionContext_WithComponents_FailureActions(t *testing.T) {
 	state := &executionState{
 		workflowResults: make(map[string]*WorkflowResult),
 	}
-	ctx := engine.newExpressionContext(nil, state)
+	ctx, _ := engine.newExpressionContext(nil, state)
 	require.NotNil(t, ctx.Components)
 	require.NotNil(t, ctx.Components.FailureActions)
 	assert.Contains(t, ctx.Components.FailureActions, "retryIt")
@@ -142,7 +142,7 @@ func TestNewExpressionContext_WithComponents_Inputs(t *testing.T) {
 	state := &executionState{
 		workflowResults: make(map[string]*WorkflowResult),
 	}
-	ctx := engine.newExpressionContext(nil, state)
+	ctx, _ := engine.newExpressionContext(nil, state)
 	require.NotNil(t, ctx.Components)
 	require.NotNil(t, ctx.Components.Inputs)
 	assert.Equal(t, "hello", ctx.Components.Inputs["myInput"])
@@ -164,7 +164,7 @@ func TestNewExpressionContext_WithComponents_InputsResolveError(t *testing.T) {
 	state := &executionState{
 		workflowResults: make(map[string]*WorkflowResult),
 	}
-	ctx := engine.newExpressionContext(nil, state)
+	ctx, _ := engine.newExpressionContext(nil, state)
 	require.NotNil(t, ctx.Components)
 	require.NotNil(t, ctx.Components.Inputs)
 	// Should have stored the raw node since resolve failed
@@ -182,7 +182,7 @@ func TestNewExpressionContext_WithSources(t *testing.T) {
 	state := &executionState{
 		workflowResults: make(map[string]*WorkflowResult),
 	}
-	ctx := engine.newExpressionContext(nil, state)
+	ctx, _ := engine.newExpressionContext(nil, state)
 	require.NotNil(t, ctx.SourceDescs)
 	assert.Len(t, ctx.SourceDescs, 2)
 	assert.Equal(t, "https://petstore.example.com/v2", ctx.SourceDescs["petStore"].URL)
@@ -204,7 +204,7 @@ func TestNewExpressionContext_WithWorkflowResults(t *testing.T) {
 			"wf1": {Outputs: map[string]any{"petId": "123"}},
 		},
 	}
-	ctx := engine.newExpressionContext(nil, state)
+	ctx, _ := engine.newExpressionContext(nil, state)
 	require.NotNil(t, ctx.Workflows)
 	assert.Contains(t, ctx.Workflows, "wf1")
 	assert.Equal(t, "123", ctx.Workflows["wf1"].Outputs["petId"])
@@ -236,7 +236,7 @@ func TestNewExpressionContext_AllComponents(t *testing.T) {
 	state := &executionState{
 		workflowResults: make(map[string]*WorkflowResult),
 	}
-	ctx := engine.newExpressionContext(map[string]any{"x": 1}, state)
+	ctx, _ := engine.newExpressionContext(map[string]any{"x": 1}, state)
 	require.NotNil(t, ctx.Components)
 	assert.Contains(t, ctx.Components.Parameters, "p1")
 	assert.Contains(t, ctx.Components.SuccessActions, "sa1")
@@ -833,6 +833,18 @@ func TestEvaluateStringValue_EmbeddedWithLiteralAndExpression(t *testing.T) {
 	assert.Equal(t, "status: 201!", val)
 }
 
+func TestEvaluateStringValue_EmbeddedWithLiteralBracesBeforeExpression(t *testing.T) {
+	doc := &high.Arazzo{Arazzo: "1.0.1"}
+	engine := NewEngine(doc, nil, nil)
+	exprCtx := &expression.Context{
+		Inputs: map[string]any{"id": "abc-123"},
+	}
+
+	val, err := engine.evaluateStringValue("literal {brace} {$inputs.id}", exprCtx)
+	require.NoError(t, err)
+	assert.Equal(t, "literal {brace} abc-123", val)
+}
+
 func TestEvaluateStringValue_EmbeddedParseError(t *testing.T) {
 	doc := &high.Arazzo{Arazzo: "1.0.1"}
 	engine := NewEngine(doc, nil, nil)
@@ -1078,39 +1090,6 @@ func TestToYAMLNode_ComplexValue(t *testing.T) {
 	node, err := toYAMLNode(input)
 	require.NoError(t, err)
 	require.NotNil(t, node)
-}
-
-// ===========================================================================
-// engine.go: buildWorkflowContexts - comprehensive coverage
-// ===========================================================================
-
-func TestBuildWorkflowContexts_Empty(t *testing.T) {
-	result := buildWorkflowContexts(nil)
-	require.NotNil(t, result)
-	assert.Len(t, result, 0)
-}
-
-func TestBuildWorkflowContexts_EmptyMap(t *testing.T) {
-	result := buildWorkflowContexts(map[string]*WorkflowResult{})
-	require.NotNil(t, result)
-	assert.Len(t, result, 0)
-}
-
-func TestBuildWorkflowContexts_WithResults(t *testing.T) {
-	results := map[string]*WorkflowResult{
-		"wf1": {
-			WorkflowId: "wf1",
-			Outputs:    map[string]any{"id": "123"},
-		},
-		"wf2": {
-			WorkflowId: "wf2",
-			Outputs:    map[string]any{"status": "ok"},
-		},
-	}
-	contexts := buildWorkflowContexts(results)
-	require.Len(t, contexts, 2)
-	assert.Equal(t, "123", contexts["wf1"].Outputs["id"])
-	assert.Equal(t, "ok", contexts["wf2"].Outputs["status"])
 }
 
 // ===========================================================================
@@ -2354,19 +2333,6 @@ func TestValidationResult_Error_MultipleErrors(t *testing.T) {
 	assert.Contains(t, errStr, "err1")
 	assert.Contains(t, errStr, "err2")
 	assert.Contains(t, errStr, ";")
-}
-
-// ===========================================================================
-// engine.go: buildWorkflowContexts with nil Outputs in WorkflowResult
-// ===========================================================================
-
-func TestBuildWorkflowContexts_NilOutputs(t *testing.T) {
-	results := map[string]*WorkflowResult{
-		"wf1": {WorkflowId: "wf1", Outputs: nil},
-	}
-	contexts := buildWorkflowContexts(results)
-	require.Len(t, contexts, 1)
-	assert.Nil(t, contexts["wf1"].Outputs)
 }
 
 // ===========================================================================

@@ -832,24 +832,24 @@ func TestEvaluateString_NilContext(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestUnescapeJSONPointer_NoTilde(t *testing.T) {
-	assert.Equal(t, "abc", unescapeJSONPointer("abc"))
+	assert.Equal(t, "abc", UnescapeJSONPointer("abc"))
 }
 
 func TestUnescapeJSONPointer_Tilde0(t *testing.T) {
-	assert.Equal(t, "a~c", unescapeJSONPointer("a~0c"))
+	assert.Equal(t, "a~c", UnescapeJSONPointer("a~0c"))
 }
 
 func TestUnescapeJSONPointer_Tilde1(t *testing.T) {
-	assert.Equal(t, "a/c", unescapeJSONPointer("a~1c"))
+	assert.Equal(t, "a/c", UnescapeJSONPointer("a~1c"))
 }
 
 func TestUnescapeJSONPointer_Both(t *testing.T) {
 	// ~0 -> ~, ~1 -> /
-	assert.Equal(t, "~/", unescapeJSONPointer("~0~1"))
+	assert.Equal(t, "~/", UnescapeJSONPointer("~0~1"))
 }
 
 func TestUnescapeJSONPointer_MultipleTilde1(t *testing.T) {
-	assert.Equal(t, "a/b/c", unescapeJSONPointer("a~1b~1c"))
+	assert.Equal(t, "a/b/c", UnescapeJSONPointer("a~1b~1c"))
 }
 
 // ---------------------------------------------------------------------------
@@ -955,8 +955,8 @@ func TestEvaluate_Error_ComponentsParametersMissing(t *testing.T) {
 // ResponseQuery nil headers edge case
 // ---------------------------------------------------------------------------
 
-func TestEvaluate_ResponseQuery_NilHeaders(t *testing.T) {
+func TestEvaluate_ResponseQuery_NotSupported(t *testing.T) {
 	_, err := Evaluate(Expression{Type: ResponseQuery, Property: "x"}, &Context{})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "no response query")
+	assert.Contains(t, err.Error(), "not supported")
 }

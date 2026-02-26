@@ -505,6 +505,19 @@ func TestParseEmbedded_Mixed(t *testing.T) {
 	assert.Equal(t, " done", tokens[2].Literal)
 }
 
+func TestParseEmbedded_LiteralBracesBeforeExpression(t *testing.T) {
+	tokens, err := ParseEmbedded("literal {brace} {$inputs.id}")
+	assert.NoError(t, err)
+	assert.Len(t, tokens, 2)
+
+	assert.False(t, tokens[0].IsExpression)
+	assert.Equal(t, "literal {brace} ", tokens[0].Literal)
+
+	assert.True(t, tokens[1].IsExpression)
+	assert.Equal(t, Inputs, tokens[1].Expression.Type)
+	assert.Equal(t, "id", tokens[1].Expression.Name)
+}
+
 func TestParseEmbedded_Multiple(t *testing.T) {
 	tokens, err := ParseEmbedded("{$method} {$url}")
 	assert.NoError(t, err)
@@ -532,10 +545,12 @@ func TestParseEmbedded_EmptyInput(t *testing.T) {
 	assert.Nil(t, tokens)
 }
 
-func TestParseEmbedded_InvalidExpressionInBraces(t *testing.T) {
-	_, err := ParseEmbedded("{notAnExpression}")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid embedded expression")
+func TestParseEmbedded_LiteralBracesWithoutExpressionPrefix(t *testing.T) {
+	tokens, err := ParseEmbedded("{notAnExpression}")
+	assert.NoError(t, err)
+	assert.Len(t, tokens, 1)
+	assert.False(t, tokens[0].IsExpression)
+	assert.Equal(t, "{notAnExpression}", tokens[0].Literal)
 }
 
 func TestParseEmbedded_MultipleExpressionsMixed(t *testing.T) {
