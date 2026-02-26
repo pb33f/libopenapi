@@ -1641,7 +1641,7 @@ func TestFetchSourceBytes_File(t *testing.T) {
 	filePath := filepath.Join(tmpDir, "api.yaml")
 	require.NoError(t, os.WriteFile(filePath, []byte("file-content"), 0o600))
 
-	u := mustParseURL("file://" + filePath)
+	u := &url.URL{Scheme: "file", Path: filepath.ToSlash(filePath)}
 	config := &ResolveConfig{MaxBodySize: 1024}
 	b, resolvedURL, err := fetchSourceBytes(u, config)
 	require.NoError(t, err)
