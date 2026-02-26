@@ -135,6 +135,13 @@ func parseAndResolveSourceURL(rawURL, base string) (*url.URL, error) {
 		return nil, fmt.Errorf("invalid source URL %q: %w", rawURL, err)
 	}
 
+	// Detect Windows absolute paths (e.g. "C:\Users\..." or "D:/foo/bar").
+	// url.Parse misinterprets the drive letter as a URL scheme ("c:", "d:").
+	// A single-letter scheme with an opaque part is always a Windows drive path.
+	if len(parsed.Scheme) == 1 && parsed.Opaque != "" {
+		parsed = &url.URL{Scheme: "file", Path: filepath.ToSlash(rawURL)}
+	}
+
 	// Resolve relative URLs against BaseURL when provided.
 	if parsed.Scheme == "" && base != "" {
 		baseURL, err := url.Parse(base)
@@ -283,8 +290,15 @@ func resolveFilePath(path string, roots []string) (string, error) {
 	canonicalRoots := canonicalizeRoots(absRoots)
 
 	// Absolute paths must be inside one of the configured roots.
+	// Canonicalize the cleaned path for comparison only (resolves Windows 8.3
+	// short names and macOS /var -> /private/var symlinks) so that the path
+	// matches canonicalRoots. The original cleaned path is returned to callers.
 	if filepath.IsAbs(cleaned) {
-		if !isPathWithinRoots(cleaned, absRoots) {
+		canonical := cleaned
+		if resolved, err := filepath.EvalSymlinks(cleaned); err == nil {
+			canonical = resolved
+		}
+		if !isPathWithinRoots(canonical, canonicalRoots) {
 			return "", fmt.Errorf("file path %q is outside configured roots", cleaned)
 		}
 		if err := ensureResolvedPathWithinRoots(cleaned, canonicalRoots); err != nil {
@@ -294,6 +308,8 @@ func resolveFilePath(path string, roots []string) (string, error) {
 	}
 
 	// Relative paths are resolved against each root in order.
+	// Use absRoots for building candidates (preserves original paths) but
+	// canonicalRoots for security checks.
 	for _, root := range absRoots {
 		candidate := filepath.Join(root, cleaned)
 		if !isPathWithinRoots(candidate, []string{root}) {
