@@ -1004,21 +1004,31 @@ func TestValidateSourceURL_DisallowedHost(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// resolve.go: factoryForType
+// resolve.go: ResolveSources - nil factory errors
 // ---------------------------------------------------------------------------
 
-func TestFactoryForType_Unknown(t *testing.T) {
-	_, err := factoryForType("graphql", &ResolveConfig{})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown source type")
-}
-
-func TestFactoryForType_NilFactory(t *testing.T) {
-	_, err := factoryForType("openapi", &ResolveConfig{})
+func TestResolveSources_NilOpenAPIFactory(t *testing.T) {
+	doc := &high.Arazzo{
+		SourceDescriptions: []*high.SourceDescription{
+			{Name: "api", URL: "https://example.com/api.yaml", Type: "openapi"},
+		},
+	}
+	_, err := ResolveSources(doc, &ResolveConfig{
+		HTTPHandler: func(_ string) ([]byte, error) { return []byte("ok"), nil },
+	})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no OpenAPIFactory")
+}
 
-	_, err = factoryForType("arazzo", &ResolveConfig{})
+func TestResolveSources_NilArazzoFactory(t *testing.T) {
+	doc := &high.Arazzo{
+		SourceDescriptions: []*high.SourceDescription{
+			{Name: "flows", URL: "https://example.com/flows.yaml", Type: "arazzo"},
+		},
+	}
+	_, err := ResolveSources(doc, &ResolveConfig{
+		HTTPHandler: func(_ string) ([]byte, error) { return []byte("ok"), nil },
+	})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no ArazzoFactory")
 }

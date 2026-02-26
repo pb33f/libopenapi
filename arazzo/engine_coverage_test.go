@@ -17,6 +17,7 @@ import (
 
 	"github.com/pb33f/libopenapi/arazzo/expression"
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
+	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1648,15 +1649,15 @@ func TestResolveSources_ArazzoType(t *testing.T) {
 		HTTPHandler: func(_ string) ([]byte, error) {
 			return []byte("content"), nil
 		},
-		ArazzoFactory: func(u string, b []byte) (any, error) {
-			return "arazzo-doc", nil
+		ArazzoFactory: func(u string, b []byte) (*high.Arazzo, error) {
+			return &high.Arazzo{}, nil
 		},
 	}
 	resolved, err := ResolveSources(doc, config)
 	require.NoError(t, err)
 	require.Len(t, resolved, 1)
 	assert.Equal(t, "arazzo", resolved[0].Type)
-	assert.Equal(t, "arazzo-doc", resolved[0].Document)
+	assert.NotNil(t, resolved[0].ArazzoDocument)
 }
 
 // ===========================================================================
@@ -2141,7 +2142,7 @@ func TestResolveFilePath_AbsSymlinkEscapeBlocked(t *testing.T) {
 }
 
 // ===========================================================================
-// resolve.go: ResolveSources - factoryForType error (unknown type)
+// resolve.go: ResolveSources - unknown source type
 // ===========================================================================
 
 func TestResolveSources_UnknownSourceType(t *testing.T) {
@@ -2437,14 +2438,14 @@ func TestResolveSources_FileSchemeSuccess(t *testing.T) {
 	}
 	config := &ResolveConfig{
 		FSRoots: []string{tmpDir},
-		OpenAPIFactory: func(u string, b []byte) (any, error) {
-			return "parsed-doc", nil
+		OpenAPIFactory: func(u string, b []byte) (*v3high.Document, error) {
+			return &v3high.Document{}, nil
 		},
 	}
 	resolved, err := ResolveSources(doc, config)
 	require.NoError(t, err)
 	require.Len(t, resolved, 1)
-	assert.Equal(t, "parsed-doc", resolved[0].Document)
+	assert.NotNil(t, resolved[0].OpenAPIDocument)
 	assert.Equal(t, "api", resolved[0].Name)
 }
 
