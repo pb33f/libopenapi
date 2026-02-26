@@ -58,12 +58,9 @@ func Validate(doc *high.Arazzo) *ValidationResult {
 }
 
 type validator struct {
-	doc                   *high.Arazzo
-	result                *ValidationResult
-	enableOperationLookup bool
-	openAPISourceDocs     map[string]*v3high.Document
-	openAPISourceOrder    []string
-	openAPISearchDocs     []*v3high.Document
+	doc      *high.Arazzo
+	result   *ValidationResult
+	opLookup *operationResolver
 }
 
 func (v *validator) addError(path string, line, col int, cause error) {
@@ -225,9 +222,10 @@ func (v *validator) buildOperationLookupContext() {
 		return
 	}
 
-	v.enableOperationLookup = true
-	v.openAPISearchDocs = uniqueDocs
-	v.openAPISourceDocs = make(map[string]*v3high.Document)
+	resolver := &operationResolver{
+		searchDocs: uniqueDocs,
+		sourceDocs: make(map[string]*v3high.Document),
+	}
 
 	type sourceCandidate struct {
 		Index int
@@ -273,8 +271,8 @@ func (v *validator) buildOperationLookupContext() {
 				continue
 			}
 			if sourceID == docID {
-				v.openAPISourceDocs[source.Name] = uniqueDocs[i]
-				v.openAPISourceOrder = append(v.openAPISourceOrder, source.Name)
+				resolver.sourceDocs[source.Name] = uniqueDocs[i]
+				resolver.sourceOrder = append(resolver.sourceOrder, source.Name)
 				matchedSources[source.Index] = struct{}{}
 				delete(remainingDocs, i)
 				break
@@ -303,14 +301,16 @@ func (v *validator) buildOperationLookupContext() {
 		}
 		docIndex := remainingDocIndices[i]
 		source := v.doc.SourceDescriptions[sourceIndex]
-		v.openAPISourceDocs[source.Name] = uniqueDocs[docIndex]
-		v.openAPISourceOrder = append(v.openAPISourceOrder, source.Name)
+		resolver.sourceDocs[source.Name] = uniqueDocs[docIndex]
+		resolver.sourceOrder = append(resolver.sourceOrder, source.Name)
 		delete(remainingDocs, docIndex)
 	}
 
+	v.opLookup = resolver
+
 	// Warning mode: report incomplete mappings, do not hard-fail validation.
 	for _, source := range openAPISources {
-		if _, ok := v.openAPISourceDocs[source.Name]; ok {
+		if _, ok := resolver.sourceDocs[source.Name]; ok {
 			continue
 		}
 		line, col := rootPos(v.doc.SourceDescriptions[source.Index].GoLow(), (*low.SourceDescription).GetRootNode)
@@ -391,7 +391,7 @@ func (v *validator) validateStep(step *high.Step, path string, stepIds, workflow
 	if step.WorkflowId != "" && !workflowIds[step.WorkflowId] {
 		v.addError(path+".workflowId", stepLine, stepCol, fmt.Errorf("%w: %q", ErrUnresolvedWorkflowRef, step.WorkflowId))
 	}
-	if count == 1 && v.enableOperationLookup {
+	if count == 1 && v.opLookup != nil {
 		v.validateStepOperationLookup(step, path, stepLine, stepCol)
 	}
 
@@ -423,11 +423,11 @@ func (v *validator) validateStepOperationLookup(step *high.Step, path string, li
 	}
 
 	if step.OperationId != "" {
-		if len(v.openAPISearchDocs) == 0 {
+		if len(v.opLookup.searchDocs) == 0 {
 			v.addWarning(path+".operationId", line, col,
 				fmt.Sprintf("%v: no attached OpenAPI source documents available for operation lookup",
 					ErrOperationSourceMapping))
-		} else if !operationIDExistsInDocs(v.openAPISearchDocs, step.OperationId) {
+		} else if !v.opLookup.findOperationByID(step.OperationId) {
 			v.addError(path+".operationId", line, col, fmt.Errorf("%w: %q", ErrUnresolvedOperationRef, step.OperationId))
 		}
 	}
@@ -438,7 +438,7 @@ func (v *validator) validateStepOperationLookup(step *high.Step, path string, li
 
 	var lookupDoc *v3high.Document
 	if sourceName, found := extractSourceNameFromOperationPath(step.OperationPath); found {
-		lookupDoc = v.openAPISourceDocs[sourceName]
+		lookupDoc = v.opLookup.docForSource(sourceName)
 		if lookupDoc == nil {
 			v.addWarning(path+".operationPath", line, col,
 				fmt.Sprintf("%v: sourceDescription %q is not mapped to an attached OpenAPI document",
@@ -446,12 +446,7 @@ func (v *validator) validateStepOperationLookup(step *high.Step, path string, li
 			return
 		}
 	} else {
-		if len(v.openAPISourceOrder) > 0 {
-			lookupDoc = v.openAPISourceDocs[v.openAPISourceOrder[0]]
-		}
-		if lookupDoc == nil && len(v.openAPISearchDocs) > 0 {
-			lookupDoc = v.openAPISearchDocs[0]
-		}
+		lookupDoc = v.opLookup.defaultDoc()
 		if lookupDoc == nil {
 			v.addWarning(path+".operationPath", line, col,
 				fmt.Sprintf("%v: no attached OpenAPI source documents available for operation lookup",
@@ -576,18 +571,12 @@ func parseOperationPathPointer(operationPath string) (path string, method string
 	if len(parts) < 3 || parts[0] != "paths" {
 		return "", "", false
 	}
-	pathToken := decodeJSONPointerToken(parts[1])
-	methodToken := strings.ToLower(decodeJSONPointerToken(parts[2]))
+	pathToken := expression.UnescapeJSONPointer(parts[1])
+	methodToken := strings.ToLower(expression.UnescapeJSONPointer(parts[2]))
 	if pathToken == "" || methodToken == "" {
 		return "", "", false
 	}
 	return pathToken, methodToken, true
-}
-
-func decodeJSONPointerToken(token string) string {
-	token = strings.ReplaceAll(token, "~1", "/")
-	token = strings.ReplaceAll(token, "~0", "~")
-	return token
 }
 
 func extractSourceNameFromOperationPath(operationPath string) (string, bool) {

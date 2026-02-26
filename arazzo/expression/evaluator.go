@@ -119,9 +119,6 @@ func Evaluate(expr Expression, ctx *Context) (any, error) {
 		return v, nil
 
 	case ResponseQuery:
-		if ctx.ResponseHeaders == nil {
-			return nil, fmt.Errorf("no response query parameters available")
-		}
 		return nil, fmt.Errorf("response query parameters are not supported")
 
 	case ResponsePath:
@@ -394,7 +391,7 @@ func resolveJSONPointer(node *yaml.Node, pointer string) (any, error) {
 		}
 
 		// Unescape JSON Pointer: ~1 -> /, ~0 -> ~
-		segment = unescapeJSONPointer(segment)
+		segment = UnescapeJSONPointer(segment)
 
 		switch current.Kind {
 		case yaml.MappingNode:
@@ -428,8 +425,8 @@ func resolveJSONPointer(node *yaml.Node, pointer string) (any, error) {
 	return yamlNodeToValue(current), nil
 }
 
-// unescapeJSONPointer applies RFC 6901 unescaping: ~1 -> /, ~0 -> ~
-func unescapeJSONPointer(s string) string {
+// UnescapeJSONPointer applies RFC 6901 unescaping: ~1 -> /, ~0 -> ~
+func UnescapeJSONPointer(s string) string {
 	if !strings.Contains(s, "~") {
 		return s
 	}
