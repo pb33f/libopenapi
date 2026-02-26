@@ -20,6 +20,8 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+var resolveFilepathAbs = filepath.Abs
+
 // DocumentFactory is a function that creates a parsed document from raw bytes.
 // The sourceURL provides location context for relative reference resolution.
 type DocumentFactory func(sourceURL string, bytes []byte) (any, error)
@@ -272,7 +274,7 @@ func resolveFilePath(path string, roots []string) (string, error) {
 	}
 	absRoots := make([]string, 0, len(roots))
 	for _, root := range roots {
-		absRoot, err := filepath.Abs(root)
+		absRoot, err := resolveFilepathAbs(root)
 		if err != nil {
 			continue
 		}
@@ -329,7 +331,7 @@ func isPathWithinRoots(path string, roots []string) bool {
 func canonicalizeRoots(roots []string) []string {
 	canonicalRoots := make([]string, 0, len(roots))
 	for _, root := range roots {
-		absRoot, err := filepath.Abs(root)
+		absRoot, err := resolveFilepathAbs(root)
 		if err != nil {
 			continue
 		}

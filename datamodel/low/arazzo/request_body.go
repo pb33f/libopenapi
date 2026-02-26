@@ -28,6 +28,8 @@ type RequestBody struct {
 	low.NodeMap
 }
 
+var extractRequestBodyReplacements = extractArray[PayloadReplacement]
+
 // GetIndex returns the index.SpecIndex instance attached to the RequestBody object.
 // For Arazzo low models this is typically nil, because Arazzo parsing does not build a SpecIndex.
 // The index parameter is still required to satisfy the shared low.Buildable interface and generic extractors.
@@ -69,7 +71,7 @@ func (r *RequestBody) Build(ctx context.Context, keyNode, root *yaml.Node, idx *
 
 	r.Payload = extractRawNode(PayloadLabel, root)
 
-	replacements, err := extractArray[PayloadReplacement](ctx, ReplacementsLabel, root, idx)
+	replacements, err := extractRequestBodyReplacements(ctx, ReplacementsLabel, root, idx)
 	if err != nil {
 		return err
 	}

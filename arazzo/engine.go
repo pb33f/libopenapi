@@ -181,20 +181,14 @@ func (e *Engine) RunAll(ctx context.Context, inputs map[string]map[string]any) (
 			}
 		}
 
-		wfInputs := inputs[wfId]
-		wfResult, execErr := e.runWorkflow(ctx, wfId, wfInputs, state)
-		if execErr != nil {
-			result.Success = false
-			failedResult := &WorkflowResult{
-				WorkflowId: wfId,
-				Success:    false,
-				Inputs:     wfInputs,
-				Error:      execErr,
+			wfInputs := inputs[wfId]
+			wfResult, execErr := e.runWorkflow(ctx, wfId, wfInputs, state)
+			if failedResult := workflowExecutionFailureResult(wfId, wfInputs, execErr); failedResult != nil {
+				result.Success = false
+				state.workflowResults[wfId] = failedResult
+				result.Workflows = append(result.Workflows, failedResult)
+				continue
 			}
-			state.workflowResults[wfId] = failedResult
-			result.Workflows = append(result.Workflows, failedResult)
-			continue
-		}
 		result.Workflows = append(result.Workflows, wfResult)
 		if !wfResult.Success {
 			result.Success = false
@@ -305,26 +299,20 @@ func (e *Engine) runWorkflow(ctx context.Context, workflowId string, inputs map[
 			}
 			continue
 		}
-		if actionResult.endWorkflow {
-			result.Success = false
-			result.Error = stepResult.Error
-			if result.Error == nil {
-				result.Error = &StepFailureError{StepId: step.StepId, CriterionIndex: -1}
+			if actionResult.endWorkflow {
+				result.Success = false
+				result.Error = stepFailureOrDefault(step.StepId, stepResult.Error)
+				break
 			}
-			break
-		}
 		if actionResult.jumpToStepIdx >= 0 {
 			stepIdx = actionResult.jumpToStepIdx
 			continue
 		}
 
-		result.Success = false
-		result.Error = stepResult.Error
-		if result.Error == nil {
-			result.Error = &StepFailureError{StepId: step.StepId, CriterionIndex: -1}
+			result.Success = false
+			result.Error = stepFailureOrDefault(step.StepId, stepResult.Error)
+			break
 		}
-		break
-	}
 	if result.Success {
 		if err := e.populateWorkflowOutputs(wf, result, exprCtx); err != nil {
 			result.Success = false
@@ -421,6 +409,25 @@ func dependencyExecutionError(wf *high.Workflow, workflowResults map[string]*Wor
 	return nil
 }
 
+func workflowExecutionFailureResult(workflowID string, inputs map[string]any, execErr error) *WorkflowResult {
+	if execErr == nil {
+		return nil
+	}
+	return &WorkflowResult{
+		WorkflowId: workflowID,
+		Success:    false,
+		Inputs:     inputs,
+		Error:      execErr,
+	}
+}
+
+func stepFailureOrDefault(stepID string, stepErr error) error {
+	if stepErr != nil {
+		return stepErr
+	}
+	return &StepFailureError{StepId: stepID, CriterionIndex: -1}
+}
+
 // parseExpression parses and caches an expression.
 func (e *Engine) parseExpression(input string) (expression.Expression, error) {
 	if cached, ok := e.exprCache[input]; ok {
@@ -511,4 +518,3 @@ func copyWorkflowContexts(src map[string]*expression.WorkflowContext) map[string
 	}
 	return dst
 }
-
