@@ -281,7 +281,9 @@ func TestPathItem_AdditionalOperations_BadRef_AtRoot(t *testing.T) {
 
 }
 
-func TestPathItem_Build_StandardOperationBuildModelFail(t *testing.T) {
+func TestPathItem_Build_StandardOperationUnknownYAMLKey(t *testing.T) {
+	// YAML keys matching unexported fields (e.g., "context") are silently ignored
+	// by BuildModel; the build succeeds since the key is simply unrecognized.
 	yml := `get:
   context: nope`
 
@@ -293,11 +295,12 @@ func TestPathItem_Build_StandardOperationBuildModelFail(t *testing.T) {
 	_ = low.BuildModel(idxNode.Content[0], &n)
 	err := n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
-	assert.Error(t, err)
-	assert.ErrorContains(t, err, "unable to parse unsupported type")
+	assert.NoError(t, err)
 }
 
-func TestPathItem_Build_AdditionalOperationsBuildModelFail(t *testing.T) {
+func TestPathItem_Build_AdditionalOperationsUnknownYAMLKey(t *testing.T) {
+	// YAML keys matching unexported fields (e.g., "context") are silently ignored
+	// by BuildModel; the build succeeds since the key is simply unrecognized.
 	yml := `additionalOperations:
   purge:
     context: nope`
@@ -310,8 +313,7 @@ func TestPathItem_Build_AdditionalOperationsBuildModelFail(t *testing.T) {
 	_ = low.BuildModel(idxNode.Content[0], &n)
 	err := n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
-	assert.Error(t, err)
-	assert.ErrorContains(t, err, "unable to parse unsupported type")
+	assert.NoError(t, err)
 }
 
 func TestResolveOperationReference_DocumentNode(t *testing.T) {

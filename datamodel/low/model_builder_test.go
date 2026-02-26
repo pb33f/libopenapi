@@ -164,8 +164,9 @@ func TestBuildModel_UseCopyNotRef(t *testing.T) {
 }
 
 func TestBuildModel_UseUnsupportedPrimitive(t *testing.T) {
+	// Exported field with a primitive Go type (string) that has no NodeReference wrapper.
 	type notSupported struct {
-		cake string
+		Cake string
 	}
 	ns := notSupported{}
 	yml := `cake: party`
@@ -176,7 +177,23 @@ func TestBuildModel_UseUnsupportedPrimitive(t *testing.T) {
 
 	cErr := BuildModel(rootNode.Content[0], &ns)
 	assert.Error(t, cErr)
-	assert.Empty(t, ns.cake)
+	assert.Empty(t, ns.Cake)
+}
+
+func TestBuildModel_SkipsUnexportedFields(t *testing.T) {
+	// Unexported fields should be silently skipped, even if they match a YAML key.
+	type hasUnexported struct {
+		context string //nolint:unused
+	}
+	h := hasUnexported{}
+	yml := `context: hello`
+
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	cErr := BuildModel(rootNode.Content[0], &h)
+	assert.NoError(t, cErr)
 }
 
 func TestBuildModel_UsingInternalConstructs(t *testing.T) {
