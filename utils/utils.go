@@ -69,14 +69,8 @@ var jsonPathCacheEager sync.Map
 // ClearJSONPathCache resets the compiled JSONPath cache.
 // Call this between document lifecycles in long-running processes to bound memory.
 func ClearJSONPathCache() {
-	jsonPathCacheLazy.Range(func(key, _ interface{}) bool {
-		jsonPathCacheLazy.Delete(key)
-		return true
-	})
-	jsonPathCacheEager.Range(func(key, _ interface{}) bool {
-		jsonPathCacheEager.Delete(key)
-		return true
-	jsonPathCache.Clear()
+	jsonPathCacheLazy.Clear()
+	jsonPathCacheEager.Clear()
 }
 
 var jsonPathQuery = func(path *jsonpath.JSONPath, node *yaml.Node) []*yaml.Node {
