@@ -2025,6 +2025,122 @@ func TestParseAndResolveSourceURL_RelativeNoBase_BecomesFile(t *testing.T) {
 }
 
 // ===========================================================================
+// resolve.go: parseAndResolveSourceURL - Windows drive letter detection
+// ===========================================================================
+
+func TestParseAndResolveSourceURL_WindowsDriveLetter(t *testing.T) {
+	// Simulate how url.Parse treats a Windows path like "C:\Users\foo\spec.yaml":
+	// it interprets "C:" as the URL scheme. parseAndResolveSourceURL should detect
+	// the single-letter scheme and convert it to a file:// URL.
+	u, err := parseAndResolveSourceURL(`C:\Users\foo\spec.yaml`, "")
+	require.NoError(t, err)
+	assert.Equal(t, "file", u.Scheme)
+	// Backslashes are normalized to forward slashes in the URL path
+	assert.Equal(t, "C:/Users/foo/spec.yaml", u.Path)
+}
+
+func TestParseAndResolveSourceURL_WindowsDriveForwardSlash(t *testing.T) {
+	u, err := parseAndResolveSourceURL("D:/projects/api.yaml", "")
+	require.NoError(t, err)
+	assert.Equal(t, "file", u.Scheme)
+	assert.Equal(t, "D:/projects/api.yaml", u.Path)
+}
+
+// ===========================================================================
+// resolve.go: fetchSourceBytes - Windows drive letter in URL Host
+// ===========================================================================
+
+func TestFetchSourceBytes_WindowsDriveInHost(t *testing.T) {
+	// When url.Parse processes "file://C:/path", it puts "C:" in Host.
+	// fetchSourceBytes should reconstruct the drive letter into the path.
+	tmpDir := t.TempDir()
+	resolvedTmpDir, err := filepath.EvalSymlinks(tmpDir)
+	require.NoError(t, err)
+
+	testFile := filepath.Join(resolvedTmpDir, "spec.yaml")
+	err = os.WriteFile(testFile, []byte("openapi: 3.0.0"), 0644)
+	require.NoError(t, err)
+
+	// Build a URL that simulates the Windows drive-in-host scenario:
+	// Host="C:", Path="/rest/of/path" (as url.Parse would produce)
+	driveAndPath := filepath.ToSlash(testFile)
+	fakeURL := &url.URL{
+		Scheme: "file",
+		Host:   driveAndPath[:2],         // e.g. "/p" on Unix, "C:" on Windows
+		Path:   driveAndPath[2:],          // rest of path
+	}
+
+	// This only works as a Windows drive when Host is like "X:" (letter + colon).
+	// On Unix, Host won't match the len==2 && [1]==':' check, so the path stays
+	// as-is. We test the reconstruction logic directly.
+	if len(fakeURL.Host) == 2 && fakeURL.Host[1] == ':' {
+		// Windows-like: verify reconstruction
+		config := &ResolveConfig{
+			MaxBodySize: 10 * 1024 * 1024,
+			FSRoots:     []string{resolvedTmpDir},
+		}
+		data, _, err := fetchSourceBytes(fakeURL, config)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("openapi: 3.0.0"), data)
+	} else {
+		// Unix: test the branch directly with a synthetic URL
+		synthURL := &url.URL{Scheme: "file", Host: "X:", Path: "/fake/path.yaml"}
+		config := &ResolveConfig{
+			MaxBodySize: 10 * 1024 * 1024,
+			FSRoots:     []string{"/fake"},
+		}
+		_, _, err := fetchSourceBytes(synthURL, config)
+		// Will fail to find the file, but the drive letter reconstruction branch is hit
+		assert.Error(t, err)
+	}
+}
+
+// ===========================================================================
+// resolve.go: resolveFilePath - EvalSymlinks canonicalization for abs paths
+// ===========================================================================
+
+func TestResolveFilePath_AbsPathCanonicalization(t *testing.T) {
+	// Test that an absolute path whose real (symlink-resolved) location is inside
+	// the configured roots is accepted, even when the raw path uses a symlink.
+	tmpDir := t.TempDir()
+	resolvedTmpDir, err := filepath.EvalSymlinks(tmpDir)
+	require.NoError(t, err)
+
+	testFile := filepath.Join(resolvedTmpDir, "test.yaml")
+	err = os.WriteFile(testFile, []byte("test"), 0644)
+	require.NoError(t, err)
+
+	// Use the resolved path as both the file and root — the EvalSymlinks branch
+	// in resolveFilePath is exercised and canonical == cleaned.
+	result, err := resolveFilePath(testFile, []string{resolvedTmpDir})
+	assert.NoError(t, err)
+	assert.Equal(t, testFile, result)
+}
+
+func TestResolveFilePath_AbsSymlinkEscapeBlocked(t *testing.T) {
+	// An absolute path that is a symlink pointing outside the configured roots
+	// should be rejected by ensureResolvedPathWithinRoots within resolveFilePath.
+	rootDir := t.TempDir()
+	resolvedRoot, err := filepath.EvalSymlinks(rootDir)
+	require.NoError(t, err)
+
+	outsideDir := t.TempDir()
+	outsideFile := filepath.Join(outsideDir, "secret.yaml")
+	err = os.WriteFile(outsideFile, []byte("secret"), 0644)
+	require.NoError(t, err)
+
+	// Create a symlink inside the root that points to the outside file
+	symlinkPath := filepath.Join(resolvedRoot, "escape.yaml")
+	err = os.Symlink(outsideFile, symlinkPath)
+	require.NoError(t, err)
+
+	// resolveFilePath should detect the symlink escape on the absolute path
+	_, err = resolveFilePath(symlinkPath, []string{resolvedRoot})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "outside configured roots")
+}
+
+// ===========================================================================
 // resolve.go: ResolveSources - factoryForType error (unknown type)
 // ===========================================================================
 

@@ -137,9 +137,11 @@ func parseAndResolveSourceURL(rawURL, base string) (*url.URL, error) {
 
 	// Detect Windows absolute paths (e.g. "C:\Users\..." or "D:/foo/bar").
 	// url.Parse misinterprets the drive letter as a URL scheme ("c:", "d:").
-	// A single-letter scheme with an opaque part is always a Windows drive path.
-	if len(parsed.Scheme) == 1 && parsed.Opaque != "" {
-		parsed = &url.URL{Scheme: "file", Path: filepath.ToSlash(rawURL)}
+	// A single-letter scheme is always a Windows drive letter; real URL schemes
+	// are at least two characters. Use strings.ReplaceAll instead of
+	// filepath.ToSlash so backslashes are normalized on all platforms.
+	if len(parsed.Scheme) == 1 {
+		parsed = &url.URL{Scheme: "file", Path: strings.ReplaceAll(rawURL, `\`, "/")}
 	}
 
 	// Resolve relative URLs against BaseURL when provided.
