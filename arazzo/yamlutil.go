@@ -5,7 +5,6 @@ package arazzo
 
 import (
 	"fmt"
-	"sort"
 
 	"go.yaml.in/yaml/v4"
 )
@@ -20,22 +19,18 @@ func toYAMLNode(value any) (*yaml.Node, error) {
 	return directYAMLNode(value)
 }
 
+// directYAMLNode converts a Go value to a *yaml.Node for expression evaluation.
+// Map key ordering is not deterministic since the output is used for JSONPath
+// and expression evaluation, not for rendering.
 func directYAMLNode(value any) (*yaml.Node, error) {
 	switch typed := value.(type) {
-	case *yaml.Node:
-		return typed, nil
 	case yaml.Node:
 		return &typed, nil
 	case map[string]any:
 		node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		keys := make([]string, 0, len(typed))
-		for k := range typed {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
+		for k, v := range typed {
 			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: k}
-			valueNode, err := directYAMLNode(typed[k])
+			valueNode, err := directYAMLNode(v)
 			if err != nil {
 				return nil, err
 			}
@@ -44,17 +39,10 @@ func directYAMLNode(value any) (*yaml.Node, error) {
 		return node, nil
 	case map[any]any:
 		node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		keys := make([]string, 0, len(typed))
-		keyMap := make(map[string]any, len(typed))
 		for k, v := range typed {
-			ks := fmt.Sprint(k)
-			keys = append(keys, ks)
-			keyMap[ks] = v
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: k}
-			valueNode, err := directYAMLNode(keyMap[k])
+			ks := sprintMapKey(k)
+			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: ks}
+			valueNode, err := directYAMLNode(v)
 			if err != nil {
 				return nil, err
 			}
@@ -99,4 +87,12 @@ func directYAMLNode(value any) (*yaml.Node, error) {
 		}
 		return node, nil
 	}
+}
+
+// sprintMapKey converts a map key to a string, fast-pathing the common string case.
+func sprintMapKey(k any) string {
+	if s, ok := k.(string); ok {
+		return s
+	}
+	return fmt.Sprint(k)
 }

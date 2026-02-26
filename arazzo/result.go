@@ -11,6 +11,7 @@ import (
 type WorkflowResult struct {
 	WorkflowId string
 	Success    bool
+	Inputs     map[string]any
 	Outputs    map[string]any
 	Steps      []*StepResult
 	Error      error
