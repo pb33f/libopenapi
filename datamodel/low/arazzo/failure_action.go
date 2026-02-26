@@ -36,6 +36,8 @@ type FailureAction struct {
 	low.NodeMap
 }
 
+var extractFailureActionCriteria = extractArray[Criterion]
+
 // IsReusable returns true if this failure action is a Reusable Object (has a reference field).
 func (f *FailureAction) IsReusable() bool {
 	return !f.ComponentRef.IsEmpty()
@@ -114,7 +116,7 @@ func (f *FailureAction) Build(ctx context.Context, keyNode, root *yaml.Node, idx
 	}
 
 	// Extract criteria array
-	criteria, err := extractArray[Criterion](ctx, CriteriaLabel, root, idx)
+	criteria, err := extractFailureActionCriteria(ctx, CriteriaLabel, root, idx)
 	if err != nil {
 		return err
 	}

@@ -29,6 +29,9 @@ type Components struct {
 	low.NodeMap
 }
 
+var extractComponentsParametersMap = extractObjectMap[Parameter]
+var extractComponentsSuccessActionsMap = extractObjectMap[SuccessAction]
+
 // GetIndex returns the index.SpecIndex instance attached to the Components object.
 // For Arazzo low models this is typically nil, because Arazzo parsing does not build a SpecIndex.
 // The index parameter is still required to satisfy the shared low.Buildable interface and generic extractors.
@@ -72,14 +75,14 @@ func (c *Components) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 	c.Inputs = extractRawNodeMap(InputsLabel, root)
 
 	// Extract parameters map
-	params, err := extractObjectMap[Parameter](ctx, ParametersLabel, root, idx)
+	params, err := extractComponentsParametersMap(ctx, ParametersLabel, root, idx)
 	if err != nil {
 		return err
 	}
 	c.Parameters = params
 
 	// Extract successActions map
-	successActions, err := extractObjectMap[SuccessAction](ctx, SuccessActionsLabel, root, idx)
+	successActions, err := extractComponentsSuccessActionsMap(ctx, SuccessActionsLabel, root, idx)
 	if err != nil {
 		return err
 	}

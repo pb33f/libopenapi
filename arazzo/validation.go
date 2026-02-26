@@ -498,7 +498,7 @@ func normalizeLookupLocation(location string) string {
 		}
 		return strings.TrimSuffix(parsed.String(), "/")
 	}
-	if abs, err := filepath.Abs(trimmed); err == nil {
+	if abs, err := resolveFilepathAbs(trimmed); err == nil {
 		trimmed = abs
 	}
 	trimmed = filepath.ToSlash(filepath.Clean(trimmed))
@@ -526,9 +526,6 @@ func operationIDExistsInDoc(doc *v3high.Document, operationID string) bool {
 			continue
 		}
 		operations := pathItem.GetOperations()
-		if operations == nil {
-			continue
-		}
 		for _, operation := range operations.FromOldest() {
 			if operation != nil && operation.OperationId == operationID {
 				return true
@@ -551,9 +548,6 @@ func operationPathExistsInDoc(doc *v3high.Document, operationPath string) (exist
 		return false, true
 	}
 	operations := pathItem.GetOperations()
-	if operations == nil {
-		return false, true
-	}
 	return operations.GetOrZero(method) != nil, true
 }
 

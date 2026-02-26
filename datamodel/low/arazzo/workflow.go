@@ -35,6 +35,9 @@ type Workflow struct {
 	low.NodeMap
 }
 
+var extractWorkflowSuccessActions = extractArray[SuccessAction]
+var extractWorkflowParameters = extractArray[Parameter]
+
 // GetIndex returns the index.SpecIndex instance attached to the Workflow object.
 // For Arazzo low models this is typically nil, because Arazzo parsing does not build a SpecIndex.
 // The index parameter is still required to satisfy the shared low.Buildable interface and generic extractors.
@@ -83,7 +86,7 @@ func (w *Workflow) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 	}
 	w.Steps = steps
 
-	successActions, err := extractArray[SuccessAction](ctx, SuccessActionsLabel, root, idx)
+	successActions, err := extractWorkflowSuccessActions(ctx, SuccessActionsLabel, root, idx)
 	if err != nil {
 		return err
 	}
@@ -97,7 +100,7 @@ func (w *Workflow) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 
 	w.Outputs = extractExpressionsMap(OutputsLabel, root)
 
-	params, err := extractArray[Parameter](ctx, ParametersLabel, root, idx)
+	params, err := extractWorkflowParameters(ctx, ParametersLabel, root, idx)
 	if err != nil {
 		return err
 	}

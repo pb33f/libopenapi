@@ -57,6 +57,20 @@ func findLabeledNode(label string, root *yaml.Node) (key, value *yaml.Node, foun
 	return nil, nil, false
 }
 
+// assignNodeReference centralizes the common "if err return; set field" pattern
+// used by Build methods when extracting nested NodeReferences.
+func assignNodeReference[T any](
+	ref low.NodeReference[T],
+	err error,
+	assign func(low.NodeReference[T]),
+) error {
+	if err != nil {
+		return err
+	}
+	assign(ref)
+	return nil
+}
+
 // extractArray extracts a YAML sequence node into a slice of ValueReferences for the given label.
 func extractArray[N any, T interface {
 	*N
