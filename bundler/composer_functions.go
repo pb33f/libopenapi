@@ -207,13 +207,28 @@ func checkForCollision[T any](schemaName, delimiter string, pr *processRef, comp
 
 func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *processRef]) {
 	seq := idx.GetRawReferencesSequenced()
+
+	// Track $ref value nodes rewritten by the first loop to prevent
+	// the second loop from overwriting them. This fixes circular self-refs
+	// when a root-local mapped ref shares a yaml node pointer with a
+	// sequenced ref that was already correctly rewritten.
+	rewiredRefNodes := make(map[*yaml.Node]struct{}, len(seq))
+
 	for _, sequenced := range seq {
+		if refValNode := utils.GetRefValueNode(sequenced.Node); refValNode != nil {
+			rewiredRefNodes[refValNode] = struct{}{}
+		}
 		rewireRef(idx, sequenced, sequenced.FullDefinition, processedNodes)
 	}
 
 	mapped := idx.GetMappedReferences()
 
 	for _, mRef := range mapped {
+		if refValNode := utils.GetRefValueNode(mRef.Node); refValNode != nil {
+			if _, ok := rewiredRefNodes[refValNode]; ok {
+				continue
+			}
+		}
 		origDef := mRef.FullDefinition
 		rewireRef(idx, mRef, mRef.FullDefinition, processedNodes)
 		mapped[mRef.FullDefinition] = mRef
