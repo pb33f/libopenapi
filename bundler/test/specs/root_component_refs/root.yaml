@@ -1,0 +1,9 @@
+openapi: "3.1.0"
+info:
+  title: Root Component Refs Test
+  version: "1.0.0"
+paths:
+  /workspaces:
+    $ref: "paths/list.yaml"
+  /workspaces/{id}/documents:
+    $ref: "paths/documents.yaml"

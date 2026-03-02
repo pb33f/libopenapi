@@ -1,0 +1,25 @@
+get:
+  summary: List documents in a workspace
+  operationId: listDocuments
+  parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    "200":
+      description: OK
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "../schemas/file.yaml#/File"
+    "404":
+      description: Workspace not found
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/error.yaml#/Error"
