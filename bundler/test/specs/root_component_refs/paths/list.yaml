@@ -1,0 +1,18 @@
+get:
+  summary: List workspaces
+  operationId: listWorkspaces
+  responses:
+    "200":
+      description: OK
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: "../schemas/workspace.yaml#/Workspace"
+    "500":
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/error.yaml#/Error"

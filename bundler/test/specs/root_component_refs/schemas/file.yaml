@@ -1,0 +1,8 @@
+File:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    filename:
+      type: string
