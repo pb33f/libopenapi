@@ -5,6 +5,7 @@ package index
 
 import (
 	"context"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -14,6 +15,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
+
+type countingFS struct {
+	opens int
+	err   error
+}
+
+func (c *countingFS) Open(name string) (fs.File, error) {
+	c.opens++
+	if c.err != nil {
+		return nil, c.err
+	}
+	return nil, fs.ErrNotExist
+}
 
 func TestSpecIndex_SearchIndexForReference(t *testing.T) {
 	petstore, _ := os.ReadFile("../test_specs/petstorev3.json")
@@ -66,7 +80,8 @@ components:
 	searchRef := &Reference{FullDefinition: "pet.json"}
 	found, _, _ := idx.SearchIndexForReferenceByReferenceWithContext(ctx, searchRef)
 	if assert.NotNil(t, found) {
-		assert.Equal(t, "https://example.com/schemas/pet.json", found.FullDefinition)
+		assert.Equal(t, "#/components/schemas/Pet", found.FullDefinition)
+		assert.Equal(t, "#/components/schemas/Pet", found.Definition)
 	}
 }
 
@@ -128,7 +143,8 @@ components:
 	}
 	found, _, _ := idx.SearchIndexForReferenceByReferenceWithContext(context.Background(), searchRef)
 	if assert.NotNil(t, found) {
-		assert.Equal(t, "https://other.com/schemas/mixins/integer", found.FullDefinition)
+		assert.Equal(t, "#/components/schemas/Integer", found.FullDefinition)
+		assert.Equal(t, "#/components/schemas/Integer", found.Definition)
 	}
 
 	if cached, ok := idx.cache.Load("/schemas/mixins/integer"); assert.True(t, ok) {
@@ -136,6 +152,87 @@ components:
 	}
 	if cached, ok := idx.cache.Load("https://example.com/schemas/mixins/integer"); assert.True(t, ok) {
 		assert.Equal(t, found, cached)
+	}
+}
+
+func TestSearchIndexForReferenceByReferenceWithContext_LocalSchemaIdCanonicalizesTarget(t *testing.T) {
+	spec := `{
+  "openapi": "3.2.0",
+  "info": { "title": "Test", "version": "0" },
+  "paths": {
+    "/widgets": {
+      "post": {
+        "operationId": "postWidget",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/widget" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "_0_xxxx.schema.json": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$id": "https://example.com/widget/widget.schema.json",
+        "title": "Widget",
+        "type": "object"
+      },
+      "widget": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "$ref": "https://example.com/widget/widget.schema.json"
+          }
+        },
+        "type": "object"
+      }
+    }
+  }
+}`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	cfg := CreateOpenAPIIndexConfig()
+	cfg.SpecAbsolutePath = "https://example.com/openapi.json"
+	rolodex := NewRolodex(cfg)
+	remote := &countingFS{err: fs.ErrNotExist}
+	rolodex.AddRemoteFS("https://example.com", remote)
+
+	idx := NewSpecIndexWithConfig(&rootNode, cfg)
+	rolodex.SetRootIndex(idx)
+
+	assert.Equal(t, 0, remote.opens, "local $id match should not trigger remote lookup")
+	assert.Empty(t, idx.GetReferenceIndexErrors())
+
+	var resolvedViaID *ReferenceMapped
+	for _, mapped := range idx.GetMappedReferencesSequenced() {
+		if mapped == nil || mapped.OriginalReference == nil {
+			continue
+		}
+		if mapped.OriginalReference.RawRef == "https://example.com/widget/widget.schema.json" {
+			resolvedViaID = mapped
+			break
+		}
+	}
+	if assert.NotNil(t, resolvedViaID) {
+		assert.Equal(t, "https://example.com/widget/widget.schema.json", resolvedViaID.OriginalReference.RawRef)
+		assert.Equal(t, "#/components/schemas/_0_xxxx.schema.json", resolvedViaID.Reference.Definition)
+		assert.Equal(t,
+			"https://example.com/openapi.json#/components/schemas/_0_xxxx.schema.json",
+			resolvedViaID.Reference.FullDefinition,
+		)
+	}
+
+	mappedRefs := idx.GetMappedReferences()
+	target := mappedRefs["https://example.com/openapi.json#/components/schemas/_0_xxxx.schema.json"]
+	if assert.NotNil(t, target) {
+		assert.Equal(t, "#/components/schemas/_0_xxxx.schema.json", target.Definition)
 	}
 }
 

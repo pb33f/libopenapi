@@ -768,6 +768,7 @@ components:
 	assert.NoError(t, err)
 
 	config := CreateClosedAPIIndexConfig()
+	config.SpecAbsolutePath = "https://example.com/openapi.yaml"
 	index := NewSpecIndexWithConfig(&rootNode, config)
 	assert.NotNil(t, index)
 
@@ -831,13 +832,16 @@ components:
 	assert.NoError(t, err)
 
 	config := CreateClosedAPIIndexConfig()
+	config.SpecAbsolutePath = "https://example.com/openapi.yaml"
 	index := NewSpecIndexWithConfig(&rootNode, config)
 	assert.NotNil(t, index)
 
 	// Test resolution by $id
 	resolved := index.ResolveRefViaSchemaId("https://example.com/schemas/pet.json")
 	assert.NotNil(t, resolved)
-	assert.Equal(t, "https://example.com/schemas/pet.json", resolved.FullDefinition)
+	assert.Equal(t, "#/components/schemas/Pet", resolved.Definition)
+	assert.Equal(t, "https://example.com/openapi.yaml#/components/schemas/Pet", resolved.FullDefinition)
+	assert.Equal(t, "https://example.com/schemas/pet.json", resolved.RawRef)
 }
 
 func TestResolveRefViaSchemaId_NotFound(t *testing.T) {
@@ -852,6 +856,7 @@ info:
 	assert.NoError(t, err)
 
 	config := CreateClosedAPIIndexConfig()
+	config.SpecAbsolutePath = "https://example.com/openapi.yaml"
 	index := NewSpecIndexWithConfig(&rootNode, config)
 	assert.NotNil(t, index)
 
@@ -893,12 +898,15 @@ components:
 	assert.NoError(t, err)
 
 	config := CreateClosedAPIIndexConfig()
+	config.SpecAbsolutePath = "https://example.com/openapi.yaml"
 	index := NewSpecIndexWithConfig(&rootNode, config)
 	assert.NotNil(t, index)
 
 	// Test resolution with fragment
 	resolved := index.ResolveRefViaSchemaId("https://example.com/schemas/pet.json#/properties/name")
 	assert.NotNil(t, resolved)
+	assert.Equal(t, "#/components/schemas/Pet/properties/name", resolved.Definition)
+	assert.Equal(t, "https://example.com/openapi.yaml#/components/schemas/Pet/properties/name", resolved.FullDefinition)
 	// The resolved node should be the "name" property schema
 	if resolved.Node != nil {
 		// Check it's the right node (type: string)
@@ -1235,7 +1243,8 @@ info:
 	// ResolveRefViaSchemaId should find the schema via rolodex global registry
 	resolved := index2.ResolveRefViaSchemaId("https://example.com/schemas/pet.json")
 	assert.NotNil(t, resolved)
-	assert.Equal(t, "https://example.com/schemas/pet.json", resolved.FullDefinition)
+	assert.Equal(t, "https://example.com/openapi.yaml#/components/schemas/Pet", resolved.FullDefinition)
+	assert.Equal(t, "#/components/schemas/Pet", resolved.Definition)
 }
 
 // Test that FindSchemaIdInNode returns empty for non-mapping nodes
@@ -1283,6 +1292,7 @@ components:
 	assert.NoError(t, err)
 
 	config := CreateClosedAPIIndexConfig()
+	config.SpecAbsolutePath = "https://example.com/openapi.yaml"
 	index := NewSpecIndexWithConfig(&rootNode, config)
 	assert.NotNil(t, index)
 
@@ -1367,6 +1377,7 @@ components:
 	assert.NoError(t, err)
 
 	config := CreateClosedAPIIndexConfig()
+	config.SpecAbsolutePath = "https://example.com/openapi.yaml"
 	index := NewSpecIndexWithConfig(&rootNode, config)
 	assert.NotNil(t, index)
 
@@ -1380,6 +1391,106 @@ components:
 
 	// Results should be equivalent
 	assert.Equal(t, resolved1.FullDefinition, resolved2.FullDefinition)
+}
+
+func TestJoinSchemaIdDefinitionPath(t *testing.T) {
+	tests := []struct {
+		name           string
+		definitionPath string
+		fragment       string
+		expected       string
+	}{
+		{
+			name:           "empty definition path",
+			definitionPath: "",
+			fragment:       "#/properties/name",
+			expected:       "",
+		},
+		{
+			name:           "no fragment",
+			definitionPath: "#/components/schemas/Pet",
+			fragment:       "",
+			expected:       "#/components/schemas/Pet",
+		},
+		{
+			name:           "root definition with fragment",
+			definitionPath: "#",
+			fragment:       "#/properties/name",
+			expected:       "#/properties/name",
+		},
+		{
+			name:           "nested definition with fragment",
+			definitionPath: "#/components/schemas/Pet",
+			fragment:       "#/properties/name",
+			expected:       "#/components/schemas/Pet/properties/name",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, joinSchemaIdDefinitionPath(tc.definitionPath, tc.fragment))
+		})
+	}
+}
+
+func TestBuildSchemaIdResolvedReference(t *testing.T) {
+	spec := `type: object
+properties:
+  name:
+    type: string
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	rootIndex := &SpecIndex{specAbsolutePath: "https://example.com/openapi.yaml"}
+	entryIndex := &SpecIndex{specAbsolutePath: "https://example.com/models.yaml"}
+
+	entry := &SchemaIdEntry{
+		Id:             "https://example.com/schema.json",
+		ResolvedUri:    "https://example.com/schema.json",
+		SchemaNode:     rootNode.Content[0],
+		Index:          entryIndex,
+		DefinitionPath: "#/components/schemas/Pet",
+	}
+
+	resolved := buildSchemaIdResolvedReference(rootIndex, entry,
+		"https://example.com/schema.json#/properties/name",
+		"https://example.com/schema.json",
+		"#/properties/name",
+	)
+	if assert.NotNil(t, resolved) {
+		assert.Equal(t, "#/components/schemas/Pet/properties/name", resolved.Definition)
+		assert.Equal(t, "https://example.com/models.yaml#/components/schemas/Pet/properties/name", resolved.FullDefinition)
+		assert.Equal(t, "https://example.com/models.yaml", resolved.RemoteLocation)
+		assert.True(t, resolved.IsRemote)
+		_, _, typeNode := utils.FindKeyNodeFullTop("type", resolved.Node.Content)
+		assert.NotNil(t, typeNode)
+		assert.Equal(t, "string", typeNode.Value)
+	}
+
+	fallback := buildSchemaIdResolvedReference(rootIndex, &SchemaIdEntry{
+		Id:          "https://example.com/schema.json",
+		ResolvedUri: "https://example.com/schema.json",
+		SchemaNode:  rootNode.Content[0],
+	}, "https://example.com/schema.json", "https://example.com/schema.json", "")
+	if assert.NotNil(t, fallback) {
+		assert.Equal(t, "https://example.com/schema.json", fallback.Definition)
+		assert.Equal(t, "https://example.com/schema.json", fallback.FullDefinition)
+		assert.True(t, fallback.IsRemote)
+	}
+
+	missingFragment := buildSchemaIdResolvedReference(rootIndex, entry,
+		"https://example.com/schema.json#/properties/unknown",
+		"https://example.com/schema.json",
+		"#/properties/unknown",
+	)
+	if assert.NotNil(t, missingFragment) {
+		assert.Equal(t, rootNode.Content[0], missingFragment.Node)
+	}
+
+	assert.Nil(t, buildSchemaIdResolvedReference(rootIndex, nil, "https://example.com/schema.json", "", ""))
 }
 
 // Test $id extraction uses document base when no scope exists
@@ -1449,7 +1560,8 @@ components:
 	assert.NotNil(t, ref, "Should find reference via $id")
 	assert.NotNil(t, foundIdx)
 	assert.NotNil(t, ctx)
-	assert.Equal(t, "https://example.com/schemas/pet.json", ref.FullDefinition)
+	assert.Equal(t, "#/components/schemas/Pet", ref.Definition)
+	assert.Equal(t, "#/components/schemas/Pet", ref.FullDefinition)
 }
 
 func TestFindComponent_AbsolutePathViaSchemaId(t *testing.T) {
@@ -1580,15 +1692,16 @@ func TestResolveRefViaSchemaIdPath_SkipsInvalidEntries(t *testing.T) {
 		"relative": {Id: "schemas/relative.json"},
 		"no-path":  {ResolvedUri: "https://example.com"},
 		"match": {
-			ResolvedUri: "https://example.com/schemas/target",
-			SchemaNode:  &yaml.Node{Kind: yaml.MappingNode},
-			Index:       index,
+			ResolvedUri:    "https://example.com/schemas/target",
+			SchemaNode:     &yaml.Node{Kind: yaml.MappingNode},
+			Index:          index,
+			DefinitionPath: "#/components/schemas/Target",
 		},
 	}
 
 	ref := index.resolveRefViaSchemaIdPath("/schemas/target")
 	assert.NotNil(t, ref)
-	assert.Equal(t, "https://example.com/schemas/target", ref.FullDefinition)
+	assert.Equal(t, "#/components/schemas/Target", ref.FullDefinition)
 }
 
 func TestResolveRefViaSchemaIdPath_UsesGlobalEntries(t *testing.T) {
@@ -1617,7 +1730,7 @@ components:
 
 	ref := localIdx.resolveRefViaSchemaIdPath("/schemas/mixins/integer")
 	assert.NotNil(t, ref)
-	assert.Equal(t, "https://example.com/schemas/mixins/integer", ref.FullDefinition)
+	assert.Equal(t, "#/components/schemas/Integer", ref.FullDefinition)
 	assert.Equal(t, globalIdx, ref.Index)
 }
 
@@ -1712,7 +1825,8 @@ components:
 
 	found, foundIdx, _ := index.SearchIndexForReferenceByReferenceWithContext(context.Background(), searchRef)
 	if assert.NotNil(t, found) && assert.NotNil(t, foundIdx) {
-		assert.Equal(t, "https://example.com/schemas/non-negative-integer#/$defs/nonNegativeInteger", found.FullDefinition)
+		assert.Equal(t, "#/components/schemas/NonNegativeInteger/$defs/nonNegativeInteger", found.Definition)
+		assert.Equal(t, "#/components/schemas/NonNegativeInteger/$defs/nonNegativeInteger", found.FullDefinition)
 	}
 }
 
