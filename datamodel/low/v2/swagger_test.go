@@ -433,3 +433,24 @@ func TestRolodexRemoteFileSystem_FailRemoteFS(t *testing.T) {
 	assert.NotNil(t, lDoc)
 	assert.Error(t, err)
 }
+
+func TestCreateDocumentFromConfig_ResolveNestedRefsWithDocumentContext(t *testing.T) {
+	spec := []byte(`swagger: "2.0"
+info:
+  title: test
+  version: "1.0.0"
+paths: {}
+`)
+	info, err := datamodel.ExtractSpecInfo(spec)
+	assert.NoError(t, err)
+
+	cfg := datamodel.NewDocumentConfiguration()
+	cfg.ResolveNestedRefsWithDocumentContext = true
+
+	doc, err := CreateDocumentFromConfig(info, cfg)
+	assert.NoError(t, err)
+	assert.NotNil(t, doc)
+	assert.NotNil(t, doc.Index)
+	assert.NotNil(t, doc.Index.GetConfig())
+	assert.True(t, doc.Index.GetConfig().ResolveNestedRefsWithDocumentContext)
+}
