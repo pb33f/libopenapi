@@ -89,6 +89,7 @@ func TestSpecIndexConfig_ToDocumentConfiguration_AllFields(t *testing.T) {
 		UseSchemaQuickHash:                    true,
 		AllowUnknownExtensionContentDetection: true,
 		TransformSiblingRefs:                  true,
+		ResolveNestedRefsWithDocumentContext:  true,
 	}
 
 	result := config.ToDocumentConfiguration()
@@ -105,6 +106,7 @@ func TestSpecIndexConfig_ToDocumentConfiguration_AllFields(t *testing.T) {
 	assert.True(t, result.UseSchemaQuickHash)
 	assert.True(t, result.AllowUnknownExtensionContentDetection)
 	assert.True(t, result.TransformSiblingRefs)
+	assert.True(t, result.ResolveNestedRefsWithDocumentContext)
 	assert.False(t, result.MergeReferencedProperties) // default disabled for index configs
 }
 
@@ -133,27 +135,27 @@ func TestSpecIndex_Release(t *testing.T) {
 	rolodex.rootNode = &yaml.Node{Value: "rolodex-root"}
 
 	idx := &SpecIndex{
-		config:                   cfg,
-		root:                     rootNode,
-		pathsNode:                &yaml.Node{},
-		tagsNode:                 &yaml.Node{},
-		schemasNode:              &yaml.Node{},
-		allRefs:                  map[string]*Reference{"ref": {}},
-		rawSequencedRefs:         []*Reference{{}},
-		allMappedRefs:            map[string]*Reference{"mapped": {}},
-		allMappedRefsSequenced:   []*ReferenceMapped{{}},
-		nodeMap:                  map[int]map[int]*yaml.Node{1: {1: &yaml.Node{}}},
-		allDescriptions:          []*DescriptionReference{{}},
-		allEnums:                 []*EnumReference{{}},
-		circularReferences:       []*CircularReferenceResult{{}},
-		refErrors:                []error{nil},
-		resolver:                 resolver,
-		rolodex:                  rolodex,
-		allComponentSchemas:      map[string]*Reference{"schema": {}},
-		allExternalDocuments:     map[string]*Reference{"ext": {}},
-		externalSpecIndex:        map[string]*SpecIndex{"ext": {}},
-		schemaIdRegistry:         map[string]*SchemaIdEntry{"id": {}},
-		uri:                      []string{"test"},
+		config:                 cfg,
+		root:                   rootNode,
+		pathsNode:              &yaml.Node{},
+		tagsNode:               &yaml.Node{},
+		schemasNode:            &yaml.Node{},
+		allRefs:                map[string]*Reference{"ref": {}},
+		rawSequencedRefs:       []*Reference{{}},
+		allMappedRefs:          map[string]*Reference{"mapped": {}},
+		allMappedRefsSequenced: []*ReferenceMapped{{}},
+		nodeMap:                map[int]map[int]*yaml.Node{1: {1: &yaml.Node{}}},
+		allDescriptions:        []*DescriptionReference{{}},
+		allEnums:               []*EnumReference{{}},
+		circularReferences:     []*CircularReferenceResult{{}},
+		refErrors:              []error{nil},
+		resolver:               resolver,
+		rolodex:                rolodex,
+		allComponentSchemas:    map[string]*Reference{"schema": {}},
+		allExternalDocuments:   map[string]*Reference{"ext": {}},
+		externalSpecIndex:      map[string]*SpecIndex{"ext": {}},
+		schemaIdRegistry:       map[string]*SchemaIdEntry{"id": {}},
+		uri:                    []string{"test"},
 	}
 
 	idx.Release()
