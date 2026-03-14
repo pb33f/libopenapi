@@ -219,7 +219,7 @@ func TestMockGenerator_GenerateJSONMock_NoExamples_JSON(t *testing.T) {
 	mg := NewMockGenerator(JSON)
 	mock, err := mg.GenerateMock(fake, "")
 	assert.NoError(t, err)
-	assert.Equal(t, "magic-herbs", string(mock))
+	assert.Equal(t, `"magic-herbs"`, string(mock))
 }
 
 func TestMockGenerator_GenerateJSONMock_NoExamples_YAML(t *testing.T) {
