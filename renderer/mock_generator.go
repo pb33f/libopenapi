@@ -222,7 +222,9 @@ func (mg *MockGenerator) renderMockJSON(v any) []byte {
 			data, _ = json.Marshal(v)
 		}
 	default:
-		data = []byte(fmt.Sprint(v))
+		// use json.Marshal for scalar types to produce valid JSON
+		// (e.g. strings get properly quoted: "bob" not bob)
+		data, _ = json.Marshal(v)
 	}
 	return data
 }
