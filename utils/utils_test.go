@@ -1572,6 +1572,38 @@ x-b:
 	assert.Equal(t, "a nice string", v.Value)
 }
 
+func TestFindKeyNodeHelpers_BareMergeNodeDoesNotPanic(t *testing.T) {
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte("<<"), &rootNode)
+	assert.NoError(t, err)
+	assert.Len(t, rootNode.Content, 1)
+	assert.Equal(t, "!!merge", rootNode.Content[0].Tag)
+
+	assert.NotPanics(t, func() {
+		k, v := FindFirstKeyNode("openapi", rootNode.Content, 0)
+		assert.Nil(t, k)
+		assert.Nil(t, v)
+
+		k, v = FindKeyNodeTop("openapi", rootNode.Content)
+		assert.Nil(t, k)
+		assert.Nil(t, v)
+
+		k, v = FindKeyNode("openapi", rootNode.Content)
+		assert.Nil(t, k)
+		assert.Nil(t, v)
+
+		k, l, v := FindKeyNodeFull("openapi", rootNode.Content)
+		assert.Nil(t, k)
+		assert.Nil(t, l)
+		assert.Nil(t, v)
+
+		k, l, v = FindKeyNodeFullTop("openapi", rootNode.Content)
+		assert.Nil(t, k)
+		assert.Nil(t, l)
+		assert.Nil(t, v)
+	})
+}
+
 func TestNodeMerge(t *testing.T) {
 	yml := []byte(`openapi: 3.0.3
 any-thing: &anchorH
@@ -1597,6 +1629,20 @@ x-b:
 func TestNodeMerge_NoNodes(t *testing.T) {
 	n := NodeMerge(nil)
 	assert.Nil(t, n)
+}
+
+func TestCheckForMergeNodes_BareMergeNodeDoesNotPanic(t *testing.T) {
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!merge", Value: "<<"},
+		},
+	}
+
+	assert.NotPanics(t, func() {
+		CheckForMergeNodes(node)
+	})
+	assert.Len(t, node.Content, 1)
 }
 
 func TestIsNodeNull(t *testing.T) {
