@@ -750,6 +750,118 @@ components:
 	assert.Contains(t, petEntry.DefinitionPath, "Pet")
 }
 
+func TestSchemaId_IgnoredUnderExampleAndExamples(t *testing.T) {
+	t.Run("example_payload", func(t *testing.T) {
+		spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $id: "https://example.com/schemas/pet.json"
+                type: object
+                properties:
+                  id:
+                    type: string
+                example:
+                  $id: "https://example.com/should-not-register"
+                  id: "1"
+`
+		var rootNode yaml.Node
+		err := yaml.Unmarshal([]byte(spec), &rootNode)
+		assert.NoError(t, err)
+
+		config := CreateClosedAPIIndexConfig()
+		config.SpecAbsolutePath = "https://example.com/openapi.yaml"
+		index := NewSpecIndexWithConfig(&rootNode, config)
+		assert.NotNil(t, index)
+
+		allIds := index.GetAllSchemaIds()
+		assert.Len(t, allIds, 1)
+		assert.NotNil(t, allIds["https://example.com/schemas/pet.json"])
+		assert.Nil(t, allIds["https://example.com/should-not-register"])
+	})
+
+	t.Run("examples_named_value", func(t *testing.T) {
+		spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /widgets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $id: "https://example.com/schemas/widget.json"
+                type: object
+                examples:
+                  sample:
+                    value:
+                      $id: "https://example.com/fake-from-examples"
+                      foo: bar
+`
+		var rootNode yaml.Node
+		err := yaml.Unmarshal([]byte(spec), &rootNode)
+		assert.NoError(t, err)
+
+		config := CreateClosedAPIIndexConfig()
+		config.SpecAbsolutePath = "https://example.com/openapi.yaml"
+		index := NewSpecIndexWithConfig(&rootNode, config)
+		assert.NotNil(t, index)
+
+		allIds := index.GetAllSchemaIds()
+		assert.Len(t, allIds, 1)
+		assert.NotNil(t, allIds["https://example.com/schemas/widget.json"])
+		assert.Nil(t, allIds["https://example.com/fake-from-examples"])
+	})
+
+	t.Run("invalid_id_in_example_no_index_error", func(t *testing.T) {
+		spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /x:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                example:
+                  $id: "https://bad.com/schema#fragment"
+                  k: v
+`
+		var rootNode yaml.Node
+		err := yaml.Unmarshal([]byte(spec), &rootNode)
+		assert.NoError(t, err)
+
+		config := CreateClosedAPIIndexConfig()
+		config.SpecAbsolutePath = "https://example.com/openapi.yaml"
+		index := NewSpecIndexWithConfig(&rootNode, config)
+		assert.NotNil(t, index)
+
+		assert.Len(t, index.GetAllSchemaIds(), 0)
+		for _, e := range index.GetReferenceIndexErrors() {
+			assert.False(t, strings.Contains(e.Error(), "invalid $id"),
+				"$id inside example must not be validated as schema $id: %v", e)
+		}
+	})
+}
+
 func TestSchemaId_ExtractionWithInvalidId(t *testing.T) {
 	// OpenAPI 3.1 spec with invalid $id (contains fragment)
 	spec := `openapi: "3.1.0"
