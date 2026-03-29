@@ -10,6 +10,7 @@ import (
 
 	"github.com/pb33f/jsonpath/pkg/jsonpath"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -1602,6 +1603,62 @@ func TestFindKeyNodeHelpers_BareMergeNodeDoesNotPanic(t *testing.T) {
 		assert.Nil(t, l)
 		assert.Nil(t, v)
 	})
+}
+
+func TestFindKeyNodeHelpers_MergeKeyWithoutAliasDoesNotPanic(t *testing.T) {
+	nodes := []*yaml.Node{
+		{Kind: yaml.ScalarNode, Tag: "!!merge", Value: "<<"},
+		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "not-an-alias"},
+	}
+
+	assert.NotPanics(t, func() {
+		k, v := FindFirstKeyNode("openapi", nodes, 0)
+		assert.Nil(t, k)
+		assert.Nil(t, v)
+
+		k, v = FindKeyNodeTop("openapi", nodes)
+		assert.Nil(t, k)
+		assert.Nil(t, v)
+
+		k, v = FindKeyNode("openapi", nodes)
+		assert.Nil(t, k)
+		assert.Nil(t, v)
+
+		k, l, v := FindKeyNodeFull("openapi", nodes)
+		assert.Nil(t, k)
+		assert.Nil(t, l)
+		assert.Nil(t, v)
+
+		k, l, v = FindKeyNodeFullTop("openapi", nodes)
+		assert.Nil(t, k)
+		assert.Nil(t, l)
+		assert.Nil(t, v)
+	})
+}
+
+func TestLeadingMergeContent_NilMergeValueReturnsOriginalNodes(t *testing.T) {
+	nodes := []*yaml.Node{
+		{Kind: yaml.ScalarNode, Tag: "!!merge", Value: "<<"},
+		nil,
+	}
+
+	result := leadingMergeContent(nodes)
+	assert.Equal(t, nodes, result)
+	assert.Nil(t, result[1])
+}
+
+func TestFindKeyNodeFullTop_OddLengthNodesReturnsKeyNode(t *testing.T) {
+	nodes := []*yaml.Node{
+		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "openapi"},
+	}
+
+	k, l, v := FindKeyNodeFullTop("openapi", nodes)
+	require.NotNil(t, k)
+	require.NotNil(t, l)
+	require.NotNil(t, v)
+	assert.Same(t, nodes[0], k)
+	assert.Same(t, nodes[0], l)
+	assert.Same(t, nodes[0], v)
 }
 
 func TestNodeMerge(t *testing.T) {
