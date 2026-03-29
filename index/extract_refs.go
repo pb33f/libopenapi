@@ -57,6 +57,12 @@ func isArrayOfSchemaContainingNode(v string) bool {
 	return false
 }
 
+// underOpenAPIExamplePath reports whether seenPath is under OpenAPI example or examples payload
+// (sample data, not schema). Matches description/summary and properties skipping in this file.
+func underOpenAPIExamplePath(seenPath []string) bool {
+	return slices.Contains(seenPath, "example") || slices.Contains(seenPath, "examples")
+}
+
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
 // The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
 func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string) []*Reference {
@@ -77,7 +83,7 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 
 	// Check if THIS node has a $id and update scope for processing children
 	// This must happen before iterating children so they see the updated scope
-	if node.Kind == yaml.MappingNode {
+	if node.Kind == yaml.MappingNode && !underOpenAPIExamplePath(seenPath) {
 		if nodeId := FindSchemaIdInNode(node); nodeId != "" {
 			resolvedNodeId, _ := ResolveSchemaId(nodeId, parentBaseUri)
 			if resolvedNodeId == "" {
@@ -557,6 +563,9 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 
 			// Detect and register JSON Schema 2020-12 $id declarations
 			if i%2 == 0 && n.Value == "$id" {
+				if underOpenAPIExamplePath(seenPath) {
+					continue
+				}
 				if len(node.Content) > i+1 && utils.IsNodeStringValue(node.Content[i+1]) {
 					idValue := node.Content[i+1].Value
 					idNode := node.Content[i+1]

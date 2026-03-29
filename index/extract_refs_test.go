@@ -711,3 +711,22 @@ components:
 func TestSpecIndex_isExternalReference_Nil(t *testing.T) {
 	assert.False(t, isExternalReference(nil))
 }
+
+func TestUnderOpenAPIExamplePath(t *testing.T) {
+	tests := []struct {
+		name string
+		path []string
+		want bool
+	}{
+		{"empty", nil, false},
+		{"no_example_segments", []string{"paths", "get", "responses", "200", "content", "application/json", "schema"}, false},
+		{"under_example", []string{"paths", "get", "responses", "200", "content", "application/json", "schema", "example"}, true},
+		{"under_examples", []string{"content", "application/json", "schema", "examples", "sample", "value"}, true},
+		{"example_not_whole_segment", []string{"paths", "exampled"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, underOpenAPIExamplePath(tt.path))
+		})
+	}
+}
