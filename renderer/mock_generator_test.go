@@ -597,3 +597,110 @@ func TestMockGenerator_GenerateMock_GetInline(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "inline example", strings.TrimSpace(string(mock)))
 }
+
+func TestMockGenerator_UnresolvedRefProperty(t *testing.T) {
+	// Construct a schema programmatically with one inline and one unresolved ref property
+	props := orderedmap.New[string, *base.SchemaProxy]()
+	props.Set("name", base.CreateSchemaProxy(&base.Schema{
+		Type:        []string{"string"},
+		ParentProxy: base.CreateSchemaProxy(&base.Schema{}),
+	}))
+	props.Set("broken", base.CreateSchemaProxyRef("#/components/schemas/Missing"))
+
+	schema := &base.Schema{
+		Type:        []string{"object"},
+		Properties:  props,
+		ParentProxy: base.CreateSchemaProxy(&base.Schema{}),
+	}
+	schemaProxy := base.CreateSchemaProxy(schema)
+
+	fake := &fakeMockable{
+		Schema:   schemaProxy,
+		Example:  nil,
+		Examples: nil,
+	}
+	mg := NewMockGenerator(JSON)
+	mg.DisableRequiredCheck()
+	mock, err := mg.GenerateMock(fake, "")
+	assert.NoError(t, err)
+
+	var m map[string]any
+	err = json.Unmarshal(mock, &m)
+	assert.NoError(t, err)
+	assert.IsType(t, "", m["name"])
+	// "broken" should be null in JSON output
+	val, exists := m["broken"]
+	assert.True(t, exists)
+	assert.Nil(t, val)
+}
+
+func TestMockGenerator_SetUnresolvedRefHandler(t *testing.T) {
+	props := orderedmap.New[string, *base.SchemaProxy]()
+	props.Set("broken", base.CreateSchemaProxyRef("#/components/schemas/Missing"))
+
+	schema := &base.Schema{
+		Type:        []string{"object"},
+		Properties:  props,
+		ParentProxy: base.CreateSchemaProxy(&base.Schema{}),
+	}
+	schemaProxy := base.CreateSchemaProxy(schema)
+
+	fake := &fakeMockable{
+		Schema:   schemaProxy,
+		Example:  nil,
+		Examples: nil,
+	}
+	mg := NewMockGenerator(JSON)
+	mg.DisableRequiredCheck()
+
+	var callbackName string
+	mg.SetUnresolvedRefHandler(func(name string, proxy *base.SchemaProxy, err error) {
+		callbackName = name
+	})
+
+	_, err := mg.GenerateMock(fake, "")
+	assert.NoError(t, err)
+	assert.Equal(t, "broken", callbackName)
+}
+
+func TestMockGenerator_TopLevelUnresolvedRef(t *testing.T) {
+	mg := NewMockGenerator(JSON)
+	fake := &fakeMockable{
+		Schema:   base.CreateSchemaProxyRef("#/components/schemas/Missing"),
+		Example:  nil,
+		Examples: nil,
+	}
+	mock, err := mg.GenerateMock(fake, "")
+	assert.Error(t, err)
+	assert.Nil(t, mock)
+	assert.Contains(t, err.Error(), "#/components/schemas/Missing")
+	assert.Contains(t, err.Error(), "unable to resolve schema reference")
+}
+
+func TestMockGenerator_TopLevelBuildError(t *testing.T) {
+	// Create a low-level SchemaProxy with a nil value node. When Schema() is called,
+	// the low-level Schema.Build receives nil root and returns "cannot build schema from a nil node".
+	// This sets buildError on the proxy while IsReference() remains false.
+	sp := &lowbase.SchemaProxy{}
+	_ = sp.Build(context.Background(), nil, nil, nil)
+
+	highProxy := base.NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value: sp,
+	})
+
+	// Verify preconditions
+	assert.Nil(t, highProxy.Schema())
+	assert.False(t, highProxy.IsReference())
+	assert.NotNil(t, highProxy.GetBuildError())
+
+	mg := NewMockGenerator(JSON)
+	fake := &fakeMockable{
+		Schema:   highProxy,
+		Example:  nil,
+		Examples: nil,
+	}
+	mock, err := mg.GenerateMock(fake, "")
+	assert.Error(t, err)
+	assert.Nil(t, mock)
+	assert.Contains(t, err.Error(), "unable to build schema for mock generation")
+}
