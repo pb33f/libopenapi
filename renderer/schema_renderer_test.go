@@ -23,6 +23,7 @@ import (
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
@@ -2367,4 +2368,301 @@ func TestSchemaRenderer_RandomWord_RecursiveCall(t *testing.T) {
 		"Expected word length between 7 and 10, got %d for word '%s'", len(result), result)
 	assert.True(t, result == "dddddddd" || result == "eeeeeeeee",
 		"Expected 'dddddddd' or 'eeeeeeeee', got '%s'", result)
+}
+
+func TestDiveIntoSchema_NilSchema(t *testing.T) {
+	wr := createSchemaRenderer()
+	structure := make(map[string]any)
+	visited := createVisitedMap()
+	result := wr.DiveIntoSchema(nil, "test", structure, visited, 0)
+	assert.False(t, result)
+	assert.Nil(t, structure["test"])
+}
+
+func TestSetUnresolvedRefHandler(t *testing.T) {
+	wr := createSchemaRenderer()
+	called := false
+	wr.SetUnresolvedRefHandler(func(name string, proxy *highbase.SchemaProxy, err error) {
+		called = true
+	})
+	assert.NotNil(t, wr.onUnresolvedRef)
+	// Trigger via a schema with an unresolved $ref property
+	props := orderedmap.New[string, *highbase.SchemaProxy]()
+	props.Set("broken", highbase.CreateSchemaProxyRef("#/missing"))
+	schema := &highbase.Schema{
+		Type:        []string{objectType},
+		Properties:  props,
+		ParentProxy: highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+	structure := make(map[string]any)
+	wr.DiveIntoSchema(schema, "test", structure, createVisitedMap(), 0)
+	assert.True(t, called)
+}
+
+func TestRenderSchema_PropertyNonRefNilSchema(t *testing.T) {
+	// A non-reference SchemaProxy that returns nil from Schema().
+	// CreateSchemaProxyRef sets refStr so IsReference() == true; we need a proxy
+	// with no refStr and Schema() == nil. A bare SchemaProxy with no rendered
+	// schema and no low-level backing achieves this.
+	nilSchemaProxy := highbase.NewSchemaProxy(nil)
+
+	props := orderedmap.New[string, *highbase.SchemaProxy]()
+	props.Set("empty", nilSchemaProxy)
+	schema := &highbase.Schema{
+		Type:        []string{objectType},
+		Properties:  props,
+		ParentProxy: highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	wr.DisableRequiredCheck()
+	structure := make(map[string]any)
+	wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+
+	m := structure["root"].(map[string]any)
+	// Should be an empty map {} (existing behavior for non-ref nil schema)
+	assert.IsType(t, map[string]any{}, m["empty"])
+	assert.Empty(t, m["empty"])
+}
+
+func TestRenderSchema_PropertyUnresolvedRef(t *testing.T) {
+	props := orderedmap.New[string, *highbase.SchemaProxy]()
+	props.Set("good", highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{stringType}}))
+	props.Set("broken", highbase.CreateSchemaProxyRef("#/components/schemas/Missing"))
+	schema := &highbase.Schema{
+		Type:        []string{objectType},
+		Properties:  props,
+		ParentProxy: highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	structure := make(map[string]any)
+	wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+
+	m := structure["root"].(map[string]any)
+	// "good" should be a rendered string
+	assert.IsType(t, "", m["good"])
+	// "broken" should be nil (null placeholder)
+	val, exists := m["broken"]
+	assert.True(t, exists)
+	assert.Nil(t, val)
+}
+
+func TestRenderSchema_PropertyUnresolvedRef_WithCallback(t *testing.T) {
+	props := orderedmap.New[string, *highbase.SchemaProxy]()
+	ref := highbase.CreateSchemaProxyRef("#/components/schemas/Missing")
+	props.Set("broken", ref)
+	schema := &highbase.Schema{
+		Type:        []string{objectType},
+		Properties:  props,
+		ParentProxy: highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	var callbackName string
+	var callbackProxy *highbase.SchemaProxy
+	wr.SetUnresolvedRefHandler(func(name string, proxy *highbase.SchemaProxy, err error) {
+		callbackName = name
+		callbackProxy = proxy
+	})
+	structure := make(map[string]any)
+	wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+
+	assert.Equal(t, "broken", callbackName)
+	assert.Same(t, ref, callbackProxy)
+}
+
+func TestRenderSchema_AllOfNilSchema(t *testing.T) {
+	schema := &highbase.Schema{
+		Type:        []string{objectType},
+		AllOf:       []*highbase.SchemaProxy{highbase.CreateSchemaProxyRef("#/missing")},
+		ParentProxy: highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	var callbackName string
+	wr.SetUnresolvedRefHandler(func(name string, proxy *highbase.SchemaProxy, err error) {
+		callbackName = name
+	})
+	structure := make(map[string]any)
+	result := wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+	assert.True(t, result)
+	assert.Equal(t, allOfType, callbackName)
+}
+
+func TestRenderSchema_AllOfNilSchema_NoCallback(t *testing.T) {
+	schema := &highbase.Schema{
+		Type:        []string{objectType},
+		AllOf:       []*highbase.SchemaProxy{highbase.CreateSchemaProxyRef("#/missing")},
+		ParentProxy: highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	structure := make(map[string]any)
+	result := wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+	assert.True(t, result)
+	// Should not panic
+}
+
+func TestRenderSchema_OneOfNilSchema(t *testing.T) {
+	schema := &highbase.Schema{
+		Type:        []string{objectType},
+		OneOf:       []*highbase.SchemaProxy{highbase.CreateSchemaProxyRef("#/missing")},
+		ParentProxy: highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	var callbackName string
+	wr.SetUnresolvedRefHandler(func(name string, proxy *highbase.SchemaProxy, err error) {
+		callbackName = name
+	})
+	structure := make(map[string]any)
+	result := wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+	// oneOf with all nil schemas => oneOfSuccess stays false => returns false
+	assert.False(t, result)
+	assert.Equal(t, oneOfType, callbackName)
+}
+
+func TestRenderSchema_OneOfNilSchema_NoCallback(t *testing.T) {
+	schema := &highbase.Schema{
+		Type:        []string{objectType},
+		OneOf:       []*highbase.SchemaProxy{highbase.CreateSchemaProxyRef("#/missing")},
+		ParentProxy: highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	structure := make(map[string]any)
+	result := wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+	assert.False(t, result)
+	// Should not panic
+}
+
+func TestRenderSchema_AnyOfNilSchema(t *testing.T) {
+	schema := &highbase.Schema{
+		Type:        []string{objectType},
+		AnyOf:       []*highbase.SchemaProxy{highbase.CreateSchemaProxyRef("#/missing")},
+		ParentProxy: highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	var callbackName string
+	wr.SetUnresolvedRefHandler(func(name string, proxy *highbase.SchemaProxy, err error) {
+		callbackName = name
+	})
+	structure := make(map[string]any)
+	result := wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+	// anyOf with all nil schemas => anyOfSuccess stays false => returns false
+	assert.False(t, result)
+	assert.Equal(t, anyOfType, callbackName)
+}
+
+func TestRenderSchema_AnyOfNilSchema_NoCallback(t *testing.T) {
+	schema := &highbase.Schema{
+		Type:        []string{objectType},
+		AnyOf:       []*highbase.SchemaProxy{highbase.CreateSchemaProxyRef("#/missing")},
+		ParentProxy: highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	structure := make(map[string]any)
+	result := wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+	assert.False(t, result)
+	// Should not panic
+}
+
+func TestRenderSchema_DependentSchemasNilSchema(t *testing.T) {
+	props := orderedmap.New[string, *highbase.SchemaProxy]()
+	props.Set("foo", highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{objectType}}))
+
+	depSchemas := orderedmap.New[string, *highbase.SchemaProxy]()
+	depSchemas.Set("foo", highbase.CreateSchemaProxyRef("#/missing"))
+
+	schema := &highbase.Schema{
+		Type:             []string{objectType},
+		Properties:       props,
+		DependentSchemas: depSchemas,
+		ParentProxy:      highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	wr.DisableRequiredCheck()
+	var callbackName string
+	wr.SetUnresolvedRefHandler(func(name string, proxy *highbase.SchemaProxy, err error) {
+		callbackName = name
+	})
+	structure := make(map[string]any)
+	result := wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+	assert.True(t, result)
+	assert.Equal(t, "foo", callbackName)
+}
+
+func TestRenderSchema_DependentSchemasNilSchema_NoCallback(t *testing.T) {
+	props := orderedmap.New[string, *highbase.SchemaProxy]()
+	props.Set("foo", highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{objectType}}))
+
+	depSchemas := orderedmap.New[string, *highbase.SchemaProxy]()
+	depSchemas.Set("foo", highbase.CreateSchemaProxyRef("#/missing"))
+
+	schema := &highbase.Schema{
+		Type:             []string{objectType},
+		Properties:       props,
+		DependentSchemas: depSchemas,
+		ParentProxy:      highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	wr.DisableRequiredCheck()
+	structure := make(map[string]any)
+	result := wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+	assert.True(t, result)
+	// Should not panic
+}
+
+func TestRenderSchema_ItemsNilSchema(t *testing.T) {
+	ref := highbase.CreateSchemaProxyRef("#/missing")
+	schema := &highbase.Schema{
+		Type: []string{arrayType},
+		Items: &highbase.DynamicValue[*highbase.SchemaProxy, bool]{
+			N: 0,
+			A: ref,
+		},
+		ParentProxy: highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	var callbackName string
+	var callbackProxy *highbase.SchemaProxy
+	wr.SetUnresolvedRefHandler(func(name string, proxy *highbase.SchemaProxy, err error) {
+		callbackName = name
+		callbackProxy = proxy
+	})
+	structure := make(map[string]any)
+	result := wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+	assert.True(t, result)
+	assert.Equal(t, itemsType, callbackName)
+	assert.Same(t, ref, callbackProxy)
+	// Should produce [null]
+	items := structure["root"].([]any)
+	assert.Len(t, items, 1)
+	assert.Nil(t, items[0])
+}
+
+func TestRenderSchema_ItemsNilSchema_NoCallback(t *testing.T) {
+	schema := &highbase.Schema{
+		Type: []string{arrayType},
+		Items: &highbase.DynamicValue[*highbase.SchemaProxy, bool]{
+			N: 0,
+			A: highbase.CreateSchemaProxyRef("#/missing"),
+		},
+		ParentProxy: highbase.CreateSchemaProxy(&highbase.Schema{}),
+	}
+
+	wr := createSchemaRenderer()
+	structure := make(map[string]any)
+	result := wr.DiveIntoSchema(schema, "root", structure, createVisitedMap(), 0)
+	assert.True(t, result)
+	// Should produce [null], no panic
+	items := structure["root"].([]any)
+	assert.Len(t, items, 1)
+	assert.Nil(t, items[0])
 }

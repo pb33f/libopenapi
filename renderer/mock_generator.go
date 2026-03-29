@@ -24,6 +24,7 @@ type MockType int
 const (
 	JSON MockType = iota
 	YAML
+	XML
 )
 
 // MockGenerator is used to generate mocks for high-level mockable structs or *base.Schema pointers.
@@ -68,10 +69,55 @@ func (mg *MockGenerator) DisableRequiredCheck() {
 	mg.renderer.DisableRequiredCheck()
 }
 
+// SetUnresolvedRefHandler sets a callback that is invoked when a $ref cannot be resolved during mock rendering.
+func (mg *MockGenerator) SetUnresolvedRefHandler(handler UnresolvedRefHandler) {
+	mg.renderer.SetUnresolvedRefHandler(handler)
+}
+
 // SetSeed sets a specific seed for the random number generator used by this mock generator.
 // This is useful for generating deterministic mocks for testing purposes.
 func (mg *MockGenerator) SetSeed(seed int64) {
 	mg.renderer.SetSeed(seed)
+}
+
+// extractSchema pulls the *base.Schema from a mockable struct or direct *base.Schema.
+// Returns an error for unresolved refs or build failures — preserving existing error behavior.
+func (mg *MockGenerator) extractSchema(mock any, v reflect.Value) (*highbase.Schema, error) {
+	switch reflect.TypeOf(mock) {
+	case reflect.TypeOf(&highbase.Schema{}):
+		return mock.(*highbase.Schema), nil
+	default:
+		schemaField := v.FieldByName(Schema)
+		if !schemaField.IsValid() {
+			return nil, nil
+		}
+		if sv, ok := schemaField.Interface().(*highbase.Schema); ok && sv != nil {
+			return sv, nil
+		}
+		if sv, ok := schemaField.Interface().(*highbase.SchemaProxy); ok && sv != nil {
+			schema := sv.Schema()
+			if schema == nil {
+				if sv.IsReference() {
+					return nil, fmt.Errorf("unable to resolve schema reference '%s' for mock generation",
+						sv.GetReference())
+				}
+				if err := sv.GetBuildError(); err != nil {
+					return nil, fmt.Errorf("unable to build schema for mock generation: %w", err)
+				}
+			}
+			return schema, nil
+		}
+	}
+	return nil, nil
+}
+
+// renderForType dispatches rendering based on the configured mock type.
+// For XML, it uses RenderXML with schema context; for JSON/YAML it uses renderMock.
+func (mg *MockGenerator) renderForType(value any, schema *highbase.Schema) []byte {
+	if mg.mockType == XML {
+		return mg.RenderXML(value, schema)
+	}
+	return mg.renderMock(value)
 }
 
 // GenerateMock generates a mock for a given high-level mockable struct. The mockable struct must contain the following fields:
@@ -106,6 +152,9 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 			"fields (%s, %s)", fieldCount, Example, Examples)
 	}
 
+	// Extract schema EARLY so Example/Examples paths can use it for XML rendering
+	schemaValue, schemaErr := mg.extractSchema(mock, v)
+
 	var fallbackExample *highbase.Example = nil
 	// trying to find a named example
 	examples := v.FieldByName(Examples)
@@ -116,7 +165,7 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 		examplesMap := examplesValue.(*orderedmap.Map[string, *highbase.Example])
 		if examplesMap.Len() > 0 {
 			if example, ok := examplesMap.Get(name); ok {
-				return mg.renderMock(example.Value), nil
+				return mg.renderForType(example.Value, schemaValue), nil
 			} else {
 				//take the first example from the list
 				fallbackExample = examplesMap.Oldest().Value
@@ -138,32 +187,18 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 		}
 		if ex != nil {
 			// try and serialize the example value (very hacky since ex can be anything)
-			return mg.renderMock(ex), nil
+			return mg.renderForType(ex, schemaValue), nil
 		}
 	}
 
 	// rendering fallback if it's not nil
 	if fallbackExample != nil {
-		return mg.renderMock(fallbackExample.Value), nil
+		return mg.renderForType(fallbackExample.Value, schemaValue), nil
 	}
 
-	// no examples? no problem, we can try and generate a mock from the schema.
-	// check if this is a SchemaProxy, if not, then see if it has a Schema, if not, then we can't generate a mock.
-	var schemaValue *highbase.Schema
-	switch reflect.TypeOf(mock) {
-	case reflect.TypeOf(&highbase.Schema{}):
-		schemaValue = mock.(*highbase.Schema)
-	default:
-		if sv, ok := v.FieldByName(Schema).Interface().(*highbase.Schema); ok {
-			if sv != nil {
-				schemaValue = sv
-			}
-		}
-		if sv, ok := v.FieldByName(Schema).Interface().(*highbase.SchemaProxy); ok {
-			if sv != nil {
-				schemaValue = sv.Schema()
-			}
-		}
+	// Surface schema extraction errors only after example paths have had their chance
+	if schemaErr != nil {
+		return nil, schemaErr
 	}
 
 	if schemaValue != nil {
@@ -174,17 +209,17 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 				// try and convert the example to an integer
 				if i, err := strconv.Atoi(name); err == nil {
 					if i < len(schemaValue.Examples) {
-						return mg.renderMock(schemaValue.Examples[i]), nil
+						return mg.renderForType(schemaValue.Examples[i], schemaValue), nil
 					}
 				}
 			}
 			// if the name is empty, just return the first example
-			return mg.renderMock(schemaValue.Examples[0]), nil
+			return mg.renderForType(schemaValue.Examples[0], schemaValue), nil
 		}
 
 		// check the example field
 		if schemaValue.Example != nil {
-			return mg.renderMock(schemaValue.Example), nil
+			return mg.renderForType(schemaValue.Example, schemaValue), nil
 		}
 
 		// render the schema as our last hope.
@@ -192,7 +227,7 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 		if renderMap == nil {
 			return nil, fmt.Errorf("unable to render schema for mock, it's empty")
 		}
-		return mg.renderMock(renderMap), nil
+		return mg.renderForType(renderMap, schemaValue), nil
 	}
 	return nil, nil
 }

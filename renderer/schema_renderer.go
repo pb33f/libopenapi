@@ -54,12 +54,21 @@ const (
 // used to generate random words if there is no dictionary applied.
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
+// UnresolvedRefHandler is called when a $ref property cannot be resolved during rendering.
+type UnresolvedRefHandler func(propertyName string, proxy *base.SchemaProxy, err error)
+
 // SchemaRenderer is a renderer that will generate random words, numbers and values based on a dictionary file.
 // The dictionary is just a slice of strings that is used to generate random words.
 type SchemaRenderer struct {
 	words           []string
 	disableRequired bool
 	rand            *rand.Rand
+	onUnresolvedRef UnresolvedRefHandler
+}
+
+// SetUnresolvedRefHandler sets a callback that is invoked when a $ref cannot be resolved during rendering.
+func (wr *SchemaRenderer) SetUnresolvedRefHandler(handler UnresolvedRefHandler) {
+	wr.onUnresolvedRef = handler
 }
 
 // CreateRendererUsingDictionary will create a new SchemaRenderer using a custom dictionary file.
@@ -108,6 +117,9 @@ func (wr *SchemaRenderer) SetSeed(seed int64) {
 // DiveIntoSchema will dive into a schema and inject values from examples into a map. If there are no examples in
 // the schema, then the renderer will attempt to generate a value based on the schema type, format and pattern.
 func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, structure map[string]any, visited map[string]bool, depth int) bool {
+	if schema == nil {
+		return false
+	}
 	// got an example? use it, we're done here.
 	if schema.Example != nil {
 		var example any
@@ -325,7 +337,12 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			}
 
 			for propName, propValue := range checkProps.FromOldest() {
-				// render property
+				// propValue is nil when a required property is listed but absent from the
+				// properties map (GetOrZero returns nil). Emit {} — existing behavior.
+				if propValue == nil {
+					propertyMap[propName] = make(map[string]any)
+					continue
+				}
 				propertySchema := propValue.Schema()
 				required := slices.Contains(schema.Required, propName)
 				if propertySchema != nil {
@@ -337,10 +354,14 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 						delete(propertyMap, propName)
 						continue
 					}
+				} else if propValue.IsReference() {
+					// $ref could not be resolved — emit null placeholder and notify callback
+					propertyMap[propName] = nil
+					if wr.onUnresolvedRef != nil {
+						wr.onUnresolvedRef(propName, propValue, propValue.GetBuildError())
+					}
 				} else {
-					// If the property is required but not specified in the schema,
-					// any value is allowed for this property (no specific validation).
-					// In our case, we render an empty map.
+					// Non-reference property with no schema. Emit {} — existing behavior.
 					propertyMap[propName] = make(map[string]any)
 				}
 			}
@@ -352,6 +373,12 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			allOfMap := make(map[string]any)
 			for _, allOfSchema := range allOf {
 				allOfCompiled := allOfSchema.Schema()
+				if allOfCompiled == nil {
+					if wr.onUnresolvedRef != nil {
+						wr.onUnresolvedRef(allOfType, allOfSchema, allOfSchema.GetBuildError())
+					}
+					continue
+				}
 				success := wr.DiveIntoSchema(allOfCompiled, allOfType, allOfMap, copyMap(visited), depth+1)
 				if !success {
 					return false
@@ -376,6 +403,12 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				// only map if the property exists
 				if propertyMap[k] != nil {
 					dependentSchemaCompiled := dependentSchema.Schema()
+					if dependentSchemaCompiled == nil {
+						if wr.onUnresolvedRef != nil {
+							wr.onUnresolvedRef(k, dependentSchema, dependentSchema.GetBuildError())
+						}
+						continue
+					}
 					success := wr.DiveIntoSchema(dependentSchemaCompiled, k, dependentSchemasMap, copyMap(visited), depth+1)
 					if !success {
 						return false
@@ -394,6 +427,12 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			oneOfSuccess = false
 			oneOfMap := make(map[string]any)
 			oneOfCompiled := oneOfSchema.Schema()
+			if oneOfCompiled == nil {
+				if wr.onUnresolvedRef != nil {
+					wr.onUnresolvedRef(oneOfType, oneOfSchema, oneOfSchema.GetBuildError())
+				}
+				continue
+			}
 			success := wr.DiveIntoSchema(oneOfCompiled, oneOfType, oneOfMap, copyMap(visited), depth+1)
 			if !success {
 				continue
@@ -421,6 +460,12 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			anyOfSuccess = false
 			anyOfMap := make(map[string]any)
 			anyOfCompiled := anyOfSchema.Schema()
+			if anyOfCompiled == nil {
+				if wr.onUnresolvedRef != nil {
+					wr.onUnresolvedRef(anyOfType, anyOfSchema, anyOfSchema.GetBuildError())
+				}
+				continue
+			}
 			success := wr.DiveIntoSchema(anyOfCompiled, anyOfType, anyOfMap, copyMap(visited), depth+1)
 			if !success {
 				continue
@@ -465,6 +510,14 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				for i := int64(0); i < minItems; i++ {
 					itemMap := make(map[string]any)
 					itemsSchemaCompiled := itemsSchema.A.Schema()
+
+					if itemsSchemaCompiled == nil {
+						if wr.onUnresolvedRef != nil {
+							wr.onUnresolvedRef(itemsType, itemsSchema.A, itemsSchema.A.GetBuildError())
+						}
+						renderedItems = append(renderedItems, nil)
+						break
+					}
 
 					success := wr.DiveIntoSchema(itemsSchemaCompiled, itemsType, itemMap, copyMap(visited), depth+1)
 					if !success {
