@@ -723,6 +723,11 @@ func TestUnderOpenAPIExamplePath(t *testing.T) {
 		{"under_example", []string{"paths", "get", "responses", "200", "content", "application/json", "schema", "example"}, true},
 		{"under_examples", []string{"content", "application/json", "schema", "examples", "sample", "value"}, true},
 		{"example_not_whole_segment", []string{"paths", "exampled"}, false},
+		{"example_as_property_name", []string{"components", "schemas", "Foo", "properties", "example"}, false},
+		{"examples_as_property_name", []string{"components", "schemas", "Foo", "properties", "examples"}, false},
+		{"nested_under_property_example", []string{"components", "schemas", "Foo", "properties", "example", "properties", "id"}, false},
+		{"patternProperties_example", []string{"components", "schemas", "Foo", "patternProperties", "example"}, false},
+		{"real_example_after_property_example", []string{"components", "schemas", "Foo", "properties", "example", "example"}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
