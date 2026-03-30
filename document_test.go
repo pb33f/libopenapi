@@ -99,6 +99,15 @@ func TestLoadDocument_Empty(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestLoadDocument_BareMergeNodeReturnsError(t *testing.T) {
+	assert.NotPanics(t, func() {
+		doc, err := NewDocument([]byte("<<"))
+		assert.Nil(t, doc)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to decode YAML to JSON")
+	})
+}
+
 func TestLoadDocument_Simple_V3(t *testing.T) {
 	yml := `openapi: 3.0.1`
 	doc, err := NewDocument([]byte(yml))
