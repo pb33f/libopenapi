@@ -862,6 +862,112 @@ paths:
 	})
 }
 
+func TestSchemaId_NotIgnoredUnderPropertiesExample(t *testing.T) {
+	t.Run("property_named_example", func(t *testing.T) {
+		spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    MySchema:
+      $id: "https://example.com/schemas/myschema.json"
+      type: object
+      properties:
+        example:
+          $id: "https://example.com/schemas/example-prop.json"
+          type: object
+          properties:
+            id:
+              type: string
+`
+		var rootNode yaml.Node
+		err := yaml.Unmarshal([]byte(spec), &rootNode)
+		assert.NoError(t, err)
+
+		config := CreateClosedAPIIndexConfig()
+		config.SpecAbsolutePath = "https://example.com/openapi.yaml"
+		index := NewSpecIndexWithConfig(&rootNode, config)
+		assert.NotNil(t, index)
+
+		allIds := index.GetAllSchemaIds()
+		assert.Len(t, allIds, 2)
+		assert.NotNil(t, allIds["https://example.com/schemas/myschema.json"])
+		assert.NotNil(t, allIds["https://example.com/schemas/example-prop.json"])
+	})
+
+	t.Run("property_named_examples", func(t *testing.T) {
+		spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    MySchema:
+      type: object
+      properties:
+        examples:
+          $id: "https://example.com/schemas/examples-prop.json"
+          type: object
+          properties:
+            list:
+              type: array
+`
+		var rootNode yaml.Node
+		err := yaml.Unmarshal([]byte(spec), &rootNode)
+		assert.NoError(t, err)
+
+		config := CreateClosedAPIIndexConfig()
+		config.SpecAbsolutePath = "https://example.com/openapi.yaml"
+		index := NewSpecIndexWithConfig(&rootNode, config)
+		assert.NotNil(t, index)
+
+		allIds := index.GetAllSchemaIds()
+		assert.Len(t, allIds, 1)
+		assert.NotNil(t, allIds["https://example.com/schemas/examples-prop.json"])
+	})
+
+	t.Run("real_example_still_ignored", func(t *testing.T) {
+		spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $id: "https://example.com/schemas/pet.json"
+                type: object
+                properties:
+                  example:
+                    $id: "https://example.com/schemas/example-prop.json"
+                    type: string
+                example:
+                  $id: "https://example.com/should-not-register"
+                  id: "1"
+`
+		var rootNode yaml.Node
+		err := yaml.Unmarshal([]byte(spec), &rootNode)
+		assert.NoError(t, err)
+
+		config := CreateClosedAPIIndexConfig()
+		config.SpecAbsolutePath = "https://example.com/openapi.yaml"
+		index := NewSpecIndexWithConfig(&rootNode, config)
+		assert.NotNil(t, index)
+
+		allIds := index.GetAllSchemaIds()
+		assert.Len(t, allIds, 2)
+		assert.NotNil(t, allIds["https://example.com/schemas/pet.json"])
+		assert.NotNil(t, allIds["https://example.com/schemas/example-prop.json"])
+		assert.Nil(t, allIds["https://example.com/should-not-register"])
+	})
+}
+
 func TestSchemaId_ExtractionWithInvalidId(t *testing.T) {
 	// OpenAPI 3.1 spec with invalid $id (contains fragment)
 	spec := `openapi: "3.1.0"

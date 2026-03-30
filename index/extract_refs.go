@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -57,10 +56,18 @@ func isArrayOfSchemaContainingNode(v string) bool {
 	return false
 }
 
-// underOpenAPIExamplePath reports whether seenPath is under OpenAPI example or examples payload
-// (sample data, not schema). Matches description/summary and properties skipping in this file.
+// underOpenAPIExamplePath reports whether seenPath is under an OpenAPI example or examples
+// keyword (sample data, not schema). A segment named "example" or "examples" that is preceded
+// by "properties" or "patternProperties" is a schema property name, not an OpenAPI keyword.
 func underOpenAPIExamplePath(seenPath []string) bool {
-	return slices.Contains(seenPath, "example") || slices.Contains(seenPath, "examples")
+	for i, p := range seenPath {
+		if p == "example" || p == "examples" {
+			if i == 0 || (seenPath[i-1] != "properties" && seenPath[i-1] != "patternProperties") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
@@ -176,11 +183,13 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 				if len(seenPath) > 0 {
 					skip := false
 
-					// iterate through the path and look for an item named 'examples' or 'example'
-					for _, p := range seenPath {
+					// iterate through the path and look for an OpenAPI example/examples keyword or extension
+					for j, p := range seenPath {
 						if p == "examples" || p == "example" {
-							skip = true
-							break
+							if j == 0 || (seenPath[j-1] != "properties" && seenPath[j-1] != "patternProperties") {
+								skip = true
+								break
+							}
 						}
 						// look for any extension in the path and ignore it
 						if strings.HasPrefix(p, "x-") {
@@ -670,7 +679,7 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 						prev = n.Value
 						continue
 					}
-					if !slices.Contains(seenPath, "example") && !slices.Contains(seenPath, "examples") {
+					if !underOpenAPIExamplePath(seenPath) {
 						ref := &DescriptionReference{
 							ParentNode: parent,
 							Content:    node.Content[i+1].Value,
@@ -699,7 +708,7 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 						continue
 					}
 
-					if slices.Contains(seenPath, "example") || slices.Contains(seenPath, "examples") {
+					if underOpenAPIExamplePath(seenPath) {
 						continue
 					}
 
