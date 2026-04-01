@@ -1,4 +1,4 @@
-// Copyright 2023-2026 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package index
@@ -207,17 +207,22 @@ func (index *SpecIndex) resolveReferenceTarget(value string) (string, string) {
 	var componentName string
 	var fullDefinitionPath string
 	if len(uri) == 2 {
+		// Reference contains a fragment (e.g. "file.yaml#/components/schemas/Foo" or "#/definitions/Bar").
 		if uri[0] == "" {
+			// Fragment-only local ref — prefix with the spec's absolute path.
 			fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, uri[1])
 			componentName = value
 		} else {
 			if strings.HasPrefix(uri[0], "http") {
+				// Absolute HTTP URL with fragment — use as-is.
 				fullDefinitionPath = value
 				componentName = fmt.Sprintf("#/%s", uri[1])
 			} else if filepath.IsAbs(uri[0]) {
+				// Absolute local file path with fragment — use as-is.
 				fullDefinitionPath = value
 				componentName = fmt.Sprintf("#/%s", uri[1])
 			} else if index.config.BaseURL != nil && !filepath.IsAbs(defRoot) {
+				// Relative path with a configured BaseURL — resolve against the base URL.
 				var u url.URL
 				if strings.HasPrefix(defRoot, "http") {
 					up, _ := url.Parse(defRoot)
@@ -231,15 +236,19 @@ func (index *SpecIndex) resolveReferenceTarget(value string) (string, string) {
 				fullDefinitionPath = fmt.Sprintf("%s#/%s", u.String(), uri[1])
 				componentName = fmt.Sprintf("#/%s", uri[1])
 			} else {
+				// Relative local file path — resolve against the spec's directory.
 				abs := index.resolveRelativeFilePath(defRoot, uri[0])
 				fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
 				componentName = fmt.Sprintf("#/%s", uri[1])
 			}
 		}
 	} else if strings.HasPrefix(uri[0], "http") {
+		// No fragment, absolute HTTP URL — use as-is.
 		fullDefinitionPath = value
 	} else if !strings.Contains(uri[0], "#") {
+		// No fragment, not a bare anchor — whole-file reference or relative path.
 		if strings.HasPrefix(defRoot, "http") {
+			// Spec root is remote — resolve the relative path against the remote URL.
 			if !filepath.IsAbs(uri[0]) {
 				u, _ := url.Parse(defRoot)
 				pathDir := filepath.Dir(u.Path)
@@ -249,6 +258,7 @@ func (index *SpecIndex) resolveReferenceTarget(value string) (string, string) {
 				fullDefinitionPath = u.String()
 			}
 		} else if !filepath.IsAbs(uri[0]) {
+			// Relative local file path — resolve against BaseURL if configured, else the spec's directory.
 			if index.config.BaseURL != nil {
 				u := *index.config.BaseURL
 				abs := utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator))

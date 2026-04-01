@@ -18,8 +18,9 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// Reference is a wrapper around *yaml.Node results to make things more manageable when performing
-// algorithms on data models. the *yaml.Node def is just a bit too low level for tracking state.
+// Reference is a wrapper around *yaml.Node that tracks a single $ref usage in a specification.
+// It captures the full definition path, the resolved node, parent context, circular reference state,
+// and sibling properties. Used throughout the index for reference resolution and change detection.
 type Reference struct {
 	FullDefinition        string                `json:"fullDefinition,omitempty"`
 	Definition            string                `json:"definition,omitempty"`
@@ -46,7 +47,8 @@ type Reference struct {
 	In                    string                `json:"-"`                            // parameter location (path, query, header, cookie) - cached for performance
 }
 
-// ReferenceMapped is a helper struct for mapped references put into sequence (we lose the key)
+// ReferenceMapped is a helper struct that pairs a mapped reference with its original definition key,
+// preserving insertion order when references are sequenced from a map.
 type ReferenceMapped struct {
 	OriginalReference *Reference `json:"originalReference,omitempty"`
 	Reference         *Reference `json:"reference,omitempty"`
@@ -99,7 +101,7 @@ type SpecIndexConfig struct {
 	// If resolving remotely, the RemoteURLHandler will be used to fetch the remote document.
 	// If not set, the default http client will be used.
 	// Resolves [#132]: https://github.com/pb33f/libopenapi/issues/132
-	// deprecated: Use the Rolodex instead
+	// Deprecated: Use the Rolodex instead.
 	RemoteURLHandler func(url string) (*http.Response, error)
 
 	// FSHandler is an entity that implements the `fs.FS` interface that will be used to fetch local or remote documents.
@@ -110,11 +112,11 @@ type SpecIndexConfig struct {
 	// the document. This is really useful if your application has a custom file system or uses a database for storing
 	// documents.
 	//
-	// Is the FSHandler is set, it will be used for all lookups, regardless of whether they are local or remote.
-	// it also overrides the RemoteURLHandler if set.
+	// If the FSHandler is set, it will be used for all lookups, regardless of whether they are local or remote.
+	// It also overrides the RemoteURLHandler if set.
 	//
-	// Resolves[#85] https://github.com/pb33f/libopenapi/issues/85
-	// deprecated: Use the Rolodex instead
+	// Resolves [#85]: https://github.com/pb33f/libopenapi/issues/85
+	// Deprecated: Use the Rolodex instead.
 	FSHandler fs.FS
 
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from
@@ -428,6 +430,7 @@ func (index *SpecIndex) GetResolver() *Resolver {
 	return index.resolver
 }
 
+// SetResolver sets the resolver for this index.
 func (index *SpecIndex) SetResolver(resolver *Resolver) {
 	index.resolverLock.Lock()
 	defer index.resolverLock.Unlock()
@@ -439,10 +442,12 @@ func (index *SpecIndex) GetConfig() *SpecIndexConfig {
 	return index.config
 }
 
+// GetNodeMap returns the line-to-column-to-node map built during indexing.
 func (index *SpecIndex) GetNodeMap() map[int]map[int]*yaml.Node {
 	return index.nodeMap
 }
 
+// GetCache returns the reference lookup cache used during resolution.
 func (index *SpecIndex) GetCache() *sync.Map {
 	return index.cache
 }
@@ -614,7 +619,8 @@ func (index *SpecIndex) GetSpecAbsolutePath() string {
 // URI based document. Decides if the reference is local, remote or in a file.
 type ExternalLookupFunction func(id string) (foundNode *yaml.Node, rootNode *yaml.Node, lookupError error)
 
-// IndexingError holds data about something that went wrong during indexing.
+// IndexingError holds data about something that went wrong during indexing, including the
+// offending node and its path within the specification.
 type IndexingError struct {
 	Err     error
 	Node    *yaml.Node
@@ -622,6 +628,7 @@ type IndexingError struct {
 	Path    string
 }
 
+// Error returns the underlying error message.
 func (i *IndexingError) Error() string {
 	return i.Err.Error()
 }
@@ -636,6 +643,8 @@ type DescriptionReference struct {
 	IsSummary  bool
 }
 
+// EnumReference holds data about an enum definition found during indexing, including its
+// type, schema node, and location path within the specification.
 type EnumReference struct {
 	Node       *yaml.Node
 	KeyNode    *yaml.Node
@@ -645,6 +654,7 @@ type EnumReference struct {
 	ParentNode *yaml.Node
 }
 
+// ObjectReference holds data about an object with properties found during indexing.
 type ObjectReference struct {
 	Node       *yaml.Node
 	KeyNode    *yaml.Node

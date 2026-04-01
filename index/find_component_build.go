@@ -1,4 +1,4 @@
-// Copyright 2023-2026 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package index
@@ -14,6 +14,10 @@ func cloneFoundComponentReference(index *SpecIndex, found *Reference, componentI
 	return buildResolvedComponentReference(index, found, componentID, absoluteFilePath, found.Name, found.Path, found.Node)
 }
 
+// buildResolvedComponentReference constructs a fully resolved Reference for a component.
+// source is the original unresolved ref (may be nil for fresh lookups); componentID is the
+// JSON Pointer fragment (e.g. "#/components/schemas/Pet"); absoluteFilePath is the file
+// or URL where the component lives.
 func buildResolvedComponentReference(
 	index *SpecIndex,
 	source *Reference,

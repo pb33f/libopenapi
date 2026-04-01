@@ -19,9 +19,11 @@ const (
 	theoreticalRoot = "root.yaml"
 )
 
+// NewSpecIndexWithConfigAndContext creates a new SpecIndex from the given root YAML node and configuration.
+// The context is passed through to reference extraction for schema ID scope tracking.
 func NewSpecIndexWithConfigAndContext(ctx context.Context, rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
 	index := new(SpecIndex)
-	boostrapIndexCollections(index)
+	bootstrapIndexCollections(index)
 	index.InitHighCache()
 	index.config = config
 	index.rolodex = config.Rolodex
@@ -39,16 +41,19 @@ func NewSpecIndexWithConfigAndContext(ctx context.Context, rootNode *yaml.Node, 
 	return createNewIndex(ctx, rootNode, index, config.AvoidBuildIndex)
 }
 
+// NewSpecIndexWithConfig creates a new SpecIndex from the given root YAML node and configuration,
+// using a background context.
 func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
 	return NewSpecIndexWithConfigAndContext(context.Background(), rootNode, config)
 }
 
+// NewSpecIndex creates a new SpecIndex with default configuration from the given root YAML node.
 func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index := new(SpecIndex)
 	index.InitHighCache()
 	index.config = CreateOpenAPIIndexConfig()
 	index.root = rootNode
-	boostrapIndexCollections(index)
+	bootstrapIndexCollections(index)
 	return createNewIndex(context.Background(), rootNode, index, false)
 }
 
@@ -99,6 +104,8 @@ func createNewIndex(ctx context.Context, rootNode *yaml.Node, index *SpecIndex, 
 	return index
 }
 
+// BuildIndex runs all count and extraction functions concurrently to populate the index.
+// This is called automatically during construction unless AvoidBuildIndex is set in the config.
 func (index *SpecIndex) BuildIndex() {
 	if index.built {
 		return
@@ -132,26 +139,33 @@ func (index *SpecIndex) BuildIndex() {
 	index.built = true
 }
 
+// GetLogger returns the structured logger used by this index.
 func (index *SpecIndex) GetLogger() *slog.Logger {
 	return index.logger
 }
 
+// GetRootNode returns the root YAML node of the specification document.
 func (index *SpecIndex) GetRootNode() *yaml.Node {
 	return index.root
 }
 
+// SetRootNode sets the root YAML node for this index.
 func (index *SpecIndex) SetRootNode(node *yaml.Node) {
 	index.root = node
 }
 
+// GetRolodex returns the Rolodex file system abstraction associated with this index.
 func (index *SpecIndex) GetRolodex() *Rolodex {
 	return index.rolodex
 }
 
+// SetRolodex sets the Rolodex file system abstraction for this index.
 func (index *SpecIndex) SetRolodex(rolodex *Rolodex) {
 	index.rolodex = rolodex
 }
 
+// GetSpecFileName returns the base filename of the specification (e.g. "openapi.yaml").
+// Falls back to "root.yaml" if no file path is configured.
 func (index *SpecIndex) GetSpecFileName() string {
 	if index == nil || index.rolodex == nil || index.rolodex.indexConfig == nil || index.rolodex.indexConfig.SpecFilePath == "" {
 		return theoreticalRoot
@@ -159,6 +173,7 @@ func (index *SpecIndex) GetSpecFileName() string {
 	return filepath.Base(index.rolodex.indexConfig.SpecFilePath)
 }
 
+// GetGlobalTagsNode returns the raw YAML node for the top-level "tags" array.
 func (index *SpecIndex) GetGlobalTagsNode() *yaml.Node {
 	return index.tagsNode
 }

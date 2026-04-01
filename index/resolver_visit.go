@@ -149,6 +149,9 @@ func (resolver *Resolver) searchReferenceWithContext(sourceRef, searchRef *Refer
 	return searchIndex.SearchIndexForReferenceByReferenceWithContext(ctx, searchRef)
 }
 
+// VisitReference visits a single reference, collecting its relatives (dependencies) and recursively
+// visiting them. The seen map prevents infinite loops, journey tracks the path for circular detection,
+// and resolve controls whether nodes are actually resolved or just visited for analysis.
 func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, journey []*Reference, resolve bool) []*yaml.Node {
 	resolver.referencesVisited++
 	if content, done := resolver.visitReferenceShortCircuit(ref, resolve); done {

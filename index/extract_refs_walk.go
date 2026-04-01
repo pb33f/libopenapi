@@ -1,4 +1,4 @@
-// Copyright 2023-2026 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package index
@@ -71,6 +71,8 @@ func (index *SpecIndex) walkExtractRefs(node, parent *yaml.Node, state *extractR
 			found = append(found, index.walkChildExtractRefs(n, node, state)...)
 		}
 
+		// In YAML mapping nodes, Content alternates key-value: even indices (0, 2, 4...)
+		// are keys, odd indices (1, 3, 5...) are values.
 		if i%2 == 0 {
 			if stop := index.handleExtractRefsKey(node, parent, state, i, &found); stop {
 				continue

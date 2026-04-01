@@ -91,17 +91,24 @@ func (resolver *Resolver) relativeIsArrayResult(relative *Reference) bool {
 func (resolver *Resolver) isInfiniteCircularDependency(
 	ref *Reference, visitedDefinitions map[string]bool, initialRef *Reference,
 ) (bool, map[string]bool) {
+	// Recursive DFS: walks all required $ref properties of ref, tracking visited
+	// definitions to detect cycles. initialRef anchors the starting point so we
+	// can recognize when the chain loops back to the origin.
 	if ref == nil {
 		return false, visitedDefinitions
 	}
 	for refDefinition := range ref.RequiredRefProperties {
 		r, _ := resolver.specIndex.SearchIndexForReference(refDefinition)
+
+		// Direct loop back to the original starting reference — infinite cycle.
 		if initialRef != nil && initialRef.FullDefinition == r.FullDefinition {
 			return true, visitedDefinitions
 		}
+		// Self-reference: ref points back to itself.
 		if len(visitedDefinitions) > 0 && ref.FullDefinition == r.FullDefinition {
 			return true, visitedDefinitions
 		}
+		// Already visited in this DFS path — skip to avoid re-processing.
 		if visitedDefinitions[r.FullDefinition] {
 			continue
 		}

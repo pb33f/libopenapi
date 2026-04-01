@@ -587,7 +587,7 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 
 	if remoteParsedURL.Scheme == "" {
 		i.releaseRemoteProcessingWaiter(processingWaiter, cacheKey, nil, nil)
-		return nil, nil // not a remote file, nothing wrong with that - just we can't keep looking here partner.
+		return nil, nil // not a remote file — scheme is empty, skip processing.
 	}
 
 	i.logger.Debug("[rolodex remote loader] loading remote file", "file", remoteURL, "remoteURL", remoteParsedURL.String())

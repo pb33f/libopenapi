@@ -242,7 +242,7 @@ func (l *LocalFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 	return l.IndexWithContext(context.Background(), config)
 }
 
-// // IndexWithContext returns the *SpecIndex for the file. If the index has not been created, it will be created (indexed), also supplied context
+// IndexWithContext returns the *SpecIndex for the file. If the index has not been created, it will be created (indexed), also supplied context
 func (l *LocalFile) IndexWithContext(ctx context.Context, config *SpecIndexConfig) (*SpecIndex, error) {
 	var result *SpecIndex
 	var resultErr error
@@ -438,7 +438,7 @@ func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 				return err
 			}
 
-			// we don't care about directories, or errors, just read everything we can.
+			// skip non-matching directories, process all readable files.
 			if d.IsDir() {
 				if d.Name() != config.BaseDirectory {
 					return nil

@@ -32,6 +32,8 @@ func (resolver *Resolver) extractRelativesWithState(
 	node, parent *yaml.Node,
 	state relativeWalkState,
 ) []*Reference {
+	// Guard against stack overflow from deeply nested or circular specs.
+	// Journey tracks the reference chain (100 max); depth tracks recursive calls (500 max).
 	if len(state.journey) > 100 {
 		return nil
 	}
@@ -208,11 +210,15 @@ func (resolver *Resolver) buildRelativeLookupDefinitions(ref *Reference, value, 
 	fullDef := ""
 	exp := strings.Split(value, "#/")
 	if len(exp) == 2 {
+		// Reference contains a fragment (e.g. "other.yaml#/components/schemas/Foo").
 		definition = fmt.Sprintf("#/%s", exp[1])
 		if exp[0] != "" {
+			// Has a file/URL prefix before the fragment.
 			if strings.HasPrefix(exp[0], "http") {
+				// Absolute HTTP URL — use as-is.
 				fullDef = value
 			} else if strings.HasPrefix(ref.FullDefinition, "http") {
+				// Relative file path, but the parent ref is remote — resolve against the URL.
 				httpExp := strings.Split(ref.FullDefinition, "#/")
 				u, _ := url.Parse(httpExp[0])
 				abs, _ := filepath.Abs(utils.CheckPathOverlap(path.Dir(u.Path), exp[0], string(filepath.Separator)))
@@ -220,11 +226,13 @@ func (resolver *Resolver) buildRelativeLookupDefinitions(ref *Reference, value, 
 				u.Fragment = ""
 				fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
 			} else {
+				// Relative file path with a local parent — resolve against the parent's directory.
 				fileDef := strings.Split(ref.FullDefinition, "#/")
 				abs := resolver.resolveLocalRefPath(filepath.Dir(fileDef[0]), exp[0])
 				fullDef = fmt.Sprintf("%s#/%s", abs, exp[1])
 			}
 		} else {
+			// Fragment-only ref (e.g. "#/definitions/Bar") — resolve against the parent's base location.
 			baseLocation := ref.FullDefinition
 			if ref.RemoteLocation != "" {
 				baseLocation = ref.RemoteLocation
@@ -239,8 +247,10 @@ func (resolver *Resolver) buildRelativeLookupDefinitions(ref *Reference, value, 
 			}
 		}
 	} else if strings.HasPrefix(value, "http") {
+		// No fragment, absolute HTTP URL — use as-is.
 		fullDef = value
 	} else {
+		// No fragment, relative file path — resolve against the parent's base location.
 		baseLocation := ref.FullDefinition
 		if ref.RemoteLocation != "" {
 			baseLocation = ref.RemoteLocation
