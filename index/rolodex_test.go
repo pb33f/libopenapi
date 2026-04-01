@@ -1763,6 +1763,70 @@ components:
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 }
 
+func TestRolodex_Resolve_AggregatesIgnoredCircularRefsFromExternalIndexes(t *testing.T) {
+	cfg := CreateOpenAPIIndexConfig()
+	rolodex := NewRolodex(cfg)
+
+	rootIndex := NewTestSpecIndex().Load().(*SpecIndex)
+	rootIndex.root = &yaml.Node{Kind: yaml.MappingNode}
+	rootIndex.SetResolver(NewResolver(rootIndex))
+	rolodex.rootIndex = rootIndex
+
+	externalIndex := NewTestSpecIndex().Load().(*SpecIndex)
+	externalIndex.root = &yaml.Node{Kind: yaml.MappingNode}
+	externalIndex.SetResolver(NewResolver(externalIndex))
+	externalIndex.GetResolver().ignoredPolyReferences = []*CircularReferenceResult{{
+		IsPolymorphicResult: true,
+		LoopPoint:           &Reference{FullDefinition: "#/components/schemas/External"},
+	}}
+	rolodex.indexes = []*SpecIndex{externalIndex}
+
+	rolodex.Resolve()
+
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
+}
+
+func TestRolodex_collectResolvers(t *testing.T) {
+	rolodex := NewRolodex(CreateOpenAPIIndexConfig())
+	rootIndex := NewTestSpecIndex().Load().(*SpecIndex)
+	rootIndex.SetResolver(NewResolver(rootIndex))
+	rolodex.rootIndex = rootIndex
+
+	externalIndex := NewTestSpecIndex().Load().(*SpecIndex)
+	externalIndex.SetResolver(NewResolver(externalIndex))
+	rolodex.indexes = []*SpecIndex{externalIndex, {}}
+
+	resolvers := rolodex.collectResolvers()
+
+	assert.Len(t, resolvers, 2)
+}
+
+func TestRolodex_mergeResolverResults(t *testing.T) {
+	rolodex := NewRolodex(CreateOpenAPIIndexConfig())
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
+	idx.root = &yaml.Node{Kind: yaml.MappingNode}
+	resolver := NewResolver(idx)
+	resolver.resolvingErrors = []*ResolvingError{{ErrorRef: fmt.Errorf("boom")}}
+	resolver.ignoredPolyReferences = []*CircularReferenceResult{{
+		LoopPoint: &Reference{FullDefinition: "#/poly"},
+	}}
+	resolver.ignoredArrayReferences = []*CircularReferenceResult{{
+		LoopPoint: &Reference{FullDefinition: "#/array"},
+	}}
+	resolver.circularReferences = []*CircularReferenceResult{
+		{IsInfiniteLoop: false},
+		{IsInfiniteLoop: true, Start: &Reference{Definition: "#/loop"}},
+	}
+	resolver.circChecked = true
+
+	rolodex.mergeResolverResults(resolver)
+
+	assert.Len(t, rolodex.caughtErrors, 1)
+	assert.Len(t, rolodex.ignoredCircularReferences, 2)
+	assert.Len(t, rolodex.safeCircularReferences, 1)
+	assert.Len(t, rolodex.infiniteCircularReferences, 1)
+}
+
 func TestRolodex_CircularReferencesArrayIgnored_PostCheck(t *testing.T) {
 	d := `openapi: 3.1.0
 components:
@@ -2139,6 +2203,151 @@ func TestRolodex_RemoteFileSeekingErrors(t *testing.T) {
 	assert.Contains(t, err.Error(), "seeking error 2")
 }
 
+func TestRolodex_LocalPathForOpen(t *testing.T) {
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	localFS := &LocalFS{}
+
+	assert.Equal(t, "/tmp/spec.yaml", rolo.localPathForOpen("/tmp", "/tmp/spec.yaml", localFS))
+	assert.Equal(t, "nested/spec.yaml", rolo.localPathForOpen("/tmp", "/tmp/nested/spec.yaml", os.DirFS("/tmp")))
+}
+
+func TestRolodex_OpenLocalLocation_EmptyFileReturnsNilWithoutErrors(t *testing.T) {
+	tempDir := t.TempDir()
+	specPath := filepath.Join(tempDir, "spec.yaml")
+	err := os.WriteFile(specPath, nil, 0o644)
+	assert.NoError(t, err)
+
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddLocalFS(tempDir, os.DirFS(tempDir))
+
+	localFile, errs := rolo.openLocalLocation(context.Background(), specPath)
+	assert.Nil(t, localFile)
+	assert.Empty(t, errs)
+}
+
+func TestRolodex_OpenLocalLocation_UsesFallbackPath(t *testing.T) {
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	testFS := &fallbackFS{failOnCalculatedPath: true}
+	rolo.AddLocalFS("/some/base/path", testFS)
+
+	localFile, errs := rolo.openLocalLocation(context.Background(), "spec.yaml")
+	assert.NotNil(t, localFile)
+	assert.Empty(t, errs)
+	assert.True(t, testFS.usedFallback)
+}
+
+func TestRolodex_OpenLocalLocation_UsesFallbackPathForRelativeBaseDir(t *testing.T) {
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	testFS := &fallbackFS{failOnCalculatedPath: true}
+	rolo.AddLocalFS("some/base/path", testFS)
+
+	localFile, errs := rolo.openLocalLocation(context.Background(), "spec.yaml")
+	assert.NotNil(t, localFile)
+	assert.Empty(t, errs)
+	assert.True(t, testFS.usedFallback)
+}
+
+func TestRolodex_OpenLocalLocation_ReturnsErrorsWhenMissing(t *testing.T) {
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddLocalFS("", fstest.MapFS{})
+
+	localFile, errs := rolo.openLocalLocation(context.Background(), "missing.yaml")
+	assert.Nil(t, localFile)
+	assert.NotEmpty(t, errs)
+}
+
+func TestRolodex_OpenLocalLocation_ReturnsFallbackErrorWhenBothLookupsFail(t *testing.T) {
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	testFS := &fallbackFS{failOnCalculatedPath: true}
+	rolo.AddLocalFS("/some/base/path", testFS)
+
+	localFile, errs := rolo.openLocalLocation(context.Background(), "missing.yaml")
+	assert.Nil(t, localFile)
+	assert.NotEmpty(t, errs)
+}
+
+func TestRolodex_OpenLocalLocation_FallsBackWhenComputedPathDiffers(t *testing.T) {
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	location := "/tmp/openapi/spec.yaml"
+	testFS := &absoluteFallbackFS{fallbackLocation: location}
+	rolo.AddLocalFS("/tmp", testFS)
+
+	localFile, errs := rolo.openLocalLocation(context.Background(), location)
+	assert.NotNil(t, localFile)
+	assert.Empty(t, errs)
+	assert.True(t, testFS.usedFallback)
+}
+
+func TestRolodex_AsLocalFile_GenericAndExistingRolodexFile(t *testing.T) {
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.rootIndex = NewTestSpecIndex().Load().(*SpecIndex)
+
+	localFile, errs := rolo.asLocalFile(&testRolodexFile{}, "/tmp/spec.yaml")
+	assert.NotNil(t, localFile)
+	assert.Empty(t, errs)
+	assert.Equal(t, "/test/path/spec.yaml", localFile.fullPath)
+
+	localFile, errs = rolo.asLocalFile(&testFile{content: "hello"}, "/tmp/spec.yaml")
+	assert.NotNil(t, localFile)
+	assert.Empty(t, errs)
+	assert.Equal(t, "/tmp/spec.yaml", localFile.fullPath)
+
+	localFile, errs = rolo.asLocalFile(&testRolodexFile{errorYaml: true}, "/tmp/spec.yaml")
+	assert.NotNil(t, localFile)
+	assert.Error(t, errors.Join(errs...))
+
+	localFile, errs = rolo.asLocalFile(&testFile{content: ""}, "/tmp/spec.yaml")
+	assert.Nil(t, localFile)
+	assert.Empty(t, errs)
+}
+
+func TestRolodex_AsRemoteFile_AndWrappers(t *testing.T) {
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.rootIndex = NewTestSpecIndex().Load().(*SpecIndex)
+
+	remoteFile, errs := rolo.asRemoteFile(&testFile{content: "hello"}, "http://example.com/spec.yaml")
+	assert.NotNil(t, remoteFile)
+	assert.Empty(t, errs)
+
+	wrappedRemote, err := rolo.wrapRemoteRolodexFile(&RemoteFile{
+		fullPath:      "http://example.com/spec.yaml",
+		seekingErrors: []error{fmt.Errorf("seek failed")},
+	})
+	assert.NotNil(t, wrappedRemote)
+	assert.Error(t, err)
+
+	wrappedLocal, err := rolo.wrapLocalRolodexFile(&LocalFile{
+		fullPath:      "/tmp/spec.yaml",
+		readingErrors: []error{fmt.Errorf("read failed")},
+	})
+	assert.NotNil(t, wrappedLocal)
+	assert.Error(t, err)
+}
+
+func TestRolodex_AsFileHelperErrors(t *testing.T) {
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+
+	localFile, errs := rolo.asLocalFile(&errorReadFile{}, "/tmp/spec.yaml")
+	assert.Nil(t, localFile)
+	assert.Len(t, errs, 1)
+
+	localFile, errs = rolo.asLocalFile(&errorStatFile{testFile: testFile{content: "hello"}}, "/tmp/spec.yaml")
+	assert.Nil(t, localFile)
+	assert.Len(t, errs, 1)
+
+	remoteFile, errs := rolo.asRemoteFile(&errorReadFile{}, "http://example.com/spec.yaml")
+	assert.Nil(t, remoteFile)
+	assert.Len(t, errs, 1)
+
+	remoteFile, errs = rolo.asRemoteFile(&errorStatFile{testFile: testFile{content: "hello"}}, "http://example.com/spec.yaml")
+	assert.Nil(t, remoteFile)
+	assert.Len(t, errs, 1)
+
+	remoteFile, errs = rolo.asRemoteFile(&testFile{content: ""}, "http://example.com/spec.yaml")
+	assert.Nil(t, remoteFile)
+	assert.Empty(t, errs)
+}
+
 func TestRolodex_NilCheck(t *testing.T) {
 	var r *Rolodex
 	_, err := r.OpenWithContext(context.Background(), "spec.yaml")
@@ -2182,6 +2391,19 @@ func (f *fallbackFS) Open(name string) (fs.File, error) {
 	return &testFile{content: "test content"}, nil
 }
 
+type absoluteFallbackFS struct {
+	fallbackLocation string
+	usedFallback     bool
+}
+
+func (f *absoluteFallbackFS) Open(name string) (fs.File, error) {
+	if name == f.fallbackLocation {
+		f.usedFallback = true
+		return &testFile{content: "test content"}, nil
+	}
+	return nil, fs.ErrNotExist
+}
+
 func (f *fallbackFS) GetFiles() map[string]RolodexFile {
 	if f.files != nil {
 		return f.files
@@ -2214,6 +2436,20 @@ type testFile struct {
 	content string
 	offset  int64
 }
+
+type errorReadFile struct{}
+
+func (e *errorReadFile) Read(_ []byte) (int, error) { return 0, fmt.Errorf("read failed") }
+func (e *errorReadFile) Close() error               { return nil }
+func (e *errorReadFile) Stat() (fs.FileInfo, error) {
+	return &testFileInfo{name: "bad.yaml", size: 0}, nil
+}
+
+type errorStatFile struct {
+	testFile
+}
+
+func (e *errorStatFile) Stat() (fs.FileInfo, error) { return nil, fmt.Errorf("stat failed") }
 
 func (tf *testFile) Read(p []byte) (n int, err error) {
 	if tf.offset >= int64(len(tf.content)) {
@@ -2631,6 +2867,8 @@ func TestRolodex_Release(t *testing.T) {
 	rolodex := NewRolodex(cfg)
 	idx := &SpecIndex{config: cfg}
 	rolodex.AddIndex(idx)
+	rolodex.localFS = map[string]fs.FS{"local": os.DirFS(".")}
+	rolodex.remoteFS = map[string]fs.FS{"remote": os.DirFS(".")}
 	rolodex.rootNode = &yaml.Node{Value: "root"}
 	rolodex.rootIndex = idx
 	rolodex.caughtErrors = []error{fmt.Errorf("test")}
@@ -2640,9 +2878,19 @@ func TestRolodex_Release(t *testing.T) {
 	rolodex.debouncedSafeCircRefs = []*CircularReferenceResult{{}}
 	rolodex.debouncedIgnoredCircRefs = []*CircularReferenceResult{{}}
 	rolodex.globalSchemaIdRegistry = map[string]*SchemaIdEntry{"test": {}}
+	rolodex.indexed = true
+	rolodex.built = true
+	rolodex.manualBuilt = true
+	rolodex.resolved = true
+	rolodex.circChecked = true
+	rolodex.indexingDuration = time.Second
+	rolodex.logger = slog.Default()
+	rolodex.id = "test-id"
 
 	rolodex.Release()
 
+	assert.Nil(t, rolodex.localFS)
+	assert.Nil(t, rolodex.remoteFS)
 	assert.Nil(t, rolodex.indexes)
 	assert.Nil(t, rolodex.indexMap)
 	assert.Nil(t, rolodex.rootIndex)
@@ -2654,6 +2902,15 @@ func TestRolodex_Release(t *testing.T) {
 	assert.Nil(t, rolodex.debouncedSafeCircRefs)
 	assert.Nil(t, rolodex.debouncedIgnoredCircRefs)
 	assert.Nil(t, rolodex.globalSchemaIdRegistry)
+	assert.Nil(t, rolodex.indexConfig)
+	assert.Zero(t, rolodex.indexingDuration)
+	assert.False(t, rolodex.indexed)
+	assert.False(t, rolodex.built)
+	assert.False(t, rolodex.manualBuilt)
+	assert.False(t, rolodex.resolved)
+	assert.False(t, rolodex.circChecked)
+	assert.Nil(t, rolodex.logger)
+	assert.Empty(t, rolodex.id)
 }
 
 func TestRolodex_Release_Nil(t *testing.T) {

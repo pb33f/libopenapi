@@ -163,8 +163,7 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 			}
 
 			if idx != nil {
-				resolver := NewResolver(idx)
-				idx.resolver = resolver
+				NewResolver(idx)
 				idx.BuildIndex()
 			}
 			if len(extractedFile.data) > 0 {

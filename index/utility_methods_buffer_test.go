@@ -558,6 +558,21 @@ func TestHashNode_InternalNilHandling(t *testing.T) {
 	assert.Equal(t, hash, hash2)
 }
 
+func TestHashNode_ContentWithNilChild(t *testing.T) {
+	rootNode := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			nil,
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "value"},
+		},
+	}
+
+	hash := HashNode(rootNode)
+	assert.NotEmpty(t, hash)
+	assert.Equal(t, hash, HashNode(rootNode))
+}
+
 // Test extreme depth scenarios to hit the depth limit checks
 func TestHashNode_ExtremeDepthLimits(t *testing.T) {
 	// Create a node structure that will definitely hit the >1000 depth limit

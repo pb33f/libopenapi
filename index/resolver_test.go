@@ -448,7 +448,7 @@ func TestResolver_DeepJourney(t *testing.T) {
 	}
 	idx := NewSpecIndexWithConfig(nil, CreateClosedAPIIndexConfig())
 	resolver := NewResolver(idx)
-	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, nil, journey, nil, false, 0, ""))
+	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, nil, journey, false, 0, ""))
 }
 
 func TestResolver_DeepDepth(t *testing.T) {
@@ -481,7 +481,7 @@ func TestResolver_DeepDepth(t *testing.T) {
 	ref := &Reference{
 		FullDefinition: "#/components/schemas/A",
 	}
-	found := resolver.extractRelatives(ref, refA, nil, nil, nil, nil, false, 0, "")
+	found := resolver.extractRelatives(ref, refA, nil, nil, nil, false, 0, "")
 
 	assert.Nil(t, found)
 	assert.Contains(t, buf.String(), "libopenapi resolver: relative depth exceeded 100 levels")
@@ -911,7 +911,7 @@ func TestResolver_ExtractRelatives_HttpFullDefinition(t *testing.T) {
 	resolver := NewResolver(idx)
 	ref.Index = idx
 
-	_ = resolver.extractRelatives(ref, targetNode, nil, map[string]bool{}, []*Reference{}, map[int]bool{}, false, 0, "")
+	_ = resolver.extractRelatives(ref, targetNode, nil, map[string]bool{}, []*Reference{}, false, 0, "")
 	assert.NotEmpty(t, resolver.GetResolvingErrors())
 }
 
@@ -1781,6 +1781,46 @@ func TestVisitReference_Nil(t *testing.T) {
 	assert.Nil(t, n)
 }
 
+func TestVisitReference_SeenShortCircuit(t *testing.T) {
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "type"},
+			{Kind: yaml.ScalarNode, Value: "string"},
+		},
+	}
+	resolver := &Resolver{}
+
+	resolved := resolver.VisitReference(&Reference{Seen: true, Resolved: true, Node: node}, nil, nil, true)
+	assert.Equal(t, node.Content, resolved)
+
+	unresolved := resolver.VisitReference(&Reference{Seen: true, Node: node}, nil, nil, false)
+	assert.Equal(t, node.Content, unresolved)
+}
+
+func TestVisitReference_SeenButUnresolvedReturnsNodeAtEnd(t *testing.T) {
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "type"},
+			{Kind: yaml.ScalarNode, Value: "string"},
+		},
+	}
+	resolver := &Resolver{}
+	ref := &Reference{Seen: true, Resolved: false, Node: node}
+
+	result := resolver.VisitReference(ref, nil, nil, true)
+	assert.Equal(t, node.Content, result)
+}
+
+func TestVisitReference_UnresolvedNilNodeReturnsNil(t *testing.T) {
+	resolver := &Resolver{}
+	ref := &Reference{FullDefinition: "#/components/schemas/missing"}
+
+	result := resolver.VisitReference(ref, nil, nil, false)
+	assert.Nil(t, result)
+}
+
 func TestResolver_SkipExternalRefResolution(t *testing.T) {
 	// Spec with external $ref that cannot be resolved
 	yml := `openapi: 3.0.0
@@ -1850,4 +1890,151 @@ func TestResolver_Release_Idempotent(t *testing.T) {
 	assert.Nil(t, resolver.resolvedRoot)
 }
 
-// func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, journey []*Reference, resolve bool) []*yaml.Node {
+func TestResolver_VisitReferenceShortCircuit(t *testing.T) {
+	resolver := &Resolver{}
+	contentNode := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "type"},
+			{Kind: yaml.ScalarNode, Value: "string"},
+		},
+	}
+
+	content, done := resolver.visitReferenceShortCircuit(nil, true)
+	assert.True(t, done)
+	assert.Nil(t, content)
+
+	resolvedRef := &Reference{Seen: true, Resolved: true, Node: contentNode}
+	content, done = resolver.visitReferenceShortCircuit(resolvedRef, true)
+	assert.True(t, done)
+	assert.Equal(t, contentNode.Content, content)
+
+	resolvedRef.Node = nil
+	content, done = resolver.visitReferenceShortCircuit(resolvedRef, true)
+	assert.True(t, done)
+	assert.Nil(t, content)
+
+	seenRef := &Reference{Seen: true, Node: contentNode}
+	content, done = resolver.visitReferenceShortCircuit(seenRef, false)
+	assert.True(t, done)
+	assert.Equal(t, contentNode.Content, content)
+
+	seenRef.Node = nil
+	content, done = resolver.visitReferenceShortCircuit(seenRef, false)
+	assert.True(t, done)
+	assert.Nil(t, content)
+
+	content, done = resolver.visitReferenceShortCircuit(&Reference{}, false)
+	assert.False(t, done)
+	assert.Nil(t, content)
+}
+
+func TestResolver_CircularHelperMethods(t *testing.T) {
+	resolver := &Resolver{}
+
+	assert.False(t, resolver.relativeIsArrayResult(nil))
+	assert.True(t, resolver.relativeIsArrayResult(&Reference{ParentNodeSchemaType: "array"}))
+	assert.True(t, resolver.relativeIsArrayResult(&Reference{ParentNodeTypes: []string{"object", "array"}}))
+	assert.False(t, resolver.relativeIsArrayResult(&Reference{ParentNodeTypes: []string{"object"}}))
+
+	resolver.recordCircularReferenceResult(nil)
+	assert.Empty(t, resolver.circularReferences)
+
+	poly := &CircularReferenceResult{}
+	resolver.IgnorePoly = true
+	resolver.recordCircularReferenceResult(poly)
+	assert.Len(t, resolver.ignoredPolyReferences, 1)
+
+	array := &CircularReferenceResult{IsArrayResult: true}
+	resolver.IgnorePoly = false
+	resolver.IgnoreArray = true
+	resolver.recordCircularReferenceResult(array)
+	assert.Len(t, resolver.ignoredArrayReferences, 1)
+
+	recorded := &CircularReferenceResult{}
+	resolver.IgnoreArray = false
+	resolver.recordCircularReferenceResult(recorded)
+	assert.Len(t, resolver.circularReferences, 1)
+
+	resolver.circChecked = true
+	resolver.recordCircularReferenceResult(&CircularReferenceResult{})
+	assert.Len(t, resolver.circularReferences, 1)
+
+	relative := &Reference{}
+	duplicate := &Reference{}
+	resolver.markReferencesCircular(relative, duplicate)
+	assert.True(t, relative.Seen)
+	assert.True(t, relative.Circular)
+	assert.True(t, duplicate.Seen)
+	assert.True(t, duplicate.Circular)
+}
+
+func TestResolver_HandleCircularJourneyRelative(t *testing.T) {
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.1.0\ncomponents:\n  schemas: {}\n"), &rootNode)
+	idx := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	resolver := &Resolver{specIndex: idx}
+
+	relative := &Reference{FullDefinition: "#/components/schemas/Loop"}
+	assert.True(t, resolver.handleCircularJourneyRelative(nil, relative, []*Reference{relative}))
+	assert.Empty(t, resolver.circularReferences)
+
+	cachedCircular := &Reference{FullDefinition: relative.FullDefinition, Circular: true}
+	idx.cache.Store(relative.FullDefinition, cachedCircular)
+	assert.True(t, resolver.handleCircularJourneyRelative(nil, relative, []*Reference{relative}))
+	assert.Empty(t, resolver.circularReferences)
+}
+
+func TestResolver_ResolveRelativeReference(t *testing.T) {
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.1.0\ncomponents:\n  schemas: {}\n"), &rootNode)
+	idx := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	resolver := &Resolver{specIndex: idx}
+
+	relativeNode := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "type"},
+			{Kind: yaml.ScalarNode, Value: "string"},
+		},
+	}
+	ref := &Reference{}
+	relative := &Reference{
+		FullDefinition: "#/components/schemas/Pet",
+		Node:           relativeNode,
+		Seen:           true,
+	}
+
+	resolver.resolveRelativeReference(ref, relative, map[string]bool{}, nil, false)
+	assert.True(t, ref.Seen)
+	assert.True(t, relative.Seen)
+	assert.False(t, ref.Resolved)
+
+	foundNode := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "type"},
+			{Kind: yaml.ScalarNode, Value: "integer"},
+		},
+	}
+	found := &Reference{
+		FullDefinition: relative.FullDefinition,
+		Node:           foundNode,
+		Seen:           true,
+		Resolved:       true,
+	}
+	idx.cache.Store(relative.FullDefinition, found)
+
+	relative.Node = &yaml.Node{Kind: yaml.MappingNode}
+	relative.Seen = false
+	relative.Resolved = false
+	ref.Seen = false
+	ref.Resolved = false
+
+	resolver.resolveRelativeReference(ref, relative, map[string]bool{}, nil, true)
+	assert.True(t, ref.Seen)
+	assert.True(t, ref.Resolved)
+	assert.True(t, relative.Seen)
+	assert.True(t, relative.Resolved)
+	assert.Equal(t, foundNode.Content, relative.Node.Content)
+}

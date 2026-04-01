@@ -45,11 +45,11 @@ type NodeOrigin struct {
 // if the node was found, false if not.
 func (index *SpecIndex) GetNode(line int, column int) (*yaml.Node, bool) {
 	index.nodeMapLock.RLock()
+	defer index.nodeMapLock.RUnlock()
 	if index.nodeMap[line] == nil {
 		return nil, false
 	}
 	node := index.nodeMap[line][column]
-	index.nodeMapLock.RUnlock()
 	return node, node != nil
 }
 

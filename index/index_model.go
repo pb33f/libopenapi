@@ -408,7 +408,7 @@ type SpecIndex struct {
 	componentIndexChan                  chan struct{}
 	polyComponentIndexChan              chan struct{}
 	resolver                            *Resolver
-	resolverLock                        sync.Mutex
+	resolverLock                        sync.RWMutex
 	cache                               *sync.Map
 	built                               bool
 	uri                                 []string
@@ -423,10 +423,14 @@ type SpecIndex struct {
 
 // GetResolver returns the resolver for this index.
 func (index *SpecIndex) GetResolver() *Resolver {
+	index.resolverLock.RLock()
+	defer index.resolverLock.RUnlock()
 	return index.resolver
 }
 
 func (index *SpecIndex) SetResolver(resolver *Resolver) {
+	index.resolverLock.Lock()
+	defer index.resolverLock.Unlock()
 	index.resolver = resolver
 }
 
@@ -451,8 +455,15 @@ func (index *SpecIndex) Release() {
 	if index == nil {
 		return
 	}
+	index.releaseDocumentNodes()
+	index.releaseReferenceIndexes()
+	index.releaseComponentIndexes()
+	index.releaseDerivedState()
+	index.releaseOwnedResources()
+	index.resetRuntimeState()
+}
 
-	// yaml.Node tree
+func (index *SpecIndex) releaseDocumentNodes() {
 	index.root = nil
 	index.pathsNode = nil
 	index.tagsNode = nil
@@ -468,8 +479,9 @@ func (index *SpecIndex) Release() {
 	index.pathItemsNode = nil
 	index.rootServersNode = nil
 	index.rootSecurityNode = nil
+}
 
-	// reference maps (all hold *Reference with *yaml.Node pointers)
+func (index *SpecIndex) releaseReferenceIndexes() {
 	index.allRefs = nil
 	index.rawSequencedRefs = nil
 	index.linesWithRefs = nil
@@ -503,8 +515,9 @@ func (index *SpecIndex) Release() {
 	index.externalDocumentsRef = nil
 	index.rootSecurity = nil
 	index.refsWithSiblings = nil
+}
 
-	// schema / component collections
+func (index *SpecIndex) releaseComponentIndexes() {
 	index.allRefSchemaDefinitions = nil
 	index.allInlineSchemaDefinitions = nil
 	index.allInlineSchemaObjectDefinitions = nil
@@ -521,8 +534,9 @@ func (index *SpecIndex) Release() {
 	index.allComponentPathItems = nil
 	index.allExternalDocuments = nil
 	index.externalSpecIndex = nil
+}
 
-	// line/col -> *yaml.Node map
+func (index *SpecIndex) releaseDerivedState() {
 	index.nodeMap = nil
 	index.allDescriptions = nil
 	index.allSummaries = nil
@@ -540,24 +554,50 @@ func (index *SpecIndex) Release() {
 	index.pendingResolve = nil
 	index.uri = nil
 	index.logger = nil
+}
 
-	// Break circular SpecIndex <-> Resolver reference.
+func (index *SpecIndex) releaseOwnedResources() {
+	index.resolverLock.Lock()
 	if index.resolver != nil {
 		index.resolver.Release()
 		index.resolver = nil
 	}
+	index.resolverLock.Unlock()
 
-	// Rolodex holds rootNode and child indexes.
 	if index.rolodex != nil {
 		index.rolodex.Release()
 		index.rolodex = nil
 	}
 
-	// Config holds SpecInfo which holds RootNode.
 	if index.config != nil {
 		index.config.SpecInfo.Release()
 		index.config = nil
 	}
+}
+
+func (index *SpecIndex) resetRuntimeState() {
+	index.externalDocumentsCount = 0
+	index.operationTagsCount = 0
+	index.globalTagsCount = 0
+	index.totalTagsCount = 0
+	index.globalLinksCount = 0
+	index.globalCallbacksCount = 0
+	index.pathCount = 0
+	index.operationCount = 0
+	index.operationParamCount = 0
+	index.componentParamCount = 0
+	index.componentsInlineParamUniqueCount = 0
+	index.componentsInlineParamDuplicateCount = 0
+	index.schemaCount = 0
+	index.refCount = 0
+	index.enumCount = 0
+	index.descriptionCount = 0
+	index.summaryCount = 0
+	index.allowCircularReferences = false
+	index.built = false
+	index.componentIndexChan = nil
+	index.polyComponentIndexChan = nil
+	index.nodeMapCompleted = nil
 }
 
 // SetAbsolutePath sets the absolute path to the spec file for the index. Will be absolute, either as a http link or a file.

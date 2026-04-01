@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/pb33f/jsonpath/pkg/jsonpath"
 	"github.com/pb33f/libopenapi/utils"
@@ -53,6 +54,32 @@ func TestSpecIndex_MapNodes(t *testing.T) {
 	mappedKeyNode, ok = index.GetNode(15, 999)
 	assert.False(t, ok)
 	assert.Nil(t, mappedKeyNode)
+}
+
+func TestSpecIndex_GetNode_MissDoesNotLeakReadLock(t *testing.T) {
+	index := NewSpecIndexWithConfig(&yaml.Node{}, CreateOpenAPIIndexConfig())
+	index.nodeMap = map[int]map[int]*yaml.Node{
+		1: {1: {Value: "ok"}},
+		2: nil,
+	}
+
+	node, ok := index.GetNode(2, 1)
+	assert.False(t, ok)
+	assert.Nil(t, node)
+
+	locked := make(chan struct{})
+	go func() {
+		index.nodeMapLock.Lock()
+		index.nodeMap[3] = map[int]*yaml.Node{}
+		index.nodeMapLock.Unlock()
+		close(locked)
+	}()
+
+	select {
+	case <-locked:
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("writer lock blocked after GetNode miss")
+	}
 }
 
 func BenchmarkSpecIndex_MapNodes(b *testing.B) {

@@ -6,8 +6,10 @@ package index
 import (
 	"bytes"
 	"context"
+	"io/fs"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -418,6 +420,25 @@ components:
 	assert.Nil(t, n)
 }
 
+func TestFindComponent_LookupRolodex_NoRolodex(t *testing.T) {
+	index := NewTestSpecIndex().Load().(*SpecIndex)
+	index.rolodex = nil
+	assert.Nil(t, index.lookupRolodex(context.Background(), []string{"pet.yaml"}))
+}
+
+func TestFindComponent_LookupRolodex_MissingWholeFileReturnsNil(t *testing.T) {
+	cfg := CreateOpenAPIIndexConfig()
+	rolo := NewRolodex(cfg)
+	cfg.Rolodex = rolo
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.0.2"), &rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, cfg)
+	index.rolodex = rolo
+
+	assert.Nil(t, index.lookupRolodex(context.Background(), []string{"/tmp/does-not-exist.yaml"}))
+}
+
 func TestFindComponent_LookupRolodex_InvalidFile_NoBypass(t *testing.T) {
 	spec := `i:am : not a yaml file:`
 
@@ -573,4 +594,108 @@ components:
 	// Also test with a remote URL reference
 	n = index.lookupRolodex(context.Background(), []string{"https://example.com/schemas/pet.yaml"})
 	assert.Nil(t, n, "lookupRolodex should return nil for remote refs when SkipExternalRefResolution is enabled")
+}
+
+func TestFindComponent_LookupRolodex_WholeFileLocalDocument(t *testing.T) {
+	tempDir := t.TempDir()
+	filePath := filepath.Join(tempDir, "schema.yaml")
+	err := os.WriteFile(filePath, []byte("type: object\nproperties:\n  name:\n    type: string\n"), 0o644)
+	assert.NoError(t, err)
+
+	rootSpec := `openapi: 3.0.2
+info:
+  title: Test
+  version: 1.0.0`
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(rootSpec), &rootNode)
+
+	cfg := CreateOpenAPIIndexConfig()
+	cfg.BasePath = tempDir
+	rolo := NewRolodex(cfg)
+	rolo.SetRootNode(&rootNode)
+	cfg.Rolodex = rolo
+
+	fileFS, fsErr := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: tempDir,
+		DirFS:         os.DirFS(tempDir),
+		IndexConfig:   cfg,
+	})
+	assert.NoError(t, fsErr)
+	rolo.AddLocalFS(tempDir, fileFS)
+
+	index := NewSpecIndexWithConfig(&rootNode, cfg)
+	index.rolodex = rolo
+
+	ref := index.lookupRolodex(context.Background(), []string{filePath})
+	assert.NotNil(t, ref)
+	assert.Equal(t, "$", ref.Path)
+	assert.True(t, ref.IsRemote)
+	assert.Equal(t, filePath, ref.FullDefinition)
+}
+
+func TestFindComponent_FastFragmentAndNilRoot(t *testing.T) {
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`components:
+  schemas:
+    Pet:
+      type: string`), &rootNode)
+
+	ref := FindComponent(context.Background(), &rootNode, "#/components/schemas/Pet", "test.yaml", nil)
+	assert.NotNil(t, ref)
+	assert.Equal(t, "#/components/schemas/Pet", ref.Definition)
+
+	assert.Nil(t, FindComponent(context.Background(), nil, "#/components/schemas/Pet", "test.yaml", nil))
+	assert.Nil(t, FindComponent(context.Background(), &rootNode, "[", "test.yaml", nil))
+}
+
+func TestFindComponent_UnescapesEncodedComponentId(t *testing.T) {
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`components:
+  schemas:
+    thing name:
+      type: string`), &rootNode)
+
+	ref := FindComponent(context.Background(), &rootNode, "#/components/schemas/thing%20name", "test.yaml", nil)
+	assert.NotNil(t, ref)
+	assert.Equal(t, "#/components/schemas/thing name", ref.Definition)
+	assert.Equal(t, "$.components.schemas['thing name']", ref.Path)
+}
+
+func TestFindComponent_FallbackRootPointerJSONPath(t *testing.T) {
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`openapi: 3.1.0
+info:
+  title: test`), &rootNode)
+
+	ref := FindComponent(context.Background(), &rootNode, "", "test.yaml", nil)
+	assert.NotNil(t, ref)
+	assert.Equal(t, "$", ref.Path)
+	assert.Equal(t, "", ref.Definition)
+	assert.Equal(t, rootNode.Content[0], ref.Node)
+}
+
+type emptyRemoteFS struct{}
+
+func (e *emptyRemoteFS) Open(name string) (fs.File, error) {
+	return &testFile{content: ""}, nil
+}
+
+func TestFindComponent_LookupRolodex_NilRolodexFileLogsAndReturnsNil(t *testing.T) {
+	var logBuf bytes.Buffer
+
+	cfg := CreateOpenAPIIndexConfig()
+	cfg.AllowRemoteLookup = true
+	cfg.Logger = slog.New(slog.NewTextHandler(&logBuf, nil))
+
+	index := NewTestSpecIndex().Load().(*SpecIndex)
+	index.config = cfg
+	index.logger = cfg.Logger
+
+	rolo := NewRolodex(cfg)
+	rolo.AddRemoteFS("http://example.com", &emptyRemoteFS{})
+	index.rolodex = rolo
+
+	ref := index.lookupRolodex(context.Background(), []string{"http://example.com/spec.yaml"})
+	assert.Nil(t, ref)
+	assert.Contains(t, logBuf.String(), "cannot locate file in the rolodex")
 }

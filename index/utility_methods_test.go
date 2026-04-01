@@ -8,6 +8,7 @@ import (
 	"hash/maphash"
 	"net/url"
 	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -269,6 +270,64 @@ func Test_extractRequiredReferenceProperties_nocomponent_http2(t *testing.T) {
 
 func Test_extractDefinitionRequiredRefProperties_nil(t *testing.T) {
 	assert.Nil(t, extractDefinitionRequiredRefProperties(nil, nil, "", nil))
+}
+
+func TestExtractDefinitionsAndSchemas_UsesSchemaNodeForRequiredRefs(t *testing.T) {
+	d := `Pet:
+  type: object
+  required:
+    - owner
+  properties:
+    owner:
+      $ref: '#/components/schemas/Owner'
+Owner:
+  type: object`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
+	idx.specAbsolutePath = "test.yaml"
+	idx.allComponentSchemaDefinitions = &sync.Map{}
+
+	idx.extractDefinitionsAndSchemas(rootNode.Content[0], "#/components/schemas/")
+
+	refValue, ok := idx.allComponentSchemaDefinitions.Load("#/components/schemas/Pet")
+	assert.True(t, ok)
+	ref := refValue.(*Reference)
+	assert.Len(t, ref.RequiredRefProperties, 1)
+	for _, properties := range ref.RequiredRefProperties {
+		assert.Equal(t, []string{"owner"}, properties)
+	}
+}
+
+func TestExtractComponentSecuritySchemes_UsesSchemeNodeForRequiredRefs(t *testing.T) {
+	d := `oauth:
+  type: object
+  required:
+    - token
+  properties:
+    token:
+      $ref: '#/components/securitySchemes/Token'
+Token:
+  type: object`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
+	idx.specAbsolutePath = "test.yaml"
+	idx.allSecuritySchemes = &sync.Map{}
+
+	idx.extractComponentSecuritySchemes(rootNode.Content[0], "#/components/securitySchemes/")
+
+	refValue, ok := idx.allSecuritySchemes.Load("#/components/securitySchemes/oauth")
+	assert.True(t, ok)
+	ref := refValue.(*Reference)
+	assert.Len(t, ref.RequiredRefProperties, 1)
+	for _, properties := range ref.RequiredRefProperties {
+		assert.Equal(t, []string{"token"}, properties)
+	}
 }
 
 func TestSyncMapToMap_Nil(t *testing.T) {
