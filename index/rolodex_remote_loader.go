@@ -14,7 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -764,7 +764,7 @@ func (i *RemoteFS) createRemoteFile(remoteParsedURL *url.URL, fileExt FileExtens
 		lastModifiedTime = time.Now()
 	}
 	return &RemoteFile{
-		filename:         filepath.Base(remoteParsedURL.Path),
+		filename:         path.Base(remoteParsedURL.Path),
 		name:             remoteParsedURL.Path,
 		extension:        fileExt,
 		data:             responseBytes,
@@ -778,7 +778,7 @@ func (i *RemoteFS) createRemoteFile(remoteParsedURL *url.URL, fileExt FileExtens
 func (i *RemoteFS) createRemoteIndexConfig(remoteParsedURL, remoteParsedURLOriginal *url.URL) *SpecIndexConfig {
 	copiedCfg := *i.indexConfig
 	newBase := fmt.Sprintf("%s://%s%s", remoteParsedURLOriginal.Scheme, remoteParsedURLOriginal.Host,
-		filepath.Dir(remoteParsedURL.Path))
+		path.Dir(remoteParsedURL.Path))
 	newBaseURL, _ := url.Parse(newBase)
 	if newBaseURL != nil {
 		copiedCfg.BaseURL = newBaseURL

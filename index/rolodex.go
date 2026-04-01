@@ -771,13 +771,9 @@ func (r *Rolodex) asLocalFile(file fs.File, fileLookup string) (*LocalFile, []er
 		return wrapped, errs
 	}
 
-	bytes, readErr := io.ReadAll(file)
-	if readErr != nil {
-		return nil, append(errorStack, readErr)
-	}
-	stat, statErr := file.Stat()
-	if statErr != nil {
-		return nil, append(errorStack, statErr)
+	bytes, stat, errs := consumeAdaptedFile(file)
+	if len(errs) > 0 {
+		return nil, append(errorStack, errs...)
 	}
 	if len(bytes) == 0 {
 		return nil, nil
@@ -843,13 +839,9 @@ func (r *Rolodex) asRemoteFile(file fs.File, location string) (*RemoteFile, []er
 		return remoteFile, nil
 	}
 
-	bytes, readErr := io.ReadAll(file)
-	if readErr != nil {
-		return nil, []error{readErr}
-	}
-	stat, statErr := file.Stat()
-	if statErr != nil {
-		return nil, []error{statErr}
+	bytes, stat, errs := consumeAdaptedFile(file)
+	if len(errs) > 0 {
+		return nil, errs
 	}
 	if len(bytes) == 0 {
 		return nil, nil
@@ -865,6 +857,28 @@ func (r *Rolodex) asRemoteFile(file fs.File, location string) (*RemoteFile, []er
 		lastModified: stat.ModTime(),
 		index:        atm,
 	}, nil
+}
+
+func consumeAdaptedFile(file fs.File) ([]byte, fs.FileInfo, []error) {
+	var errorStack []error
+
+	bytes, readErr := io.ReadAll(file)
+	if readErr != nil {
+		errorStack = append(errorStack, readErr)
+		_ = file.Close()
+		return nil, nil, errorStack
+	}
+
+	stat, statErr := file.Stat()
+	if statErr != nil {
+		errorStack = append(errorStack, statErr)
+		_ = file.Close()
+		return nil, nil, errorStack
+	}
+
+	_ = file.Close()
+
+	return bytes, stat, nil
 }
 
 func (r *Rolodex) wrapLocalRolodexFile(localFile *LocalFile) (RolodexFile, error) {

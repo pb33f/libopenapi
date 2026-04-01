@@ -2324,6 +2324,28 @@ func TestRolodex_AsRemoteFile_AndWrappers(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestRolodex_AsLocalFile_ClosesAdaptedFile(t *testing.T) {
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.rootIndex = NewTestSpecIndex().Load().(*SpecIndex)
+
+	file := &closeTrackingFile{testFile: testFile{content: "hello"}}
+	localFile, errs := rolo.asLocalFile(file, "/tmp/spec.yaml")
+	assert.NotNil(t, localFile)
+	assert.Empty(t, errs)
+	assert.True(t, file.closed)
+}
+
+func TestRolodex_AsRemoteFile_ClosesAdaptedFile(t *testing.T) {
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.rootIndex = NewTestSpecIndex().Load().(*SpecIndex)
+
+	file := &closeTrackingFile{testFile: testFile{content: "hello"}}
+	remoteFile, errs := rolo.asRemoteFile(file, "http://example.com/spec.yaml")
+	assert.NotNil(t, remoteFile)
+	assert.Empty(t, errs)
+	assert.True(t, file.closed)
+}
+
 func TestRolodex_AsFileHelperErrors(t *testing.T) {
 	rolo := NewRolodex(CreateOpenAPIIndexConfig())
 
@@ -2437,6 +2459,11 @@ type testFile struct {
 	offset  int64
 }
 
+type closeTrackingFile struct {
+	testFile
+	closed bool
+}
+
 type errorReadFile struct{}
 
 func (e *errorReadFile) Read(_ []byte) (int, error) { return 0, fmt.Errorf("read failed") }
@@ -2461,6 +2488,11 @@ func (tf *testFile) Read(p []byte) (n int, err error) {
 }
 
 func (tf *testFile) Close() error { return nil }
+
+func (tf *closeTrackingFile) Close() error {
+	tf.closed = true
+	return nil
+}
 
 func (tf *testFile) Stat() (fs.FileInfo, error) {
 	return &testFileInfo{name: "test.yaml", size: int64(len(tf.content))}, nil
