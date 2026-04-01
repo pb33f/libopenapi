@@ -580,6 +580,8 @@ func runIndexFunction(funcs []func() int, wg *sync.WaitGroup) {
 	}
 }
 
+// GenerateCleanSpecConfigBaseURL builds a cleaned base URL by merging the baseURL path with dir,
+// removing duplicate segments. If includeFile is true, the last path segment is preserved.
 func GenerateCleanSpecConfigBaseURL(baseURL *url.URL, dir string, includeFile bool) string {
 	cleanedPath := baseURL.Path // not cleaned yet!
 

@@ -18,7 +18,7 @@ type ResolvingError struct {
 	Node     *yaml.Node
 	Path     string
 
-	// CircularReference is set if the error is a reference to the circular reference.
+	// CircularReference is the detected circular reference result, if this error relates to one.
 	CircularReference *CircularReferenceResult
 }
 
@@ -42,8 +42,8 @@ func (r *ResolvingError) Error() string {
 	return strings.Join(msgs, "\n")
 }
 
-// Resolver will use a *index.SpecIndex to stitch together a resolved root tree using all the discovered
-// references in the doc.
+// Resolver uses a SpecIndex to stitch together a resolved root tree from all discovered references,
+// detecting circular references and resolving polymorphic relationships along the way.
 type Resolver struct {
 	specIndex              *SpecIndex
 	resolvedRoot           *yaml.Node
@@ -193,6 +193,8 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 	return resolver.resolvingErrors
 }
 
+// CheckForCircularReferences walks all references without resolving them, detecting circular
+// reference chains. Returns any resolving errors found, including infinite circular loops.
 func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 	visitIndexWithoutDamagingIt(resolver, resolver.specIndex)
 	for _, circRef := range resolver.circularReferences {

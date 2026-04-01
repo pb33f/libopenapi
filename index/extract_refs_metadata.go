@@ -1,4 +1,4 @@
-// Copyright 2023-2026 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package index
@@ -116,16 +116,23 @@ func (index *SpecIndex) collectSecurityRequirementMetadata(node *yaml.Node, keyI
 	if index.securityRequirementRefs == nil {
 		index.securityRequirementRefs = make(map[string]map[string][]*Reference)
 	}
+	// Security requirements are an array of objects. Each object maps a security scheme
+	// name (key) to an array of required scopes (value). For example:
+	//   security:
+	//     - oauth2: ["read", "write"]   <-- k=0, scheme="oauth2", scopes=["read","write"]
+	//       apiKey: []                  <-- same k, scheme="apiKey", scopes=[]
 	securityNode := metadataValueNode(node, keyIndex)
 	if securityNode == nil || !utils.IsNodeArray(securityNode) {
 		return
 	}
 	var secKey string
 	for k := range securityNode.Content {
+		// Outer loop: each security requirement object in the array.
 		if !utils.IsNodeMap(securityNode.Content[k]) {
 			continue
 		}
 		for g := range securityNode.Content[k].Content {
+			// Inner loop: key-value pairs within a single requirement object.
 			if g%2 == 0 {
 				secKey = securityNode.Content[k].Content[g].Value
 				continue
