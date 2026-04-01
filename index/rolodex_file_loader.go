@@ -494,7 +494,11 @@ func (l *LocalFS) extractFile(p string) (*LocalFile, error) {
 		var file fs.File
 		if config != nil && config.DirFS != nil {
 			l.logger.Debug("[rolodex file loader]: collecting file from dirFS", "file", extension, "location", abs)
-			file, _ = config.DirFS.Open(p)
+			var fileError error
+			file, fileError = config.DirFS.Open(p)
+			if fileError != nil {
+				return nil, fileError
+			}
 		} else {
 			l.logger.Debug("[rolodex file loader]: reading local file from OS", "file", extension, "location", abs)
 			var fileError error
@@ -503,8 +507,8 @@ func (l *LocalFS) extractFile(p string) (*LocalFile, error) {
 			if fileError != nil {
 				return nil, fileError
 			}
-			defer file.Close()
 		}
+		defer file.Close()
 
 		modTime := time.Now()
 		stat, _ := file.Stat()

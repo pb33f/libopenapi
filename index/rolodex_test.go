@@ -2346,6 +2346,21 @@ func TestRolodex_AsRemoteFile_ClosesAdaptedFile(t *testing.T) {
 	assert.True(t, file.closed)
 }
 
+func TestLocalFS_ExtractFile_ClosesDirFSFile(t *testing.T) {
+	lfs, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: "/tmp",
+		DirFS: &closeTrackingDirFS{
+			file: &closeTrackingFile{testFile: testFile{content: "hello"}},
+		},
+	})
+	assert.NoError(t, err)
+
+	localFile, extractErr := lfs.extractFile("spec.yaml")
+	assert.NoError(t, extractErr)
+	assert.NotNil(t, localFile)
+	assert.True(t, lfs.fsConfig.DirFS.(*closeTrackingDirFS).file.closed)
+}
+
 func TestRolodex_AsFileHelperErrors(t *testing.T) {
 	rolo := NewRolodex(CreateOpenAPIIndexConfig())
 
@@ -2464,6 +2479,10 @@ type closeTrackingFile struct {
 	closed bool
 }
 
+type closeTrackingDirFS struct {
+	file *closeTrackingFile
+}
+
 type errorReadFile struct{}
 
 func (e *errorReadFile) Read(_ []byte) (int, error) { return 0, fmt.Errorf("read failed") }
@@ -2492,6 +2511,12 @@ func (tf *testFile) Close() error { return nil }
 func (tf *closeTrackingFile) Close() error {
 	tf.closed = true
 	return nil
+}
+
+func (f *closeTrackingDirFS) Open(name string) (fs.File, error) {
+	f.file.offset = 0
+	f.file.closed = false
+	return f.file, nil
 }
 
 func (tf *testFile) Stat() (fs.FileInfo, error) {
