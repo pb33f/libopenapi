@@ -1,4 +1,4 @@
-// Copyright 2022-2033 Dave Shanley / Quobix
+// Copyright 2022-2026 Dave Shanley / Quobix
 // SPDX-License-Identifier: MIT
 
 package index
