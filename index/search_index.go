@@ -303,9 +303,9 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 			}
 
 			idx := rFile.GetIndex()
-			if index.resolver != nil {
+			if resolver := index.GetResolver(); resolver != nil {
 				index.resolverLock.Lock()
-				index.resolver.indexesVisited++
+				resolver.indexesVisited++
 				index.resolverLock.Unlock()
 			}
 			if idx != nil {

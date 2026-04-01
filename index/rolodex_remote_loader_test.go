@@ -12,11 +12,13 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"context"
 	"github.com/stretchr/testify/assert"
+	"go.yaml.in/yaml/v4"
 )
 
 var test_httpClient = &http.Client{Timeout: time.Duration(60) * time.Second}
@@ -231,6 +233,19 @@ func TestRemoteFile_GoodContent(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestRemoteFile_GetContentAsYAMLNode_UsesParsedFastPath(t *testing.T) {
+	parsed := &yaml.Node{Kind: yaml.MappingNode}
+	rf := &RemoteFile{
+		data:   []byte("not: valid: yaml"),
+		index:  *NewTestSpecIndex(),
+		parsed: parsed,
+	}
+
+	node, err := rf.GetContentAsYAMLNode()
+	assert.NoError(t, err)
+	assert.Same(t, parsed, node)
+}
+
 func TestRemoteFile_Index_AlreadySet(t *testing.T) {
 	rf := &RemoteFile{data: []byte("good: data"), index: *NewTestSpecIndex()}
 	x, y := rf.Index(context.Background(), &SpecIndexConfig{})
@@ -442,6 +457,128 @@ func TestNewRemoteFS_BadURL(t *testing.T) {
 	x, y := rfs.Open("httpp://\r\nb33f.io/bingo.yaml")
 	assert.Nil(t, x)
 	assert.Error(t, y)
+}
+
+type trackedReadCloser struct {
+	io.Reader
+	closed atomic.Bool
+}
+
+func (t *trackedReadCloser) Close() error {
+	t.closed.Store(true)
+	return nil
+}
+
+func TestRemoteFS_OpenWithContext_ClosesResponseBody(t *testing.T) {
+	config := CreateOpenAPIIndexConfig()
+	rfs, err := NewRemoteFSWithConfig(config)
+	assert.NoError(t, err)
+
+	body := &trackedReadCloser{Reader: strings.NewReader("openapi: 3.1.0")}
+	rfs.RemoteHandlerFunc = func(url string) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: 200,
+			Body:       body,
+			Header:     make(http.Header),
+		}, nil
+	}
+
+	file, err := rfs.OpenWithContext(context.Background(), "http://example.com/spec.yaml")
+	assert.NoError(t, err)
+	assert.NotNil(t, file)
+	assert.True(t, body.closed.Load())
+}
+
+func TestRemoteFS_OpenWithContext_ClosesResponseBodyOnClientError(t *testing.T) {
+	config := CreateOpenAPIIndexConfig()
+	rfs, err := NewRemoteFSWithConfig(config)
+	assert.NoError(t, err)
+
+	body := &trackedReadCloser{Reader: strings.NewReader("boom")}
+	rfs.RemoteHandlerFunc = func(url string) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: 502,
+			Body:       body,
+			Header:     make(http.Header),
+		}, errors.New("client failed")
+	}
+
+	file, err := rfs.OpenWithContext(context.Background(), "http://example.com/spec.yaml")
+	assert.Nil(t, file)
+	assert.Error(t, err)
+	assert.True(t, body.closed.Load())
+}
+
+func TestRemoteFS_OpenWithContext_CacheKeyIncludesHost(t *testing.T) {
+	config := CreateOpenAPIIndexConfig()
+	rfs, err := NewRemoteFSWithConfig(config)
+	assert.NoError(t, err)
+
+	rfs.RemoteHandlerFunc = func(rawURL string) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: 200,
+			Body:       io.NopCloser(strings.NewReader(fmt.Sprintf("source: %s", rawURL))),
+			Header:     make(http.Header),
+		}, nil
+	}
+
+	first, err := rfs.OpenWithContext(context.Background(), "http://one.example/shared.yaml")
+	assert.NoError(t, err)
+	second, err := rfs.OpenWithContext(context.Background(), "http://two.example/shared.yaml")
+	assert.NoError(t, err)
+
+	firstBytes, err := io.ReadAll(first)
+	assert.NoError(t, err)
+	secondBytes, err := io.ReadAll(second)
+	assert.NoError(t, err)
+	assert.NotEqual(t, string(firstBytes), string(secondBytes))
+}
+
+func TestRemoteLookupCacheKey(t *testing.T) {
+	assert.Equal(t, "", remoteLookupCacheKey(nil))
+
+	u, err := url.Parse("https://example.com/spec.yaml#/components/schemas/Pet")
+	assert.NoError(t, err)
+	assert.Equal(t, "https://example.com/spec.yaml", remoteLookupCacheKey(u))
+}
+
+func TestRemoteFS_NormalizeAndLoadCachedHelpers(t *testing.T) {
+	config := CreateOpenAPIIndexConfig()
+	config.BaseURL, _ = url.Parse("https://root.example/base")
+	rfs, err := NewRemoteFSWithConfig(config)
+	assert.NoError(t, err)
+
+	target, err := url.Parse("http://other.example/spec.yaml")
+	assert.NoError(t, err)
+	rfs.normalizeRemoteURL(target)
+	assert.Equal(t, "https", target.Scheme)
+	assert.Equal(t, "root.example", target.Host)
+
+	legacyFile := &RemoteFile{filename: "spec.yaml"}
+	rfs.Files.Store("/spec.yaml", legacyFile)
+	assert.Same(t, legacyFile, rfs.loadCachedRemoteFile("https://root.example/spec.yaml", "/spec.yaml"))
+}
+
+func TestRemoteFS_CreateRemoteHelpers(t *testing.T) {
+	config := CreateOpenAPIIndexConfig()
+	rfs, err := NewRemoteFSWithConfig(config)
+	assert.NoError(t, err)
+
+	current, err := url.Parse("https://root.example/spec.yaml")
+	assert.NoError(t, err)
+	original, err := url.Parse("http://source.example/spec.yaml")
+	assert.NoError(t, err)
+
+	remoteFile := rfs.createRemoteFile(current, YAML, []byte("openapi: 3.1.0"), http.Header{
+		"Last-Modified": []string{"Wed, 21 Oct 2015 07:28:00 GMT"},
+	})
+	assert.Equal(t, "spec.yaml", remoteFile.GetFileName())
+	assert.Equal(t, YAML, remoteFile.GetFileExtension())
+
+	cfg := rfs.createRemoteIndexConfig(current, original)
+	assert.Equal(t, "https://root.example/spec.yaml", cfg.SpecAbsolutePath)
+	assert.True(t, cfg.ExtractRefsSequentially)
+	assert.Equal(t, "http://source.example", cfg.BaseURL.Scheme+"://"+cfg.BaseURL.Host)
 }
 
 func TestRemoteFile_SignalIndexingComplete_DoubleClose(t *testing.T) {

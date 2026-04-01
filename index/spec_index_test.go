@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -203,6 +204,9 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 
 	// index the rolodex.
 	indexedErr := rolo.IndexTheRolodex(context.Background())
+	if indexedErr != nil && strings.Contains(indexedErr.Error(), "429") {
+		t.Skipf("skipping due to GitHub rate limit: %v", indexedErr)
+	}
 	assert.NoError(t, indexedErr)
 
 	// get all the files!
@@ -211,7 +215,13 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 
 	// if windows
 	if runtime.GOOS != "windows" {
+		if fileLen != 1660 && hasRateLimitedRemoteErrors(remoteFS.GetErrors()) {
+			t.Skipf("skipping due to GitHub rate limit; fetched %d remote files", fileLen)
+		}
 		assert.Equal(t, 1660, fileLen)
+	}
+	if hasRateLimitedRemoteErrors(remoteFS.GetErrors()) {
+		t.Skip("skipping due to GitHub rate limit in remote filesystem fetches")
 	}
 	assert.Len(t, remoteFS.GetErrors(), 0)
 
@@ -219,6 +229,15 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
+}
+
+func hasRateLimitedRemoteErrors(errs []error) bool {
+	for _, err := range errs {
+		if err != nil && strings.Contains(err.Error(), "429") {
+			return true
+		}
+	}
+	return false
 }
 
 func TestSpecIndex_Redocly(t *testing.T) {
@@ -817,6 +836,28 @@ func TestSpecIndex_NoRoot(t *testing.T) {
 	assert.Equal(t, -1, index.GetGlobalLinksCount())
 }
 
+func TestSpecIndex_ExtractExternalDocuments_ReturnsFoundReferences(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: test
+  version: 1.0.0
+externalDocs:
+  url: https://example.com/top
+paths:
+  /test:
+    get:
+      externalDocs:
+        url: https://example.com/op`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewTestSpecIndex().Load().(*SpecIndex)
+	docs := index.ExtractExternalDocuments(&rootNode)
+	assert.Len(t, docs, 2)
+	assert.Len(t, index.externalDocumentsRef, 2)
+}
+
 func test_buildMixedRefServer() *httptest.Server {
 	bs, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
@@ -963,6 +1004,28 @@ func TestGlobalCallbacksNoIndexTest(t *testing.T) {
 	assert.Equal(t, -1, idx.GetGlobalCallbacksCount())
 }
 
+func TestGlobalCallbacksCount_MultipleMatchesWithinOperation(t *testing.T) {
+	yml := `paths:
+  /events:
+    post:
+      callbacks:
+        outer:
+          '{$request.query.url}':
+            post:
+              callbacks:
+                inner:
+                  '{$request.query.url}':
+                    post:
+                      description: nested`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	assert.Equal(t, 2, index.GetGlobalCallbacksCount())
+	assert.Len(t, index.callbacksRefs["/events"]["post"], 2)
+}
+
 func TestMultipleCallbacksPerOperationVerb(t *testing.T) {
 	yml := `components:
   callbacks:  
@@ -998,6 +1061,106 @@ paths:
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Equal(t, 4, index.GetGlobalCallbacksCount())
+}
+
+func TestGlobalLinksCount_CollectsAllMatchesAndPreservesSlice(t *testing.T) {
+	yml := `paths:
+  /orders:
+    get:
+      responses:
+        '200':
+          description: ok
+          links:
+            first:
+              operationId: one
+            second:
+              operationId: two
+        '201':
+          description: created
+          links:
+            third:
+              operationId: three`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	assert.Equal(t, 3, index.GetGlobalLinksCount())
+	assert.Len(t, index.linksRefs["/orders"]["get"], 3)
+}
+
+func TestCollectOperationObjectReferences(t *testing.T) {
+	yml := `get:
+  responses:
+    '200':
+      description: ok
+      links:
+        first:
+          operationId: one`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewTestSpecIndex().Load().(*SpecIndex)
+	target := map[string]map[string][]*Reference{}
+	operation := &Reference{Name: "get", Node: rootNode.Content[0]}
+
+	count := index.collectOperationObjectReferences("/orders", operation, "links", target)
+
+	assert.Equal(t, 1, count)
+	assert.Len(t, target["/orders"]["get"], 1)
+}
+
+func TestFindNestedObjectContainers(t *testing.T) {
+	yml := `post:
+  callbacks:
+    outer:
+      '{$request.query.url}':
+        post:
+          callbacks:
+            inner:
+              '{$request.query.url}':
+                post:
+                  description: nested`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	callbacks := findNestedObjectContainers(rootNode.Content[0], "callbacks")
+	assert.Len(t, callbacks, 2)
+	assert.Nil(t, findNestedObjectContainers(nil, "links"))
+}
+
+func TestFindNestedObjectContainers_DocumentAndSequenceTraversal(t *testing.T) {
+	yml := `items:
+  - links:
+      one:
+        operationId: listPets
+  - callbacks:
+      cb:
+        '{$request.query.url}':
+          post:
+            description: nested`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	links := findNestedObjectContainers(&rootNode, "links")
+	callbacks := findNestedObjectContainers(&rootNode, "callbacks")
+	missing := findNestedObjectContainers(rootNode.Content[0], "missing")
+
+	assert.Len(t, links, 1)
+	assert.Len(t, callbacks, 1)
+	assert.Empty(t, missing)
+}
+
+func TestFindNestedObjectContainers_NilChildTraversal(t *testing.T) {
+	root := &yaml.Node{
+		Kind:    yaml.DocumentNode,
+		Content: []*yaml.Node{nil},
+	}
+
+	assert.Empty(t, findNestedObjectContainers(root, "links"))
 }
 
 func TestSpecIndex_ExtractComponentsFromRefs(t *testing.T) {
@@ -1372,6 +1535,234 @@ func TestSpecIndex_FindComponent(t *testing.T) {
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Nil(t, index.FindComponent(context.Background(), "I-do-not-exist"))
+}
+
+func TestSpecIndex_FindComponent_DirectComponentFastPath(t *testing.T) {
+	yml := `components:
+  schemas:
+    pizza:
+      type: object
+      required:
+        - topping
+      properties:
+        topping:
+          $ref: '#/components/schemas/topping'
+    topping:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	ref := index.FindComponent(context.Background(), "#/components/schemas/pizza")
+	assert.NotNil(t, ref)
+	assert.Equal(t, "#/components/schemas/pizza", ref.Definition)
+	assert.Len(t, ref.RequiredRefProperties, 1)
+	for _, properties := range ref.RequiredRefProperties {
+		assert.Equal(t, []string{"topping"}, properties)
+	}
+}
+
+func TestSpecIndex_FindComponent_DirectComponentFastPath_DecodesPointerTokens(t *testing.T) {
+	yml := `components:
+  schemas:
+    thing/one:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	ref := index.FindComponent(context.Background(), "#/components/schemas/thing~1one")
+	assert.NotNil(t, ref)
+	assert.Equal(t, "#/components/schemas/thing~1one", ref.Definition)
+	assert.Equal(t, "thing/one", ref.Name)
+}
+
+func TestFindComponentDirectHelpers(t *testing.T) {
+	assert.Equal(t, "", normalizeComponentLookupID(""))
+	assert.Equal(t, "#/components/schemas/thing/one", normalizeComponentLookupID("#/components/schemas/thing~1one"))
+	assert.Equal(t, "#/components/schemas/thing~two name", normalizeComponentLookupID("#/components/schemas/thing~0two%20name"))
+	assert.Nil(t, loadSyncMapReference(nil, "#/components/schemas/thing"))
+
+	var sm sync.Map
+	source := &Reference{
+		Name:                  "thing/one",
+		Node:                  &yaml.Node{Kind: yaml.ScalarNode, Value: "x"},
+		RequiredRefProperties: map[string][]string{"test": []string{"value"}},
+	}
+	sm.Store("#/components/schemas/thing/one", source)
+	assert.Same(t, source, loadSyncMapReference(&sm, "#/components/schemas/thing/one"))
+
+	index := NewTestSpecIndex().Load().(*SpecIndex)
+	index.allComponentSchemaDefinitions = &sm
+	index.allRefs = map[string]*Reference{
+		"#/components/schemas/thing~1one": {ParentNode: &yaml.Node{Kind: yaml.MappingNode}},
+	}
+
+	ref := findDirectComponent(index, "#/components/schemas/thing~1one", "test.yaml")
+	assert.NotNil(t, ref)
+	assert.Equal(t, "test.yaml#/components/schemas/thing~1one", ref.FullDefinition)
+	assert.NotNil(t, ref.ParentNode)
+	assert.Equal(t, source.RequiredRefProperties, ref.RequiredRefProperties)
+
+	index.allRefs = map[string]*Reference{
+		"test.yaml#/components/schemas/thing~1one": {ParentNode: &yaml.Node{Kind: yaml.SequenceNode}},
+	}
+	ref = cloneFoundComponentReference(index, &Reference{Name: "thing/one"}, "#/components/schemas/thing~1one", "test.yaml")
+	assert.Equal(t, yaml.SequenceNode, ref.ParentNode.Kind)
+
+	assert.Nil(t, findDirectComponent(nil, "#/components/schemas/thing", "test.yaml"))
+	assert.Nil(t, findDirectComponent(index, "thing", "test.yaml"))
+}
+
+func TestCloneFoundComponentReference_PreservesPathAndUsesFullDefinitionParent(t *testing.T) {
+	index := NewTestSpecIndex().Load().(*SpecIndex)
+	index.allRefs = map[string]*Reference{
+		"test.yaml#/components/schemas/pizza": {ParentNode: &yaml.Node{Kind: yaml.MappingNode}},
+	}
+
+	var schemaNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`type: object
+required:
+  - topping
+properties:
+  topping:
+    $ref: '#/components/schemas/topping'`), &schemaNode)
+
+	ref := cloneFoundComponentReference(index, &Reference{
+		Name: "pizza",
+		Path: "$.custom",
+		Node: schemaNode.Content[0],
+	}, "#/components/schemas/pizza", "test.yaml")
+
+	assert.NotNil(t, ref)
+	assert.Equal(t, "$.custom", ref.Path)
+	assert.Equal(t, yaml.MappingNode, ref.ParentNode.Kind)
+	assert.NotNil(t, ref.RequiredRefProperties)
+	for _, properties := range ref.RequiredRefProperties {
+		assert.Equal(t, []string{"topping"}, properties)
+	}
+}
+
+func TestFindComponentReferenceHelpers(t *testing.T) {
+	index := NewTestSpecIndex().Load().(*SpecIndex)
+	componentParent := &yaml.Node{Kind: yaml.MappingNode}
+	fullDefinitionParent := &yaml.Node{Kind: yaml.SequenceNode}
+	index.allRefs = map[string]*Reference{
+		"#/components/schemas/pizza":          {ParentNode: componentParent},
+		"test.yaml#/components/schemas/pizza": {ParentNode: fullDefinitionParent},
+	}
+
+	assert.Nil(t, lookupComponentParentNode(nil, "#/components/schemas/pizza", "test.yaml#/components/schemas/pizza"))
+	assert.Same(t, componentParent, lookupComponentParentNode(index, "#/components/schemas/pizza", "test.yaml#/components/schemas/pizza"))
+
+	index.allRefs = map[string]*Reference{
+		"test.yaml#/components/schemas/pizza": {ParentNode: fullDefinitionParent},
+	}
+	assert.Same(t, fullDefinitionParent, lookupComponentParentNode(index, "#/components/schemas/pizza", "test.yaml#/components/schemas/pizza"))
+
+	assert.Nil(t, cloneSiblingProperties(nil))
+	clonedSiblings := cloneSiblingProperties(map[string]*yaml.Node{"x": {Kind: yaml.ScalarNode, Value: "y"}})
+	assert.Len(t, clonedSiblings, 1)
+	assert.Equal(t, "y", clonedSiblings["x"].Value)
+}
+
+func TestFindDirectComponent_CategoryBranches(t *testing.T) {
+	index := NewTestSpecIndex().Load().(*SpecIndex)
+	index.allComponentSchemaDefinitions = &sync.Map{}
+	index.allComponentSchemaDefinitions.Store("#/definitions/Model", &Reference{Name: "Model"})
+	index.allParameters = map[string]*Reference{"#/components/parameters/p": {Name: "p"}}
+	index.allRequestBodies = map[string]*Reference{"#/components/requestBodies/rb": {Name: "rb"}}
+	index.allResponses = map[string]*Reference{"#/components/responses/r": {Name: "r"}}
+	index.allHeaders = map[string]*Reference{"#/components/headers/h": {Name: "h"}}
+	index.allExamples = map[string]*Reference{"#/components/examples/e": {Name: "e"}}
+	index.allLinks = map[string]*Reference{"#/components/links/l": {Name: "l"}}
+	index.allCallbacks = map[string]*Reference{"#/components/callbacks/cb": {Name: "cb"}}
+	index.allComponentPathItems = map[string]*Reference{"#/components/pathItems/pi": {Name: "pi"}}
+	index.allSecuritySchemes = &sync.Map{}
+	index.allSecuritySchemes.Store("#/components/securitySchemes/sec", &Reference{Name: "sec"})
+
+	tests := []string{
+		"#/definitions/Model",
+		"#/components/securitySchemes/sec",
+		"#/components/parameters/p",
+		"#/components/requestBodies/rb",
+		"#/components/responses/r",
+		"#/components/headers/h",
+		"#/components/examples/e",
+		"#/components/links/l",
+		"#/components/callbacks/cb",
+		"#/components/pathItems/pi",
+	}
+
+	for _, componentID := range tests {
+		assert.NotNil(t, findDirectComponent(index, componentID, "test.yaml"), componentID)
+	}
+	assert.Nil(t, findDirectComponent(index, "#/components/unknown/nope", "test.yaml"))
+}
+
+func TestSpecIndex_FindComponentInRoot_NoRoot(t *testing.T) {
+	assert.Nil(t, (&SpecIndex{}).FindComponentInRoot(context.Background(), "#/components/schemas/pizza"))
+}
+
+func TestSpecIndex_FindComponentInRoot_NormalizesPrefixedReference(t *testing.T) {
+	yml := `components:
+  schemas:
+    pizza:
+      type: string
+    thing name:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+
+	ref := index.FindComponentInRoot(context.Background(), "test.yaml#/components/schemas/pizza")
+	assert.NotNil(t, ref)
+	assert.Equal(t, "#/components/schemas/pizza", ref.Definition)
+
+	ref = index.FindComponent(context.Background(), "#/components/schemas/thing%20name")
+	assert.NotNil(t, ref)
+	assert.Equal(t, "thing name", ref.Name)
+}
+
+func TestFindComponent_FunctionFallbackEdges(t *testing.T) {
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte("pizza: pie"), &rootNode)
+
+	index := NewTestSpecIndex().Load().(*SpecIndex)
+	index.allRefs = map[string]*Reference{}
+
+	assert.Nil(t, FindComponent(context.Background(), nil, "#/missing", "", index))
+	assert.Nil(t, FindComponent(context.Background(), &rootNode, "#/missing", "", index))
+
+	rootRef := FindComponent(context.Background(), &rootNode, "#/", "", index)
+	assert.NotNil(t, rootRef)
+	assert.Equal(t, "$", rootRef.Path)
+
+	cloned := cloneFoundComponentReference(index, &Reference{}, "#/", "")
+	assert.Equal(t, "$", cloned.Path)
+}
+
+func BenchmarkFindComponent_DirectComponentFastPath(b *testing.B) {
+	yml := `components:
+  schemas:
+    pizza:
+      type: object
+    topping:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	var sink atomic.Pointer[Reference]
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		sink.Store(index.FindComponent(context.Background(), "#/components/schemas/pizza"))
+	}
 }
 
 func TestSpecIndex_TestPathsNodeAsArray(t *testing.T) {

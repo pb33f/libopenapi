@@ -4,6 +4,7 @@
 package index
 
 import (
+	"context"
 	"runtime"
 	"strings"
 	"testing"
@@ -734,4 +735,230 @@ func TestUnderOpenAPIExamplePath(t *testing.T) {
 			assert.Equal(t, tt.want, underOpenAPIExamplePath(tt.path))
 		})
 	}
+}
+
+func TestExtractRefs_InlineSchemaHelpers(t *testing.T) {
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
+	idx.specAbsolutePath = "test.yaml"
+
+	var inlineNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`additionalProperties: true`), &inlineNode)
+	idx.collectInlineSchemaDefinition(nil, inlineNode.Content[0], []string{"components", "schemas", "Pet"}, 0)
+	assert.Empty(t, idx.allInlineSchemaDefinitions)
+
+	var refNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`schema:
+  $ref: '#/components/schemas/Pet'`), &refNode)
+	idx.collectInlineSchemaDefinition(nil, refNode.Content[0], []string{"paths", "/pets"}, 0)
+	assert.Len(t, idx.allRefSchemaDefinitions, 1)
+
+	before := len(idx.allInlineSchemaDefinitions)
+	idx.collectInlineSchemaDefinition(nil, refNode.Content[0], []string{"paths"}, 1)
+	assert.Len(t, idx.allInlineSchemaDefinitions, before)
+}
+
+func TestExtractRefs_MapAndArraySchemaHelpers(t *testing.T) {
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
+	idx.specAbsolutePath = "test.yaml"
+
+	var propsNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`properties:
+  foo:
+    $ref: '#/components/schemas/Pet'
+  bar:
+    type: object`), &propsNode)
+	idx.collectMapSchemaDefinitions(nil, propsNode.Content[0], []string{"components", "schemas", "Thing"}, 0)
+	assert.Len(t, idx.allRefSchemaDefinitions, 1)
+	assert.Len(t, idx.allInlineSchemaDefinitions, 1)
+	assert.Len(t, idx.allInlineSchemaObjectDefinitions, 1)
+
+	inlineBefore := len(idx.allInlineSchemaDefinitions)
+	idx.collectMapSchemaDefinitions(nil, propsNode.Content[0], []string{"examples"}, 0)
+	assert.Len(t, idx.allInlineSchemaDefinitions, inlineBefore)
+	idx.collectMapSchemaDefinitions(nil, propsNode.Content[0], []string{"x-test"}, 0)
+	assert.Len(t, idx.allInlineSchemaDefinitions, inlineBefore)
+
+	var arrayNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`oneOf:
+  - $ref: '#/components/schemas/Pet'
+  - type: string`), &arrayNode)
+	idx.collectArraySchemaDefinitions(nil, arrayNode.Content[0], nil, 0)
+	assert.Len(t, idx.allRefSchemaDefinitions, 2)
+	assert.Len(t, idx.allInlineSchemaDefinitions, 2)
+
+	idx.collectArraySchemaDefinitions(nil, arrayNode.Content[0], nil, 1)
+	assert.Len(t, idx.allRefSchemaDefinitions, 2)
+	idx.collectMapSchemaDefinitions(nil, propsNode.Content[0], nil, 1)
+	idx.collectArraySchemaDefinitions(nil, arrayNode.Content[0], nil, 2)
+}
+
+func TestInlineSchemaIsObjectOrArray(t *testing.T) {
+	assert.False(t, inlineSchemaIsObjectOrArray(nil))
+
+	var noType yaml.Node
+	_ = yaml.Unmarshal([]byte(`description: nope`), &noType)
+	assert.False(t, inlineSchemaIsObjectOrArray(noType.Content[0]))
+
+	var objectNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`type: object`), &objectNode)
+	assert.True(t, inlineSchemaIsObjectOrArray(objectNode.Content[0]))
+
+	var arrayNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`type: array`), &arrayNode)
+	assert.True(t, inlineSchemaIsObjectOrArray(arrayNode.Content[0]))
+}
+
+func TestRegisterSchemaIDAt_HelperBranches(t *testing.T) {
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
+	idx.specAbsolutePath = "test.yaml"
+
+	var invalidNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`$id: '#/bad'`), &invalidNode)
+	idx.registerSchemaIDAt(invalidNode.Content[0], 0, []string{"components", "schemas", "Pet"}, "test.yaml")
+	assert.NotEmpty(t, idx.refErrors)
+
+	var nonStringNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`$id:
+  type: string`), &nonStringNode)
+	errorsBefore := len(idx.refErrors)
+	idx.registerSchemaIDAt(nonStringNode.Content[0], 0, nil, "test.yaml")
+	assert.Len(t, idx.refErrors, errorsBefore)
+
+	var fallbackNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`$id: schema.json`), &fallbackNode)
+	idx.registerSchemaIDAt(fallbackNode.Content[0], 0, []string{"components", "schemas", "Pet"}, "://bad-base")
+	entry := idx.schemaIdRegistry["schema.json"]
+	assert.NotNil(t, entry)
+	assert.Equal(t, "schema.json", entry.ResolvedUri)
+	assert.Equal(t, "://bad-base", entry.ParentId)
+}
+
+func TestExtractRefs_MetadataHelpers(t *testing.T) {
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
+	idx.specAbsolutePath = "test.yaml"
+
+	var emptyNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`$ref: '#/components/schemas/Pet'`), &emptyNode)
+	action := idx.extractNodeMetadata(emptyNode.Content[0], nil, nil, 0)
+	assert.False(t, action.appendSegment)
+	assert.False(t, action.stop)
+
+	seqNode := &yaml.Node{
+		Kind: yaml.SequenceNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "description"},
+		},
+	}
+	action = idx.extractNodeMetadata(seqNode, nil, nil, 0)
+	assert.True(t, action.stop)
+	assert.False(t, action.appendSegment)
+
+	var descNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`description: hello`), &descNode)
+	action = idx.extractNodeMetadata(descNode.Content[0], nil, []string{"properties"}, 0)
+	assert.True(t, action.stop)
+	assert.True(t, action.appendSegment)
+
+	var summaryNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`summary: hello`), &summaryNode)
+	action = idx.extractNodeMetadata(summaryNode.Content[0], nil, []string{"examples"}, 0)
+	assert.True(t, action.stop)
+	assert.False(t, action.appendSegment)
+
+	var securityScalar yaml.Node
+	_ = yaml.Unmarshal([]byte(`security: nope`), &securityScalar)
+	action = idx.extractNodeMetadata(securityScalar.Content[0], nil, nil, 0)
+	assert.True(t, action.appendSegment)
+	assert.Empty(t, idx.securityRequirementRefs)
+
+	var securityNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`security:
+  - apiKey:
+      - read
+      - write
+    oauth:
+      - admin`), &securityNode)
+	action = idx.extractNodeMetadata(securityNode.Content[0], nil, []string{"paths", "/pets"}, 0)
+	assert.True(t, action.appendSegment)
+	assert.Len(t, idx.securityRequirementRefs["apiKey"]["read"], 1)
+	assert.Len(t, idx.securityRequirementRefs["apiKey"]["write"], 1)
+	assert.Len(t, idx.securityRequirementRefs["oauth"]["admin"], 1)
+
+	var securityAppendNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`security:
+  - apiKey:
+      - read`), &securityAppendNode)
+	idx.collectSecurityRequirementMetadata(securityAppendNode.Content[0], 0, "$.paths./pets.security")
+	assert.Len(t, idx.securityRequirementRefs["apiKey"]["read"], 2)
+
+	var securitySkipNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`security:
+  - skip-me
+  - apiKey: read
+  - apiKey:
+      - admin`), &securitySkipNode)
+	idx.collectSecurityRequirementMetadata(securitySkipNode.Content[0], 0, "$.paths./pets.security")
+	assert.Len(t, idx.securityRequirementRefs["apiKey"]["admin"], 1)
+
+	var enumPropertyNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`type: string
+enum:
+  - one`), &enumPropertyNode)
+	action = idx.extractNodeMetadata(enumPropertyNode.Content[0], nil, []string{"properties"}, 2)
+	assert.True(t, action.stop)
+	assert.True(t, action.appendSegment)
+
+	var enumNoType yaml.Node
+	_ = yaml.Unmarshal([]byte(`enum:
+  - one`), &enumNoType)
+	idx.collectEnumMetadata(enumNoType.Content[0], nil, 0, "$.enum")
+	assert.Empty(t, idx.allEnums)
+	idx.collectEnumMetadata(enumNoType.Content[0], nil, 1, "$.enum")
+
+	var enumWithType yaml.Node
+	_ = yaml.Unmarshal([]byte(`type: string
+enum:
+  - one`), &enumWithType)
+	idx.collectEnumMetadata(enumWithType.Content[0], nil, 2, "$.enum")
+	assert.Len(t, idx.allEnums, 1)
+
+	var objectProps yaml.Node
+	_ = yaml.Unmarshal([]byte(`type:
+  - string
+  - object
+properties:
+  name:
+    type: string`), &objectProps)
+	action = idx.extractNodeMetadata(objectProps.Content[0], nil, []string{"components", "schemas", "Pet"}, 2)
+	assert.True(t, action.appendSegment)
+	assert.Len(t, idx.allObjectsWithProperties, 1)
+
+	metadataFallbackNode := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "summary"},
+		},
+	}
+	assert.Equal(t, "summary", metadataValueNode(metadataFallbackNode, 0).Value)
+}
+
+func TestExtractRefs_WalkHelpers(t *testing.T) {
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
+	state := idx.initializeExtractRefsState(context.Background(), nil, nil, 0, false, "")
+
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			nil,
+		},
+	}
+	var found []*Reference
+	assert.False(t, idx.handleExtractRefsKey(node, nil, &state, 0, &found))
+	assert.Empty(t, found)
+
+	assert.False(t, shouldSkipMapSchemaCollection(nil))
+	assert.True(t, shouldSkipMapSchemaCollection([]string{"example"}))
+	assert.False(t, shouldSkipMapSchemaCollection([]string{"properties", "example"}))
+	assert.False(t, shouldSkipMapSchemaCollection([]string{"patternProperties", "example"}))
+	assert.True(t, shouldSkipMapSchemaCollection([]string{"x-test"}))
 }

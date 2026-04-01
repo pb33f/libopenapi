@@ -135,27 +135,36 @@ func TestSpecIndex_Release(t *testing.T) {
 	rolodex.rootNode = &yaml.Node{Value: "rolodex-root"}
 
 	idx := &SpecIndex{
-		config:                 cfg,
-		root:                   rootNode,
-		pathsNode:              &yaml.Node{},
-		tagsNode:               &yaml.Node{},
-		schemasNode:            &yaml.Node{},
-		allRefs:                map[string]*Reference{"ref": {}},
-		rawSequencedRefs:       []*Reference{{}},
-		allMappedRefs:          map[string]*Reference{"mapped": {}},
-		allMappedRefsSequenced: []*ReferenceMapped{{}},
-		nodeMap:                map[int]map[int]*yaml.Node{1: {1: &yaml.Node{}}},
-		allDescriptions:        []*DescriptionReference{{}},
-		allEnums:               []*EnumReference{{}},
-		circularReferences:     []*CircularReferenceResult{{}},
-		refErrors:              []error{nil},
-		resolver:               resolver,
-		rolodex:                rolodex,
-		allComponentSchemas:    map[string]*Reference{"schema": {}},
-		allExternalDocuments:   map[string]*Reference{"ext": {}},
-		externalSpecIndex:      map[string]*SpecIndex{"ext": {}},
-		schemaIdRegistry:       map[string]*SchemaIdEntry{"id": {}},
-		uri:                    []string{"test"},
+		config:                  cfg,
+		root:                    rootNode,
+		pathsNode:               &yaml.Node{},
+		tagsNode:                &yaml.Node{},
+		schemasNode:             &yaml.Node{},
+		allRefs:                 map[string]*Reference{"ref": {}},
+		rawSequencedRefs:        []*Reference{{}},
+		allMappedRefs:           map[string]*Reference{"mapped": {}},
+		allMappedRefsSequenced:  []*ReferenceMapped{{}},
+		nodeMap:                 map[int]map[int]*yaml.Node{1: {1: &yaml.Node{}}},
+		allDescriptions:         []*DescriptionReference{{}},
+		allEnums:                []*EnumReference{{}},
+		circularReferences:      []*CircularReferenceResult{{}},
+		refErrors:               []error{nil},
+		resolver:                resolver,
+		rolodex:                 rolodex,
+		allComponentSchemas:     map[string]*Reference{"schema": {}},
+		allExternalDocuments:    map[string]*Reference{"ext": {}},
+		externalSpecIndex:       map[string]*SpecIndex{"ext": {}},
+		schemaIdRegistry:        map[string]*SchemaIdEntry{"id": {}},
+		uri:                     []string{"test"},
+		globalLinksCount:        2,
+		globalCallbacksCount:    3,
+		pathCount:               4,
+		operationCount:          5,
+		componentIndexChan:      make(chan struct{}),
+		polyComponentIndexChan:  make(chan struct{}),
+		nodeMapCompleted:        make(chan struct{}),
+		built:                   true,
+		allowCircularReferences: true,
 	}
 
 	idx.Release()
@@ -192,6 +201,15 @@ func TestSpecIndex_Release(t *testing.T) {
 	assert.Nil(t, idx.schemaIdRegistry)
 	assert.Nil(t, idx.uri)
 	assert.Nil(t, idx.logger)
+	assert.Zero(t, idx.globalLinksCount)
+	assert.Zero(t, idx.globalCallbacksCount)
+	assert.Zero(t, idx.pathCount)
+	assert.Zero(t, idx.operationCount)
+	assert.False(t, idx.built)
+	assert.False(t, idx.allowCircularReferences)
+	assert.Nil(t, idx.componentIndexChan)
+	assert.Nil(t, idx.polyComponentIndexChan)
+	assert.Nil(t, idx.nodeMapCompleted)
 
 	// resolver released and niled
 	assert.Nil(t, idx.resolver)
@@ -225,6 +243,13 @@ func TestSpecIndex_Release_Idempotent(t *testing.T) {
 	assert.Nil(t, idx.config)
 	assert.Nil(t, idx.resolver)
 	assert.Nil(t, idx.rolodex)
+}
+
+func TestSpecIndex_GetSetResolver_UsesLock(t *testing.T) {
+	idx := &SpecIndex{}
+	resolver := &Resolver{}
+	idx.SetResolver(resolver)
+	assert.Same(t, resolver, idx.GetResolver())
 }
 
 func TestSpecIndex_Release_NilConfig(t *testing.T) {
