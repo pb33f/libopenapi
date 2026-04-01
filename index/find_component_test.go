@@ -241,7 +241,8 @@ paths:
 	// add remote filesystem
 	rolo.AddRemoteFS("", remoteFS)
 
-	ctx, _ := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	defer cancel()
 	var idx *SpecIndex
 	done := make(chan struct{})
 	go func() {
