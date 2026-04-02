@@ -204,7 +204,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 
 	// index the rolodex.
 	indexedErr := rolo.IndexTheRolodex(context.Background())
-	if indexedErr != nil && strings.Contains(indexedErr.Error(), "429") {
+	if indexedErr != nil && (strings.Contains(indexedErr.Error(), "429") || hasRateLimitedRemoteErrors(remoteFS.GetErrors())) {
 		t.Skipf("skipping due to GitHub rate limit: %v", indexedErr)
 	}
 	assert.NoError(t, indexedErr)
