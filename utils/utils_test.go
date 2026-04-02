@@ -1730,7 +1730,7 @@ func TestFindNodesWithoutDeserializingWithTimeout_Timeout(t *testing.T) {
 		<-done
 	}()
 
-	nodes, err := FindNodesWithoutDeserializingWithTimeout(root[0], "$.info.contact", 1*time.Millisecond)
+	nodes, err := FindNodesWithoutDeserializingWithTimeout(root[0], "$..contact", 1*time.Millisecond)
 	assert.Nil(t, nodes)
 	assert.ErrorContains(t, err, "timeout exceeded")
 }

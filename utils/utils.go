@@ -192,6 +192,10 @@ func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, 
 // Behavior can be customized using JSONPathLookupOptions.
 func FindNodesWithoutDeserializingWithOptions(node *yaml.Node, jsonPath string, options JSONPathLookupOptions) ([]*yaml.Node, error) {
 	options = normalizeJSONPathLookupOptions(options)
+	if results, handled := findNodesWithoutDeserializingFastPath(node, jsonPath); handled {
+		return results, nil
+	}
+
 	path, err := getJSONPathWithOptions(jsonPath, options)
 	if err != nil {
 		return nil, err
