@@ -149,7 +149,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 		if utils.IsNodeArray(valueNode) {
 			if field.CanSet() {
-				var items []NodeReference[*yaml.Node]
+				items := make([]NodeReference[*yaml.Node], 0, len(valueNode.Content))
 				for _, sliceItem := range valueNode.Content {
 					items = append(items, NodeReference[*yaml.Node]{
 						Value:     sliceItem,
@@ -256,7 +256,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 		if utils.IsNodeArray(valueNode) {
 			if field.CanSet() {
-				var items []NodeReference[string]
+				items := make([]NodeReference[string], 0, len(valueNode.Content))
 				for _, sliceItem := range valueNode.Content {
 					items = append(items, NodeReference[string]{
 						Value:     sliceItem.Value,
@@ -272,7 +272,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 		if utils.IsNodeArray(valueNode) {
 			if field.CanSet() {
-				var items []NodeReference[float32]
+				items := make([]NodeReference[float32], 0, len(valueNode.Content))
 				for _, sliceItem := range valueNode.Content {
 					fv, _ := strconv.ParseFloat(sliceItem.Value, 32)
 					items = append(items, NodeReference[float32]{
@@ -289,7 +289,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 		if utils.IsNodeArray(valueNode) {
 			if field.CanSet() {
-				var items []NodeReference[float64]
+				items := make([]NodeReference[float64], 0, len(valueNode.Content))
 				for _, sliceItem := range valueNode.Content {
 					fv, _ := strconv.ParseFloat(sliceItem.Value, 64)
 					items = append(items, NodeReference[float64]{Value: fv, ValueNode: sliceItem})
@@ -302,7 +302,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 		if utils.IsNodeArray(valueNode) {
 			if field.CanSet() {
-				var items []NodeReference[int]
+				items := make([]NodeReference[int], 0, len(valueNode.Content))
 				for _, sliceItem := range valueNode.Content {
 					iv, _ := strconv.Atoi(sliceItem.Value)
 					items = append(items, NodeReference[int]{
@@ -319,7 +319,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 		if utils.IsNodeArray(valueNode) {
 			if field.CanSet() {
-				var items []NodeReference[int64]
+				items := make([]NodeReference[int64], 0, len(valueNode.Content))
 				for _, sliceItem := range valueNode.Content {
 					iv, _ := strconv.ParseInt(sliceItem.Value, 10, 64)
 					items = append(items, NodeReference[int64]{
@@ -336,7 +336,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 		if utils.IsNodeArray(valueNode) {
 			if field.CanSet() {
-				var items []NodeReference[bool]
+				items := make([]NodeReference[bool], 0, len(valueNode.Content))
 				for _, sliceItem := range valueNode.Content {
 					bv, _ := strconv.ParseBool(sliceItem.Value)
 					items = append(items, NodeReference[bool]{
@@ -355,12 +355,9 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 		if utils.IsNodeMap(valueNode) {
 			if field.CanSet() {
 				items := orderedmap.New[KeyReference[string], ValueReference[string]]()
-				var cf *yaml.Node
-				for i, sliceItem := range valueNode.Content {
-					if i%2 == 0 {
-						cf = sliceItem
-						continue
-					}
+				for i := 0; i < len(valueNode.Content)-1; i += 2 {
+					cf := valueNode.Content[i]
+					sliceItem := valueNode.Content[i+1]
 					items.Set(KeyReference[string]{
 						Value:   cf.Value,
 						KeyNode: cf,
@@ -378,12 +375,9 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 		if utils.IsNodeMap(valueNode) {
 			if field.CanSet() {
 				items := orderedmap.New[KeyReference[string], ValueReference[string]]()
-				var cf *yaml.Node
-				for i, sliceItem := range valueNode.Content {
-					if i%2 == 0 {
-						cf = sliceItem
-						continue
-					}
+				for i := 0; i < len(valueNode.Content)-1; i += 2 {
+					cf := valueNode.Content[i]
+					sliceItem := valueNode.Content[i+1]
 					items.Set(KeyReference[string]{
 						Value:   cf.Value,
 						KeyNode: cf,
@@ -403,12 +397,9 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 		if utils.IsNodeMap(valueNode) {
 			if field.CanSet() {
 				items := orderedmap.New[KeyReference[string], ValueReference[string]]()
-				var cf *yaml.Node
-				for i, sliceItem := range valueNode.Content {
-					if i%2 == 0 {
-						cf = sliceItem
-						continue
-					}
+				for i := 0; i < len(valueNode.Content)-1; i += 2 {
+					cf := valueNode.Content[i]
+					sliceItem := valueNode.Content[i+1]
 					items.Set(KeyReference[string]{
 						Value:   cf.Value,
 						KeyNode: cf,
@@ -429,7 +420,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 		if utils.IsNodeArray(valueNode) {
 			if field.CanSet() {
-				var items []ValueReference[string]
+				items := make([]ValueReference[string], 0, len(valueNode.Content))
 				for _, sliceItem := range valueNode.Content {
 					items = append(items, ValueReference[string]{
 						Value:     sliceItem.Value,
@@ -449,7 +440,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 		if utils.IsNodeArray(valueNode) {
 			if field.CanSet() {
-				var items []ValueReference[*yaml.Node]
+				items := make([]ValueReference[*yaml.Node], 0, len(valueNode.Content))
 				for _, sliceItem := range valueNode.Content {
 					items = append(items, ValueReference[*yaml.Node]{
 						Value:     sliceItem,

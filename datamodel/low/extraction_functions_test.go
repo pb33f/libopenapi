@@ -1991,6 +1991,33 @@ components:
 	}
 }
 
+func TestLocateRefNodeWithContext_FriendlyPathFallback(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    Thing:
+      type: string
+`
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &rootNode))
+
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	refNode := utils.CreateRefNode("components/schemas/Thing")
+
+	found, foundIdx, err, foundCtx := LocateRefNodeWithContext(context.Background(), refNode, idx)
+	require.NoError(t, err)
+	require.NotNil(t, found)
+	assert.Equal(t, idx, foundIdx)
+	assert.Equal(t, context.Background(), foundCtx)
+
+	_, _, typeNode := utils.FindKeyNodeFullTop("type", found.Content)
+	require.NotNil(t, typeNode)
+	assert.Equal(t, "string", typeNode.Value)
+}
+
 func TestApplyResolvedSchemaIdScope_EarlyReturns(t *testing.T) {
 	ctx := applyResolvedSchemaIdScope(context.Background(), nil, nil)
 	assert.Nil(t, index.GetSchemaIdScope(ctx))

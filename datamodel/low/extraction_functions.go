@@ -7,6 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
+	"go.yaml.in/yaml/v4"
 	"hash/maphash"
 	"net/url"
 	"os"
@@ -16,15 +21,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-
-	jsonpathconfig "github.com/pb33f/jsonpath/pkg/jsonpath/config"
-
-	"github.com/pb33f/jsonpath/pkg/jsonpath"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"go.yaml.in/yaml/v4"
 )
 
 // stringBuilderPool is a sync.Pool that reuses strings.Builder instances to reduce memory allocations
@@ -220,6 +216,14 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 			}
 		}
 
+		if index.GetSchemaIdScope(ctx) == nil {
+			for _, candidate := range searchRefs {
+				if node := navigateReferenceFragment(idx.GetRootNode(), candidate); node != nil {
+					return utils.NodeAlias(node), idx, nil, ctx
+				}
+			}
+		}
+
 		rv = resolvedRef
 
 		// Obtain the absolute filepath/URL of the spec in which we are trying to
@@ -339,12 +343,9 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 		// cant be found? last resort is to try a path lookup
 		_, friendly := utils.ConvertComponentIdIntoFriendlyPathSearch(rv)
 		if friendly != "" {
-			path, err := jsonpath.NewPath(friendly, jsonpathconfig.WithPropertyNameExtension(), jsonpathconfig.WithLazyContextTracking())
-			if err == nil {
-				nodes := path.Query(idx.GetRootNode())
-				if len(nodes) > 0 {
-					return utils.NodeAlias(nodes[0]), idx, nil, ctx
-				}
+			nodes, err := utils.FindNodesWithoutDeserializingWithOptions(idx.GetRootNode(), friendly, utils.JSONPathLookupOptions{})
+			if err == nil && len(nodes) > 0 {
+				return utils.NodeAlias(nodes[0]), idx, nil, ctx
 			}
 		}
 		return nil, idx, fmt.Errorf("reference '%s' at line %d, column %d was not found",
