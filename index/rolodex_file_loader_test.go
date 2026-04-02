@@ -4,6 +4,7 @@
 package index
 
 import (
+	"errors"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -230,6 +231,26 @@ func TestRolodexLocalFile_TestBadFS(t *testing.T) {
 	})
 	assert.Error(t, err)
 	assert.Nil(t, fileFS)
+}
+
+type openErrorDirFS struct{}
+
+func (f *openErrorDirFS) Open(name string) (fs.File, error) {
+	return nil, errors.New("open failed")
+}
+
+func TestRolodexLocalFS_ExtractFile_DirFSOpenError(t *testing.T) {
+	lfs := &LocalFS{
+		fsConfig: &LocalFSConfig{
+			BaseDirectory: ".",
+			DirFS:         &openErrorDirFS{},
+		},
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+
+	f, extractErr := lfs.extractFile("spec.yaml")
+	assert.Nil(t, f)
+	assert.EqualError(t, extractErr, "open failed")
 }
 
 func TestNewRolodexLocalFile_BadOffset(t *testing.T) {
