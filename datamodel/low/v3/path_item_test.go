@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package v3
@@ -87,6 +87,18 @@ summary: it's another path item`
 	assert.Nil(t, n.GetKeyNode())
 	assert.NotNil(t, n.GetContext())
 	assert.NotNil(t, n.GetIndex())
+}
+
+func TestPathItem_Build_ScalarRoot(t *testing.T) {
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte("nope"), &idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	err := n.Build(context.Background(), idxNode.Content[0], idxNode.Content[0], nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, n.GetRootNode())
+	assert.NotNil(t, n.GetKeyNode())
 }
 
 // https://github.com/pb33f/libopenapi/issues/388

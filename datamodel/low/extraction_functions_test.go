@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package low
@@ -3968,6 +3968,41 @@ func TestExtractArray_PerItem_SkipExternalRef(t *testing.T) {
 	assert.Equal(t, "./models/Tag.yaml#/Tag", items[0].GetReference())
 }
 
+func TestExtractArrayNoLookup(t *testing.T) {
+	yml := `tags:
+  - description: hello pizza
+  - description: goodbye pizza`
+
+	var cNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &cNode))
+
+	_, ln, vn := utils.FindKeyNodeFullTop("tags", cNode.Content[0].Content)
+	items, err := ExtractArrayNoLookup[*pizza](context.Background(), ln, vn, nil)
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+	assert.Equal(t, "hello pizza", items[0].Value.Description.Value)
+	assert.Equal(t, "goodbye pizza", items[1].Value.Description.Value)
+}
+
+func TestExtractArrayNoLookup_NonArray(t *testing.T) {
+	yml := `tags:
+  description: not an array`
+
+	var cNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &cNode))
+
+	_, ln, vn := utils.FindKeyNodeFullTop("tags", cNode.Content[0].Content)
+	items, err := ExtractArrayNoLookup[*pizza](context.Background(), ln, vn, nil)
+	assert.Nil(t, items)
+	assert.Error(t, err)
+}
+
+func TestExtractArrayValueReferences_NilNodes(t *testing.T) {
+	items, err := extractArrayValueReferences[*pizza](context.Background(), "tags", nil, nil, nil, false)
+	assert.NoError(t, err)
+	assert.Nil(t, items)
+}
+
 func TestExtractMapExtensions_RootRef_SkipExternalRef(t *testing.T) {
 	yml := `components:
   schemas:
@@ -4072,6 +4107,74 @@ local:
 	assert.NotNil(t, petRef)
 	assert.True(t, petRef.IsReference())
 	assert.Equal(t, "./models/Pet.yaml#/Pet", petRef.GetReference())
+}
+
+func TestCollectMapBuildInputs_NilAndEmpty(t *testing.T) {
+	assert.Nil(t, collectMapBuildInputs(nil, false))
+	assert.Nil(t, collectMapBuildInputs(&yaml.Node{}, false))
+}
+
+func TestCollectMapBuildInputs_SkipsExtensionsWithoutLosingFollowingEntries(t *testing.T) {
+	root := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "x-extra"},
+			{Kind: yaml.ScalarNode, Value: "ignored"},
+			{Kind: yaml.ScalarNode, Value: "real"},
+			{Kind: yaml.MappingNode},
+		},
+	}
+
+	inputs := collectMapBuildInputs(root, false)
+	if assert.Len(t, inputs, 1) {
+		assert.Equal(t, "real", inputs[0].label.Value)
+		assert.Equal(t, yaml.MappingNode, inputs[0].value.Kind)
+	}
+}
+
+func TestFindExtractLabelNode_NilAndTopLevel(t *testing.T) {
+	keyNode, labelNode, valueNode := findExtractLabelNode("thing", nil)
+	assert.Nil(t, keyNode)
+	assert.Nil(t, labelNode)
+	assert.Nil(t, valueNode)
+
+	root := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "thing"},
+			{Kind: yaml.ScalarNode, Value: "hello"},
+		},
+	}
+
+	keyNode, labelNode, valueNode = findExtractLabelNode("thing", root)
+	if assert.NotNil(t, keyNode) && assert.NotNil(t, labelNode) && assert.NotNil(t, valueNode) {
+		assert.Equal(t, "thing", keyNode.Value)
+		assert.Equal(t, "thing", labelNode.Value)
+		assert.Equal(t, "hello", valueNode.Value)
+	}
+}
+
+func TestFindExtractLabelNode_FallsBackToNestedSearch(t *testing.T) {
+	root := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "wrapper"},
+			{
+				Kind: yaml.MappingNode,
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Value: "thing"},
+					{Kind: yaml.ScalarNode, Value: "inside"},
+				},
+			},
+		},
+	}
+
+	keyNode, labelNode, valueNode := findExtractLabelNode("thing", root)
+	if assert.NotNil(t, keyNode) && assert.NotNil(t, labelNode) && assert.NotNil(t, valueNode) {
+		assert.Equal(t, yaml.MappingNode, keyNode.Kind)
+		assert.Equal(t, "thing", labelNode.Value)
+		assert.Equal(t, "inside", valueNode.Value)
+	}
 }
 
 func TestSetReference_NilEmbeddedReference(t *testing.T) {

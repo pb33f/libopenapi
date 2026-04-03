@@ -1,5 +1,5 @@
-// Copyright 2023-2025 Princess Beef Heavy Industries, LLC / Dave Shanley
-// https://pb33f.io
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
 
 package base
 
@@ -81,4 +81,28 @@ nodeType: attribute`
 	assert.Equal(t, "myAttr", n.Name.Value)
 	assert.True(t, n.Attribute.Value)
 	assert.Equal(t, "attribute", n.NodeType.Value)
+}
+
+func TestXML_Build_NilRoot(t *testing.T) {
+	var n XML
+	err := n.Build(nil, nil)
+	assert.NoError(t, err)
+	assert.Nil(t, n.GetRootNode())
+	assert.Nil(t, n.GetExtensions())
+}
+
+func TestXML_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var n XML
+	err := low.BuildModel(scalar.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(scalar.Content[0], nil)
+	assert.NoError(t, err)
+
+	nodes := n.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
 }

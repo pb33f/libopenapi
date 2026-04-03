@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package base
@@ -43,4 +43,20 @@ x-beer: cold`
 	assert.Equal(t, 1, c.GetExtensions().Len())
 	assert.Nil(t, c.GetIndex())
 	assert.NotNil(t, c.GetContext())
+}
+
+func TestContact_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var c Contact
+	err := low.BuildModel(scalar.Content[0], &c)
+	assert.NoError(t, err)
+
+	err = c.Build(context.Background(), nil, scalar.Content[0], nil)
+	assert.NoError(t, err)
+
+	nodes := c.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
 }

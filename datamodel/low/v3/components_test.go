@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package v3
@@ -117,6 +117,21 @@ func TestComponents_Build_Success(t *testing.T) {
 
 	assert.NotNil(t, n.GetContext())
 	assert.NotNil(t, n.GetIndex())
+}
+
+func TestComponents_Build_ScalarRoot(t *testing.T) {
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte("nope"), &idxNode)
+	assert.NoError(t, mErr)
+
+	var n Components
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), idxNode.Content[0], nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, n.GetRootNode())
+	assert.NotNil(t, n.GetKeyNode())
 }
 
 func TestComponents_Build_Success_Skip(t *testing.T) {

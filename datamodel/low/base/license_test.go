@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package base
@@ -63,4 +63,20 @@ description: the ranch`
 	assert.NoError(t, err)
 
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
+}
+
+func TestLicense_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var l License
+	err := low.BuildModel(scalar.Content[0], &l)
+	assert.NoError(t, err)
+
+	err = l.Build(context.Background(), nil, scalar.Content[0], nil)
+	assert.NoError(t, err)
+
+	nodes := l.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
 }

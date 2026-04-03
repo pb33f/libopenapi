@@ -179,17 +179,6 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 		o.Nodes.Store(sln.Line, sln)
 	}
 
-	// if security is set, but no requirements are defined.
-	// https://github.com/pb33f/libopenapi/issues/111
-	if sln != nil && len(svn.Content) == 0 && sec == nil {
-		o.Security = low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]{
-			Value:     []low.ValueReference[*base.SecurityRequirement]{}, // empty
-			KeyNode:   sln,
-			ValueNode: svn,
-		}
-		o.Nodes.Store(sln.Line, svn)
-	}
-
 	// extract servers
 	servers, sl, sn, serErr := low.ExtractArray[*Server](ctx, ServersLabel, root, idx)
 	if serErr != nil {

@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package base
@@ -69,4 +69,27 @@ func TestSecurityRequirement_TestEmptyContent(t *testing.T) {
 	var sr SecurityRequirement
 	_ = sr.Build(context.Background(), nil, &yaml.Node{}, nil)
 	assert.True(t, sr.ContainsEmptyRequirement)
+}
+
+func TestSecurityRequirement_Build_NilRoot(t *testing.T) {
+	var sr SecurityRequirement
+	err := sr.Build(context.Background(), nil, nil, nil)
+	assert.NoError(t, err)
+	assert.True(t, sr.ContainsEmptyRequirement)
+	assert.NotNil(t, sr.Requirements.Value)
+	assert.Nil(t, sr.GetRootNode())
+}
+
+func TestSecurityRequirement_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var sr SecurityRequirement
+	err := sr.Build(context.Background(), nil, scalar.Content[0], nil)
+	assert.NoError(t, err)
+	assert.True(t, sr.ContainsEmptyRequirement)
+
+	nodes := sr.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
 }
