@@ -569,7 +569,9 @@ func extractArrayValueReferences[T Buildable[N], N any](
 			}
 		}
 	}
-	items = make([]ValueReference[T], 0, len(valueNode.Content))
+	if len(valueNode.Content) > 0 {
+		items = make([]ValueReference[T], 0, len(valueNode.Content))
+	}
 	for _, node := range valueNode.Content {
 		localReferenceValue := ""
 		foundCtx := ctx

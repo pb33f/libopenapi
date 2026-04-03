@@ -41,6 +41,22 @@ type documentTopLevelNodes struct {
 	webhooks          documentTopLevelNode
 }
 
+func selectDocumentNode(root *yaml.Node, preferred documentTopLevelNode, label string, topOnly bool) documentTopLevelNode {
+	if preferred.value != nil {
+		return preferred
+	}
+	root = utils.NodeAlias(root)
+	if root == nil {
+		return documentTopLevelNode{}
+	}
+	if topOnly {
+		_, key, value := utils.FindKeyNodeFullTop(label, root.Content)
+		return documentTopLevelNode{key: key, value: value}
+	}
+	_, key, value := utils.FindKeyNodeFull(label, root.Content)
+	return documentTopLevelNode{key: key, value: value}
+}
+
 func collectDocumentTopLevelNodes(root *yaml.Node) documentTopLevelNodes {
 	root = utils.NodeAlias(root)
 	var nodes documentTopLevelNodes
@@ -119,7 +135,8 @@ func CreateDocumentFromConfig(info *datamodel.SpecInfo, config *datamodel.Docume
 func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Document, error) {
 	rootNode := utils.NodeAlias(info.RootNode.Content[0])
 	topNodes := collectDocumentTopLevelNodes(rootNode)
-	labelNode, versionNode := topNodes.version.key, topNodes.version.value
+	versionNodeRef := selectDocumentNode(rootNode, topNodes.version, OpenAPILabel, false)
+	labelNode, versionNode := versionNodeRef.key, versionNodeRef.value
 	var version low.NodeReference[string]
 	if versionNode == nil {
 		return nil, errors.New("no openapi version/tag found, cannot create document")
@@ -291,7 +308,8 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	low.ExtractExtensionNodes(ctx, doc.Extensions, doc.Nodes)
 
 	// if set, extract jsonSchemaDialect (3.1)
-	dialectLabel, dialectNode := topNodes.jsonSchemaDialect.key, topNodes.jsonSchemaDialect.value
+	dialectRef := selectDocumentNode(rootNode, topNodes.jsonSchemaDialect, JSONSchemaDialectLabel, false)
+	dialectLabel, dialectNode := dialectRef.key, dialectRef.value
 	if dialectNode != nil {
 		doc.JsonSchemaDialect = low.NodeReference[string]{
 			Value: dialectNode.Value, KeyNode: dialectLabel, ValueNode: dialectNode,
@@ -299,7 +317,8 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	}
 
 	// if set, extract $self (3.2)
-	selfLabel, selfNode := topNodes.self.key, topNodes.self.value
+	selfRef := selectDocumentNode(rootNode, topNodes.self, SelfLabel, false)
+	selfLabel, selfNode := selfRef.key, selfRef.value
 	if selfNode != nil {
 		doc.Self = low.NodeReference[string]{
 			Value: selfNode.Value, KeyNode: selfLabel, ValueNode: selfNode,
@@ -341,8 +360,9 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	return &doc, errors.Join(errs...)
 }
 
-func extractInfo(ctx context.Context, _ *yaml.Node, nodes documentTopLevelNodes, doc *Document, idx *index.SpecIndex) error {
-	ln, vn := nodes.info.key, nodes.info.value
+func extractInfo(ctx context.Context, root *yaml.Node, nodes documentTopLevelNodes, doc *Document, idx *index.SpecIndex) error {
+	nodeRef := selectDocumentNode(root, nodes.info, base.InfoLabel, true)
+	ln, vn := nodeRef.key, nodeRef.value
 	if vn != nil {
 		ir := base.Info{}
 		_ = low.BuildModel(vn, &ir)
@@ -373,8 +393,9 @@ func extractExternalDocs(ctx context.Context, root *yaml.Node, nodes documentTop
 	return nil
 }
 
-func extractComponents(ctx context.Context, _ *yaml.Node, nodes documentTopLevelNodes, doc *Document, idx *index.SpecIndex) error {
-	ln, vn := nodes.components.key, nodes.components.value
+func extractComponents(ctx context.Context, root *yaml.Node, nodes documentTopLevelNodes, doc *Document, idx *index.SpecIndex) error {
+	nodeRef := selectDocumentNode(root, nodes.components, ComponentsLabel, true)
+	ln, vn := nodeRef.key, nodeRef.value
 	if vn != nil {
 		ir := Components{}
 		_ = low.BuildModel(vn, &ir)
@@ -388,8 +409,9 @@ func extractComponents(ctx context.Context, _ *yaml.Node, nodes documentTopLevel
 	return nil
 }
 
-func extractServers(ctx context.Context, _ *yaml.Node, nodes documentTopLevelNodes, doc *Document, idx *index.SpecIndex) error {
-	ln, vn := nodes.servers.key, nodes.servers.value
+func extractServers(ctx context.Context, root *yaml.Node, nodes documentTopLevelNodes, doc *Document, idx *index.SpecIndex) error {
+	nodeRef := selectDocumentNode(root, nodes.servers, ServersLabel, false)
+	ln, vn := nodeRef.key, nodeRef.value
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
 			var servers []low.ValueReference[*Server]
@@ -414,8 +436,9 @@ func extractServers(ctx context.Context, _ *yaml.Node, nodes documentTopLevelNod
 	return nil
 }
 
-func extractTags(ctx context.Context, _ *yaml.Node, nodes documentTopLevelNodes, doc *Document, idx *index.SpecIndex) error {
-	ln, vn := nodes.tags.key, nodes.tags.value
+func extractTags(ctx context.Context, root *yaml.Node, nodes documentTopLevelNodes, doc *Document, idx *index.SpecIndex) error {
+	nodeRef := selectDocumentNode(root, nodes.tags, base.TagsLabel, false)
+	ln, vn := nodeRef.key, nodeRef.value
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
 			var tags []low.ValueReference[*base.Tag]
@@ -442,8 +465,9 @@ func extractTags(ctx context.Context, _ *yaml.Node, nodes documentTopLevelNodes,
 	return nil
 }
 
-func extractPaths(ctx context.Context, _ *yaml.Node, nodes documentTopLevelNodes, doc *Document, idx *index.SpecIndex) error {
-	ln, vn := nodes.paths.key, nodes.paths.value
+func extractPaths(ctx context.Context, root *yaml.Node, nodes documentTopLevelNodes, doc *Document, idx *index.SpecIndex) error {
+	nodeRef := selectDocumentNode(root, nodes.paths, PathsLabel, false)
+	ln, vn := nodeRef.key, nodeRef.value
 	if vn != nil {
 		ir := Paths{}
 		err := ir.Build(ctx, ln, vn, idx)
