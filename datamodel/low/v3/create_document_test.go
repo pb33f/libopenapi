@@ -48,6 +48,12 @@ func BenchmarkCreateDocument(b *testing.B) {
 	}
 }
 
+func TestSelectDocumentNode_NilRoot(t *testing.T) {
+	node := selectDocumentNode(nil, documentTopLevelNode{}, OpenAPILabel, true)
+	assert.Nil(t, node.key)
+	assert.Nil(t, node.value)
+}
+
 func TestCreateDocument_SelfWithHttpURL(t *testing.T) {
 	low.ClearHashCache()
 	yml := `openapi: 3.2.0

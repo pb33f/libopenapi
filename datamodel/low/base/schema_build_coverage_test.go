@@ -6,8 +6,10 @@ package base
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
 	"testing"
+	"unsafe"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -19,6 +21,9 @@ import (
 type collectingAddNodes struct {
 	lines []int
 }
+
+//go:linkname lowBuildModelFieldCache github.com/pb33f/libopenapi/datamodel/low.buildModelFieldCache
+var lowBuildModelFieldCache sync.Map
 
 func (c *collectingAddNodes) AddNode(key int, _ *yaml.Node) {
 	c.lines = append(c.lines, key)
@@ -77,6 +82,37 @@ func TestResolveSchemaBuildInput_NilAndRefFailures(t *testing.T) {
 	assert.Contains(t, err.Error(), "boom: ./missing.yaml#/Pet")
 }
 
+func TestSchemaBuild_BuildModelError(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("type: string\n"), &root))
+
+	var seed Schema
+	require.NoError(t, low.BuildModel(root.Content[0], &seed))
+
+	schemaType := reflect.TypeOf(Schema{})
+	original, ok := lowBuildModelFieldCache.Load(schemaType)
+	require.True(t, ok)
+
+	origType := reflect.TypeOf(original)
+	elemType := origType.Elem()
+	replacement := reflect.MakeSlice(origType, 1, 1)
+	elem := reflect.New(elemType).Elem()
+	setUnexportedField(elem.FieldByName("lookupKey"), "type")
+	setUnexportedField(elem.FieldByName("index"), 0)
+	setUnexportedField(elem.FieldByName("kind"), reflect.Bool)
+	replacement.Index(0).Set(elem)
+
+	lowBuildModelFieldCache.Store(schemaType, replacement.Interface())
+	t.Cleanup(func() {
+		lowBuildModelFieldCache.Store(schemaType, original)
+	})
+
+	var schema Schema
+	err := schema.Build(context.Background(), root.Content[0], nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unable to parse unsupported type")
+}
+
 func TestRecursiveSchemaNodeHelpers(t *testing.T) {
 	low.MergeRecursiveNodesIfLineAbsent(nil, nil)
 	low.AppendRecursiveNodes(nil, nil)
@@ -107,4 +143,8 @@ func TestRecursiveSchemaNodeHelpers(t *testing.T) {
 	collector := &collectingAddNodes{}
 	low.AppendRecursiveNodes(collector, node)
 	assert.NotEmpty(t, collector.lines)
+}
+
+func setUnexportedField(field reflect.Value, value any) {
+	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().Set(reflect.ValueOf(value))
 }

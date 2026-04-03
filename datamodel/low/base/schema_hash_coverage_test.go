@@ -47,3 +47,13 @@ func TestWriteSchemaDependentRequired(t *testing.T) {
 	writeSchemaDependentRequired(&sb, values)
 	assert.Equal(t, "alpha:x|omega:z,a|", sb.String())
 }
+
+func TestWriteSortedSchemaStrings(t *testing.T) {
+	var sb strings.Builder
+
+	writeSortedSchemaStrings(&sb, nil, false)
+	assert.Equal(t, "", sb.String())
+
+	writeSortedSchemaStrings(&sb, []string{"zeta", "alpha"}, false)
+	assert.Equal(t, "alphazeta|", sb.String())
+}
