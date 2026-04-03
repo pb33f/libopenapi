@@ -280,3 +280,17 @@ serializedValue: '{"name":"John Doe","age":30,"active":true}'`
 	hash2 := n.Hash()
 	assert.NotEqual(t, hash1, hash2)
 }
+
+func TestExample_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("hello"), &scalar))
+
+	var ex Example
+	require.NoError(t, low.BuildModel(scalar.Content[0], &ex))
+	require.NoError(t, ex.Build(context.Background(), nil, scalar.Content[0], nil))
+
+	assert.NotNil(t, ex.Nodes)
+	nodes := ex.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
+}

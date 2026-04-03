@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package v3
@@ -142,4 +142,20 @@ flows:
 	n.Deprecated.Value = false
 	hash3 := n.Hash()
 	assert.NotEqual(t, hash1, hash3)
+}
+
+func TestSecurityScheme_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var scheme SecurityScheme
+	err := low.BuildModel(scalar.Content[0], &scheme)
+	assert.NoError(t, err)
+
+	err = scheme.Build(context.Background(), nil, scalar.Content[0], nil)
+	assert.NoError(t, err)
+
+	nodes := scheme.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
 }

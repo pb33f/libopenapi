@@ -135,6 +135,22 @@ content:
 	assert.NotEqual(t, hash1, hash2, "Hash should change when summary changes")
 }
 
+func TestResponse_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var r Response
+	err := low.BuildModel(scalar.Content[0], &r)
+	assert.NoError(t, err)
+
+	err = r.Build(context.Background(), nil, scalar.Content[0], nil)
+	assert.NoError(t, err)
+
+	nodes := r.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
+}
+
 func TestResponses_NoDefault(t *testing.T) {
 	cleanHashCacheForTest(t)
 	yml := `"200":
@@ -276,6 +292,23 @@ func TestResponses_Build_FailBadLinks(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
+}
+
+func TestResponses_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var n Responses
+	err := low.BuildModel(scalar.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), nil, scalar.Content[0], nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "vn node is not a map")
+
+	nodes := n.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
 }
 
 func TestResponses_Build_AllowXPrefixHeader(t *testing.T) {

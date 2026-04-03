@@ -175,6 +175,40 @@ func TestHeader_Build_Fail_Content(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestHeader_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var h Header
+	err := low.BuildModel(scalar.Content[0], &h)
+	assert.NoError(t, err)
+
+	err = h.Build(context.Background(), nil, scalar.Content[0], nil)
+	assert.NoError(t, err)
+
+	nodes := h.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
+}
+
+func TestHeader_Build_ScalarExampleNode(t *testing.T) {
+	yml := `example: hello`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var h Header
+	err := low.BuildModel(idxNode.Content[0], &h)
+	assert.NoError(t, err)
+
+	err = h.Build(context.Background(), nil, idxNode.Content[0], nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "hello", h.Example.Value.Value)
+
+	nodes := h.GetNodes()
+	assert.NotEmpty(t, nodes[h.Example.Value.Line])
+}
+
 func TestEncoding_Hash_n_Grab(t *testing.T) {
 	yml := `description: heady
 required: true
