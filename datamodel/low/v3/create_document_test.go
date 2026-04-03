@@ -1,3 +1,6 @@
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package v3
 
 import (
@@ -14,9 +17,11 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v4"
 )
 
 var doc *Document
@@ -520,6 +525,260 @@ func TestCreateDocument_Tags(t *testing.T) {
 	assert.Equal(t, "https://pb33f.io", doc.Tags.Value[1].Value.ExternalDocs.Value.URL.Value)
 	assert.NotEmpty(t, doc.Tags.Value[1].Value.ExternalDocs.Value.URL.Value)
 	assert.Equal(t, 0, orderedmap.Len(doc.Tags.Value[1].Value.Extensions))
+}
+
+func TestCreateDocument_Servers_SkipsNonMapEntries(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+servers:
+  - no-thanks
+  - url: https://api.example.com
+    description: primary
+paths: {}`
+
+	info, err := datamodel.ExtractSpecInfo([]byte(yml))
+	require.NoError(t, err)
+
+	document, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
+	require.NoError(t, err)
+	require.NotNil(t, document.Servers.Value)
+	require.Len(t, document.Servers.Value, 1)
+	assert.Equal(t, "https://api.example.com", document.Servers.Value[0].Value.URL.Value)
+}
+
+func TestCreateDocument_Servers_NonArrayIgnored(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+servers: nope
+paths: {}`
+
+	info, err := datamodel.ExtractSpecInfo([]byte(yml))
+	require.NoError(t, err)
+
+	document, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
+	require.NoError(t, err)
+	assert.Nil(t, document.Servers.Value)
+}
+
+func TestCreateDocument_Tags_SkipsNonMapEntries(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+tags:
+  - nope
+  - name: burgers
+    description: burger operations
+paths: {}`
+
+	info, err := datamodel.ExtractSpecInfo([]byte(yml))
+	require.NoError(t, err)
+
+	document, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
+	require.NoError(t, err)
+	require.NotNil(t, document.Tags.Value)
+	require.Len(t, document.Tags.Value, 1)
+	assert.Equal(t, "burgers", document.Tags.Value[0].Value.Name.Value)
+}
+
+func TestExtractServers_AllEntriesSkipped(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+servers:
+  - nope
+  - still-nope
+paths: {}`
+
+	info, err := datamodel.ExtractSpecInfo([]byte(yml))
+	require.NoError(t, err)
+
+	doc := &Document{}
+	err = extractServers(context.Background(), info.RootNode.Content[0], collectDocumentTopLevelNodes(info.RootNode.Content[0]), doc, nil)
+	require.NoError(t, err)
+	assert.Nil(t, doc.Servers.Value)
+}
+
+func TestExtractServers_NonArrayIgnored(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+servers: nope
+paths: {}`
+
+	info, err := datamodel.ExtractSpecInfo([]byte(yml))
+	require.NoError(t, err)
+
+	doc := &Document{}
+	err = extractServers(context.Background(), info.RootNode.Content[0], collectDocumentTopLevelNodes(info.RootNode.Content[0]), doc, nil)
+	require.NoError(t, err)
+	assert.Nil(t, doc.Servers.Value)
+}
+
+func TestExtractTags_AllEntriesSkipped(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+tags:
+  - nope
+  - still-nope
+paths: {}`
+
+	info, err := datamodel.ExtractSpecInfo([]byte(yml))
+	require.NoError(t, err)
+
+	doc := &Document{}
+	err = extractTags(context.Background(), info.RootNode.Content[0], collectDocumentTopLevelNodes(info.RootNode.Content[0]), doc, nil)
+	require.NoError(t, err)
+	assert.Nil(t, doc.Tags.Value)
+}
+
+func TestExtractTags_NonArrayIgnored(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+tags: nope
+paths: {}`
+
+	info, err := datamodel.ExtractSpecInfo([]byte(yml))
+	require.NoError(t, err)
+
+	doc := &Document{}
+	err = extractTags(context.Background(), info.RootNode.Content[0], collectDocumentTopLevelNodes(info.RootNode.Content[0]), doc, nil)
+	require.NoError(t, err)
+	assert.Nil(t, doc.Tags.Value)
+}
+
+func TestCollectDocumentTopLevelNodes_MergeRoot(t *testing.T) {
+	yml := `
+base: &base
+  servers:
+    - url: https://example.com
+<<: *base
+openapi: 3.1.0
+info:
+  title: merged
+  version: 1.0.0
+paths: {}`
+
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &root))
+	nodes := collectDocumentTopLevelNodes(root.Content[0])
+	if assert.NotNil(t, nodes.servers.key) && assert.NotNil(t, nodes.servers.value) {
+		assert.Equal(t, ServersLabel, nodes.servers.key.Value)
+		assert.True(t, utils.IsNodeArray(nodes.servers.value))
+	}
+}
+
+func TestCollectDocumentTopLevelNodes_NilRoot(t *testing.T) {
+	nodes := collectDocumentTopLevelNodes(nil)
+	assert.Nil(t, nodes.version.value)
+	assert.Nil(t, nodes.info.value)
+	assert.Nil(t, nodes.paths.value)
+}
+
+func TestCollectDocumentTopLevelNodes_AllKnownLabels_FirstWins(t *testing.T) {
+	yml := `openapi: 3.1.0
+openapi: 9.9.9
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+$self: https://example.com/openapi.yaml
+info:
+  title: Test
+  version: 1.0.0
+servers:
+  - url: https://first.example.com
+servers:
+  - url: https://second.example.com
+tags: []
+components: {}
+security: []
+externalDocs:
+  url: https://docs.example.com
+paths: {}
+webhooks: {}`
+
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &root))
+	nodes := collectDocumentTopLevelNodes(root.Content[0])
+	require.NotNil(t, nodes.version.value)
+	require.NotNil(t, nodes.jsonSchemaDialect.value)
+	require.NotNil(t, nodes.self.value)
+	require.NotNil(t, nodes.info.value)
+	require.NotNil(t, nodes.servers.value)
+	require.NotNil(t, nodes.tags.value)
+	require.NotNil(t, nodes.components.value)
+	require.NotNil(t, nodes.security.value)
+	require.NotNil(t, nodes.externalDocs.value)
+	require.NotNil(t, nodes.paths.value)
+	require.NotNil(t, nodes.webhooks.value)
+	assert.Equal(t, "3.1.0", nodes.version.value.Value)
+	if assert.Len(t, nodes.servers.value.Content, 1) {
+		assert.Equal(t, "https://first.example.com", nodes.servers.value.Content[0].Content[1].Value)
+	}
+}
+
+func TestCollectDocumentTopLevelNodes_FirstEntryMerge(t *testing.T) {
+	serverURL := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "https://merged.example.com"}
+	serverMap := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "url"},
+			serverURL,
+		},
+	}
+	mergedServers := &yaml.Node{
+		Kind: yaml.SequenceNode,
+		Tag:  "!!seq",
+		Content: []*yaml.Node{
+			serverMap,
+		},
+	}
+	mergedMap := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: ServersLabel},
+			mergedServers,
+		},
+	}
+	root := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!merge", Value: "<<"},
+			mergedMap,
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: OpenAPILabel},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "3.1.0"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: base.InfoLabel},
+			{
+				Kind: yaml.MappingNode,
+				Tag:  "!!map",
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Tag: "!!str", Value: "title"},
+					{Kind: yaml.ScalarNode, Tag: "!!str", Value: "merged"},
+					{Kind: yaml.ScalarNode, Tag: "!!str", Value: "version"},
+					{Kind: yaml.ScalarNode, Tag: "!!str", Value: "1.0.0"},
+				},
+			},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: PathsLabel},
+			{Kind: yaml.MappingNode, Tag: "!!map"},
+		},
+	}
+
+	nodes := collectDocumentTopLevelNodes(root)
+	require.NotNil(t, nodes.servers.value)
+	if assert.Len(t, nodes.servers.value.Content, 1) {
+		assert.Equal(t, "https://merged.example.com", nodes.servers.value.Content[0].Content[1].Value)
+	}
 }
 
 func TestCreateDocument_Paths(t *testing.T) {

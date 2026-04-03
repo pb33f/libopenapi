@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package v3
@@ -80,6 +80,33 @@ x-milk: cold`
 	assert.Equal(t, "cold", xMilk)
 	assert.Equal(t, "hello", path.Parameters.Value[0].Value.Name.Value)
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
+}
+
+func TestExtractPathItemsMap_NilRoot(t *testing.T) {
+	pathMap, err := extractPathItemsMap(context.Background(), nil, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, pathMap)
+	assert.Zero(t, pathMap.Len())
+}
+
+func TestExtractPathItemsMap_SkipsExtensions(t *testing.T) {
+	yml := `x-note: ignore
+"/some/path":
+  get:
+    description: ok`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	pathMap, err := extractPathItemsMap(context.Background(), idxNode.Content[0], index.NewSpecIndex(&idxNode))
+	assert.NoError(t, err)
+	if assert.NotNil(t, pathMap) {
+		assert.Equal(t, 1, pathMap.Len())
+		path := low.FindItemInOrderedMap("/some/path", pathMap)
+		if assert.NotNil(t, path) {
+			assert.Equal(t, "ok", path.Value.Get.Value.Description.Value)
+		}
+	}
 }
 
 func TestPaths_Build_Fail(t *testing.T) {

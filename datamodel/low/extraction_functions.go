@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package low
@@ -481,7 +481,7 @@ func ExtractObject[T Buildable[N], N any](ctx context.Context, label string, roo
 			}
 		}
 	} else {
-		_, ln, vn = utils.FindKeyNodeFull(label, root.Content)
+		_, ln, vn = findExtractLabelNode(label, root)
 		if vn != nil {
 			if h, _, rVal := utils.IsNodeRefValue(vn); h {
 				ref, fIdx, lerr, nCtx := LocateRefNodeWithContext(ctx, vn, idx)
@@ -541,6 +541,92 @@ func ExtractObject[T Buildable[N], N any](ctx context.Context, label string, roo
 		return res, circError
 	}
 	return res, nil
+}
+
+func extractArrayValueReferences[T Buildable[N], N any](
+	ctx context.Context,
+	label string,
+	labelNode, valueNode *yaml.Node,
+	idx *index.SpecIndex,
+	isRef bool,
+) ([]ValueReference[T], error) {
+	var circError error
+	var items []ValueReference[T]
+	if valueNode == nil || labelNode == nil {
+		return items, nil
+	}
+	if !utils.IsNodeArray(valueNode) {
+
+		if !isRef {
+			return nil, fmt.Errorf("array build failed, input is not an array, line %d, column %d", valueNode.Line, valueNode.Column)
+		}
+		// if this was pulled from a ref, but it's not a sequence, check the label and see if anything comes out,
+		// and then check that is a sequence, if not, fail it.
+		_, _, fvn := utils.FindKeyNodeFullTop(label, valueNode.Content)
+		if fvn != nil {
+			if !utils.IsNodeArray(valueNode) {
+				return nil, fmt.Errorf("array build failed, input is not an array, line %d, column %d", valueNode.Line, valueNode.Column)
+			}
+		}
+	}
+	items = make([]ValueReference[T], 0, len(valueNode.Content))
+	for _, node := range valueNode.Content {
+		localReferenceValue := ""
+		foundCtx := ctx
+		foundIndex := idx
+
+		var refNode *yaml.Node
+
+		if rf, _, rv := utils.IsNodeRefValue(node); rf {
+			refg, fIdx, err, nCtx := LocateRefEnd(ctx, node, idx, 0)
+			if refg != nil {
+				refNode = node
+				node = refg
+				localReferenceValue = rv
+				foundIndex = fIdx
+				foundCtx = nCtx
+				if err != nil {
+					circError = err
+				}
+			} else if errors.Is(err, ErrExternalRefSkipped) {
+				var n T = new(N)
+				SetReference(n, rv, node)
+				v := ValueReference[T]{Value: n, ValueNode: node}
+				v.SetReference(rv, node)
+				items = append(items, v)
+				continue
+			} else {
+				if err != nil {
+					return nil, fmt.Errorf("array build failed: reference cannot be found: %s", err.Error())
+				}
+			}
+		}
+		var n T = new(N)
+		err := BuildModel(node, n)
+		if err != nil {
+			return nil, err
+		}
+		berr := n.Build(foundCtx, labelNode, node, foundIndex)
+		if berr != nil {
+			return nil, berr
+		}
+
+		if localReferenceValue != "" {
+			SetReference(n, localReferenceValue, refNode)
+		}
+
+		v := ValueReference[T]{
+			Value:     n,
+			ValueNode: node,
+		}
+		v.SetReference(localReferenceValue, refNode)
+
+		items = append(items, v)
+	}
+	if circError != nil && !idx.AllowCircularReferenceResolving() {
+		return items, circError
+	}
+	return items, nil
 }
 
 func SetReference(obj any, ref string, refNode *yaml.Node) {
@@ -631,84 +717,27 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 		}
 	}
 
-	var items []ValueReference[T]
-	if vn != nil && ln != nil {
-		if !utils.IsNodeArray(vn) {
-
-			if !isRef {
-				return []ValueReference[T]{}, nil, nil,
-					fmt.Errorf("array build failed, input is not an array, line %d, column %d", vn.Line, vn.Column)
-			}
-			// if this was pulled from a ref, but it's not a sequence, check the label and see if anything comes out,
-			// and then check that is a sequence, if not, fail it.
-			_, _, fvn := utils.FindKeyNodeFullTop(label, vn.Content)
-			if fvn != nil {
-				if !utils.IsNodeArray(vn) {
-					return []ValueReference[T]{}, nil, nil,
-						fmt.Errorf("array build failed, input is not an array, line %d, column %d", vn.Line, vn.Column)
-				}
-			}
-		}
-		for _, node := range vn.Content {
-			localReferenceValue := ""
-			foundCtx := ctx
-			foundIndex := idx
-
-			var refNode *yaml.Node
-
-			if rf, _, rv := utils.IsNodeRefValue(node); rf {
-				refg, fIdx, err, nCtx := LocateRefEnd(ctx, node, idx, 0)
-				if refg != nil {
-					refNode = node
-					node = refg
-					localReferenceValue = rv
-					foundIndex = fIdx
-					foundCtx = nCtx
-					if err != nil {
-						circError = err
-					}
-				} else if errors.Is(err, ErrExternalRefSkipped) {
-					var n T = new(N)
-					SetReference(n, rv, node)
-					v := ValueReference[T]{Value: n, ValueNode: node}
-					v.SetReference(rv, node)
-					items = append(items, v)
-					continue
-				} else {
-					if err != nil {
-						return []ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
-							err.Error())
-					}
-				}
-			}
-			var n T = new(N)
-			err := BuildModel(node, n)
-			if err != nil {
-				return []ValueReference[T]{}, ln, vn, err
-			}
-			berr := n.Build(foundCtx, ln, node, foundIndex)
-			if berr != nil {
-				return nil, ln, vn, berr
-			}
-
-			if localReferenceValue != "" {
-				SetReference(n, localReferenceValue, refNode)
-			}
-
-			v := ValueReference[T]{
-				Value:     n,
-				ValueNode: node,
-			}
-			v.SetReference(localReferenceValue, refNode)
-
-			items = append(items, v)
-		}
+	items, err := extractArrayValueReferences[T, N](ctx, label, ln, vn, idx, isRef)
+	if err != nil {
+		return items, ln, vn, err
 	}
-	// include circular errors?
 	if circError != nil && !idx.AllowCircularReferenceResolving() {
 		return items, ln, vn, circError
 	}
 	return items, ln, vn, nil
+}
+
+// ExtractArrayNoLookup builds an array of low-level values from an already-located YAML sequence node.
+func ExtractArrayNoLookup[T Buildable[N], N any](
+	ctx context.Context,
+	labelNode, valueNode *yaml.Node,
+	idx *index.SpecIndex,
+) ([]ValueReference[T], error) {
+	label := ""
+	if labelNode != nil {
+		label = labelNode.Value
+	}
+	return extractArrayValueReferences[T, N](ctx, label, labelNode, valueNode, idx, false)
 }
 
 // ExtractMapNoLookupExtensions will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'NoLookup' part
@@ -839,11 +868,54 @@ func ExtractMapNoLookup[PT Buildable[N], N any](
 type mappingResult[T any] struct {
 	k KeyReference[string]
 	v ValueReference[T]
+	e error
 }
 
 type buildInput struct {
 	label *yaml.Node
 	value *yaml.Node
+}
+
+func findExtractLabelNode(label string, root *yaml.Node) (keyNode *yaml.Node, labelNode *yaml.Node, valueNode *yaml.Node) {
+	root = utils.NodeAlias(root)
+	if root == nil {
+		return nil, nil, nil
+	}
+	if utils.IsNodeMap(root) {
+		keyNode, labelNode, valueNode = utils.FindKeyNodeFullTop(label, root.Content)
+		if valueNode != nil {
+			return keyNode, labelNode, valueNode
+		}
+	}
+	return utils.FindKeyNodeFull(label, root.Content)
+}
+
+func collectMapBuildInputs(valueNode *yaml.Node, extensions bool) []buildInput {
+	if valueNode == nil || len(valueNode.Content) == 0 {
+		return nil
+	}
+
+	inputs := make([]buildInput, 0, len(valueNode.Content)/2)
+	var currentLabelNode *yaml.Node
+	for i, en := range valueNode.Content {
+		en = utils.NodeAlias(en)
+		if i%2 == 0 {
+			if !extensions && strings.HasPrefix(en.Value, "x-") {
+				currentLabelNode = nil
+				continue
+			}
+			currentLabelNode = en
+			continue
+		}
+		if currentLabelNode == nil {
+			continue
+		}
+		inputs = append(inputs, buildInput{
+			label: currentLabelNode,
+			value: en,
+		})
+	}
+	return inputs
 }
 
 // ExtractMapExtensions will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'label' is
@@ -882,7 +954,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 				root.Content[1].Value)
 		}
 	} else {
-		_, labelNode, valueNode = utils.FindKeyNodeFull(label, root.Content)
+		_, labelNode, valueNode = findExtractLabelNode(label, root)
 		valueNode = utils.NodeAlias(valueNode)
 		if valueNode != nil {
 			if h, _, _ := utils.IsNodeRefValue(valueNode); h {
@@ -907,68 +979,17 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 	}
 	if valueNode != nil {
 		valueMap := orderedmap.New[KeyReference[string], ValueReference[PT]]()
-
-		in := make(chan buildInput)
-		out := make(chan mappingResult[PT])
-		done := make(chan struct{})
-		var wg sync.WaitGroup
-		wg.Add(2) // input and output goroutines.
-
-		// TranslatePipeline input.
-		go func() {
-			defer func() {
-				close(in)
-				wg.Done()
-			}()
-			var currentLabelNode *yaml.Node
-			for i, en := range valueNode.Content {
-				if !extensions {
-					if strings.HasPrefix(en.Value, "x-") {
-						continue // yo, don't pay any attention to extensions, not here anyway.
-					}
-				}
-				if currentLabelNode == nil && i%2 != 0 {
-					continue // we need a label node first, and we don't have one because of extensions.
-				}
-
-				en = utils.NodeAlias(en)
-				if i%2 == 0 {
-					currentLabelNode = en
-					continue
-				}
-
-				select {
-				case in <- buildInput{
-					label: currentLabelNode,
-					value: en,
-				}:
-				case <-done:
-					return
-				}
-			}
-		}()
-
-		// TranslatePipeline output.
-		go func() {
-			for {
-				result, ok := <-out
-				if !ok {
-					break
-				}
-				valueMap.Set(result.k, result.v)
-			}
-			close(done)
-			wg.Done()
-		}()
+		inputs := collectMapBuildInputs(valueNode, extensions)
 
 		startIdx := foundIndex
 		startCtx := foundContext
 
-		translateFunc := func(input buildInput) (mappingResult[PT], error) {
+		translateFunc := func(_ int, input buildInput) (mappingResult[PT], error) {
 			en := input.value
 
 			sCtx := startCtx
 			sIdx := startIdx
+			var localCircErr error
 
 			var refNode *yaml.Node
 			var referenceValue string
@@ -984,7 +1005,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 					}
 					sCtx = nCtx
 					if err != nil {
-						circError = err
+						localCircErr = err
 					}
 				} else if errors.Is(err, ErrExternalRefSkipped) {
 					var n PT = new(N)
@@ -994,6 +1015,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 					return mappingResult[PT]{
 						k: KeyReference[string]{KeyNode: input.label, Value: input.label.Value},
 						v: v,
+						e: localCircErr,
 					}, nil
 				} else {
 					if err != nil {
@@ -1027,11 +1049,17 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 					Value:   input.label.Value,
 				},
 				v: v,
+				e: localCircErr,
 			}, nil
 		}
 
-		err := datamodel.TranslatePipeline[buildInput, mappingResult[PT]](in, out, translateFunc)
-		wg.Wait()
+		err := datamodel.TranslateSliceParallel(inputs, translateFunc, func(result mappingResult[PT]) error {
+			if result.e != nil {
+				circError = result.e
+			}
+			valueMap.Set(result.k, result.v)
+			return nil
+		})
 		if err != nil {
 			return nil, labelNode, valueNode, err
 		}
@@ -1504,6 +1532,7 @@ func LocateRefEnd(ctx context.Context, root *yaml.Node, idx *index.SpecIndex, de
 }
 
 // FromReferenceMap will convert a *orderedmap.Map[KeyReference[K], ValueReference[V]] to a *orderedmap.Map[K, V]
+//go:noinline
 func FromReferenceMap[K comparable, V any](refMap *orderedmap.Map[KeyReference[K], ValueReference[V]]) *orderedmap.Map[K, V] {
 	om := orderedmap.New[K, V]()
 	for k, v := range refMap.FromOldest() {
@@ -1513,6 +1542,7 @@ func FromReferenceMap[K comparable, V any](refMap *orderedmap.Map[KeyReference[K
 }
 
 // FromReferenceMapWithFunc will convert a *orderedmap.Map[KeyReference[K], ValueReference[V]] to a *orderedmap.Map[K, VOut] using a transform function
+//go:noinline
 func FromReferenceMapWithFunc[K comparable, V any, VOut any](refMap *orderedmap.Map[KeyReference[K], ValueReference[V]], transform func(v V) VOut) *orderedmap.Map[K, VOut] {
 	om := orderedmap.New[K, VOut]()
 	for k, v := range refMap.FromOldest() {

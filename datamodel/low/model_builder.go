@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package low
@@ -14,6 +14,39 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 )
+
+type buildModelField struct {
+	lookupKey string
+	index     int
+	kind      reflect.Kind
+}
+
+var buildModelFieldCache sync.Map
+
+func buildModelFields(modelType reflect.Type) []buildModelField {
+	if cached, ok := buildModelFieldCache.Load(modelType); ok {
+		return cached.([]buildModelField)
+	}
+
+	fields := make([]buildModelField, 0, modelType.NumField())
+	for i := 0; i < modelType.NumField(); i++ {
+		structField := modelType.Field(i)
+		if !structField.IsExported() || structField.Anonymous {
+			continue
+		}
+		if structField.Name == "Extensions" || structField.Name == "PathItems" {
+			continue
+		}
+		fields = append(fields, buildModelField{
+			lookupKey: strings.ToLower(structField.Name),
+			index:     i,
+			kind:      structField.Type.Kind(),
+		})
+	}
+
+	actual, _ := buildModelFieldCache.LoadOrStore(modelType, fields)
+	return actual.([]buildModelField)
+}
 
 // BuildModel accepts a yaml.Node pointer and a model, which can be any struct. Using reflection, the model is
 // analyzed and the names of all the properties are extracted from the model and subsequently looked up from within
@@ -44,41 +77,21 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 	}
 
 	v := reflect.ValueOf(model).Elem()
-	num := v.NumField()
-	for i := 0; i < num; i++ {
-
-		structField := v.Type().Field(i)
-		fName := structField.Name
-
-		// Skip unexported fields and embedded structs — they are not YAML-mappable
-		// and can cause reflect.Kind mismatches (e.g., interface fields).
-		if !structField.IsExported() || structField.Anonymous {
-			continue
-		}
-
-		if fName == "Extensions" {
-			continue // internal construct
-		}
-
-		if fName == "PathItems" {
-			continue // internal construct
-		}
-
-		idx, ok := keyMap[strings.ToLower(fName)]
+	for _, modelField := range buildModelFields(v.Type()) {
+		idx, ok := keyMap[modelField.lookupKey]
 		if !ok {
 			continue
 		}
 		kn := utils.NodeAlias(content[idx])
 		vn := utils.NodeAlias(content[idx+1])
 
-		field := v.FieldByName(fName)
-		kind := field.Kind()
-		switch kind {
+		field := v.Field(modelField.index)
+		switch modelField.kind {
 		case reflect.Struct, reflect.Slice, reflect.Map, reflect.Pointer:
 			vn = utils.NodeAlias(vn)
 			SetField(&field, vn, kn)
 		default:
-			return fmt.Errorf("unable to parse unsupported type: %v", kind)
+			return fmt.Errorf("unable to parse unsupported type: %v", modelField.kind)
 		}
 
 	}
