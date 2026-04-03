@@ -150,6 +150,26 @@ func TestSchemaProxy_GetReference(t *testing.T) {
 	assert.Equal(t, refNode, sp.GetReferenceNode())
 }
 
+func TestSchemaProxy_GetReference_PrefersLiveRefNodeValue(t *testing.T) {
+	refNode := utils.CreateRefNode("#/components/schemas/MySchema")
+
+	ref := low.Reference{}
+	ref.SetReference("#/components/schemas/MySchema", refNode)
+
+	sp := &SchemaProxy{
+		schema: &low.NodeReference[*lowbase.SchemaProxy]{
+			Value: &lowbase.SchemaProxy{
+				Reference: ref,
+			},
+		},
+	}
+
+	refNode.Content[1].Value = "#/components/schemas/MySchema__shared"
+
+	assert.Equal(t, "#/components/schemas/MySchema__shared", sp.GetReference())
+	assert.Equal(t, refNode, sp.GetReferenceNode())
+}
+
 func TestSchemaProxy_IsReference_Nil(t *testing.T) {
 	var sp *SchemaProxy
 	assert.False(t, sp.IsReference())
@@ -1524,6 +1544,50 @@ func TestCreateSchemaProxyRefWithSchema_InlinePreservedRef(t *testing.T) {
 	assert.Equal(t, "$ref", node.Content[0].Value)
 	assert.Equal(t, "#/components/schemas/Pet", node.Content[1].Value)
 	require.GreaterOrEqual(t, len(node.Content), 4) // $ref key+val + description key+val
+}
+
+func TestSchemaProxy_MarshalYAMLInline_CircularReference_MatchesAbsoluteBasePath(t *testing.T) {
+	const ymlComponents = `components:
+  schemas:
+    Ten:
+      type: object`
+
+	var idxNode yaml.Node
+	err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+	require.NoError(t, err)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+	idx.SetAbsolutePath(filepath.Join(t.TempDir(), "spec.yaml"))
+	idx.SetCircularReferences([]*index.CircularReferenceResult{
+		{
+			LoopPoint: &index.Reference{
+				Definition:     "#/components/schemas/NotTen",
+				FullDefinition: idx.GetSpecAbsolutePath(),
+			},
+		},
+	})
+
+	refNode := utils.CreateRefNode("#/components/schemas/Ten")
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err = lowProxy.Build(context.Background(), nil, refNode, idx)
+	require.NoError(t, err)
+
+	sp := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: refNode,
+	})
+
+	rendered, err := sp.MarshalYAMLInline()
+	require.Error(t, err)
+	require.NotNil(t, rendered)
+	assert.Contains(t, err.Error(), "circular reference")
+
+	node, ok := rendered.(*yaml.Node)
+	require.True(t, ok)
+	require.Len(t, node.Content, 2)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Ten", node.Content[1].Value)
 }
 
 func TestCreateSchemaProxyRefWithSchema_CircularRefSafe(t *testing.T) {
