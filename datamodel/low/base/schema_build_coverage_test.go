@@ -78,8 +78,8 @@ func TestResolveSchemaBuildInput_NilAndRefFailures(t *testing.T) {
 }
 
 func TestRecursiveSchemaNodeHelpers(t *testing.T) {
-	mergeRecursiveNodesIfLineAbsent(nil, nil)
-	appendRecursiveNodes(nil, nil)
+	low.MergeRecursiveNodesIfLineAbsent(nil, nil)
+	low.AppendRecursiveNodes(nil, nil)
 
 	var root yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte("example:\n  nested:\n    value: ok\n"), &root))
@@ -89,7 +89,7 @@ func TestRecursiveSchemaNodeHelpers(t *testing.T) {
 	blockedLine := node.Content[0].Line
 	dst.Store(blockedLine, []*yaml.Node{{Value: "existing"}})
 
-	mergeRecursiveNodesIfLineAbsent(&dst, node)
+	low.MergeRecursiveNodesIfLineAbsent(&dst, node)
 
 	_, blocked := dst.Load(blockedLine)
 	assert.True(t, blocked)
@@ -105,6 +105,6 @@ func TestRecursiveSchemaNodeHelpers(t *testing.T) {
 	assert.True(t, foundNested)
 
 	collector := &collectingAddNodes{}
-	appendRecursiveNodes(collector, node)
+	low.AppendRecursiveNodes(collector, node)
 	assert.NotEmpty(t, collector.lines)
 }

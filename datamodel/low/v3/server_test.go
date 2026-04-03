@@ -132,6 +132,38 @@ description: high quality software for developers.`
 	assert.Equal(t, 0, orderedmap.Len(n.Variables.Value))
 }
 
+func TestServer_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var n Server
+	err := low.BuildModel(scalar.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), nil, scalar.Content[0], nil)
+	assert.NoError(t, err)
+
+	nodes := n.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
+}
+
+func TestServer_Build_VariablesNotMap(t *testing.T) {
+	yml := `url: https://pb33f.io
+variables: no`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var n Server
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), nil, idxNode.Content[0], nil)
+	assert.NoError(t, err)
+	assert.Nil(t, n.Variables.Value)
+}
+
 func TestServer_Name_OpenAPI32(t *testing.T) {
 	yml := `name: Production Server
 url: https://api.example.com

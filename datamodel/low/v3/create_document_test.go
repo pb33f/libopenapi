@@ -367,6 +367,23 @@ func TestCreateDocument(t *testing.T) {
 	assert.Equal(t, 1, orderedmap.Len(doc.GetExtensions()))
 }
 
+func TestCreateDocument_DeprecatedWrapper(t *testing.T) {
+	spec := []byte(`openapi: 3.1.0
+info:
+  title: wrapper
+  version: 1.0.0
+paths: {}`)
+
+	info, err := datamodel.ExtractSpecInfo(spec)
+	assert.NoError(t, err)
+
+	doc, err := CreateDocument(info)
+	assert.NoError(t, err)
+	assert.NotNil(t, doc)
+	assert.Equal(t, "3.1.0", doc.Version.Value)
+	assert.Equal(t, "wrapper", doc.Info.Value.Title.Value)
+}
+
 func TestCreateDocumentHash(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()

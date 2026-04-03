@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2026 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package v3
@@ -257,6 +257,38 @@ func TestOAuthFlows_DeviceFlow(t *testing.T) {
 		assert.NotEqual(t, hash1, hash2)
 		n.Device.Value = originalDevice // restore
 	}
+}
+
+func TestOAuthFlows_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var flows OAuthFlows
+	err := low.BuildModel(scalar.Content[0], &flows)
+	assert.NoError(t, err)
+
+	err = flows.Build(context.Background(), nil, scalar.Content[0], nil)
+	assert.NoError(t, err)
+
+	nodes := flows.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
+}
+
+func TestOAuthFlow_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var flow OAuthFlow
+	err := low.BuildModel(scalar.Content[0], &flow)
+	assert.NoError(t, err)
+
+	err = flow.Build(context.Background(), nil, scalar.Content[0], nil)
+	assert.NoError(t, err)
+
+	nodes := flow.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
 }
 
 func TestOAuthFlows_Hash(t *testing.T) {

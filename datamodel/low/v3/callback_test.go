@@ -151,3 +151,20 @@ beer:
 	assert.Equal(t, n.Hash(), n2.Hash())
 	assert.Equal(t, 2, orderedmap.Len(n.GetExtensions()))
 }
+
+func TestCallback_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var cb Callback
+	err := low.BuildModel(scalar.Content[0], &cb)
+	assert.NoError(t, err)
+
+	err = cb.Build(context.Background(), nil, scalar.Content[0], nil)
+	assert.NoError(t, err)
+
+	nodes := cb.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
+	assert.Equal(t, 0, orderedmap.Len(cb.Expression))
+}

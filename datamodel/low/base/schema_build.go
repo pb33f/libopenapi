@@ -277,7 +277,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	_, expLabel, expNode := utils.FindKeyNodeFullTop(ExampleLabel, root.Content)
 	if expNode != nil {
 		s.Example = low.NodeReference[*yaml.Node]{Value: expNode, KeyNode: expLabel, ValueNode: expNode}
-		mergeRecursiveNodesIfLineAbsent(s.Nodes, expNode)
+		low.MergeRecursiveNodesIfLineAbsent(s.Nodes, expNode)
 	}
 
 	_, expArrLabel, expArrNode := utils.FindKeyNodeFullTop(ExamplesLabel, root.Content)
@@ -292,7 +292,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 				ValueNode: expArrNode,
 				KeyNode:   expArrLabel,
 			}
-			mergeRecursiveNodesIfLineAbsent(s.Nodes, expArrNode)
+			low.MergeRecursiveNodesIfLineAbsent(s.Nodes, expArrNode)
 		}
 	}
 
@@ -324,7 +324,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 		discriminator.RootNode = discNode
 		discriminator.Nodes = low.ExtractNodes(ctx, discNode)
 		s.Discriminator = low.NodeReference[*Discriminator]{Value: &discriminator, KeyNode: discLabel, ValueNode: discNode}
-		appendRecursiveNodes(&discriminator, discNode)
+		low.AppendRecursiveNodes(&discriminator, discNode)
 	}
 
 	_, extDocLabel, extDocNode := utils.FindKeyNodeFullTop(ExternalDocsLabel, root.Content)

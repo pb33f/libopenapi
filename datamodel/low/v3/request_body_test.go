@@ -156,3 +156,19 @@ func TestRequestBody_TopLevelExampleExtraction(t *testing.T) {
 	schemaLevelExample := getExample(schemaLevelYml)
 	assert.Equal(t, "", schemaLevelExample)
 }
+
+func TestRequestBody_Build_ScalarRoot(t *testing.T) {
+	var scalar yaml.Node
+	_ = yaml.Unmarshal([]byte("hello"), &scalar)
+
+	var rb RequestBody
+	err := low.BuildModel(scalar.Content[0], &rb)
+	assert.NoError(t, err)
+
+	err = rb.Build(context.Background(), nil, scalar.Content[0], nil)
+	assert.NoError(t, err)
+
+	nodes := rb.GetNodes()
+	assert.Len(t, nodes[scalar.Content[0].Line], 1)
+	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
+}

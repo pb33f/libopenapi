@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -184,52 +183,6 @@ func assignBuiltSchemaList(ctx context.Context, labelNode, valueNode *yaml.Node,
 	}
 	*dst = res
 	return nil
-}
-
-func mergeRecursiveNodesIfLineAbsent(dst *sync.Map, node *yaml.Node) {
-	if dst == nil || node == nil {
-		return
-	}
-
-	blocked := make(map[int]bool)
-	known := make(map[int]bool)
-	nodeMap := &low.NodeMap{Nodes: dst}
-	walkRecursiveNodes(node, func(current *yaml.Node) {
-		line := current.Line
-		if !known[line] {
-			_, blocked[line] = dst.Load(line)
-			known[line] = true
-		}
-		if !blocked[line] {
-			nodeMap.AddNode(line, current)
-		}
-	})
-}
-
-func appendRecursiveNodes(dst low.AddNodes, node *yaml.Node) {
-	if dst == nil || node == nil {
-		return
-	}
-
-	walkRecursiveNodes(node, func(current *yaml.Node) {
-		dst.AddNode(current.Line, current)
-	})
-}
-
-func walkRecursiveNodes(node *yaml.Node, visit func(*yaml.Node)) {
-	if node == nil || visit == nil || node.Content == nil {
-		return
-	}
-
-	for i := 0; i < len(node.Content); i++ {
-		current := node.Content[i]
-		if current.Line != 0 {
-			visit(current)
-		}
-		if len(current.Content) > 0 {
-			walkRecursiveNodes(current, visit)
-		}
-	}
 }
 
 func resolveSchemaBuildInput(ctx context.Context, valueNode *yaml.Node, idx *index.SpecIndex, errFormat string) (resolvedSchemaBuildInput, error) {
