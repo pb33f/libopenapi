@@ -12,6 +12,7 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
@@ -304,6 +305,117 @@ paths:
 
 	assert.Contains(t, bundledStr, "value:", "Nested properties should be present")
 	assertNoFilePathRefs(t, result.Bytes)
+}
+
+func TestBundleDocumentComposedWithOrigins_SchemaProxyGetReferenceUsesBundledRef(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	topSpec := `openapi: 3.1.0
+info:
+  title: Bundle Ref Getter Test
+  version: 1.0.0
+paths:
+  /:
+    get:
+      operationId: getRoot
+      responses:
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '500':
+          $ref: "./shared.yaml#/components/responses/InternalServerError"
+components:
+  responses:
+    BadRequest:
+      $ref: "./shared.yaml#/components/responses/BadRequest"
+  schemas:
+    Error:
+      type: object
+      properties:
+        wrong:
+          type: string
+`
+
+	sharedSpec := `openapi: 3.1.0
+components:
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/InternalServerError"
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+    InternalServerError:
+      type: object
+      properties:
+        message:
+          type: string
+`
+
+	topFile := filepath.Join(tmpDir, "top.yaml")
+	sharedFile := filepath.Join(tmpDir, "shared.yaml")
+	require.NoError(t, os.WriteFile(topFile, []byte(topSpec), 0644))
+	require.NoError(t, os.WriteFile(sharedFile, []byte(sharedSpec), 0644))
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+	config.SpecFilePath = topFile
+	config.ExtractRefsSequentially = true
+
+	spec, err := os.ReadFile(topFile)
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(spec, config)
+	require.NoError(t, err)
+
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	result, err := BundleDocumentComposedWithOrigins(&model.Model, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	bundledStr := string(result.Bytes)
+	assert.Contains(t, bundledStr, "#/components/schemas/Error__shared")
+	assert.Contains(t, bundledStr, "#/components/schemas/InternalServerError")
+
+	op := model.Model.Paths.PathItems.GetOrZero("/").Get
+	require.NotNil(t, op)
+	require.NotNil(t, op.Responses)
+
+	badRequest := op.Responses.Codes.GetOrZero("400")
+	require.NotNil(t, badRequest)
+	badRequestSchema := badRequest.Content.GetOrZero("application/json").Schema
+	require.NotNil(t, badRequestSchema)
+
+	internalError := op.Responses.Codes.GetOrZero("500")
+	require.NotNil(t, internalError)
+	internalErrorSchema := internalError.Content.GetOrZero("application/json").Schema
+	require.NotNil(t, internalErrorSchema)
+
+	assert.Equal(t, "#/components/schemas/Error__shared", badRequestSchema.GetReference())
+	assert.Equal(t, "#/components/schemas/InternalServerError", internalErrorSchema.GetReference())
+
+	badRequestOrigin := result.Origins[badRequestSchema.GetReference()]
+	require.NotNil(t, badRequestOrigin)
+	assert.Equal(t, sharedFile, badRequestOrigin.OriginalFile)
+	assert.Equal(t, "#/components/schemas/Error", badRequestOrigin.OriginalRef)
+
+	internalErrorOrigin := result.Origins[internalErrorSchema.GetReference()]
+	require.NotNil(t, internalErrorOrigin)
+	assert.Equal(t, sharedFile, internalErrorOrigin.OriginalFile)
+	assert.Equal(t, "#/components/schemas/InternalServerError", internalErrorOrigin.OriginalRef)
 }
 
 // TestBundlerComposedWithOrigins_AbsolutePathRefReuse ensures absolute-path refs
