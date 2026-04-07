@@ -2370,6 +2370,33 @@ func TestSchemaRenderer_RandomWord_RecursiveCall(t *testing.T) {
 		"Expected 'dddddddd' or 'eeeeeeeee', got '%s'", result)
 }
 
+func TestSchemaRenderer_RandomInt_DegenerateBounds(t *testing.T) {
+	wr := &SchemaRenderer{
+		rand: rand.New(rand.NewSource(42)),
+	}
+
+	assert.Equal(t, int64(7), wr.RandomInt(7, 7))
+	assert.Equal(t, int64(9), wr.RandomInt(9, 3))
+}
+
+func TestRenderExample_IntegerWithEqualBounds(t *testing.T) {
+	testObject := `type: integer
+minimum: 5
+maximum: 5`
+
+	compiled := getSchema([]byte(testObject))
+
+	journeyMap := make(map[string]any)
+	visited := createVisitedMap()
+	wr := createSchemaRenderer()
+
+	assert.NotPanics(t, func() {
+		wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
+	})
+
+	assert.Equal(t, int64(5), journeyMap["pb33f"])
+}
+
 func TestDiveIntoSchema_NilSchema(t *testing.T) {
 	wr := createSchemaRenderer()
 	structure := make(map[string]any)
