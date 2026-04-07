@@ -601,6 +601,9 @@ func (wr *SchemaRenderer) RandomWord(min, max int64, depth int) string {
 
 // RandomInt will return a random int between the min and max values.
 func (wr *SchemaRenderer) RandomInt(min, max int64) int64 {
+	if max <= min {
+		return min
+	}
 	return wr.rand.Int63n(max-min) + min
 }
 
