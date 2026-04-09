@@ -737,6 +737,31 @@ func TestUnderOpenAPIExamplePath(t *testing.T) {
 	}
 }
 
+func TestUnderOpenAPIExamplePayloadPath(t *testing.T) {
+	tests := []struct {
+		name string
+		path []string
+		want bool
+	}{
+		{"empty", nil, false},
+		{"example_payload", []string{"paths", "get", "responses", "200", "content", "application/json", "schema", "example"}, true},
+		{"nested_under_example_payload", []string{"components", "schemas", "Foo", "example", "nested"}, true},
+		{"examples_collection", []string{"components", "examples"}, false},
+		{"example_object_entry", []string{"components", "examples", "ReusableExample"}, false},
+		{"examples_value_payload", []string{"content", "application/json", "examples", "sample", "value"}, true},
+		{"examples_value_nested_payload", []string{"content", "application/json", "examples", "sample", "value", "nested"}, true},
+		{"examples_data_value_payload", []string{"components", "examples", "sample", "dataValue"}, true},
+		{"property_named_example", []string{"components", "schemas", "Foo", "properties", "example"}, false},
+		{"property_named_examples_value", []string{"components", "schemas", "Foo", "properties", "examples", "value"}, false},
+		{"real_example_after_property_example", []string{"components", "schemas", "Foo", "properties", "example", "example"}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, underOpenAPIExamplePayloadPath(tt.path))
+		})
+	}
+}
+
 func TestExtractRefs_InlineSchemaHelpers(t *testing.T) {
 	idx := NewTestSpecIndex().Load().(*SpecIndex)
 	idx.specAbsolutePath = "test.yaml"
@@ -961,4 +986,87 @@ func TestExtractRefs_WalkHelpers(t *testing.T) {
 	assert.False(t, shouldSkipMapSchemaCollection([]string{"properties", "example"}))
 	assert.False(t, shouldSkipMapSchemaCollection([]string{"patternProperties", "example"}))
 	assert.True(t, shouldSkipMapSchemaCollection([]string{"x-test"}))
+
+	var noAppendNode yaml.Node
+	_ = yaml.Unmarshal([]byte("summary: hello\nvalue: world"), &noAppendNode)
+	state.seenPath = []string{"components", "examples", "sample"}
+	state.lastAppended = false
+	idx.unwindExtractRefsPath(noAppendNode.Content[0], &state, 1)
+	assert.Equal(t, []string{"components", "examples", "sample"}, state.seenPath)
+
+	var appendNode yaml.Node
+	_ = yaml.Unmarshal([]byte("value: hello\nnext: world"), &appendNode)
+	state.lastAppended = true
+	idx.unwindExtractRefsPath(appendNode.Content[0], &state, 1)
+	assert.Equal(t, []string{"components", "examples"}, state.seenPath)
+	assert.False(t, state.lastAppended)
+}
+
+func TestExtractReferenceAt_IgnoresRefsInsideExamplePayloads(t *testing.T) {
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
+	idx.specAbsolutePath = "test.yaml"
+
+	var refNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`$ref: '#/components/schemas/Pet'`), &refNode)
+
+	ref := idx.extractReferenceAt(refNode.Content[0], nil, 0, []string{"components", "examples", "sample", "value"}, nil, false, "")
+	assert.Nil(t, ref)
+	assert.Empty(t, idx.GetAllReferences())
+	assert.Empty(t, idx.GetAllSequencedReferences())
+}
+
+func TestSpecIndex_ExtractRefs_ExampleObjectRefsIndexedButPayloadRefsIgnored(t *testing.T) {
+	spec := `openapi: 3.2.0
+info:
+  title: Example refs
+  version: 1.0.0
+paths:
+  /widgets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              examples:
+                responseRef:
+                  $ref: '#/components/examples/ReusableExample'
+                inlinePayload:
+                  summary: payload example
+                  value:
+                    nested:
+                      $ref: '#/components/schemas/ShouldNotIndex'
+components:
+  examples:
+    ReusableExample:
+      $ref: '#/components/examples/LeafExample'
+    LeafExample:
+      summary: reusable
+      value:
+        ok: true
+    DataValueExample:
+      dataValue:
+        nested:
+          $ref: '#/components/schemas/ShouldNotIndexData'
+  schemas:
+    ShouldNotIndex:
+      type: object
+    ShouldNotIndexData:
+      type: object
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+
+	rawRefs := make(map[string]bool)
+	for _, ref := range idx.GetAllReferences() {
+		rawRefs[ref.RawRef] = true
+	}
+
+	assert.True(t, rawRefs["#/components/examples/ReusableExample"])
+	assert.True(t, rawRefs["#/components/examples/LeafExample"])
+	assert.False(t, rawRefs["#/components/schemas/ShouldNotIndex"])
+	assert.False(t, rawRefs["#/components/schemas/ShouldNotIndexData"])
 }

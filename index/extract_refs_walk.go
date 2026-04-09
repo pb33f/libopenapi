@@ -16,6 +16,7 @@ type extractRefsState struct {
 	scope         *SchemaIdScope
 	parentBaseURI string
 	seenPath      []string
+	lastAppended  bool
 	level         int
 	poly          bool
 	polyName      string
@@ -67,16 +68,16 @@ func (index *SpecIndex) walkExtractRefs(node, parent *yaml.Node, state *extractR
 
 	var found []*Reference
 	for i, n := range node.Content {
-		if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
-			found = append(found, index.walkChildExtractRefs(n, node, state)...)
-		}
-
 		// In YAML mapping nodes, Content alternates key-value: even indices (0, 2, 4...)
 		// are keys, odd indices (1, 3, 5...) are values.
 		if i%2 == 0 {
 			if stop := index.handleExtractRefsKey(node, parent, state, i, &found); stop {
 				continue
 			}
+		}
+
+		if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
+			found = append(found, index.walkChildExtractRefs(n, node, state)...)
 		}
 
 		index.unwindExtractRefsPath(node, state, i)
@@ -86,6 +87,9 @@ func (index *SpecIndex) walkExtractRefs(node, parent *yaml.Node, state *extractR
 }
 
 func (index *SpecIndex) walkChildExtractRefs(node, parent *yaml.Node, state *extractRefsState) []*Reference {
+	if underOpenAPIExamplePayloadPath(state.seenPath) {
+		return nil
+	}
 	state.level++
 	if isPoly, _ := index.checkPolymorphicNode(state.prev); isPoly {
 		state.poly = true
@@ -103,6 +107,7 @@ func (index *SpecIndex) handleExtractRefsKey(
 	found *[]*Reference,
 ) bool {
 	keyNode := node.Content[keyIndex]
+	state.lastAppended = false
 	if keyNode == nil {
 		return false
 	}
@@ -134,6 +139,7 @@ func (index *SpecIndex) handleExtractRefsKey(
 
 	if keyNode.Value != "$ref" && keyNode.Value != "$id" && keyNode.Value != "" {
 		action := index.extractNodeMetadata(node, parent, state.seenPath, keyIndex)
+		state.lastAppended = action.appendSegment
 		if action.appendSegment {
 			state.seenPath = append(state.seenPath, strings.ReplaceAll(keyNode.Value, "/", "~1"))
 			state.prev = keyNode.Value
@@ -161,7 +167,9 @@ func (index *SpecIndex) unwindExtractRefsPath(node *yaml.Node, state *extractRef
 		return
 	}
 	next := node.Content[currentIndex+1]
-	if currentIndex%2 != 0 && next != nil && !utils.IsNodeArray(next) && !utils.IsNodeMap(next) && len(state.seenPath) > 0 {
+	if currentIndex%2 != 0 && state.lastAppended &&
+		next != nil && !utils.IsNodeArray(next) && !utils.IsNodeMap(next) && len(state.seenPath) > 0 {
 		state.seenPath = state.seenPath[:len(state.seenPath)-1]
+		state.lastAppended = false
 	}
 }

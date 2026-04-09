@@ -38,10 +38,43 @@ func isArrayOfSchemaContainingNode(v string) bool {
 // keyword (sample data, not schema). A segment named "example" or "examples" that is preceded
 // by "properties" or "patternProperties" is a schema property name, not an OpenAPI keyword.
 func underOpenAPIExamplePath(seenPath []string) bool {
-	for i, p := range seenPath {
-		if p == "example" || p == "examples" {
-			if i == 0 || (seenPath[i-1] != "properties" && seenPath[i-1] != "patternProperties") {
-				return true
+	for i := range seenPath {
+		if isOpenAPIExampleKeywordSegment(seenPath, i) {
+			return true
+		}
+	}
+	return false
+}
+
+func isOpenAPIExampleKeywordSegment(seenPath []string, idx int) bool {
+	if idx < 0 || idx >= len(seenPath) {
+		return false
+	}
+	switch seenPath[idx] {
+	case "example", "examples":
+		return idx == 0 || (seenPath[idx-1] != "properties" && seenPath[idx-1] != "patternProperties")
+	default:
+		return false
+	}
+}
+
+// underOpenAPIExamplePayloadPath reports whether seenPath points to raw example payload content,
+// not the Example Object itself. This lets the walker keep traversing legitimate Example Objects
+// for $ref values while still skipping sample data under example/value/dataValue.
+func underOpenAPIExamplePayloadPath(seenPath []string) bool {
+	for i := range seenPath {
+		if !isOpenAPIExampleKeywordSegment(seenPath, i) {
+			continue
+		}
+		switch seenPath[i] {
+		case "example":
+			return true
+		case "examples":
+			if len(seenPath) > i+2 {
+				switch seenPath[i+2] {
+				case "value", "dataValue":
+					return true
+				}
 			}
 		}
 	}

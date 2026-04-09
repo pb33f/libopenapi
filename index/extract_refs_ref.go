@@ -27,6 +27,9 @@ func (index *SpecIndex) extractReferenceAt(
 	if len(node.Content) <= keyIndex+1 {
 		return nil
 	}
+	if underOpenAPIExamplePayloadPath(seenPath) {
+		return nil
+	}
 
 	isExtensionPath := false
 	for _, spi := range seenPath {

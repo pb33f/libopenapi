@@ -28,6 +28,28 @@ import (
 // ErrInvalidModel is returned when the model is not usable.
 var ErrInvalidModel = errors.New("invalid model")
 
+type invalidModelBuildError struct {
+	cause error
+}
+
+func (e *invalidModelBuildError) Error() string {
+	if e == nil || e.cause == nil {
+		return ErrInvalidModel.Error()
+	}
+	return e.cause.Error()
+}
+
+func (e *invalidModelBuildError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.cause
+}
+
+func (e *invalidModelBuildError) Is(target error) bool {
+	return target == ErrInvalidModel
+}
+
 // buildV3ModelFromBytes is a helper that parses bytes and builds a v3 model.
 // Returns the model and any build errors. The model may be non-nil even when err is non-nil
 // (e.g., circular reference warnings), allowing bundling to proceed with warnings.
@@ -39,7 +61,7 @@ func buildV3ModelFromBytes(bytes []byte, configuration *datamodel.DocumentConfig
 
 	v3Doc, buildErr := doc.BuildV3Model()
 	if v3Doc == nil {
-		return nil, errors.Join(ErrInvalidModel, buildErr)
+		return nil, &invalidModelBuildError{cause: buildErr}
 	}
 	// Return both model and error - caller decides how to handle warnings/errors
 	return &v3Doc.Model, buildErr
@@ -76,7 +98,7 @@ func BundleBytesComposed(bytes []byte, configuration *datamodel.DocumentConfigur
 
 	v3Doc, err := doc.BuildV3Model()
 	if err != nil {
-		return nil, errors.Join(ErrInvalidModel, err)
+		return nil, &invalidModelBuildError{cause: err}
 	}
 
 	bundledBytes, e := compose(&v3Doc.Model, compositionConfig)
@@ -93,7 +115,7 @@ func BundleBytesComposedWithOrigins(bytes []byte, configuration *datamodel.Docum
 
 	v3Doc, err := doc.BuildV3Model()
 	if err != nil {
-		return nil, errors.Join(ErrInvalidModel, err)
+		return nil, &invalidModelBuildError{cause: err}
 	}
 
 	result, e := composeWithOrigins(&v3Doc.Model, compositionConfig)

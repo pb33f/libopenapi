@@ -416,12 +416,10 @@ components:
 	_, e := BundleBytes(digi, config)
 	require.Error(t, e)
 	unwrap := utils.UnwrapErrors(e)
-	require.Len(t, unwrap, 2)
+	require.Len(t, unwrap, 1)
 	assert.ErrorIs(t, unwrap[0], ErrInvalidModel)
-	unwrapNext := utils.UnwrapErrors(unwrap[1])
-	require.Len(t, unwrapNext, 2)
-	assert.Equal(t, "component `bork` does not exist in the specification", unwrapNext[0].Error())
-	assert.Equal(t, "cannot resolve reference `bork`, it's missing: $.bork [5:7]", unwrapNext[1].Error())
+	assert.Equal(t, "component `bork` does not exist in the specification\ncannot resolve reference `bork`, it's missing: $.bork [5:7]", unwrap[0].Error())
+	assert.NotContains(t, unwrap[0].Error(), "invalid model")
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
 	if len(logEntries) == 1 && logEntries[0] == "" {
@@ -1797,6 +1795,20 @@ paths: {}`)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrInvalidModel)
 	assert.Contains(t, err.Error(), "different version")
+}
+
+func TestBundleBytesComposedWithOrigins_InvalidModel(t *testing.T) {
+	swagger2Spec := []byte(`swagger: "2.0"
+info:
+  title: Test API
+  version: 1.0.0
+paths: {}`)
+
+	_, err := BundleBytesComposedWithOrigins(swagger2Spec, nil, nil)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrInvalidModel)
+	assert.Contains(t, err.Error(), "different version")
+	assert.NotContains(t, err.Error(), "invalid model")
 }
 
 // TestBundleBytesWithConfig_BackwardCompatibility tests that existing behavior is preserved
