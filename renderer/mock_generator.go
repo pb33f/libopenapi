@@ -160,15 +160,14 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 	examples := v.FieldByName(Examples)
 	examplesValue := examples.Interface()
 	if examplesValue != nil && !examples.IsNil() {
-
-		// cast examples to *orderedmap.Map[string, *highbase.Example]
-		examplesMap := examplesValue.(*orderedmap.Map[string, *highbase.Example])
-		if examplesMap.Len() > 0 {
-			if example, ok := examplesMap.Get(name); ok {
-				return mg.renderForType(example.Value, schemaValue), nil
-			} else {
-				//take the first example from the list
-				fallbackExample = examplesMap.Oldest().Value
+		if examplesMap, ok := examplesValue.(*orderedmap.Map[string, *highbase.Example]); ok {
+			if examplesMap.Len() > 0 {
+				if example, ok := examplesMap.Get(name); ok {
+					return mg.renderForType(example.Value, schemaValue), nil
+				} else {
+					//take the first example from the list
+					fallbackExample = examplesMap.Oldest().Value
+				}
 			}
 		}
 	}

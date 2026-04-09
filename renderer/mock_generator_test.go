@@ -351,6 +351,35 @@ properties:
 	assert.Equal(t, "a terrible show from a time that never existed.", m["description"].(string))
 }
 
+func TestMockGenerator_GenerateJSONMock_DirectSchema_SchemaExamples(t *testing.T) {
+	yml := `type: object
+examples:
+  - name: happy days
+    description: a terrible show from a time that never existed.
+  - name: robocop
+    description: perhaps the best cyberpunk movie ever made.
+properties:
+  name:
+    type: string
+    example: nameExample
+  description:
+    type: string
+    example: descriptionExample`
+
+	fake := createFakeMockWithoutProxy(yml, nil, nil)
+	mg := NewMockGenerator(YAML)
+	mock, err := mg.GenerateMock(fake.Schema, "")
+	assert.NoError(t, err)
+
+	var m map[string]any
+	err = yaml.Unmarshal(mock, &m)
+	assert.NoError(t, err)
+
+	assert.Len(t, m, 2)
+	assert.Equal(t, "happy days", m["name"].(string))
+	assert.Equal(t, "a terrible show from a time that never existed.", m["description"].(string))
+}
+
 func TestMockGenerator_GenerateJSONMock_Object_SchemaExamples_Preferred(t *testing.T) {
 	yml := `type: object
 examples:

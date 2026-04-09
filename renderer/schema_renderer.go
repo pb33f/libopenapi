@@ -321,6 +321,8 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 
 		properties := schema.Properties
 		propertyMap := make(map[string]any)
+		var compositionValue any
+		hasCompositionValue := false
 
 		if properties != nil {
 			// check if this schema has required properties, if so, then only render required props, if not
@@ -384,13 +386,15 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 					return false
 				}
 
-				if m, ok := allOfMap[allOfType].(map[string]any); ok {
-					for k, v := range m {
-						propertyMap[k] = v
+				if value, ok := allOfMap[allOfType]; ok {
+					if m, ok := value.(map[string]any); ok {
+						for k, v := range m {
+							propertyMap[k] = v
+						}
+					} else {
+						compositionValue = value
+						hasCompositionValue = true
 					}
-				}
-				if m, ok := allOfMap[allOfType].(string); ok {
-					propertyMap[allOfType] = m
 				}
 			}
 		}
@@ -437,13 +441,15 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			if !success {
 				continue
 			}
-			if m, ok := oneOfMap[oneOfType].(map[string]any); ok {
-				for k, v := range m {
-					propertyMap[k] = v
+			if value, ok := oneOfMap[oneOfType]; ok {
+				if m, ok := value.(map[string]any); ok {
+					for k, v := range m {
+						propertyMap[k] = v
+					}
+				} else {
+					compositionValue = value
+					hasCompositionValue = true
 				}
-			}
-			if m, ok := oneOfMap[oneOfType].(string); ok {
-				propertyMap[oneOfType] = m
 			}
 			oneOfSuccess = true
 
@@ -470,13 +476,15 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			if !success {
 				continue
 			}
-			if m, ok := anyOfMap[anyOfType].(map[string]any); ok {
-				for k, v := range m {
-					propertyMap[k] = v
+			if value, ok := anyOfMap[anyOfType]; ok {
+				if m, ok := value.(map[string]any); ok {
+					for k, v := range m {
+						propertyMap[k] = v
+					}
+				} else {
+					compositionValue = value
+					hasCompositionValue = true
 				}
-			}
-			if m, ok := anyOfMap[anyOfType].(string); ok {
-				propertyMap[anyOfType] = m
 			}
 			anyOfSuccess = true
 
@@ -485,6 +493,11 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 
 		if !anyOfSuccess {
 			return false
+		}
+
+		if len(propertyMap) == 0 && hasCompositionValue {
+			structure[key] = compositionValue
+			return true
 		}
 
 		structure[key] = propertyMap

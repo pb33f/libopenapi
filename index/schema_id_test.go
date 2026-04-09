@@ -1532,6 +1532,56 @@ components:
 	assert.True(t, found, "Should find invalid $id error")
 }
 
+// Test that $id values embedded inside OpenAPI example payloads are ignored.
+func TestSchemaId_IgnoresIdsInsideExamplePayloads(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Widget:
+      type: object
+      properties:
+        outputSchema:
+          type: object
+          example:
+            definitions: {}
+            properties:
+              id:
+                $id: '#widget/example/id'
+                type: string
+              nested:
+                $id: '#widget/example/nested'
+                type: string
+          examples:
+            sample:
+              value:
+                child:
+                  $id: '#widget/examples/child'
+                  type: integer
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	config.SpecAbsolutePath = "https://example.com/openapi.yaml"
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	allIds := index.GetAllSchemaIds()
+	assert.Len(t, allIds, 0)
+
+	errors := index.GetReferenceIndexErrors()
+	for _, e := range errors {
+		if e != nil {
+			assert.NotContains(t, e.Error(), "invalid $id")
+		}
+	}
+}
+
 // Test fragment navigation with DocumentNode wrapper
 func TestNavigateToFragment_DocumentNode(t *testing.T) {
 	yamlContent := `type: object

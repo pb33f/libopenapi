@@ -720,8 +720,7 @@ allOf:
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
-	assert.Len(t, journeyMap["pb33f"], 1)
-	assert.Greater(t, len(journeyMap["pb33f"].(map[string]interface{})["allOf"].(string)), 0)
+	assert.Greater(t, len(journeyMap["pb33f"].(string)), 0)
 }
 
 func TestRenderExample_Object_OneOf(t *testing.T) {
@@ -762,8 +761,7 @@ oneOf:
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
-	assert.Len(t, journeyMap["pb33f"], 1)
-	assert.Greater(t, len(journeyMap["pb33f"].(map[string]interface{})["oneOf"].(string)), 0)
+	assert.Greater(t, len(journeyMap["pb33f"].(string)), 0)
 }
 
 func TestRenderExample_Object_AnyOf(t *testing.T) {
@@ -804,8 +802,45 @@ anyOf:
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
-	assert.Len(t, journeyMap["pb33f"], 1)
-	assert.Greater(t, len(journeyMap["pb33f"].(map[string]interface{})["anyOf"].(string)), 0)
+	assert.Greater(t, len(journeyMap["pb33f"].(string)), 0)
+}
+
+func TestRenderExample_Property_AnyOfScalar(t *testing.T) {
+	testObject := `type: object
+properties:
+  description:
+    anyOf:
+      - type: string`
+
+	compiled := getSchema([]byte(testObject))
+
+	journeyMap := make(map[string]any)
+	visited := createVisitedMap()
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
+
+	assert.NotNil(t, journeyMap["pb33f"])
+	root := journeyMap["pb33f"].(map[string]any)
+	assert.Greater(t, len(root["description"].(string)), 0)
+}
+
+func TestRenderExample_Property_OneOfScalar(t *testing.T) {
+	testObject := `type: object
+properties:
+  description:
+    oneOf:
+      - type: string`
+
+	compiled := getSchema([]byte(testObject))
+
+	journeyMap := make(map[string]any)
+	visited := createVisitedMap()
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
+
+	assert.NotNil(t, journeyMap["pb33f"])
+	root := journeyMap["pb33f"].(map[string]any)
+	assert.Greater(t, len(root["description"].(string)), 0)
 }
 
 func TestRenderExample_TestGiftshopProduct_UsingExamples(t *testing.T) {
