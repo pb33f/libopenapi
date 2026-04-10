@@ -220,6 +220,50 @@ func TestDocument_RoundTrip_YAML_To_JSON(t *testing.T) {
 	}
 }
 
+func TestDocument_RoundTrip_PreservesConditionalAllOfEmptyRequired(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: issue-558
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    AFooSpec:
+      type: object
+      properties:
+        displayName:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+      allOf:
+        - if:
+            properties:
+              enabled:
+                const: true
+          then:
+            required:
+              - displayName
+          else:
+            required: []
+`
+
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+
+	_, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	rendered, err := doc.Render()
+	require.NoError(t, err)
+
+	out := string(rendered)
+	assert.Contains(t, out, "allOf:")
+	assert.Contains(t, out, "- if:")
+	assert.Contains(t, out, "required: []")
+	assert.NotContains(t, out, "else: {}")
+}
+
 func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
 	bs, _ := os.ReadFile("test_specs/burgershop.openapi.yaml")
 	doc, _ := NewDocument(bs)
