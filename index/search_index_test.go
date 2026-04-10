@@ -830,3 +830,15 @@ func TestIsFileBeingIndexed_HTTPPathMatch(t *testing.T) {
 	// Different path - should not match
 	assert.False(t, IsFileBeingIndexed(ctx, "https://example.com/other/file.yaml"))
 }
+
+func TestIsFileBeingIndexed_HTTPMatchesLocalFilename(t *testing.T) {
+	ctx := context.Background()
+
+	files := map[string]bool{
+		"/tmp/specs/pet.yaml": true,
+	}
+	ctx = context.WithValue(ctx, IndexingFilesKey, files)
+
+	assert.True(t, IsFileBeingIndexed(ctx, "https://different-host.com/schemas/pet.yaml"))
+	assert.False(t, IsFileBeingIndexed(ctx, "https://different-host.com/schemas/cat.yaml"))
+}
