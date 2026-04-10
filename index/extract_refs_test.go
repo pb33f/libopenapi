@@ -886,6 +886,19 @@ func TestRegisterSchemaIDAt_HelperBranches(t *testing.T) {
 	assert.Equal(t, "://bad-base", entry.ParentId)
 }
 
+func TestRegisterSchemaIDAt_SkipsExamplePaths(t *testing.T) {
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
+	idx.specAbsolutePath = "test.yaml"
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`$id: https://example.com/schema.json`), &node)
+
+	idx.registerSchemaIDAt(node.Content[0], 0, []string{"components", "examples", "Sample", "value"}, "test.yaml")
+
+	assert.Empty(t, idx.schemaIdRegistry)
+	assert.Empty(t, idx.refErrors)
+}
+
 func TestExtractRefs_MetadataHelpers(t *testing.T) {
 	idx := NewTestSpecIndex().Load().(*SpecIndex)
 	idx.specAbsolutePath = "test.yaml"

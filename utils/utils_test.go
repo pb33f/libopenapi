@@ -1668,6 +1668,26 @@ x-b:
 	assert.Equal(t, "a nice string", v.Value)
 }
 
+func TestFindKeyNodeFullTop_NonLeadingMergeAppendsAliasContent(t *testing.T) {
+	yml := []byte(`openapi: 3.0.3
+t-k: &anchorB
+  important-field: a nice string
+x-b:
+  local-field: present
+  <<: *anchorB
+`)
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal(yml, &rootNode)
+	assert.NoError(t, err)
+
+	k, l, v := FindKeyNodeFullTop("important-field", rootNode.Content[0].Content[5].Content)
+	assert.NotNil(t, k)
+	assert.NotNil(t, l)
+	assert.NotNil(t, v)
+	assert.Equal(t, "a nice string", v.Value)
+}
+
 func TestFindKeyNodeHelpers_BareMergeNodeDoesNotPanic(t *testing.T) {
 	var rootNode yaml.Node
 	err := yaml.Unmarshal([]byte("<<"), &rootNode)
