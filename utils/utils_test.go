@@ -1017,6 +1017,30 @@ thangs: *anchorA`
 	assert.Len(t, ref.Content, 2)
 }
 
+func TestNodeAlias_DoesNotCollapseMergeMappings(t *testing.T) {
+	yml := `getServer: &getServer
+  description: "Get one specific server"
+  content:
+    application/json:
+      schema:
+        type: string
+updateServer:
+  <<: *getServer
+  description: "override"`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	ref := NodeAlias(node.Content[0].Content[3])
+	require.NotNil(t, ref)
+	require.Len(t, ref.Content, 4)
+	assert.Equal(t, "<<", ref.Content[0].Value)
+
+	_, descriptionNode := FindKeyNodeTop("description", ref.Content)
+	require.NotNil(t, descriptionNode)
+	assert.Equal(t, "override", descriptionNode.Value)
+}
+
 func TestNodeAlias_Nil(t *testing.T) {
 	ref := NodeAlias(nil)
 	assert.Nil(t, ref)
@@ -1060,6 +1084,77 @@ func TestCheckForMergeNodes(t *testing.T) {
 
 	assert.Equal(t, "The type of life cycle", descriptionVal.Value)
 	assert.Len(t, enumVal.Content, 3)
+}
+
+func TestCheckForMergeNodes_PreservesLocalOverrides(t *testing.T) {
+	yml := `getServer: &getServer
+  description: "Get one specific server"
+  content:
+    application/json:
+      schema:
+        type: string
+updateServer:
+  <<: *getServer
+  description: "Original response has a description that I expected to be overrode by this"
+  headers:
+    X-RateLimit-Limit:
+      schema:
+        type: integer
+      description: This header will not appear.`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	updateServer := node.Content[0].Content[3]
+	CheckForMergeNodes(updateServer)
+
+	_, descriptionNode := FindKeyNodeTop("description", updateServer.Content)
+	require.NotNil(t, descriptionNode)
+	assert.Equal(t, "Original response has a description that I expected to be overrode by this", descriptionNode.Value)
+
+	_, headersNode := FindKeyNodeTop("headers", updateServer.Content)
+	require.NotNil(t, headersNode)
+	_, rateLimitHeader := FindKeyNodeTop("X-RateLimit-Limit", headersNode.Content)
+	require.NotNil(t, rateLimitHeader)
+
+	_, contentNode := FindKeyNodeTop("content", updateServer.Content)
+	require.NotNil(t, contentNode)
+	_, _, mergeNode := FindKeyNodeFullTop("<<", updateServer.Content)
+	assert.Nil(t, mergeNode)
+}
+
+func TestCheckForMergeNodes_MultipleMergeSourcesHonorYamlPrecedence(t *testing.T) {
+	yml := `first: &first
+  description: "from first"
+  content:
+    application/json:
+      schema:
+        type: string
+second: &second
+  description: "from second"
+  headers:
+    X-RateLimit-Limit:
+      schema:
+        type: integer
+merged:
+  <<:
+    - *first
+    - *second`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	merged := node.Content[0].Content[5]
+	CheckForMergeNodes(merged)
+
+	_, descriptionNode := FindKeyNodeTop("description", merged.Content)
+	require.NotNil(t, descriptionNode)
+	assert.Equal(t, "from first", descriptionNode.Value)
+
+	_, headersNode := FindKeyNodeTop("headers", merged.Content)
+	require.NotNil(t, headersNode)
+	_, rateLimitHeader := FindKeyNodeTop("X-RateLimit-Limit", headersNode.Content)
+	require.NotNil(t, rateLimitHeader)
 }
 
 func TestCheckForMergeNodes_Empty_NoPanic(t *testing.T) {

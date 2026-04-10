@@ -102,6 +102,39 @@ func TestBundleDocumentComposed(t *testing.T) {
 	assert.Equal(t, "composition delimiter cannot contain spaces", err.Error())
 }
 
+func TestBundleDocumentComposed_PreservesYamlMergeOverrides(t *testing.T) {
+	model := buildIssue831Model(t)
+
+	bundledBytes, err := BundleDocumentComposed(model, &BundleCompositionConfig{Delimiter: "__"})
+	require.NoError(t, err)
+	assert.NotContains(t, string(bundledBytes), "!!merge")
+
+	bundledDoc := parseBundledV3Document(t, bundledBytes)
+	require.NotNil(t, bundledDoc.Components)
+
+	getResponse := bundledDoc.Components.Responses.GetOrZero("getServer")
+	updateResponse := bundledDoc.Components.Responses.GetOrZero("updateServer")
+	require.NotNil(t, getResponse)
+	require.NotNil(t, updateResponse)
+
+	assert.Equal(t, "Get one specific server", getResponse.Description)
+	assert.Equal(t, "Original response has a description that I expected to be overrode by this", updateResponse.Description)
+	assert.Nil(t, getResponse.Headers)
+	require.NotNil(t, updateResponse.Headers)
+
+	header := updateResponse.Headers.GetOrZero("X-RateLimit-Limit")
+	require.NotNil(t, header)
+	assert.Equal(t, "This header will not appear.", header.Description)
+
+	pathItem := bundledDoc.Paths.PathItems.GetOrZero("/example")
+	require.NotNil(t, pathItem)
+	require.NotNil(t, pathItem.Patch)
+
+	patchResponse := pathItem.Patch.Responses.FindResponseByCode(200)
+	require.NotNil(t, patchResponse)
+	assert.Equal(t, "#/components/responses/updateServer", patchResponse.GoLow().GetReference())
+}
+
 func TestCheckReferenceAndBubbleUp(t *testing.T) {
 	err := checkReferenceAndBubbleUp[any]("test", "__",
 		&processRef{ref: &index.Reference{Node: &yaml.Node{}}},

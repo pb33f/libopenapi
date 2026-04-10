@@ -49,6 +49,7 @@ func selectDocumentNode(root *yaml.Node, preferred documentTopLevelNode, label s
 	if root == nil {
 		return documentTopLevelNode{}
 	}
+	utils.CheckForMergeNodes(root)
 	if topOnly {
 		_, key, value := utils.FindKeyNodeFullTop(label, root.Content)
 		return documentTopLevelNode{key: key, value: value}
@@ -63,6 +64,7 @@ func collectDocumentTopLevelNodes(root *yaml.Node) documentTopLevelNodes {
 	if root == nil {
 		return nodes
 	}
+	utils.CheckForMergeNodes(root)
 
 	content := root.Content
 	for i := 0; i+1 < len(content); i += 2 {

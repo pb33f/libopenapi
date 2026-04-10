@@ -11,6 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -149,6 +150,50 @@ func TestResponse_Build_ScalarRoot(t *testing.T) {
 	nodes := r.GetNodes()
 	assert.Len(t, nodes[scalar.Content[0].Line], 1)
 	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
+}
+
+func TestResponse_Build_PreservesMergeOverrides(t *testing.T) {
+	cleanHashCacheForTest(t)
+
+	yml := `getServer: &getServer
+  description: "Get one specific server"
+  content:
+    application/json:
+      schema:
+        type: string
+updateServer:
+  <<: *getServer
+  description: "Original response has a description that I expected to be overrode by this"
+  headers:
+    X-RateLimit-Limit:
+      schema:
+        type: integer
+      description: This header will not appear.`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	updateKeyNode := idxNode.Content[0].Content[2]
+	updateValueNode := idxNode.Content[0].Content[3]
+
+	var response Response
+	err := low.BuildModel(updateValueNode, &response)
+	require.NoError(t, err)
+	assert.Equal(t, "Original response has a description that I expected to be overrode by this", response.Description.Value)
+
+	err = response.Build(context.Background(), updateKeyNode, updateValueNode, idx)
+	require.NoError(t, err)
+	assert.Equal(t, "Original response has a description that I expected to be overrode by this", response.Description.Value)
+
+	header := response.FindHeader("X-RateLimit-Limit")
+	require.NotNil(t, header)
+	require.NotNil(t, header.Value)
+	assert.Equal(t, "This header will not appear.", header.Value.Description.Value)
+
+	content := response.FindContent("application/json")
+	require.NotNil(t, content)
+	require.NotNil(t, content.Value)
 }
 
 func TestResponses_NoDefault(t *testing.T) {
