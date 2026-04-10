@@ -58,9 +58,10 @@ func isOpenAPIExampleKeywordSegment(seenPath []string, idx int) bool {
 	}
 }
 
-// underOpenAPIExamplePayloadPath reports whether seenPath points to raw example payload content,
-// not the Example Object itself. This lets the walker keep traversing legitimate Example Objects
-// for $ref values while still skipping sample data under example/value/dataValue.
+// underOpenAPIExamplePayloadPath reports whether seenPath points to raw example payload content.
+// A bare `example` path is not payload by itself because libopenapi still supports a direct
+// `$ref` wrapper there for bundling. Once traversal moves below `example`, or into an Example
+// Object's `value`/`dataValue`, the path is payload and nested `$ref` keys should be ignored.
 func underOpenAPIExamplePayloadPath(seenPath []string) bool {
 	for i := range seenPath {
 		if !isOpenAPIExampleKeywordSegment(seenPath, i) {
@@ -68,7 +69,9 @@ func underOpenAPIExamplePayloadPath(seenPath []string) bool {
 		}
 		switch seenPath[i] {
 		case "example":
-			return true
+			if len(seenPath) > i+1 {
+				return true
+			}
 		case "examples":
 			if len(seenPath) > i+2 {
 				switch seenPath[i+2] {
@@ -76,6 +79,18 @@ func underOpenAPIExamplePayloadPath(seenPath []string) bool {
 					return true
 				}
 			}
+		}
+	}
+	return false
+}
+
+// isDirectOpenAPIExampleValuePath reports whether seenPath points at the value of an OpenAPI
+// `example` field itself. This is used to allow a top-level `$ref` wrapper while still skipping
+// traversal into arbitrary example payload objects.
+func isDirectOpenAPIExampleValuePath(seenPath []string) bool {
+	for i := range seenPath {
+		if seenPath[i] == "example" && isOpenAPIExampleKeywordSegment(seenPath, i) && len(seenPath) == i+1 {
+			return true
 		}
 	}
 	return false

@@ -90,6 +90,9 @@ func (index *SpecIndex) walkChildExtractRefs(node, parent *yaml.Node, state *ext
 	if underOpenAPIExamplePayloadPath(state.seenPath) {
 		return nil
 	}
+	if isDirectOpenAPIExampleValuePath(state.seenPath) && !isDirectOpenAPIExampleRefNode(node) {
+		return nil
+	}
 	state.level++
 	if isPoly, _ := index.checkPolymorphicNode(state.prev); isPoly {
 		state.poly = true
@@ -98,6 +101,10 @@ func (index *SpecIndex) walkChildExtractRefs(node, parent *yaml.Node, state *ext
 		}
 	}
 	return index.ExtractRefs(state.ctx, node, parent, state.seenPath, state.level, state.poly, state.polyName)
+}
+
+func isDirectOpenAPIExampleRefNode(node *yaml.Node) bool {
+	return utils.IsNodeMap(node) && utils.GetRefValueNode(node) != nil && len(node.Content) == 2
 }
 
 func (index *SpecIndex) handleExtractRefsKey(
