@@ -5,6 +5,7 @@ package bundler
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -1809,6 +1810,30 @@ paths: {}`)
 	assert.ErrorIs(t, err, ErrInvalidModel)
 	assert.Contains(t, err.Error(), "different version")
 	assert.NotContains(t, err.Error(), "invalid model")
+}
+
+func TestInvalidModelBuildError(t *testing.T) {
+	t.Run("nil receiver", func(t *testing.T) {
+		var err *invalidModelBuildError
+		assert.Equal(t, ErrInvalidModel.Error(), err.Error())
+		assert.Nil(t, err.Unwrap())
+	})
+
+	t.Run("nil cause", func(t *testing.T) {
+		err := &invalidModelBuildError{}
+		assert.Equal(t, ErrInvalidModel.Error(), err.Error())
+		assert.Nil(t, err.Unwrap())
+		assert.ErrorIs(t, err, ErrInvalidModel)
+	})
+
+	t.Run("wrapped cause", func(t *testing.T) {
+		cause := errors.New("different version")
+		err := &invalidModelBuildError{cause: cause}
+		assert.Equal(t, cause.Error(), err.Error())
+		assert.ErrorIs(t, err, ErrInvalidModel)
+		assert.ErrorIs(t, err, cause)
+		assert.Equal(t, cause, err.Unwrap())
+	})
 }
 
 // TestBundleBytesWithConfig_BackwardCompatibility tests that existing behavior is preserved

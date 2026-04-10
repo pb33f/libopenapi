@@ -762,6 +762,34 @@ func TestUnderOpenAPIExamplePayloadPath(t *testing.T) {
 	}
 }
 
+func TestIsOpenAPIExampleKeywordSegment(t *testing.T) {
+	path := []string{"components", "examples", "ReusableExample"}
+
+	tests := []struct {
+		name string
+		idx  int
+		want bool
+	}{
+		{"negative index", -1, false},
+		{"index too large", len(path), false},
+		{"examples keyword", 1, true},
+		{"non keyword segment", 2, false},
+		{"property named example", 2, false},
+	}
+
+	propertyPath := []string{"components", "schemas", "Foo", "properties", "example"}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			targetPath := path
+			if tt.name == "property named example" {
+				targetPath = propertyPath
+			}
+			assert.Equal(t, tt.want, isOpenAPIExampleKeywordSegment(targetPath, tt.idx))
+		})
+	}
+}
+
 func TestExtractRefs_InlineSchemaHelpers(t *testing.T) {
 	idx := NewTestSpecIndex().Load().(*SpecIndex)
 	idx.specAbsolutePath = "test.yaml"
