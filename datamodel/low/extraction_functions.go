@@ -755,12 +755,12 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 ) (*orderedmap.Map[KeyReference[string], ValueReference[PT]], error) {
 	valueMap := orderedmap.New[KeyReference[string], ValueReference[PT]]()
 	var circError error
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	if utils.IsNodeMap(root) {
 		var currentKey *yaml.Node
 		skip := false
-		rlen := len(root.Content)
-
-		for i := 0; i < rlen; i++ {
+		for i := 0; i < len(root.Content); i++ {
 			node := root.Content[i]
 			if !includeExtensions {
 				if len(node.Value) >= 2 && (node.Value[0] == 'x' || node.Value[0] == 'X') && node.Value[1] == '-' {
@@ -777,12 +777,6 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 				continue
 			}
 
-			if currentKey.Tag == "!!merge" && currentKey.Value == "<<" {
-				root.Content = append(root.Content, utils.NodeAlias(node).Content...)
-				rlen = len(root.Content)
-				currentKey = nil
-				continue
-			}
 			node = utils.NodeAlias(node)
 
 			foundIndex := idx
@@ -1534,6 +1528,7 @@ func LocateRefEnd(ctx context.Context, root *yaml.Node, idx *index.SpecIndex, de
 }
 
 // FromReferenceMap will convert a *orderedmap.Map[KeyReference[K], ValueReference[V]] to a *orderedmap.Map[K, V]
+//
 //go:noinline
 func FromReferenceMap[K comparable, V any](refMap *orderedmap.Map[KeyReference[K], ValueReference[V]]) *orderedmap.Map[K, V] {
 	om := orderedmap.New[K, V]()
@@ -1544,6 +1539,7 @@ func FromReferenceMap[K comparable, V any](refMap *orderedmap.Map[KeyReference[K
 }
 
 // FromReferenceMapWithFunc will convert a *orderedmap.Map[KeyReference[K], ValueReference[V]] to a *orderedmap.Map[K, VOut] using a transform function
+//
 //go:noinline
 func FromReferenceMapWithFunc[K comparable, V any, VOut any](refMap *orderedmap.Map[KeyReference[K], ValueReference[V]], transform func(v V) VOut) *orderedmap.Map[K, VOut] {
 	om := orderedmap.New[K, VOut]()

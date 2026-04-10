@@ -94,6 +94,101 @@ func isEmptyRef(line string) bool {
 	return ref == "{}" || ref == ""
 }
 
+func writeIssue831Fixture(t *testing.T) string {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+	specs := `openapi: 3.1.0
+info:
+  version: 1.0.0
+  title: Example
+  description: Woe be me
+  license:
+    name: MIT
+servers:
+  - url: http://example.com/v1
+paths:
+  /example:
+    get:
+      operationId: GetServer
+      responses:
+        "200":
+          $ref: 'servers.yaml#/getServer'
+    patch:
+      operationId: UpdateServer
+      responses:
+        "200":
+          $ref: 'servers.yaml#/updateServer'
+`
+
+	servers := `getServer: &getServer
+  description: "Get one specific server"
+  content:
+    application/json:
+      schema:
+        $ref: "base.yaml#/base"
+
+updateServer:
+  <<: *getServer
+  description: "Original response has a description that I expected to be overrode by this"
+  headers:
+    X-RateLimit-Limit:
+      schema:
+        type: integer
+      description: This header will not appear.
+`
+
+	base := `base:
+  type: object
+  description: Base schema
+  properties:
+    enabled:
+      type: boolean
+  example:
+    enabled: true
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "specs.yaml"), []byte(specs), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "servers.yaml"), []byte(servers), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "base.yaml"), []byte(base), 0644))
+	return filepath.Join(tmpDir, "specs.yaml")
+}
+
+func buildIssue831Model(t *testing.T) *v3high.Document {
+	t.Helper()
+
+	specPath := writeIssue831Fixture(t)
+	specBytes, err := os.ReadFile(specPath)
+	require.NoError(t, err)
+
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:                filepath.Dir(specPath),
+		SpecFilePath:            specPath,
+		AllowFileReferences:     true,
+		ExtractRefsSequentially: true,
+	}
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, cfg)
+	require.NoError(t, err)
+
+	v3Doc, errs := doc.BuildV3Model()
+	require.NoError(t, errs)
+	require.NotNil(t, v3Doc)
+	return &v3Doc.Model
+}
+
+func parseBundledV3Document(t *testing.T, bundledBytes []byte) *v3high.Document {
+	t.Helper()
+
+	bundledDoc, err := libopenapi.NewDocument(bundledBytes)
+	require.NoError(t, err)
+
+	bundledV3, errs := bundledDoc.BuildV3Model()
+	require.NoError(t, errs)
+	require.NotNil(t, bundledV3)
+	return &bundledV3.Model
+}
+
 func TestBundleDocument_DigitalOcean(t *testing.T) {
 	// test the mother of all exploded specs.
 	tmp := checkoutDigitalOceanRepo(t)
@@ -264,6 +359,33 @@ components:
 
 	assert.Equal(t, goroutines, successCount,
 		"All concurrent bundle operations should succeed")
+}
+
+func TestBundleDocument_PreservesYamlMergeOverrides(t *testing.T) {
+	model := buildIssue831Model(t)
+
+	bundledBytes, err := BundleDocument(model)
+	require.NoError(t, err)
+
+	bundledDoc := parseBundledV3Document(t, bundledBytes)
+	pathItem := bundledDoc.Paths.PathItems.GetOrZero("/example")
+	require.NotNil(t, pathItem)
+	require.NotNil(t, pathItem.Get)
+	require.NotNil(t, pathItem.Patch)
+
+	getResponse := pathItem.Get.Responses.FindResponseByCode(200)
+	patchResponse := pathItem.Patch.Responses.FindResponseByCode(200)
+	require.NotNil(t, getResponse)
+	require.NotNil(t, patchResponse)
+
+	assert.Equal(t, "Get one specific server", getResponse.Description)
+	assert.Equal(t, "Original response has a description that I expected to be overrode by this", patchResponse.Description)
+	assert.Nil(t, getResponse.Headers)
+	require.NotNil(t, patchResponse.Headers)
+
+	header := patchResponse.Headers.GetOrZero("X-RateLimit-Limit")
+	require.NotNil(t, header)
+	assert.Equal(t, "This header will not appear.", header.Description)
 }
 
 func TestBundleDocument_Circular(t *testing.T) {
