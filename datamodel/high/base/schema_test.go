@@ -1491,6 +1491,19 @@ dependentRequired:
 	assert.Empty(t, billingReq) // Use Empty() which handles both nil and empty slices
 }
 
+func TestNewSchema_Required_ExplicitEmptyArray_Render(t *testing.T) {
+	yml := `type: object
+required: []`
+
+	schema := getHighSchema(t, yml)
+	assert.NotNil(t, schema.Required)
+	assert.Empty(t, schema.Required)
+
+	rendered, err := schema.Render()
+	require.NoError(t, err)
+	assert.Equal(t, "type: object\nrequired: []\n", string(rendered))
+}
+
 func TestNewSchema_DependentRequired_SingleProperty(t *testing.T) {
 	yml := `type: object
 dependentRequired:
