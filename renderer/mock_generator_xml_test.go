@@ -39,6 +39,14 @@ func TestRenderXML_NilValue(t *testing.T) {
 	assert.Nil(t, result)
 }
 
+func TestRenderXML_InvalidYAMLNodeDecode(t *testing.T) {
+	mg := NewMockGenerator(XML)
+
+	// Unknown node kinds cannot be decoded into native Go values.
+	result := mg.RenderXML(&yaml.Node{Kind: 255}, nil)
+	assert.Nil(t, result)
+}
+
 func TestRenderXML_BasicMap_NoSchema(t *testing.T) {
 	mg := NewMockGenerator(XML)
 	mg.SetPretty()
