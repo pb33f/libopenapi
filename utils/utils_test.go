@@ -1783,6 +1783,163 @@ func TestNodeMerge_NoNodes(t *testing.T) {
 	assert.Nil(t, n)
 }
 
+func TestExpandMergeContent_DefensivePaths(t *testing.T) {
+	assert.Nil(t, expandMergeContent(nil, map[*yaml.Node]struct{}{}))
+
+	scalar := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "nope"}
+	assert.Nil(t, expandMergeContent(scalar, map[*yaml.Node]struct{}{}))
+
+	node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	visited := map[*yaml.Node]struct{}{node: {}}
+	assert.Nil(t, expandMergeContent(node, visited))
+}
+
+func TestExpandMergeContent_AliasNode(t *testing.T) {
+	target := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "plain"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "value"},
+		},
+	}
+	alias := &yaml.Node{Kind: yaml.AliasNode, Alias: target}
+
+	assert.Equal(t, target.Content, expandMergeContent(alias, map[*yaml.Node]struct{}{}))
+}
+
+func TestExpandMergeContent_OddAndBareMergeShapes(t *testing.T) {
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!merge", Value: "<<"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "not-a-map"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "local"},
+		},
+	}
+
+	expanded := expandMergeContent(node, map[*yaml.Node]struct{}{})
+	require.Len(t, expanded, 2)
+	assert.Equal(t, "local", expanded[0].Value)
+	assert.Same(t, expanded[0], expanded[1])
+}
+
+func TestExpandMergeContent_BareMergeWithoutValueReturnsEmpty(t *testing.T) {
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!merge", Value: "<<"},
+		},
+	}
+
+	expanded := expandMergeContent(node, map[*yaml.Node]struct{}{})
+	assert.Empty(t, expanded)
+}
+
+func TestExpandMergeContent_SkipsNilKeys(t *testing.T) {
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!merge", Value: "<<"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "not-a-map"},
+			nil,
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ignored"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "local"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "value"},
+		},
+	}
+
+	expanded := expandMergeContent(node, map[*yaml.Node]struct{}{})
+	require.Len(t, expanded, 2)
+	assert.Equal(t, "local", expanded[0].Value)
+	assert.Equal(t, "value", expanded[1].Value)
+}
+
+func TestAppendExpandedMergeContent_DefensivePaths(t *testing.T) {
+	target := []*yaml.Node{}
+	seen := map[string]struct{}{}
+
+	assert.Empty(t, appendExpandedMergeContent(target, seen, nil, map[*yaml.Node]struct{}{}))
+
+	mergeMapping := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			nil,
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ignored"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "fresh"},
+		},
+	}
+
+	result := appendExpandedMergeContent(target, seen, mergeMapping, map[*yaml.Node]struct{}{})
+	require.Len(t, result, 2)
+	assert.Equal(t, "fresh", result[0].Value)
+	assert.Same(t, result[0], result[1])
+}
+
+func TestMergedNodeContent_DefensivePaths(t *testing.T) {
+	assert.Nil(t, mergedNodeContent(nil))
+
+	plain := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "plain"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "value"},
+		},
+	}
+	assert.Equal(t, plain.Content, mergedNodeContent(plain))
+
+	bareMerge := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!merge", Value: "<<"},
+		},
+	}
+	assert.Equal(t, bareMerge.Content, mergedNodeContent(bareMerge))
+}
+
+func TestNodeMerge_FallbackToFirstNode(t *testing.T) {
+	plain := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "plain"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "value"},
+		},
+	}
+
+	result := NodeMerge([]*yaml.Node{plain})
+	assert.Same(t, plain, result)
+}
+
+func TestResolvedMergeNode_DefensivePaths(t *testing.T) {
+	assert.Nil(t, resolvedMergeNode(nil))
+
+	plain := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "plain"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "value"},
+		},
+	}
+	assert.Same(t, plain, resolvedMergeNode(plain))
+
+	bareMerge := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!merge", Value: "<<"},
+		},
+	}
+	assert.Same(t, bareMerge, resolvedMergeNode(bareMerge))
+}
+
 func TestCheckForMergeNodes_BareMergeNodeDoesNotPanic(t *testing.T) {
 	node := &yaml.Node{
 		Kind: yaml.MappingNode,
@@ -1795,6 +1952,21 @@ func TestCheckForMergeNodes_BareMergeNodeDoesNotPanic(t *testing.T) {
 		CheckForMergeNodes(node)
 	})
 	assert.Len(t, node.Content, 1)
+}
+
+func TestCheckForMergeNodes_NoMergeLeavesNodeUnchanged(t *testing.T) {
+	node := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "plain"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "value"},
+		},
+	}
+
+	original := append([]*yaml.Node(nil), node.Content...)
+	CheckForMergeNodes(node)
+	assert.Equal(t, original, node.Content)
 }
 
 func TestIsNodeNull(t *testing.T) {
