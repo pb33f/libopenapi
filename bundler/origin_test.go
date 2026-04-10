@@ -908,6 +908,53 @@ TestExample:
 	assert.Greater(t, len(componentTypes), 1, "should track multiple component types")
 }
 
+func TestBundleBytesComposedWithOrigins_OAS30PathItemInlining(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mainYAML := `openapi: 3.0.3
+paths:
+  /test:
+    $ref: './pathitems.yaml#/TestPath'
+`
+
+	pathitemsYAML := `TestPath:
+  get:
+    operationId: getTest
+    responses:
+      '200':
+        description: OK
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "main.yaml"), []byte(mainYAML), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "pathitems.yaml"), []byte(pathitemsYAML), 0644))
+
+	config := &datamodel.DocumentConfiguration{
+		AllowFileReferences: true,
+		BasePath:            tmpDir,
+	}
+
+	mainBytes, err := os.ReadFile(filepath.Join(tmpDir, "main.yaml"))
+	require.NoError(t, err)
+
+	result, err := BundleBytesComposedWithOrigins(mainBytes, config, nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(result.Bytes, &doc))
+
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+	_, hasRef := testPath["$ref"]
+	assert.False(t, hasRef, "PathItem should be inlined for OpenAPI 3.0.x")
+	assert.Contains(t, testPath, "get")
+
+	for bundledRef, origin := range result.Origins {
+		assert.NotEqual(t, "pathItems", origin.ComponentType, "unexpected pathItems origin for %s", bundledRef)
+		assert.NotContains(t, bundledRef, "#/components/pathItems/")
+	}
+}
+
 func TestCaptureOrigin_FullCoverage(t *testing.T) {
 	t.Run("captures with empty location", func(t *testing.T) {
 		origins := make(ComponentOriginMap)
