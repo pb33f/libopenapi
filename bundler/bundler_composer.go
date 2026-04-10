@@ -155,6 +155,13 @@ func isOpenAPIRootKey(key string) bool {
 	return openAPIRootKeys[key]
 }
 
+func rootSupportsPathItemComponents(rootIdx *index.SpecIndex) bool {
+	if rootIdx == nil || rootIdx.GetConfig() == nil || rootIdx.GetConfig().SpecInfo == nil {
+		return true
+	}
+	return rootIdx.GetConfig().SpecInfo.VersionNumeric >= 3.1
+}
+
 // processReference will extract a reference from the current index, and transform it into a first class
 // top-level component in the root OpenAPI document.
 func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig) error {
@@ -163,6 +170,7 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 	var err error
 
 	delim := cf.compositionConfig.Delimiter
+	supportsPathItemComponents := rootSupportsPathItemComponents(cf.rootIdx)
 
 	if model.Components != nil {
 		components = model.Components
@@ -205,7 +213,11 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 			case v3low.CallbacksLabel:
 				location = handleFileImport(pr, v3low.CallbacksLabel, delim, components.Callbacks)
 			case v3low.PathItemsLabel:
-				location = handleFileImport(pr, v3low.PathItemsLabel, delim, components.PathItems)
+				if supportsPathItemComponents {
+					location = handleFileImport(pr, v3low.PathItemsLabel, delim, components.PathItems)
+				} else {
+					cf.inlineRequired = append(cf.inlineRequired, pr)
+				}
 			}
 		} else {
 			// the only choice we can make here to be accurate is to inline instead of recompose.
@@ -275,10 +287,12 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 					}
 
 				case v3low.PathItemsLabel:
-					if len(location) > 2 && components.PathItems != nil {
+					if supportsPathItemComponents && len(location) > 2 && components.PathItems != nil {
 						return checkReferenceAndCapture(location[2], cf.compositionConfig.Delimiter,
 							v3low.PathItemsLabel, pr, idx, components.PathItems, buildPathItem, cf.origins)
 					}
+					cf.inlineRequired = append(cf.inlineRequired, pr)
+					return nil
 				}
 			}
 		} else {
@@ -356,11 +370,13 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 							return checkReferenceAndCapture(pr.name, delim, v3low.CallbacksLabel, pr, idx, components.Callbacks, buildCallback, cf.origins)
 						}
 					case v3low.PathItemsLabel:
-						if components.PathItems != nil {
+						if supportsPathItemComponents && components.PathItems != nil {
 							pr.name = checkForCollision(componentName, delim, pr, components.PathItems)
 							pr.location = []string{v3low.ComponentsLabel, v3low.PathItemsLabel, pr.name}
 							return checkReferenceAndCapture(pr.name, delim, v3low.PathItemsLabel, pr, idx, components.PathItems, buildPathItem, cf.origins)
 						}
+						cf.inlineRequired = append(cf.inlineRequired, pr)
+						return nil
 					}
 				}
 			}

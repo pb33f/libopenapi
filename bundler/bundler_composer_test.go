@@ -1234,6 +1234,113 @@ properties:
 	}
 }
 
+func TestBundleBytesComposed_BarePathItemFile_OAS30Inlines(t *testing.T) {
+	rootSpec := `openapi: 3.0.3
+paths:
+  /test:
+    $ref: 'pathitem.yaml'
+`
+
+	pathItemSpec := `get:
+  operationId: getTest
+  responses:
+    "200":
+      description: OK
+post:
+  operationId: createTest
+  responses:
+    "201":
+      description: Created
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("pathitem.yaml", pathItemSpec)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+		RecomposeRefs:       true,
+	}, &BundleCompositionConfig{StrictValidation: true})
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+
+	_, hasRef := testPath["$ref"]
+	assert.False(t, hasRef, "OpenAPI 3.0.x should inline bare path item file refs")
+	assert.Contains(t, testPath, "get")
+	assert.Contains(t, testPath, "post")
+
+	if components, ok := doc["components"].(map[string]any); ok {
+		_, hasPathItems := components["pathItems"]
+		assert.False(t, hasPathItems, "OpenAPI 3.0.x should not synthesize components.pathItems")
+	}
+}
+
+func TestBundleBytesComposed_ComponentPathItemRef_OAS30Inlines(t *testing.T) {
+	rootSpec := `openapi: 3.0.3
+paths:
+  /test:
+    $ref: 'components.yaml#/components/pathItems/TestPath'
+`
+
+	componentsSpec := `components:
+  pathItems:
+    TestPath:
+      get:
+        operationId: getTest
+        responses:
+          "200":
+            description: OK
+      post:
+        operationId: createTest
+        responses:
+          "201":
+            description: Created
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("components.yaml", componentsSpec)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+		RecomposeRefs:       true,
+	}, &BundleCompositionConfig{StrictValidation: true})
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+
+	_, hasRef := testPath["$ref"]
+	assert.False(t, hasRef, "OpenAPI 3.0.x should inline components.pathItems refs from external files")
+	assert.Contains(t, testPath, "get")
+	assert.Contains(t, testPath, "post")
+
+	if components, ok := doc["components"].(map[string]any); ok {
+		_, hasPathItems := components["pathItems"]
+		assert.False(t, hasPathItems, "OpenAPI 3.0.x should not synthesize components.pathItems")
+	}
+}
+
 // TestBundleBytesComposed_SingleSegmentPointerMultipleRefs tests that multiple
 // references to the same single-segment pointer are properly deduplicated.
 func TestBundleBytesComposed_SingleSegmentPointerMultipleRefs(t *testing.T) {
@@ -2174,9 +2281,9 @@ paths:
 	assert.True(t, foundEventCallback, "EventCallback should be added to components")
 }
 
-// TestBundleBytesComposed_SingleSegmentPathItem tests that single-segment JSON pointer
-// references to pathItem objects are properly recomposed to component references.
-func TestBundleBytesComposed_SingleSegmentPathItem(t *testing.T) {
+// TestBundleBytesComposed_SingleSegmentPathItem_OAS31 tests that single-segment JSON pointer
+// references to pathItem objects are properly recomposed to component references in OpenAPI 3.1+.
+func TestBundleBytesComposed_SingleSegmentPathItem_OAS31(t *testing.T) {
 	rootSpec := `openapi: 3.1.0
 paths:
   /test:
@@ -2241,6 +2348,61 @@ paths:
 		}
 	}
 	assert.True(t, foundTestPath, "TestPath should be added to components")
+}
+
+// TestBundleBytesComposed_SingleSegmentPathItem_OAS30 tests that composed bundling
+// inlines external path items for OpenAPI 3.0.x instead of creating 3.1-only components.pathItems.
+func TestBundleBytesComposed_SingleSegmentPathItem_OAS30(t *testing.T) {
+	rootSpec := `openapi: 3.0.3
+paths:
+  /test:
+    $ref: 'pathitems.yaml#/TestPath'
+`
+
+	pathitemsFile := `TestPath:
+  get:
+    operationId: getTest
+    responses:
+      "200":
+        description: OK
+  post:
+    operationId: createTest
+    responses:
+      "201":
+        description: Created
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("pathitems.yaml", pathitemsFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+
+	_, hasRef := testPath["$ref"]
+	assert.False(t, hasRef, "PathItem should be inlined for OpenAPI 3.0.x")
+	assert.Contains(t, testPath, "get")
+	assert.Contains(t, testPath, "post")
+
+	components, hasComponents := doc["components"].(map[string]any)
+	if hasComponents {
+		_, hasPathItems := components["pathItems"]
+		assert.False(t, hasPathItems, "OpenAPI 3.0.x bundle should not contain components.pathItems")
+	}
 }
 
 func TestBundlerComposed_AliasSchemaNoCircularSelfRef(t *testing.T) {
