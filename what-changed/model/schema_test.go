@@ -1901,6 +1901,74 @@ components:
 	assert.Equal(t, "bool", changes.AnyOfChanges[0].Changes[0].Original)
 }
 
+// https://github.com/pb33f/openapi-changes/issues/105
+func TestCompareSchemas_AnyOfSimpleScalarUnionMatchesTypeArray(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    operator:
+      anyOf:
+        - type: string
+        - type: number
+        - type: null`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    operator:
+      type:
+        - null
+        - string
+        - number`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("operator").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("operator").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+	assert.Equal(t, 0, changes.TotalChanges())
+
+	changes = CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.Nil(t, changes)
+	assert.Equal(t, 0, changes.TotalChanges())
+}
+
+func TestCompareSchemas_AnyOfSimpleScalarUnionDoesNotIgnoreBranchConstraints(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    operator:
+      anyOf:
+        - type: string
+          format: uuid
+        - type: number
+        - type: null`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    operator:
+      type:
+        - null
+        - string
+        - number`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("operator").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("operator").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Greater(t, changes.TotalChanges(), 0)
+}
+
 func TestCompareSchemas_OneOfModifyAndAddItem(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
@@ -3615,7 +3683,7 @@ func TestCompareSchemas_fireNilCheck(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
 	checkSchemaXML(nil, nil, nil, nil)
-	checkSchemaPropertyChanges(nil, nil, nil, nil, nil, nil)
+	checkSchemaPropertyChanges(nil, nil, nil, nil, nil, nil, false)
 	checkExamples(nil, nil, nil)
 }
 

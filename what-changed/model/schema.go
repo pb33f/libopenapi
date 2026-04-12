@@ -506,8 +506,10 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		// check examples
 		checkExamples(lSchema, rSchema, &changes)
 
+		skipSimpleScalarUnionDiff := schemasUseEquivalentSimpleScalarUnion(l, r)
+
 		// check schema core properties for changes.
-		checkSchemaPropertyChanges(lSchema, rSchema, l, r, &changes, sc)
+		checkSchemaPropertyChanges(lSchema, rSchema, l, r, &changes, sc, skipSimpleScalarUnionDiff)
 
 		// now for the confusing part, there is also a schema's 'properties' property to parse.
 		// inception, eat your heart out.
@@ -530,6 +532,10 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			rallOf = rSchema.AllOf.Value
 			ranyOf = rSchema.AnyOf.Value
 			rprefix = rSchema.PrefixItems.Value
+		}
+		if skipSimpleScalarUnionDiff {
+			lanyOf = nil
+			ranyOf = nil
 		}
 
 		props := checkMappedSchemaOfASchema(lProperties, rProperties, &changes)
@@ -748,7 +754,7 @@ func checkSchemaPropertyChanges(
 	rSchema *base.Schema,
 	lProxy *base.SchemaProxy,
 	rProxy *base.SchemaProxy,
-	changes *[]*Change, sc *SchemaChanges,
+	changes *[]*Change, sc *SchemaChanges, skipSimpleScalarUnionDiff bool,
 ) {
 	var props []*PropertyCheck
 
@@ -818,26 +824,28 @@ func checkSchemaPropertyChanges(
 	lnv = nil
 	rnv = nil
 
-	if lSchema != nil && lSchema.Type.ValueNode != nil {
-		lnv = lSchema.Type.ValueNode
+	if !skipSimpleScalarUnionDiff {
+		if lSchema != nil && lSchema.Type.ValueNode != nil {
+			lnv = lSchema.Type.ValueNode
+		}
+		if rSchema != nil && rSchema.Type.ValueNode != nil {
+			rnv = rSchema.Type.ValueNode
+		}
+		// Type
+		props = append(props, &PropertyCheck{
+			LeftNode:  lnv,
+			RightNode: rnv,
+			Label:     v3.TypeLabel,
+			Changes:   changes,
+			Breaking:  BreakingModified(CompSchema, PropType),
+			Component: CompSchema,
+			Property:  PropType,
+			Original:  lSchema,
+			New:       rSchema,
+		})
+		lnv = nil
+		rnv = nil
 	}
-	if rSchema != nil && rSchema.Type.ValueNode != nil {
-		rnv = rSchema.Type.ValueNode
-	}
-	// Type
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.TypeLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropType),
-		Component: CompSchema,
-		Property:  PropType,
-		Original:  lSchema,
-		New:       rSchema,
-	})
-	lnv = nil
-	rnv = nil
 
 	if lSchema != nil && lSchema.Title.ValueNode != nil {
 		lnv = lSchema.Title.ValueNode
@@ -1763,6 +1771,102 @@ func checkSchemaPropertyChanges(
 			}
 		}
 	}
+}
+
+func schemasUseEquivalentSimpleScalarUnion(l, r *base.SchemaProxy) bool {
+	return schemaPairUsesEquivalentSimpleScalarUnion(l, r) ||
+		schemaPairUsesEquivalentSimpleScalarUnion(r, l)
+}
+
+func schemaPairUsesEquivalentSimpleScalarUnion(typeProxy, anyOfProxy *base.SchemaProxy) bool {
+	if !isPureTypeArraySchema(typeProxy) || !isPureAnyOfUnionSchema(anyOfProxy) {
+		return false
+	}
+
+	typeSet, ok := extractTypeArraySet(typeProxy)
+	if !ok {
+		return false
+	}
+	anyOfSet, ok := extractSimpleAnyOfTypeSet(anyOfProxy.Schema().AnyOf.Value)
+	if !ok || len(typeSet) != len(anyOfSet) {
+		return false
+	}
+	for t := range typeSet {
+		if _, found := anyOfSet[t]; !found {
+			return false
+		}
+	}
+	return true
+}
+
+func isPureTypeArraySchema(proxy *base.SchemaProxy) bool {
+	if proxy == nil || proxy.IsReference() || !schemaNodeHasSingleKey(proxy.GetValueNode(), v3.TypeLabel) {
+		return false
+	}
+	typeNode := proxy.GetValueNode().Content[1]
+	return typeNode.Kind == yaml.SequenceNode && len(typeNode.Content) > 0
+}
+
+func isPureAnyOfUnionSchema(proxy *base.SchemaProxy) bool {
+	if proxy == nil || proxy.IsReference() || !schemaNodeHasSingleKey(proxy.GetValueNode(), v3.AnyOfLabel) {
+		return false
+	}
+	schema := proxy.Schema()
+	return schema != nil && len(schema.AnyOf.Value) > 0
+}
+
+func schemaNodeHasSingleKey(node *yaml.Node, key string) bool {
+	return node != nil && node.Kind == yaml.MappingNode && len(node.Content) == 2 && node.Content[0].Value == key
+}
+
+func extractTypeArraySet(proxy *base.SchemaProxy) (map[string]struct{}, bool) {
+	if proxy == nil || proxy.IsReference() || !schemaNodeHasSingleKey(proxy.GetValueNode(), v3.TypeLabel) {
+		return nil, false
+	}
+	typeNode := proxy.GetValueNode().Content[1]
+	if typeNode.Kind != yaml.SequenceNode || len(typeNode.Content) == 0 {
+		return nil, false
+	}
+	typeSet := make(map[string]struct{}, len(typeNode.Content))
+	for _, value := range typeNode.Content {
+		typeName, ok := extractScalarTypeName(value)
+		if !ok {
+			return nil, false
+		}
+		typeSet[typeName] = struct{}{}
+	}
+	return typeSet, len(typeSet) > 0
+}
+
+func extractSimpleAnyOfTypeSet(anyOf []low.ValueReference[*base.SchemaProxy]) (map[string]struct{}, bool) {
+	if len(anyOf) == 0 {
+		return nil, false
+	}
+	typeSet := make(map[string]struct{}, len(anyOf))
+	for _, branch := range anyOf {
+		if branch.Value == nil || branch.Value.IsReference() || !schemaNodeHasSingleKey(branch.Value.GetValueNode(), v3.TypeLabel) {
+			return nil, false
+		}
+		typeName, ok := extractScalarTypeName(branch.Value.GetValueNode().Content[1])
+		if !ok {
+			return nil, false
+		}
+		typeSet[typeName] = struct{}{}
+	}
+	return typeSet, len(typeSet) > 0
+}
+
+func extractScalarTypeName(node *yaml.Node) (string, bool) {
+	if node == nil || node.Kind != yaml.ScalarNode {
+		return "", false
+	}
+	if node.Tag == "!!null" {
+		return "null", true
+	}
+	if node.Value == "" {
+		return "", false
+	}
+	return node.Value, true
 }
 
 func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change) {
