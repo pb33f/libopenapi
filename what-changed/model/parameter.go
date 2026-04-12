@@ -326,8 +326,8 @@ func CompareParameters(l, r any) *ParameterChanges {
 		checkParameterExample(lParam.Example, rParam.Example, changes)
 
 		// examples
-		pc.ExamplesChanges = CheckMapForChanges(lParam.Examples.Value, rParam.Examples.Value,
-			&changes, v3.ExamplesLabel, CompareExamples)
+		pc.ExamplesChanges = CheckMapForChangesWithRules(lParam.Examples.Value, rParam.Examples.Value,
+			&changes, v3.ExamplesLabel, CompareExamples, CompParameter, PropExamples)
 
 		// content
 		pc.ContentChanges = CheckMapForChanges(lParam.Content.Value, rParam.Content.Value,

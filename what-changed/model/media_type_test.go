@@ -138,6 +138,39 @@ example:
 	assert.Equal(t, v3.ExampleLabel, extChanges.Changes[0].Property)
 }
 
+func TestCompareMediaTypes_ExamplesRemoved(t *testing.T) {
+	left := `schema:
+  type: string
+examples:
+  exampleOne:
+    value: yummy coffee
+  exampleTwo:
+    value: yummy tea`
+
+	right := `schema:
+  type: string
+examples:
+  exampleOne:
+    value: yummy coffee`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc v3.MediaType
+	var rDoc v3.MediaType
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	extChanges := CompareMediaTypes(&lDoc, &rDoc)
+	assert.NotNil(t, extChanges)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+}
+
 func TestCompareMediaTypes_ExampleChangedToMap(t *testing.T) {
 	left := `schema:
   type: string`

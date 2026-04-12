@@ -468,6 +468,45 @@ func TestCompareParameters_V3_ExamplesRemoved(t *testing.T) {
 	extChanges := CompareParameters(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareParameters_V3_ExamplesRemoved_WithCustomBreakingRule(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	defer ResetDefaultBreakingRules()
+	defer ResetActiveBreakingRulesConfig()
+
+	config := GenerateDefaultBreakingRules()
+	config.Parameter.Examples = rule(false, false, true)
+	SetActiveBreakingRulesConfig(config)
+
+	low.ClearHashCache()
+	left := `examples:
+  anExample:
+    value: I love magic herbs
+`
+	right := `examples:
+  anExample:
+    value: I love magic herbs
+  teaExample:
+    value: tea and cake and herbs"`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc v3.Parameter
+	var rDoc v3.Parameter
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	extChanges := CompareParameters(&rDoc, &lDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }

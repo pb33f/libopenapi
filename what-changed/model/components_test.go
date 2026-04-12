@@ -790,6 +790,36 @@ func TestCompareComponents_OpenAPI_Responses_Remove(t *testing.T) {
 	assert.Equal(t, "indifferent", extChanges.Changes[0].Original)
 }
 
+func TestCompareComponents_OpenAPI_Examples_Removed(t *testing.T) {
+	low.ClearHashCache()
+	left := `examples:
+  something:
+    value: nice example
+  extra:
+    value: another example`
+
+	right := `examples:
+  something:
+    value: nice example`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc v3.Components
+	var rDoc v3.Components
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
+
+	extChanges := CompareComponents(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, "extra", extChanges.Changes[0].Original)
+}
+
 func TestCompareComponents_OpenAPI_Parameters_Equal(t *testing.T) {
 	low.ClearHashCache()
 	left := `parameters:

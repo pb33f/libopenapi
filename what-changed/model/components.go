@@ -228,6 +228,13 @@ func runComparison[T any, R any](l, r *orderedmap.Map[low.KeyReference[string], 
 			result: CheckMapForChanges(l, r, changes, label, compareFunc),
 		}
 		return
+	}
+	if label == v3.ExamplesLabel {
+		doneChan <- componentComparison{
+			prop:   label,
+			result: checkMapForChangesInternal(l, r, changes, label, compareFunc, false, false, false),
+		}
+		return
 	} else {
 		doneChan <- componentComparison{
 			prop:   label,
