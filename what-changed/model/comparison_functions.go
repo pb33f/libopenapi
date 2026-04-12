@@ -488,6 +488,16 @@ func CheckMapForChangesWithNilSupport[T any, R any](expLeft, expRight *orderedma
 	return checkMapForChangesWithNilSupportInternal(expLeft, expRight, changes, label, compareFunc, false, true)
 }
 
+// CheckMapForChangesWithNilSupportAndRules checks a left and right low level map for any additions, subtractions
+// or modifications, calling compareFunc with nil for added/removed values and using the configured breaking rules
+// for the supplied component and property.
+func CheckMapForChangesWithNilSupportAndRules[T any, R any](expLeft, expRight *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
+	changes *[]*Change, label string, compareFunc func(l, r T) R, component, property string,
+) map[string]R {
+	return checkMapForChangesWithNilSupportInternal(expLeft, expRight, changes, label, compareFunc,
+		BreakingAdded(component, property), BreakingRemoved(component, property))
+}
+
 // checkMapForChangesWithNilSupportInternal is the core implementation that calls compareFunc with nil for added/removed items.
 func checkMapForChangesWithNilSupportInternal[T any, R any](expLeft, expRight *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 	changes *[]*Change, label string, compareFunc func(l, r T) R,

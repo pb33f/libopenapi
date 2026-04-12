@@ -282,8 +282,8 @@ func CompareHeaders(l, r any) *HeaderChanges {
 		}
 
 		// examples
-		hc.ExamplesChanges = CheckMapForChanges(lHeader.Examples.Value, rHeader.Examples.Value,
-			&changes, v3.ExamplesLabel, CompareExamples)
+		hc.ExamplesChanges = CheckMapForChangesWithRules(lHeader.Examples.Value, rHeader.Examples.Value,
+			&changes, v3.ExamplesLabel, CompareExamples, CompHeader, PropExamples)
 
 		// content
 		hc.ContentChanges = CheckMapForChanges(lHeader.Content.Value, rHeader.Content.Value,

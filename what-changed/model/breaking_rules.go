@@ -234,6 +234,7 @@ func buildDefaultRules() *BreakingRulesConfig {
 			Explode:         rule(false, false, false),
 			Deprecated:      rule(false, false, false),
 			Example:         rule(false, false, false),
+			Examples:        rule(false, false, false),
 			Schema:          rule(true, false, true),
 			Items:           rule(true, false, true),
 		},
@@ -257,6 +258,7 @@ func buildDefaultRules() *BreakingRulesConfig {
 
 		MediaType: &MediaTypeRules{
 			Example:      rule(false, false, false),
+			Examples:     rule(false, false, false),
 			Schema:       rule(true, false, true),
 			ItemSchema:   rule(true, false, true),
 			ItemEncoding: rule(false, false, true),
@@ -276,6 +278,7 @@ func buildDefaultRules() *BreakingRulesConfig {
 			AllowEmptyValue: rule(true, true, true),
 			Explode:         rule(false, false, false),
 			Example:         rule(false, false, false),
+			Examples:        rule(false, false, false),
 			Deprecated:      rule(false, false, false),
 			Required:        rule(true, true, true),
 			Schema:          rule(true, false, true),

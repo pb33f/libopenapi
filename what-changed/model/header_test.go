@@ -315,3 +315,34 @@ x-beer: yummy`
 	assert.Len(t, extChanges.GetAllChanges(), 5)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
+
+func TestCompareHeaders_v3_ExamplesRemoved(t *testing.T) {
+	low.ClearHashCache()
+	left := `examples:
+  something:
+    description: some example
+    value: nice example
+  extra:
+    value: another example`
+	right := `examples:
+  something:
+    description: some example
+    value: nice example`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc v3.Header
+	var rDoc v3.Header
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	extChanges := CompareHeadersV3(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
+}

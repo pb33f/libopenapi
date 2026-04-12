@@ -87,6 +87,7 @@ type ParameterRules struct {
 	Explode         *BreakingChangeRule `json:"explode,omitempty" yaml:"explode,omitempty"`
 	Deprecated      *BreakingChangeRule `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 	Example         *BreakingChangeRule `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples        *BreakingChangeRule `json:"examples,omitempty" yaml:"examples,omitempty"`
 	Schema          *BreakingChangeRule `json:"schema,omitempty" yaml:"schema,omitempty"`
 	Items           *BreakingChangeRule `json:"items,omitempty" yaml:"items,omitempty"`
 }
@@ -114,6 +115,7 @@ type ResponseRules struct {
 // MediaTypeRules defines breaking rules for the Media Type object properties.
 type MediaTypeRules struct {
 	Example      *BreakingChangeRule `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples     *BreakingChangeRule `json:"examples,omitempty" yaml:"examples,omitempty"`
 	Schema       *BreakingChangeRule `json:"schema,omitempty" yaml:"schema,omitempty"`
 	ItemSchema   *BreakingChangeRule `json:"itemSchema,omitempty" yaml:"itemSchema,omitempty"`
 	ItemEncoding *BreakingChangeRule `json:"itemEncoding,omitempty" yaml:"itemEncoding,omitempty"`
@@ -135,6 +137,7 @@ type HeaderRules struct {
 	AllowEmptyValue *BreakingChangeRule `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
 	Explode         *BreakingChangeRule `json:"explode,omitempty" yaml:"explode,omitempty"`
 	Example         *BreakingChangeRule `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples        *BreakingChangeRule `json:"examples,omitempty" yaml:"examples,omitempty"`
 	Deprecated      *BreakingChangeRule `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 	Required        *BreakingChangeRule `json:"required,omitempty" yaml:"required,omitempty"`
 	Schema          *BreakingChangeRule `json:"schema,omitempty" yaml:"schema,omitempty"`

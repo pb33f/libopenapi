@@ -96,6 +96,25 @@ func TestDefaultBreakingRules_Operation(t *testing.T) {
 	assert.True(t, *config.Operation.RequestBody.Removed)
 }
 
+func TestDefaultBreakingRules_Examples(t *testing.T) {
+	config := GenerateDefaultBreakingRules()
+
+	assert.NotNil(t, config.Parameter.Examples)
+	assert.False(t, *config.Parameter.Examples.Added)
+	assert.False(t, *config.Parameter.Examples.Modified)
+	assert.False(t, *config.Parameter.Examples.Removed)
+
+	assert.NotNil(t, config.Header.Examples)
+	assert.False(t, *config.Header.Examples.Added)
+	assert.False(t, *config.Header.Examples.Modified)
+	assert.False(t, *config.Header.Examples.Removed)
+
+	assert.NotNil(t, config.MediaType.Examples)
+	assert.False(t, *config.MediaType.Examples.Added)
+	assert.False(t, *config.MediaType.Examples.Modified)
+	assert.False(t, *config.MediaType.Examples.Removed)
+}
+
 func TestMerge_NilOverride(t *testing.T) {
 	ResetDefaultBreakingRules()
 	defer ResetDefaultBreakingRules()
@@ -280,12 +299,15 @@ func TestGetRule_AllComponents(t *testing.T) {
 		{"pathItem", "get"},
 		{"operation", "operationId"},
 		{"parameter", "name"},
+		{"parameter", "examples"},
 		{"requestBody", "required"},
 		{"responses", "default"},
 		{"response", "description"},
 		{"mediaType", "schema"},
+		{"mediaType", "examples"},
 		{"encoding", "contentType"},
 		{"header", "required"},
+		{"header", "examples"},
 		{"schema", "type"},
 		{"discriminator", "propertyName"},
 		{"xml", "name"},
