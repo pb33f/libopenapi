@@ -494,6 +494,8 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 		lSchema := l.Schema()
 		rSchema := r.Schema()
+		comparisonLSchema := schemaComparisonViewForSimpleAllOfObject(l, lSchema)
+		comparisonRSchema := schemaComparisonViewForSimpleAllOfObject(r, rSchema)
 
 		if low.AreEqual(lSchema, rSchema) {
 			// there is no point going on, we know nothing changed!
@@ -509,25 +511,29 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		skipSimpleScalarUnionDiff := schemasUseEquivalentSimpleScalarUnion(l, r)
 
 		// check schema core properties for changes.
-		checkSchemaPropertyChanges(lSchema, rSchema, l, r, &changes, sc, skipSimpleScalarUnionDiff)
+		checkSchemaPropertyChanges(comparisonLSchema, comparisonRSchema, l, r, &changes, sc, skipSimpleScalarUnionDiff)
 
 		// now for the confusing part, there is also a schema's 'properties' property to parse.
 		// inception, eat your heart out.
 		var lProperties, rProperties, lDepSchemas, rDepSchemas, lPattProp, rPattProp *orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]
 		var loneOf, lallOf, lanyOf, roneOf, rallOf, ranyOf, lprefix, rprefix []low.ValueReference[*base.SchemaProxy]
+		if comparisonLSchema != nil {
+			lProperties = comparisonLSchema.Properties.Value
+			lDepSchemas = comparisonLSchema.DependentSchemas.Value
+			lPattProp = comparisonLSchema.PatternProperties.Value
+		}
 		if lSchema != nil {
-			lProperties = lSchema.Properties.Value
-			lDepSchemas = lSchema.DependentSchemas.Value
-			lPattProp = lSchema.PatternProperties.Value
 			loneOf = lSchema.OneOf.Value
 			lallOf = lSchema.AllOf.Value
 			lanyOf = lSchema.AnyOf.Value
 			lprefix = lSchema.PrefixItems.Value
 		}
+		if comparisonRSchema != nil {
+			rProperties = comparisonRSchema.Properties.Value
+			rDepSchemas = comparisonRSchema.DependentSchemas.Value
+			rPattProp = comparisonRSchema.PatternProperties.Value
+		}
 		if rSchema != nil {
-			rProperties = rSchema.Properties.Value
-			rDepSchemas = rSchema.DependentSchemas.Value
-			rPattProp = rSchema.PatternProperties.Value
 			roneOf = rSchema.OneOf.Value
 			rallOf = rSchema.AllOf.Value
 			ranyOf = rSchema.AnyOf.Value
@@ -546,11 +552,11 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 		// Check dependent required changes
 		var lDepRequired, rDepRequired *orderedmap.Map[low.KeyReference[string], low.ValueReference[[]string]]
-		if lSchema != nil {
-			lDepRequired = lSchema.DependentRequired.Value
+		if comparisonLSchema != nil {
+			lDepRequired = comparisonLSchema.DependentRequired.Value
 		}
-		if rSchema != nil {
-			rDepRequired = rSchema.DependentRequired.Value
+		if comparisonRSchema != nil {
+			rDepRequired = comparisonRSchema.DependentRequired.Value
 		}
 
 		depRequiredChanges := checkDependentRequiredChanges(lDepRequired, rDepRequired)
@@ -1778,6 +1784,226 @@ func schemasUseEquivalentSimpleScalarUnion(l, r *base.SchemaProxy) bool {
 		schemaPairUsesEquivalentSimpleScalarUnion(r, l)
 }
 
+func schemaComparisonViewForSimpleAllOfObject(proxy *base.SchemaProxy, schema *base.Schema) *base.Schema {
+	if !isSimpleAllOfObjectSchema(proxy, schema) {
+		return schema
+	}
+	merged, ok := mergeSimpleAllOfObjectSchemaView(schema)
+	if !ok {
+		return schema
+	}
+	return merged
+}
+
+func isSimpleAllOfObjectSchema(proxy *base.SchemaProxy, schema *base.Schema) bool {
+	if proxy == nil || schema == nil || proxy.IsReference() || len(schema.AllOf.Value) == 0 {
+		return false
+	}
+	if len(schema.OneOf.Value) > 0 || len(schema.AnyOf.Value) > 0 || len(schema.PrefixItems.Value) > 0 || schema.Not.Value != nil {
+		return false
+	}
+	for _, branch := range schema.AllOf.Value {
+		if branch.Value == nil || branch.Value.IsReference() || !schemaNodeHasOnlyAllowedKeys(branch.Value.GetValueNode(), simpleAllOfObjectBranchKeys) {
+			return false
+		}
+		branchSchema := branch.Value.Schema()
+		if branchSchema == nil || len(branchSchema.OneOf.Value) > 0 || len(branchSchema.AnyOf.Value) > 0 ||
+			len(branchSchema.AllOf.Value) > 0 || len(branchSchema.PrefixItems.Value) > 0 || branchSchema.Not.Value != nil {
+			return false
+		}
+	}
+	return true
+}
+
+var simpleAllOfObjectBranchKeys = map[string]struct{}{
+	v3.DescriptionLabel: {},
+	v3.PropertiesLabel:  {},
+	v3.RequiredLabel:    {},
+	v3.TitleLabel:       {},
+	v3.TypeLabel:        {},
+}
+
+func mergeSimpleAllOfObjectSchemaView(schema *base.Schema) (*base.Schema, bool) {
+	if schema == nil {
+		return nil, false
+	}
+	merged := *schema
+
+	typeRef, ok := mergeSimpleAllOfObjectType(schema)
+	if !ok {
+		return nil, false
+	}
+	descriptionRef, ok := mergeCompatibleStringNodeReference(schema.Description, schema.AllOf.Value, func(branch *base.Schema) low.NodeReference[string] {
+		return branch.Description
+	})
+	if !ok {
+		return nil, false
+	}
+	titleRef, ok := mergeCompatibleStringNodeReference(schema.Title, schema.AllOf.Value, func(branch *base.Schema) low.NodeReference[string] {
+		return branch.Title
+	})
+	if !ok {
+		return nil, false
+	}
+	propertiesRef, ok := mergeSimpleAllOfObjectProperties(schema)
+	if !ok {
+		return nil, false
+	}
+	requiredRef := mergeSimpleAllOfRequired(schema)
+
+	merged.Type = typeRef
+	merged.Description = descriptionRef
+	merged.Title = titleRef
+	merged.Properties = propertiesRef
+	merged.Required = requiredRef
+
+	return &merged, true
+}
+
+func mergeSimpleAllOfObjectType(schema *base.Schema) (low.NodeReference[base.SchemaDynamicValue[string, []low.ValueReference[string]]], bool) {
+	selected := schema.Type
+	hasType := !schema.Type.IsEmpty()
+	if hasType {
+		if selected.Value.IsB() {
+			return selected, false
+		}
+		if selected.Value.A != "" && selected.Value.A != "object" {
+			return selected, false
+		}
+	}
+
+	for _, branch := range schema.AllOf.Value {
+		branchSchema := branch.Value.Schema()
+		if branchSchema == nil || branchSchema.Type.IsEmpty() {
+			continue
+		}
+		if branchSchema.Type.Value.IsB() {
+			return selected, false
+		}
+		if branchSchema.Type.Value.A != "" && branchSchema.Type.Value.A != "object" {
+			return selected, false
+		}
+		if !hasType {
+			selected = branchSchema.Type
+			hasType = true
+			continue
+		}
+		if selected.Value.A != branchSchema.Type.Value.A {
+			return selected, false
+		}
+	}
+	return selected, true
+}
+
+func mergeCompatibleStringNodeReference(
+	baseRef low.NodeReference[string],
+	allOf []low.ValueReference[*base.SchemaProxy],
+	selector func(*base.Schema) low.NodeReference[string],
+) (low.NodeReference[string], bool) {
+	selected := baseRef
+	hasValue := selected.Value != ""
+
+	for _, branch := range allOf {
+		branchSchema := branch.Value.Schema()
+		if branchSchema == nil {
+			continue
+		}
+		candidate := selector(branchSchema)
+		if candidate.Value == "" {
+			continue
+		}
+		if !hasValue {
+			selected = candidate
+			hasValue = true
+			continue
+		}
+		if selected.Value != candidate.Value {
+			return selected, false
+		}
+	}
+
+	return selected, true
+}
+
+func mergeSimpleAllOfObjectProperties(
+	schema *base.Schema,
+) (low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]], bool) {
+	merged := orderedmap.New[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]()
+	seen := make(map[string]low.ValueReference[*base.SchemaProxy])
+
+	appendProperties := func(properties *orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]) bool {
+		if properties == nil {
+			return true
+		}
+		for keyRef, valueRef := range properties.FromOldest() {
+			existing, ok := seen[keyRef.Value]
+			if ok {
+				if existing.Value == nil || valueRef.Value == nil {
+					if existing.Value != valueRef.Value {
+						return false
+					}
+					continue
+				}
+				if existing.Value.Hash() != valueRef.Value.Hash() {
+					return false
+				}
+				continue
+			}
+			merged.Set(keyRef, valueRef)
+			seen[keyRef.Value] = valueRef
+		}
+		return true
+	}
+
+	if !appendProperties(schema.Properties.Value) {
+		return low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]]{}, false
+	}
+	for _, branch := range schema.AllOf.Value {
+		branchSchema := branch.Value.Schema()
+		if branchSchema == nil || !appendProperties(branchSchema.Properties.Value) {
+			return low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]]{}, false
+		}
+	}
+
+	if len(seen) == 0 {
+		return low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]]{}, true
+	}
+
+	return low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]]{
+		Value: merged,
+	}, true
+}
+
+func mergeSimpleAllOfRequired(schema *base.Schema) low.NodeReference[[]low.ValueReference[string]] {
+	selected := schema.Required
+	seen := make(map[string]struct{})
+	var merged []low.ValueReference[string]
+
+	appendRequired := func(values []low.ValueReference[string]) {
+		for _, value := range values {
+			if _, ok := seen[value.Value]; ok {
+				continue
+			}
+			seen[value.Value] = struct{}{}
+			merged = append(merged, value)
+		}
+	}
+
+	appendRequired(schema.Required.Value)
+	for _, branch := range schema.AllOf.Value {
+		branchSchema := branch.Value.Schema()
+		if branchSchema != nil {
+			appendRequired(branchSchema.Required.Value)
+		}
+	}
+
+	selected.Value = merged
+	if len(merged) == 0 {
+		selected.Value = nil
+	}
+	return selected
+}
+
 func schemaPairUsesEquivalentSimpleScalarUnion(typeProxy, anyOfProxy *base.SchemaProxy) bool {
 	if !isPureTypeArraySchema(typeProxy) || !isPureAnyOfUnionSchema(anyOfProxy) {
 		return false
@@ -1817,6 +2043,18 @@ func isPureAnyOfUnionSchema(proxy *base.SchemaProxy) bool {
 
 func schemaNodeHasSingleKey(node *yaml.Node, key string) bool {
 	return node != nil && node.Kind == yaml.MappingNode && len(node.Content) == 2 && node.Content[0].Value == key
+}
+
+func schemaNodeHasOnlyAllowedKeys(node *yaml.Node, allowed map[string]struct{}) bool {
+	if node == nil || node.Kind != yaml.MappingNode {
+		return false
+	}
+	for i := 0; i < len(node.Content); i += 2 {
+		if _, ok := allowed[node.Content[i].Value]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func extractTypeArraySet(proxy *base.SchemaProxy) (map[string]struct{}, bool) {

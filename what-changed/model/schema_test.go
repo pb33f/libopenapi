@@ -2041,6 +2041,156 @@ components:
 	assert.Equal(t, "bool", changes.AllOfChanges[0].Changes[0].Original)
 }
 
+func TestCompareSchemas_AllOfEquivalentObjectRewrite_NonBreaking(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    OK:
+      type: object
+      required:
+        - a
+        - b
+      properties:
+        a:
+          type: string
+        b:
+          type: string`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    OK:
+      allOf:
+        - type: object
+          required:
+            - a
+          properties:
+            a:
+              type: string
+        - type: object
+          required:
+            - b
+          properties:
+            b:
+              type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Len(t, changes.GetAllChanges(), 2)
+	for _, change := range changes.GetAllChanges() {
+		assert.Equal(t, ObjectAdded, change.ChangeType)
+		assert.Equal(t, v3.AllOfLabel, change.Property)
+		assert.False(t, change.Breaking)
+	}
+}
+
+func TestCompareSchemas_AllOfEquivalentObjectRewrite_MovedTypeAndDescription(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    OK:
+      type: object
+      description: payload thing
+      required:
+        - a
+        - b
+      properties:
+        a:
+          type: string
+        b:
+          type: string`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    OK:
+      allOf:
+        - type: object
+          description: payload thing
+          required:
+            - a
+          properties:
+            a:
+              type: string
+        - type: object
+          required:
+            - b
+          properties:
+            b:
+              type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	for _, change := range changes.GetAllChanges() {
+		assert.Equal(t, v3.AllOfLabel, change.Property)
+	}
+}
+
+func TestCompareSchemas_AllOfObjectRewrite_StillDetectsSemanticRequiredRemoval(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    OK:
+      type: object
+      required:
+        - a
+        - b
+      properties:
+        a:
+          type: string
+        b:
+          type: string`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    OK:
+      allOf:
+        - type: object
+          required:
+            - a
+          properties:
+            a:
+              type: string
+        - type: object
+          properties:
+            b:
+              type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+
+	foundRequiredRemoval := false
+	for _, change := range changes.GetAllChanges() {
+		if change.Property == v3.RequiredLabel && change.ChangeType == PropertyRemoved {
+			foundRequiredRemoval = true
+			assert.Equal(t, "b", change.Original)
+			assert.True(t, change.Breaking)
+		}
+	}
+	assert.True(t, foundRequiredRemoval)
+}
+
 func TestCompareSchemas_ItemsModifyAndAddItem(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
