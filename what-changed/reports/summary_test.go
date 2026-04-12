@@ -39,3 +39,22 @@ func TestCreateSummary_OverallReport(t *testing.T) {
 	assert.Equal(t, 20, report.ChangeReport[v3.ComponentsLabel].Total)
 	assert.Equal(t, 7, report.ChangeReport[v3.ComponentsLabel].Breaking)
 }
+
+func TestCreateSummary_OverallReport_IncludesDocumentPropertyChanges(t *testing.T) {
+	left := []byte("openapi: 3.0.0\ninfo:\n  title: test\n  version: 1.0.0\npaths: {}\n")
+	right := []byte("openapi: 3.1.0\ninfo:\n  title: test\n  version: 2.0.0\npaths: {}\n")
+
+	originalDoc, originalErr := libopenapi.NewDocument(left)
+	assert.NoError(t, originalErr)
+	updatedDoc, updatedErr := libopenapi.NewDocument(right)
+	assert.NoError(t, updatedErr)
+
+	documentChanges, compareErrs := libopenapi.CompareDocuments(originalDoc, updatedDoc)
+	assert.Empty(t, compareErrs)
+
+	report := CreateOverallReport(documentChanges)
+	assert.Equal(t, 1, report.ChangeReport[v3.OpenAPILabel].Total)
+	assert.Equal(t, 1, report.ChangeReport[v3.OpenAPILabel].Breaking)
+	assert.Equal(t, 1, report.ChangeReport[v3.InfoLabel].Total)
+	assert.Equal(t, 0, report.ChangeReport[v3.InfoLabel].Breaking)
+}

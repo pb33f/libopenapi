@@ -22,21 +22,28 @@ type OverallReport struct {
 // CreateOverallReport will create a high level report for all top level changes (but with deep counts)
 func CreateOverallReport(changes *model.DocumentChanges) *OverallReport {
 	changedReport := make(map[string]*Changed)
+	if changes == nil {
+		return &OverallReport{
+			ChangeReport: changedReport,
+		}
+	}
+
+	mergeRootPropertyChanges(changedReport, changes.PropertyChanges)
 	if changes.InfoChanges != nil {
-		changedReport[v3.InfoLabel] = createChangedModel(changes.InfoChanges)
+		mergeChangedModel(changedReport, v3.InfoLabel, createChangedModel(changes.InfoChanges))
 	}
 	if changes.PathsChanges != nil {
-		changedReport[v3.PathsLabel] = createChangedModel(changes.PathsChanges)
+		mergeChangedModel(changedReport, v3.PathsLabel, createChangedModel(changes.PathsChanges))
 	}
 	if changes.TagChanges != nil {
 		j := make([]HasChanges, len(changes.TagChanges))
 		for k := range changes.TagChanges {
 			j[k] = HasChanges(changes.TagChanges[k])
 		}
-		changedReport[v3.TagsLabel] = createChangedModelFromSlice(j)
+		mergeChangedModel(changedReport, v3.TagsLabel, createChangedModelFromSlice(j))
 	}
 	if changes.ExternalDocChanges != nil {
-		changedReport[v3.ExternalDocsLabel] = createChangedModel(changes.ExternalDocChanges)
+		mergeChangedModel(changedReport, v3.ExternalDocsLabel, createChangedModel(changes.ExternalDocChanges))
 	}
 	if changes.WebhookChanges != nil {
 		j := make([]HasChanges, len(changes.WebhookChanges))
@@ -47,7 +54,7 @@ func CreateOverallReport(changes *model.DocumentChanges) *OverallReport {
 		}
 		ch := createChangedModelFromSlice(j)
 		if ch.Total > 0 {
-			changedReport[v3.WebhooksLabel] = ch
+			mergeChangedModel(changedReport, v3.WebhooksLabel, ch)
 		}
 	}
 	if changes.ServerChanges != nil {
@@ -55,21 +62,55 @@ func CreateOverallReport(changes *model.DocumentChanges) *OverallReport {
 		for k := range changes.ServerChanges {
 			j[k] = HasChanges(changes.ServerChanges[k])
 		}
-		changedReport[v3.ServersLabel] = createChangedModelFromSlice(j)
+		mergeChangedModel(changedReport, v3.ServersLabel, createChangedModelFromSlice(j))
 	}
 	if changes.SecurityRequirementChanges != nil {
 		j := make([]HasChanges, len(changes.SecurityRequirementChanges))
 		for k := range changes.SecurityRequirementChanges {
 			j[k] = HasChanges(changes.SecurityRequirementChanges[k])
 		}
-		changedReport[v3.SecurityLabel] = createChangedModelFromSlice(j)
+		mergeChangedModel(changedReport, v3.SecurityLabel, createChangedModelFromSlice(j))
 	}
 	if changes.ComponentsChanges != nil {
-		changedReport[v3.ComponentsLabel] = createChangedModel(changes.ComponentsChanges)
+		mergeChangedModel(changedReport, v3.ComponentsLabel, createChangedModel(changes.ComponentsChanges))
 	}
 	return &OverallReport{
 		ChangeReport: changedReport,
 	}
+}
+
+func mergeRootPropertyChanges(changedReport map[string]*Changed, propertyChanges *model.PropertyChanges) {
+	if propertyChanges == nil {
+		return
+	}
+	for _, change := range propertyChanges.GetPropertyChanges() {
+		if change == nil || change.Property == "" {
+			continue
+		}
+		changed := getOrCreateChanged(changedReport, change.Property)
+		changed.Total++
+		if change.Breaking {
+			changed.Breaking++
+		}
+	}
+}
+
+func mergeChangedModel(changedReport map[string]*Changed, label string, next *Changed) {
+	if next == nil {
+		return
+	}
+	changed := getOrCreateChanged(changedReport, label)
+	changed.Total += next.Total
+	changed.Breaking += next.Breaking
+}
+
+func getOrCreateChanged(changedReport map[string]*Changed, label string) *Changed {
+	if changed, ok := changedReport[label]; ok {
+		return changed
+	}
+	changed := &Changed{}
+	changedReport[label] = changed
+	return changed
 }
 
 func createChangedModel(ch HasChanges) *Changed {
