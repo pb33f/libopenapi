@@ -4233,6 +4233,44 @@ func buildPreloadedRefSchemaProxy(t *testing.T, ref, rawSchema string) *base.Sch
 	return proxy
 }
 
+func buildSchemaProxyFromYAML(t *testing.T, raw string) *base.SchemaProxy {
+	t.Helper()
+
+	var node yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte(raw), &node))
+
+	proxy := &base.SchemaProxy{}
+	assert.NoError(t, proxy.Build(context.Background(), nil, node.Content[0], nil))
+	return proxy
+}
+
+func buildSchemaFromYAML(t *testing.T, raw string) (*base.SchemaProxy, *base.Schema) {
+	t.Helper()
+
+	proxy := buildSchemaProxyFromYAML(t, raw)
+	schema := proxy.Schema()
+	assert.NotNil(t, schema)
+	return proxy, schema
+}
+
+func buildPropertiesMap(entries map[string]*base.SchemaProxy) *orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]] {
+	props := orderedmap.New[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]()
+	for key, value := range entries {
+		props.Set(low.KeyReference[string]{Value: key}, low.ValueReference[*base.SchemaProxy]{Value: value})
+	}
+	return props
+}
+
+func buildRenderedSchemaProxy(t *testing.T, schema *base.Schema) *base.SchemaProxy {
+	t.Helper()
+
+	proxy := &base.SchemaProxy{}
+	assert.NoError(t, proxy.Build(context.Background(), nil, utils.CreateEmptyMapNode(), nil))
+	setSchemaProxyRendered(proxy, schema)
+	markSchemaProxyBuilt(proxy)
+	return proxy
+}
+
 func setSchemaProxyRendered(proxy *base.SchemaProxy, schema *base.Schema) {
 	field := reflect.ValueOf(proxy).Elem().FieldByName("rendered")
 	rendered := reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
@@ -4377,6 +4415,572 @@ func TestSchemaCompositionPairingHelpers(t *testing.T) {
 	assert.Len(t, pairs, 2)
 	assert.Equal(t, 0, pairs[0].right.position)
 	assert.Equal(t, 1, pairs[1].right.position)
+}
+
+func TestSimpleAllOfObjectHelpers(t *testing.T) {
+	low.ClearHashCache()
+
+	t.Run("isSimpleAllOfObjectSchema", func(t *testing.T) {
+		assert.False(t, isSimpleAllOfObjectSchema(nil, nil))
+
+		refProxy := &base.SchemaProxy{}
+		assert.NoError(t, refProxy.Build(context.Background(), nil, utils.CreateRefNode("#/components/schemas/Test"), nil))
+		assert.False(t, isSimpleAllOfObjectSchema(refProxy, nil))
+
+		proxy, schema := buildSchemaFromYAML(t, `type: object`)
+		assert.False(t, isSimpleAllOfObjectSchema(proxy, schema))
+
+		proxy, schema = buildSchemaFromYAML(t, `allOf:
+  - type: object
+anyOf:
+  - type: string`)
+		assert.False(t, isSimpleAllOfObjectSchema(proxy, schema))
+
+		proxy = buildSchemaProxyFromYAML(t, `allOf: []`)
+		schema = &base.Schema{
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: refProxy},
+				},
+			},
+		}
+		assert.False(t, isSimpleAllOfObjectSchema(proxy, schema))
+
+		proxy, schema = buildSchemaFromYAML(t, `allOf:
+  - type: object
+    additionalProperties: true`)
+		assert.False(t, isSimpleAllOfObjectSchema(proxy, schema))
+
+		nilBranchProxy := buildSchemaProxyFromYAML(t, `type: object`)
+		markSchemaProxyBuilt(nilBranchProxy)
+		setSchemaProxyRendered(nilBranchProxy, nil)
+		proxy = buildSchemaProxyFromYAML(t, `allOf: []`)
+		schema = &base.Schema{
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: nilBranchProxy},
+				},
+			},
+		}
+		assert.False(t, isSimpleAllOfObjectSchema(proxy, schema))
+
+		proxy, schema = buildSchemaFromYAML(t, `allOf:
+  - type: object
+    not:
+      type: string`)
+		assert.False(t, isSimpleAllOfObjectSchema(proxy, schema))
+
+		proxy, schema = buildSchemaFromYAML(t, `allOf:
+  - type: object
+    properties:
+      id:
+        type: string`)
+		assert.True(t, isSimpleAllOfObjectSchema(proxy, schema))
+	})
+
+	t.Run("schemaComparisonViewForSimpleAllOfObject", func(t *testing.T) {
+		proxy, schema := buildSchemaFromYAML(t, `type: object
+description: same
+title: merged
+properties:
+  id:
+    type: string
+required:
+  - id
+allOf:
+  - type: object
+    description: same
+    title: merged
+    properties:
+      name:
+        type: string
+    required:
+      - name`)
+
+		merged := schemaComparisonViewForSimpleAllOfObject(proxy, schema)
+		assert.NotNil(t, merged)
+		assert.NotSame(t, schema, merged)
+		assert.Equal(t, "same", merged.Description.Value)
+		assert.Equal(t, "merged", merged.Title.Value)
+		assert.Equal(t, 2, merged.Properties.Value.Len())
+		assert.Len(t, merged.Required.Value, 2)
+
+		_, conflictSchema := buildSchemaFromYAML(t, `type: object
+allOf:
+  - type: string`)
+		assert.Same(t, conflictSchema, schemaComparisonViewForSimpleAllOfObject(proxy, conflictSchema))
+
+		merged, ok := mergeSimpleAllOfObjectSchemaView(nil)
+		assert.False(t, ok)
+		assert.Nil(t, merged)
+
+		_, descriptionConflict := buildSchemaFromYAML(t, `type: object
+description: alpha
+allOf:
+  - type: object
+    description: beta`)
+		merged, ok = mergeSimpleAllOfObjectSchemaView(descriptionConflict)
+		assert.False(t, ok)
+		assert.Nil(t, merged)
+
+		_, titleConflict := buildSchemaFromYAML(t, `type: object
+title: alpha
+allOf:
+  - type: object
+    title: beta`)
+		merged, ok = mergeSimpleAllOfObjectSchemaView(titleConflict)
+		assert.False(t, ok)
+		assert.Nil(t, merged)
+
+		_, propertiesConflict := buildSchemaFromYAML(t, `type: object
+properties:
+  id:
+    type: string
+allOf:
+  - type: object
+    properties:
+      id:
+        type: integer`)
+		merged, ok = mergeSimpleAllOfObjectSchemaView(propertiesConflict)
+		assert.False(t, ok)
+		assert.Nil(t, merged)
+	})
+
+	t.Run("mergeSimpleAllOfObjectType", func(t *testing.T) {
+		selected, ok := mergeSimpleAllOfObjectType(&base.Schema{
+			Type: low.NodeReference[base.SchemaDynamicValue[string, []low.ValueReference[string]]]{
+				KeyNode:   utils.CreateStringNode("type"),
+				ValueNode: utils.CreateEmptySequenceNode(),
+				Value: base.SchemaDynamicValue[string, []low.ValueReference[string]]{
+					N: 1,
+					B: []low.ValueReference[string]{{Value: "string"}},
+				},
+			},
+		})
+		assert.False(t, ok)
+		assert.True(t, selected.Value.IsB())
+
+		selected, ok = mergeSimpleAllOfObjectType(&base.Schema{
+			Type: low.NodeReference[base.SchemaDynamicValue[string, []low.ValueReference[string]]]{
+				KeyNode:   utils.CreateStringNode("type"),
+				ValueNode: utils.CreateStringNode("string"),
+				Value: base.SchemaDynamicValue[string, []low.ValueReference[string]]{
+					A: "string",
+				},
+			},
+		})
+		assert.False(t, ok)
+		assert.Equal(t, "string", selected.Value.A)
+
+		selected, ok = mergeSimpleAllOfObjectType(&base.Schema{
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: buildSchemaProxyFromYAML(t, `description: branch only`)},
+					{Value: buildSchemaProxyFromYAML(t, `type:
+  - string
+  - 'null'`)},
+				},
+			},
+		})
+		assert.False(t, ok)
+		assert.Equal(t, "", selected.Value.A)
+
+		selected, ok = mergeSimpleAllOfObjectType(&base.Schema{
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: buildSchemaProxyFromYAML(t, `type: string`)},
+				},
+			},
+		})
+		assert.False(t, ok)
+		assert.Equal(t, "", selected.Value.A)
+
+		selected, ok = mergeSimpleAllOfObjectType(&base.Schema{
+			Type: low.NodeReference[base.SchemaDynamicValue[string, []low.ValueReference[string]]]{
+				KeyNode:   utils.CreateStringNode("type"),
+				ValueNode: utils.CreateStringNode(""),
+			},
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: buildSchemaProxyFromYAML(t, `type: object`)},
+				},
+			},
+		})
+		assert.False(t, ok)
+
+		selected, ok = mergeSimpleAllOfObjectType(&base.Schema{
+			Type: low.NodeReference[base.SchemaDynamicValue[string, []low.ValueReference[string]]]{
+				KeyNode:   utils.CreateStringNode("type"),
+				ValueNode: utils.CreateStringNode("object"),
+				Value: base.SchemaDynamicValue[string, []low.ValueReference[string]]{
+					A: "object",
+				},
+			},
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: buildSchemaProxyFromYAML(t, `type: object`)},
+				},
+			},
+		})
+		assert.True(t, ok)
+		assert.Equal(t, "object", selected.Value.A)
+	})
+
+	t.Run("mergeCompatibleStringNodeReference", func(t *testing.T) {
+		selected, ok := mergeCompatibleStringNodeReference(
+			low.NodeReference[string]{},
+			[]low.ValueReference[*base.SchemaProxy]{
+				{Value: &base.SchemaProxy{}},
+				{Value: buildSchemaProxyFromYAML(t, `type: object`)},
+				{Value: buildSchemaProxyFromYAML(t, `description: alpha`)},
+				{Value: buildSchemaProxyFromYAML(t, `description: alpha`)},
+			},
+			func(branch *base.Schema) low.NodeReference[string] {
+				return branch.Description
+			},
+		)
+		assert.True(t, ok)
+		assert.Equal(t, "alpha", selected.Value)
+
+		selected, ok = mergeCompatibleStringNodeReference(
+			low.NodeReference[string]{Value: "alpha"},
+			[]low.ValueReference[*base.SchemaProxy]{
+				{Value: buildSchemaProxyFromYAML(t, `description: beta`)},
+			},
+			func(branch *base.Schema) low.NodeReference[string] {
+				return branch.Description
+			},
+		)
+		assert.False(t, ok)
+		assert.Equal(t, "alpha", selected.Value)
+	})
+
+	t.Run("mergeSimpleAllOfObjectProperties", func(t *testing.T) {
+		emptyRef, ok := mergeSimpleAllOfObjectProperties(&base.Schema{
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: buildSchemaProxyFromYAML(t, `type: object`)},
+				},
+			},
+		})
+		assert.True(t, ok)
+		assert.Nil(t, emptyRef.Value)
+
+		stringProxy := buildSchemaProxyFromYAML(t, `type: string`)
+		stringProxySame := buildSchemaProxyFromYAML(t, `type: string`)
+		intProxy := buildSchemaProxyFromYAML(t, `type: integer`)
+		mergedRef, ok := mergeSimpleAllOfObjectProperties(&base.Schema{
+			Properties: low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]]{
+				Value: buildPropertiesMap(map[string]*base.SchemaProxy{"id": stringProxy}),
+			},
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: buildSchemaProxyFromYAML(t, `properties:
+  id:
+    type: string
+  name:
+    type: string`)},
+				},
+			},
+		})
+		assert.True(t, ok)
+		assert.Equal(t, 2, mergedRef.Value.Len())
+		assert.Equal(t, stringProxy.Hash(), mergedRef.Value.GetOrZero(low.KeyReference[string]{Value: "id"}).Value.Hash())
+
+		nilMergedRef, ok := mergeSimpleAllOfObjectProperties(&base.Schema{
+			Properties: low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]]{
+				Value: buildPropertiesMap(map[string]*base.SchemaProxy{"id": nil}),
+			},
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: buildRenderedSchemaProxy(t, &base.Schema{
+						Properties: low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]]{
+							Value: buildPropertiesMap(map[string]*base.SchemaProxy{"id": nil}),
+						},
+					})},
+				},
+			},
+		})
+		assert.True(t, ok)
+		assert.Equal(t, 1, nilMergedRef.Value.Len())
+		assert.Nil(t, nilMergedRef.Value.GetOrZero(low.KeyReference[string]{Value: "id"}).Value)
+
+		_, ok = mergeSimpleAllOfObjectProperties(&base.Schema{
+			Properties: low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]]{
+				Value: buildPropertiesMap(map[string]*base.SchemaProxy{"id": nil}),
+			},
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: buildSchemaProxyFromYAML(t, `properties:
+  id:
+    type: string`)},
+				},
+			},
+		})
+		assert.False(t, ok)
+
+		_, ok = mergeSimpleAllOfObjectProperties(&base.Schema{
+			Properties: low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]]{
+				Value: buildPropertiesMap(map[string]*base.SchemaProxy{"id": stringProxySame}),
+			},
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: buildSchemaProxyFromYAML(t, `properties:
+  id:
+    type: integer`)},
+				},
+			},
+		})
+		assert.False(t, ok)
+
+		duplicateBaseProps := orderedmap.New[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]()
+		duplicateBaseProps.Set(low.KeyReference[string]{Value: "id", KeyNode: utils.CreateStringNode("id")}, low.ValueReference[*base.SchemaProxy]{Value: stringProxySame})
+		duplicateBaseProps.Set(low.KeyReference[string]{Value: "id", KeyNode: utils.CreateStringNode("id")}, low.ValueReference[*base.SchemaProxy]{Value: intProxy})
+		_, ok = mergeSimpleAllOfObjectProperties(&base.Schema{
+			Properties: low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]]{
+				Value: duplicateBaseProps,
+			},
+		})
+		assert.False(t, ok)
+
+		_, ok = mergeSimpleAllOfObjectProperties(&base.Schema{
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: buildSchemaProxyFromYAML(t, `properties:
+  id:
+    type: string`)},
+				},
+			},
+		})
+		assert.True(t, ok)
+	})
+
+	t.Run("mergeSimpleAllOfRequired", func(t *testing.T) {
+		required := mergeSimpleAllOfRequired(&base.Schema{
+			Required: low.NodeReference[[]low.ValueReference[string]]{
+				Value: []low.ValueReference[string]{{Value: "id"}},
+			},
+			AllOf: low.NodeReference[[]low.ValueReference[*base.SchemaProxy]]{
+				Value: []low.ValueReference[*base.SchemaProxy]{
+					{Value: buildSchemaProxyFromYAML(t, `required:
+  - id
+  - name`)},
+					{Value: &base.SchemaProxy{}},
+				},
+			},
+		})
+		assert.Len(t, required.Value, 2)
+		assert.Equal(t, "id", required.Value[0].Value)
+		assert.Equal(t, "name", required.Value[1].Value)
+
+		required = mergeSimpleAllOfRequired(&base.Schema{})
+		assert.Nil(t, required.Value)
+	})
+}
+
+func TestSimpleScalarUnionHelpers(t *testing.T) {
+	low.ClearHashCache()
+
+	t.Run("schemaNodeHasOnlyAllowedKeys", func(t *testing.T) {
+		assert.False(t, schemaNodeHasOnlyAllowedKeys(nil, simpleAllOfObjectBranchKeys))
+		assert.False(t, schemaNodeHasOnlyAllowedKeys(utils.CreateStringNode("type"), simpleAllOfObjectBranchKeys))
+		assert.True(t, schemaNodeHasOnlyAllowedKeys(utils.CreateEmptyMapNode(), simpleAllOfObjectBranchKeys))
+
+		node := utils.CreateEmptyMapNode()
+		node.Content = append(node.Content, utils.CreateStringNode("description"), utils.CreateStringNode("ok"))
+		assert.True(t, schemaNodeHasOnlyAllowedKeys(node, simpleAllOfObjectBranchKeys))
+		node.Content = append(node.Content, utils.CreateStringNode("additionalProperties"), utils.CreateStringNode("true"))
+		assert.False(t, schemaNodeHasOnlyAllowedKeys(node, simpleAllOfObjectBranchKeys))
+	})
+
+	t.Run("extractScalarTypeName", func(t *testing.T) {
+		value, ok := extractScalarTypeName(nil)
+		assert.False(t, ok)
+		assert.Equal(t, "", value)
+
+		value, ok = extractScalarTypeName(utils.CreateEmptyMapNode())
+		assert.False(t, ok)
+		assert.Equal(t, "", value)
+
+		nullNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null"}
+		value, ok = extractScalarTypeName(nullNode)
+		assert.True(t, ok)
+		assert.Equal(t, "null", value)
+
+		value, ok = extractScalarTypeName(utils.CreateStringNode(""))
+		assert.False(t, ok)
+		assert.Equal(t, "", value)
+
+		value, ok = extractScalarTypeName(utils.CreateStringNode("string"))
+		assert.True(t, ok)
+		assert.Equal(t, "string", value)
+	})
+
+	t.Run("extractTypeArraySet", func(t *testing.T) {
+		typeSet, ok := extractTypeArraySet(nil)
+		assert.False(t, ok)
+		assert.Nil(t, typeSet)
+
+		refProxy := &base.SchemaProxy{}
+		assert.NoError(t, refProxy.Build(context.Background(), nil, utils.CreateRefNode("#/components/schemas/Test"), nil))
+		typeSet, ok = extractTypeArraySet(refProxy)
+		assert.False(t, ok)
+		assert.Nil(t, typeSet)
+
+		typeSet, ok = extractTypeArraySet(buildSchemaProxyFromYAML(t, `type: string`))
+		assert.False(t, ok)
+		assert.Nil(t, typeSet)
+
+		typeSet, ok = extractTypeArraySet(buildSchemaProxyFromYAML(t, `type: []`))
+		assert.False(t, ok)
+		assert.Nil(t, typeSet)
+
+		typeSet, ok = extractTypeArraySet(buildSchemaProxyFromYAML(t, `type:
+  - {}`))
+		assert.False(t, ok)
+		assert.Nil(t, typeSet)
+
+		typeSet, ok = extractTypeArraySet(buildSchemaProxyFromYAML(t, `type:
+  - string
+  - 'null'
+  - string`))
+		assert.True(t, ok)
+		assert.Len(t, typeSet, 2)
+	})
+
+	t.Run("pureAnyOfAndTypeSetHelpers", func(t *testing.T) {
+		assert.False(t, isPureAnyOfUnionSchema(nil))
+
+		refProxy := &base.SchemaProxy{}
+		assert.NoError(t, refProxy.Build(context.Background(), nil, utils.CreateRefNode("#/components/schemas/Test"), nil))
+		assert.False(t, isPureAnyOfUnionSchema(refProxy))
+
+		assert.False(t, isPureAnyOfUnionSchema(buildSchemaProxyFromYAML(t, `anyOf: []`)))
+		assert.False(t, isPureAnyOfUnionSchema(buildSchemaProxyFromYAML(t, `anyOf:
+  - type: string
+description: extra`)))
+		assert.True(t, isPureAnyOfUnionSchema(buildSchemaProxyFromYAML(t, `anyOf:
+  - type: string`)))
+
+		typeSet, ok := extractSimpleAnyOfTypeSet(nil)
+		assert.False(t, ok)
+		assert.Nil(t, typeSet)
+
+		typeSet, ok = extractSimpleAnyOfTypeSet([]low.ValueReference[*base.SchemaProxy]{{Value: nil}})
+		assert.False(t, ok)
+		assert.Nil(t, typeSet)
+
+		typeSet, ok = extractSimpleAnyOfTypeSet([]low.ValueReference[*base.SchemaProxy]{{Value: refProxy}})
+		assert.False(t, ok)
+		assert.Nil(t, typeSet)
+
+		typeSet, ok = extractSimpleAnyOfTypeSet([]low.ValueReference[*base.SchemaProxy]{
+			{Value: buildSchemaProxyFromYAML(t, `type: string
+description: extra`)},
+		})
+		assert.False(t, ok)
+		assert.Nil(t, typeSet)
+
+		typeSet, ok = extractSimpleAnyOfTypeSet([]low.ValueReference[*base.SchemaProxy]{
+			{Value: buildSchemaProxyFromYAML(t, `type: ""`)},
+		})
+		assert.False(t, ok)
+		assert.Nil(t, typeSet)
+
+		typeSet, ok = extractSimpleAnyOfTypeSet([]low.ValueReference[*base.SchemaProxy]{
+			{Value: buildSchemaProxyFromYAML(t, `type: string`)},
+			{Value: buildSchemaProxyFromYAML(t, `type: 'null'`)},
+		})
+		assert.True(t, ok)
+		assert.Len(t, typeSet, 2)
+	})
+
+	t.Run("schemaPairUsesEquivalentSimpleScalarUnion", func(t *testing.T) {
+		assert.False(t, schemaPairUsesEquivalentSimpleScalarUnion(
+			buildSchemaProxyFromYAML(t, `type: string`),
+			buildSchemaProxyFromYAML(t, `anyOf:
+  - type: string`),
+		))
+
+		assert.False(t, schemaPairUsesEquivalentSimpleScalarUnion(
+			buildSchemaProxyFromYAML(t, `type:
+  - {}
+  - 'null'`),
+			buildSchemaProxyFromYAML(t, `anyOf:
+  - type: string
+  - type: 'null'`),
+		))
+
+		assert.False(t, schemaPairUsesEquivalentSimpleScalarUnion(
+			buildSchemaProxyFromYAML(t, `type:
+  - string
+  - 'null'`),
+			buildSchemaProxyFromYAML(t, `anyOf:
+  - type: string`),
+		))
+
+		assert.False(t, schemaPairUsesEquivalentSimpleScalarUnion(
+			buildSchemaProxyFromYAML(t, `type:
+  - string
+  - 'null'`),
+			buildSchemaProxyFromYAML(t, `anyOf:
+  - type: string
+  - type: integer`),
+		))
+
+		assert.True(t, schemaPairUsesEquivalentSimpleScalarUnion(
+			buildSchemaProxyFromYAML(t, `type:
+  - string
+  - 'null'`),
+			buildSchemaProxyFromYAML(t, `anyOf:
+  - type: string
+  - type: 'null'`),
+		))
+	})
+}
+
+func TestExtractSchemaChanges_PrefixItemsRemovedAndModified(t *testing.T) {
+	low.ClearHashCache()
+
+	left := []low.ValueReference[*base.SchemaProxy]{
+		{Value: buildSchemaProxyFromYAML(t, `type: string`)},
+		{Value: buildSchemaProxyFromYAML(t, `type: number`)},
+	}
+	right := []low.ValueReference[*base.SchemaProxy]{
+		{Value: buildSchemaProxyFromYAML(t, `type: integer`)},
+	}
+
+	var schemaChanges []*SchemaChanges
+	var changes []*Change
+	extractSchemaChanges(left, right, v3.PrefixItemsLabel, &schemaChanges, &changes)
+
+	assert.Len(t, schemaChanges, 1)
+	assert.Len(t, changes, 1)
+	assert.Equal(t, Modified, schemaChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, changes[0].ChangeType)
+	assert.True(t, changes[0].Breaking)
+}
+
+func TestExtractSchemaChanges_PrefixItemsAddedAndModified(t *testing.T) {
+	low.ClearHashCache()
+
+	left := []low.ValueReference[*base.SchemaProxy]{
+		{Value: buildSchemaProxyFromYAML(t, `type: string`)},
+	}
+	right := []low.ValueReference[*base.SchemaProxy]{
+		{Value: buildSchemaProxyFromYAML(t, `type: integer`)},
+		{Value: buildSchemaProxyFromYAML(t, `type: boolean`)},
+	}
+
+	var schemaChanges []*SchemaChanges
+	var changes []*Change
+	extractSchemaChanges(left, right, v3.PrefixItemsLabel, &schemaChanges, &changes)
+
+	assert.Len(t, schemaChanges, 1)
+	assert.Len(t, changes, 1)
+	assert.Equal(t, Modified, schemaChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes[0].ChangeType)
+	assert.False(t, changes[0].Breaking)
 }
 
 func TestCompareSchemas_PrefixItemsRemoveItem(t *testing.T) {
