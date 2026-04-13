@@ -199,6 +199,77 @@ func test_BuildDocv2(l, r string) (*v2.Swagger, *v2.Swagger) {
 	return leftDoc, rightDoc
 }
 
+func TestSchemaCompositionHelpers(t *testing.T) {
+	low.ClearHashCache()
+
+	spec := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: string
+    RefBranch:
+      $ref: '#/components/schemas/A'
+    InlineBranch:
+      type: integer`
+
+	doc, _ := test_BuildDoc(spec, spec)
+	refProxy := doc.Components.Value.FindSchema("RefBranch").Value
+	inlineProxy := doc.Components.Value.FindSchema("InlineBranch").Value
+
+	assert.True(t, isOrderInsensitiveSchemaCompositionLabel(v3.OneOfLabel))
+	assert.True(t, isOrderInsensitiveSchemaCompositionLabel(v3.AnyOfLabel))
+	assert.True(t, isOrderInsensitiveSchemaCompositionLabel(v3.AllOfLabel))
+	assert.False(t, isOrderInsensitiveSchemaCompositionLabel(v3.PrefixItemsLabel))
+	assert.False(t, isOrderInsensitiveSchemaCompositionLabel("unknown"))
+
+	assert.Equal(t, "nil", schemaCompositionEntryIdentity(nil))
+	assert.Equal(t, "ref:#/components/schemas/A", schemaCompositionEntryIdentity(refProxy))
+	assert.Contains(t, schemaCompositionEntryIdentity(inlineProxy), "hash:")
+
+	entries := buildSchemaCompositionEntries([]low.ValueReference[*base.SchemaProxy]{
+		{Value: refProxy},
+		{Value: inlineProxy},
+	})
+	assert.Len(t, entries, 2)
+	assert.Equal(t, "ref:#/components/schemas/A", entries[0].identity)
+	assert.Equal(t, refProxy, entries[0].proxy)
+	assert.Equal(t, inlineProxy, entries[1].proxy)
+
+	leftEntries := []schemaCompositionEntry{
+		{identity: "a"},
+		{identity: "a"},
+		{identity: "b"},
+	}
+	rightEntries := []schemaCompositionEntry{
+		{identity: "a"},
+		{identity: "c"},
+		{identity: "a"},
+	}
+	matchedCounts := matchSchemaCompositionIdentityCounts(leftEntries, rightEntries)
+	assert.Equal(t, 2, matchedCounts["a"])
+	assert.Zero(t, matchedCounts["b"])
+
+	assert.Equal(t,
+		[]schemaCompositionEntry{{identity: "b"}},
+		filterUnmatchedSchemaCompositionEntries(leftEntries, matchedCounts),
+	)
+	assert.Equal(t,
+		[]schemaCompositionEntry{{identity: "c"}},
+		filterUnmatchedSchemaCompositionEntries(rightEntries, matchedCounts),
+	)
+
+	assert.True(t, schemaCompositionChangeBreaking(v3.AllOfLabel, ObjectRemoved))
+	assert.False(t, schemaCompositionChangeBreaking(v3.AllOfLabel, ObjectAdded))
+	assert.True(t, schemaCompositionChangeBreaking(v3.AnyOfLabel, ObjectRemoved))
+	assert.False(t, schemaCompositionChangeBreaking(v3.AnyOfLabel, ObjectAdded))
+	assert.True(t, schemaCompositionChangeBreaking(v3.OneOfLabel, ObjectRemoved))
+	assert.False(t, schemaCompositionChangeBreaking(v3.OneOfLabel, ObjectAdded))
+	assert.True(t, schemaCompositionChangeBreaking(v3.PrefixItemsLabel, ObjectRemoved))
+	assert.False(t, schemaCompositionChangeBreaking(v3.PrefixItemsLabel, ObjectAdded))
+	assert.True(t, schemaCompositionChangeBreaking("unknown", ObjectRemoved))
+	assert.False(t, schemaCompositionChangeBreaking("unknown", ObjectAdded))
+}
+
 func TestCompareSchemas_RefIgnore(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
@@ -3760,6 +3831,310 @@ components:
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.OneOfLabel, changes.Changes[0].Property)
 	assert.True(t, changes.Changes[0].Breaking)
+}
+
+func TestCompareSchemas_OneOfAddReferencedBranchAppendIsNonBreaking(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: string
+    B:
+      type: integer
+    C:
+      type: boolean
+    Input:
+      oneOf:
+        - $ref: '#/components/schemas/A'
+        - $ref: '#/components/schemas/B'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: string
+    B:
+      type: integer
+    C:
+      type: boolean
+    Input:
+      oneOf:
+        - $ref: '#/components/schemas/A'
+        - $ref: '#/components/schemas/B'
+        - $ref: '#/components/schemas/C'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Input").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Input").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Len(t, changes.Changes, 1)
+	assert.Empty(t, changes.OneOfChanges)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, v3.OneOfLabel, changes.Changes[0].Property)
+	assert.False(t, changes.Changes[0].Breaking)
+}
+
+func TestCompareSchemas_OneOfAddReferencedBranchPrependIsNonBreaking(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: string
+    B:
+      type: integer
+    C:
+      type: boolean
+    Input:
+      oneOf:
+        - $ref: '#/components/schemas/A'
+        - $ref: '#/components/schemas/B'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: string
+    B:
+      type: integer
+    C:
+      type: boolean
+    Input:
+      oneOf:
+        - $ref: '#/components/schemas/C'
+        - $ref: '#/components/schemas/A'
+        - $ref: '#/components/schemas/B'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Input").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Input").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Len(t, changes.Changes, 1)
+	assert.Empty(t, changes.OneOfChanges)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, v3.OneOfLabel, changes.Changes[0].Property)
+	assert.False(t, changes.Changes[0].Breaking)
+}
+
+func TestCompareSchemas_AnyOfAddReferencedBranchMiddleIsNonBreaking(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: string
+    B:
+      type: integer
+    C:
+      type: boolean
+    Input:
+      anyOf:
+        - $ref: '#/components/schemas/A'
+        - $ref: '#/components/schemas/B'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: string
+    B:
+      type: integer
+    C:
+      type: boolean
+    Input:
+      anyOf:
+        - $ref: '#/components/schemas/A'
+        - $ref: '#/components/schemas/C'
+        - $ref: '#/components/schemas/B'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Input").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Input").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Len(t, changes.Changes, 1)
+	assert.Empty(t, changes.AnyOfChanges)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, v3.AnyOfLabel, changes.Changes[0].Property)
+	assert.False(t, changes.Changes[0].Breaking)
+}
+
+func TestCompareSchemas_AllOfReferencedReorderIsNoop(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: object
+      properties:
+        a:
+          type: string
+    B:
+      type: object
+      properties:
+        b:
+          type: integer
+    Input:
+      allOf:
+        - $ref: '#/components/schemas/A'
+        - $ref: '#/components/schemas/B'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: object
+      properties:
+        a:
+          type: string
+    B:
+      type: object
+      properties:
+        b:
+          type: integer
+    Input:
+      allOf:
+        - $ref: '#/components/schemas/B'
+        - $ref: '#/components/schemas/A'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Input").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Input").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+}
+
+func TestCompareSchemas_OneOfReferencedReorderIsNoop(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: string
+    B:
+      type: integer
+    C:
+      type: boolean
+    Input:
+      oneOf:
+        - $ref: '#/components/schemas/A'
+        - $ref: '#/components/schemas/B'
+        - $ref: '#/components/schemas/C'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: string
+    B:
+      type: integer
+    C:
+      type: boolean
+    Input:
+      oneOf:
+        - $ref: '#/components/schemas/C'
+        - $ref: '#/components/schemas/A'
+        - $ref: '#/components/schemas/B'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Input").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Input").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+}
+
+func TestCompareSchemas_OneOfDuplicateReferencedReorderIsNoop(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: string
+    B:
+      type: integer
+    Input:
+      oneOf:
+        - $ref: '#/components/schemas/A'
+        - $ref: '#/components/schemas/A'
+        - $ref: '#/components/schemas/B'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    A:
+      type: string
+    B:
+      type: integer
+    Input:
+      oneOf:
+        - $ref: '#/components/schemas/A'
+        - $ref: '#/components/schemas/B'
+        - $ref: '#/components/schemas/A'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Input").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Input").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+}
+
+func TestCompareSchemas_OneOfReorderAndModifyStillProducesModification(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    B:
+      type: integer
+    Input:
+      oneOf:
+        - type: string
+          description: old
+        - $ref: '#/components/schemas/B'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    B:
+      type: integer
+    Input:
+      oneOf:
+        - $ref: '#/components/schemas/B'
+        - type: string
+          description: new`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Input").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Input").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.Changes, 0)
+	assert.Len(t, changes.OneOfChanges, 1)
+	assert.Len(t, changes.OneOfChanges[0].Changes, 1)
+	assert.Equal(t, Modified, changes.OneOfChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, v3.DescriptionLabel, changes.OneOfChanges[0].Changes[0].Property)
+	assert.Equal(t, "new", changes.OneOfChanges[0].Changes[0].New)
+	assert.Equal(t, "old", changes.OneOfChanges[0].Changes[0].Original)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
 }
 
 func TestCompareSchemas_PrefixItemsRemoveItem(t *testing.T) {

@@ -2193,6 +2193,11 @@ func extractSchemaChanges(
 		return
 	}
 
+	if isOrderInsensitiveSchemaCompositionLabel(label) {
+		extractOrderInsensitiveSchemaChanges(lSchema, rSchema, label, sc, changes)
+		return
+	}
+
 	x := "%x"
 	// create hash key maps to check equality
 	lKeys := make([]string, 0, len(lSchema))
@@ -2271,6 +2276,139 @@ func extractSchemaChanges(
 					nil, rEntities[rKeys[w]].GetValueNode(), breaking, nil, rEntities[rKeys[w]])
 			}
 		}
+	}
+}
+
+type schemaCompositionEntry struct {
+	identity string
+	proxy    *base.SchemaProxy
+}
+
+func isOrderInsensitiveSchemaCompositionLabel(label string) bool {
+	switch label {
+	case v3.AllOfLabel, v3.AnyOfLabel, v3.OneOfLabel:
+		return true
+	default:
+		return false
+	}
+}
+
+func schemaCompositionEntryIdentity(proxy *base.SchemaProxy) string {
+	if proxy == nil {
+		return "nil"
+	}
+	if proxy.IsReference() {
+		return "ref:" + proxy.GetReference()
+	}
+	return fmt.Sprintf("hash:%x", proxy.Hash())
+}
+
+func buildSchemaCompositionEntries(schema []low.ValueReference[*base.SchemaProxy]) []schemaCompositionEntry {
+	entries := make([]schemaCompositionEntry, 0, len(schema))
+	for i := range schema {
+		proxy := schema[i].Value
+		entries = append(entries, schemaCompositionEntry{
+			identity: schemaCompositionEntryIdentity(proxy),
+			proxy:    proxy,
+		})
+	}
+	return entries
+}
+
+func matchSchemaCompositionIdentityCounts(
+	leftEntries, rightEntries []schemaCompositionEntry,
+) map[string]int {
+	rightCounts := make(map[string]int)
+	matchedCounts := make(map[string]int)
+
+	for i := range rightEntries {
+		rightCounts[rightEntries[i].identity]++
+	}
+	for i := range leftEntries {
+		identity := leftEntries[i].identity
+		if matchedCounts[identity] < rightCounts[identity] {
+			matchedCounts[identity]++
+		}
+	}
+	return matchedCounts
+}
+
+func filterUnmatchedSchemaCompositionEntries(
+	entries []schemaCompositionEntry,
+	matchedCounts map[string]int,
+) []schemaCompositionEntry {
+	usedCounts := make(map[string]int)
+	unmatched := make([]schemaCompositionEntry, 0, len(entries))
+
+	for i := range entries {
+		identity := entries[i].identity
+		if usedCounts[identity] < matchedCounts[identity] {
+			usedCounts[identity]++
+			continue
+		}
+		unmatched = append(unmatched, entries[i])
+	}
+	return unmatched
+}
+
+func schemaCompositionChangeBreaking(label string, changeType int) bool {
+	switch label {
+	case v3.AllOfLabel:
+		if changeType == ObjectAdded {
+			return BreakingAdded(CompSchema, PropAllOf)
+		}
+		return BreakingRemoved(CompSchema, PropAllOf)
+	case v3.AnyOfLabel:
+		if changeType == ObjectAdded {
+			return BreakingAdded(CompSchema, PropAnyOf)
+		}
+		return BreakingRemoved(CompSchema, PropAnyOf)
+	case v3.OneOfLabel:
+		if changeType == ObjectAdded {
+			return BreakingAdded(CompSchema, PropOneOf)
+		}
+		return BreakingRemoved(CompSchema, PropOneOf)
+	case v3.PrefixItemsLabel:
+		if changeType == ObjectAdded {
+			return BreakingAdded(CompSchema, PropPrefixItems)
+		}
+		return BreakingRemoved(CompSchema, PropPrefixItems)
+	default:
+		return changeType != ObjectAdded
+	}
+}
+
+func extractOrderInsensitiveSchemaChanges(
+	lSchema []low.ValueReference[*base.SchemaProxy],
+	rSchema []low.ValueReference[*base.SchemaProxy],
+	label string,
+	sc *[]*SchemaChanges,
+	changes *[]*Change,
+) {
+	leftEntries := buildSchemaCompositionEntries(lSchema)
+	rightEntries := buildSchemaCompositionEntries(rSchema)
+	matchedCounts := matchSchemaCompositionIdentityCounts(leftEntries, rightEntries)
+
+	leftUnmatched := filterUnmatchedSchemaCompositionEntries(leftEntries, matchedCounts)
+	rightUnmatched := filterUnmatchedSchemaCompositionEntries(rightEntries, matchedCounts)
+
+	pairs := min(len(leftUnmatched), len(rightUnmatched))
+	for i := 0; i < pairs; i++ {
+		*sc = append(*sc, CompareSchemas(leftUnmatched[i].proxy, rightUnmatched[i].proxy))
+	}
+
+	for i := pairs; i < len(leftUnmatched); i++ {
+		CreateChange(changes, ObjectRemoved, label,
+			leftUnmatched[i].proxy.GetValueNode(), nil,
+			schemaCompositionChangeBreaking(label, ObjectRemoved),
+			leftUnmatched[i].proxy, nil)
+	}
+
+	for i := pairs; i < len(rightUnmatched); i++ {
+		CreateChange(changes, ObjectAdded, label,
+			nil, rightUnmatched[i].proxy.GetValueNode(),
+			schemaCompositionChangeBreaking(label, ObjectAdded),
+			nil, rightUnmatched[i].proxy)
 	}
 }
 
