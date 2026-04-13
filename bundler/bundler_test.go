@@ -94,6 +94,93 @@ func isEmptyRef(line string) bool {
 	return ref == "{}" || ref == ""
 }
 
+func TestBundleDocument_PreservesInvalidComponentMapRefsAndWarns(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	spec := `openapi: 3.0.3
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  parameters:
+    $ref: "./params.yaml"
+    LocalParam:
+      name: local
+      in: query
+      schema:
+        type: string
+  schemas:
+    $ref: "./schemas.yaml"
+    LocalSchema:
+      type: object
+      properties:
+        local:
+          type: string
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/LocalParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LocalSchema"
+`
+
+	params := `RemoteParam:
+  name: remote
+  in: query
+  schema:
+    type: string
+`
+
+	schemas := `RemoteSchema:
+  type: object
+  properties:
+    id:
+      type: string
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "openapi.yaml"), []byte(spec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "params.yaml"), []byte(params), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "schemas.yaml"), []byte(schemas), 0644))
+
+	var logBuf bytes.Buffer
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmpDir,
+		AllowFileReferences: true,
+		Logger: slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{
+			Level: slog.LevelWarn,
+		})),
+	}
+
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "openapi.yaml"))
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, cfg)
+	require.NoError(t, err)
+
+	v3Doc, errs := doc.BuildV3Model()
+	require.NoError(t, errs)
+	require.NotNil(t, v3Doc)
+
+	bundledBytes, err := BundleDocument(&v3Doc.Model)
+	require.NoError(t, err)
+
+	bundledStr := string(bundledBytes)
+	assert.Contains(t, bundledStr, "$ref: \"./params.yaml\"")
+	assert.Contains(t, bundledStr, "$ref: \"./schemas.yaml\"")
+	assert.NotContains(t, bundledStr, "$ref: {}")
+
+	logOutput := logBuf.String()
+	assert.Contains(t, logOutput, "preserving invalid component map $ref entry during render")
+	assert.Contains(t, logOutput, "\"section\":\"parameters\"")
+	assert.Contains(t, logOutput, "\"section\":\"schemas\"")
+}
+
 func writeIssue831Fixture(t *testing.T) string {
 	t.Helper()
 
