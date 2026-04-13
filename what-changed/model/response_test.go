@@ -329,3 +329,38 @@ x-toot: pooty`
 	assert.Len(t, extChanges.GetAllChanges(), 5)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 }
+
+func TestCompareResponse_V3_BreakingExtensionRemovalCounted(t *testing.T) {
+	low.ClearHashCache()
+
+	left := `description: response
+x-summary: legacy summary
+content:
+  application/json:
+    schema:
+      type: string`
+
+	right := `description: response
+content:
+  application/json:
+    schema:
+      type: string`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc v3.Response
+	var rDoc v3.Response
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	changes := CompareResponse(&lDoc, &rDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.NotNil(t, changes.ExtensionChanges)
+	assert.Equal(t, 1, changes.ExtensionChanges.TotalBreakingChanges())
+}

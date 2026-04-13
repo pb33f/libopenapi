@@ -88,6 +88,9 @@ func (r *ResponseChanges) TotalChanges() int {
 // Response Objects
 func (r *ResponseChanges) TotalBreakingChanges() int {
 	c := r.PropertyChanges.TotalBreakingChanges()
+	if r.ExtensionChanges != nil {
+		c += r.ExtensionChanges.TotalBreakingChanges()
+	}
 	if r.SchemaChanges != nil {
 		c += r.SchemaChanges.TotalBreakingChanges()
 	}

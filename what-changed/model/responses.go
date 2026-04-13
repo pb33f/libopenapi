@@ -66,6 +66,9 @@ func (r *ResponsesChanges) TotalBreakingChanges() int {
 	if r.DefaultChanges != nil {
 		c += r.DefaultChanges.TotalBreakingChanges()
 	}
+	if r.ExtensionChanges != nil {
+		c += r.ExtensionChanges.TotalBreakingChanges()
+	}
 	return c
 }
 

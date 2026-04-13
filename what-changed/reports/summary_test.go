@@ -29,7 +29,7 @@ func TestCreateSummary_OverallReport(t *testing.T) {
 	// Callbacks are now properly counted as individual expression changes
 	// instead of a single PropertyAdded/PropertyRemoved change
 	assert.Equal(t, 45, report.ChangeReport[v3.PathsLabel].Total)
-	assert.Equal(t, 10, report.ChangeReport[v3.PathsLabel].Breaking)
+	assert.Equal(t, 11, report.ChangeReport[v3.PathsLabel].Breaking)
 	assert.Equal(t, 3, report.ChangeReport[v3.TagsLabel].Total)
 	assert.Equal(t, 1, report.ChangeReport[v3.ExternalDocsLabel].Total)
 	assert.Equal(t, 2, report.ChangeReport[v3.WebhooksLabel].Total)
@@ -57,4 +57,42 @@ func TestCreateSummary_OverallReport_IncludesDocumentPropertyChanges(t *testing.
 	assert.Equal(t, 1, report.ChangeReport[v3.OpenAPILabel].Breaking)
 	assert.Equal(t, 1, report.ChangeReport[v3.InfoLabel].Total)
 	assert.Equal(t, 0, report.ChangeReport[v3.InfoLabel].Breaking)
+}
+
+func TestCreateSummary_OverallReport_CountsBreakingResponseExtensions(t *testing.T) {
+	left := []byte(`openapi: 3.1.0
+info:
+  title: test
+  version: 1.0.0
+paths:
+  /burgers:
+    get:
+      responses:
+        "500":
+          description: no burgers
+          x-summary: legacy summary
+`)
+	right := []byte(`openapi: 3.1.0
+info:
+  title: test
+  version: 1.0.0
+paths:
+  /burgers:
+    get:
+      responses:
+        "500":
+          description: no burgers
+`)
+
+	originalDoc, originalErr := libopenapi.NewDocument(left)
+	assert.NoError(t, originalErr)
+	updatedDoc, updatedErr := libopenapi.NewDocument(right)
+	assert.NoError(t, updatedErr)
+
+	documentChanges, compareErrs := libopenapi.CompareDocuments(originalDoc, updatedDoc)
+	assert.Empty(t, compareErrs)
+
+	report := CreateOverallReport(documentChanges)
+	assert.Equal(t, 1, report.ChangeReport[v3.PathsLabel].Total)
+	assert.Equal(t, 1, report.ChangeReport[v3.PathsLabel].Breaking)
 }
