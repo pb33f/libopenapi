@@ -511,6 +511,43 @@ func TestCompareParameters_V3_ExamplesRemoved_WithCustomBreakingRule(t *testing.
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }
 
+func TestCompareParameters_V3_ExamplesModified_WithCustomBreakingRule(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	defer ResetDefaultBreakingRules()
+	defer ResetActiveBreakingRulesConfig()
+
+	config := GenerateDefaultBreakingRules()
+	config.Parameter.Examples = rule(false, true, false)
+	SetActiveBreakingRulesConfig(config)
+
+	low.ClearHashCache()
+	left := `examples:
+  anExample:
+    value: left tea
+`
+	right := `examples:
+  anExample:
+    value: right tea`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc v3.Parameter
+	var rDoc v3.Parameter
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	extChanges := CompareParameters(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Len(t, extChanges.ExamplesChanges, 1)
+	assert.True(t, extChanges.ExamplesChanges["anExample"].GetAllChanges()[0].Breaking)
+}
+
 func TestCompareParameters_V3_ContentChanged(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -2280,8 +2281,25 @@ func extractSchemaChanges(
 }
 
 type schemaCompositionEntry struct {
-	identity string
-	proxy    *base.SchemaProxy
+	identity  string
+	stableKey string
+	position  int
+	proxy     *base.SchemaProxy
+}
+
+type schemaCompositionPair struct {
+	left    schemaCompositionEntry
+	right   schemaCompositionEntry
+	changes *SchemaChanges
+}
+
+type schemaCompositionPairCandidate struct {
+	left            schemaCompositionEntry
+	right           schemaCompositionEntry
+	changes         *SchemaChanges
+	totalChanges    int
+	breakingChanges int
+	stableKeyMatch  bool
 }
 
 func isOrderInsensitiveSchemaCompositionLabel(label string) bool {
@@ -2308,47 +2326,258 @@ func buildSchemaCompositionEntries(schema []low.ValueReference[*base.SchemaProxy
 	for i := range schema {
 		proxy := schema[i].Value
 		entries = append(entries, schemaCompositionEntry{
-			identity: schemaCompositionEntryIdentity(proxy),
-			proxy:    proxy,
+			identity:  schemaCompositionEntryIdentity(proxy),
+			stableKey: schemaCompositionEntryStableKey(proxy),
+			position:  i,
+			proxy:     proxy,
 		})
 	}
 	return entries
 }
 
-func matchSchemaCompositionIdentityCounts(
-	leftEntries, rightEntries []schemaCompositionEntry,
-) map[string]int {
-	rightCounts := make(map[string]int)
-	matchedCounts := make(map[string]int)
+func schemaCompositionEntryStableKey(proxy *base.SchemaProxy) string {
+	if proxy == nil {
+		return "nil"
+	}
+	if proxy.IsReference() {
+		return "ref:" + proxy.GetReference()
+	}
+	schema := proxy.Schema()
+	if schema == nil {
+		return fmt.Sprintf("hash:%x", proxy.Hash())
+	}
 
-	for i := range rightEntries {
-		rightCounts[rightEntries[i].identity]++
-	}
-	for i := range leftEntries {
-		identity := leftEntries[i].identity
-		if matchedCounts[identity] < rightCounts[identity] {
-			matchedCounts[identity]++
+	parts := make([]string, 0, 4)
+	switch {
+	case schema.Type.Value.A != "":
+		parts = append(parts, "type:"+schema.Type.Value.A)
+	case len(schema.Type.Value.B) > 0:
+		types := make([]string, len(schema.Type.Value.B))
+		for i := range schema.Type.Value.B {
+			types[i] = schema.Type.Value.B[i].Value
 		}
+		sort.Strings(types)
+		parts = append(parts, "types:"+strings.Join(types, ","))
 	}
-	return matchedCounts
+	if schema.Title.Value != "" {
+		parts = append(parts, "title:"+schema.Title.Value)
+	}
+	if schema.Properties.Value != nil {
+		propertyNames := make([]string, 0, schema.Properties.Value.Len())
+		for k := range schema.Properties.Value.KeysFromOldest() {
+			propertyNames = append(propertyNames, k.Value)
+		}
+		sort.Strings(propertyNames)
+		parts = append(parts, "props:"+strings.Join(propertyNames, ","))
+	}
+	if len(parts) == 0 {
+		return fmt.Sprintf("hash:%x", proxy.Hash())
+	}
+	return strings.Join(parts, "|")
 }
 
-func filterUnmatchedSchemaCompositionEntries(
-	entries []schemaCompositionEntry,
-	matchedCounts map[string]int,
-) []schemaCompositionEntry {
-	usedCounts := make(map[string]int)
-	unmatched := make([]schemaCompositionEntry, 0, len(entries))
+func pairExactSchemaCompositionEntries(
+	leftEntries, rightEntries []schemaCompositionEntry,
+) ([]schemaCompositionPair, []schemaCompositionEntry, []schemaCompositionEntry) {
+	rightIndexesByIdentity := make(map[string][]int)
+	matchedRightIndexes := make(map[int]bool)
+	pairs := make([]schemaCompositionPair, 0)
+	leftUnmatched := make([]schemaCompositionEntry, 0)
+	rightUnmatched := make([]schemaCompositionEntry, 0)
 
-	for i := range entries {
-		identity := entries[i].identity
-		if usedCounts[identity] < matchedCounts[identity] {
-			usedCounts[identity]++
+	for i := range rightEntries {
+		rightIndexesByIdentity[rightEntries[i].identity] = append(rightIndexesByIdentity[rightEntries[i].identity], i)
+	}
+
+	for i := range leftEntries {
+		indexes := rightIndexesByIdentity[leftEntries[i].identity]
+		if len(indexes) == 0 {
+			leftUnmatched = append(leftUnmatched, leftEntries[i])
 			continue
 		}
-		unmatched = append(unmatched, entries[i])
+
+		rightIndex := indexes[0]
+		rightIndexesByIdentity[leftEntries[i].identity] = indexes[1:]
+		matchedRightIndexes[rightIndex] = true
+		pairs = append(pairs, schemaCompositionPair{
+			left:  leftEntries[i],
+			right: rightEntries[rightIndex],
+		})
 	}
-	return unmatched
+
+	for i := range rightEntries {
+		if matchedRightIndexes[i] {
+			continue
+		}
+		rightUnmatched = append(rightUnmatched, rightEntries[i])
+	}
+
+	return pairs, leftUnmatched, rightUnmatched
+}
+
+func buildSchemaCompositionPairCandidateMatrix(
+	rowEntries, columnEntries []schemaCompositionEntry,
+	swapPairDirection bool,
+) [][]schemaCompositionPairCandidate {
+	matrix := make([][]schemaCompositionPairCandidate, len(rowEntries))
+	for i := range rowEntries {
+		row := make([]schemaCompositionPairCandidate, len(columnEntries))
+		for j := range columnEntries {
+			leftEntry := rowEntries[i]
+			rightEntry := columnEntries[j]
+			if swapPairDirection {
+				leftEntry = columnEntries[j]
+				rightEntry = rowEntries[i]
+			}
+			changes := CompareSchemas(leftEntry.proxy, rightEntry.proxy)
+			totalChanges := 0
+			breakingChanges := 0
+			if changes != nil {
+				totalChanges = changes.TotalChanges()
+				breakingChanges = changes.TotalBreakingChanges()
+			}
+			row[j] = schemaCompositionPairCandidate{
+				left:            leftEntry,
+				right:           rightEntry,
+				changes:         changes,
+				totalChanges:    totalChanges,
+				breakingChanges: breakingChanges,
+				stableKeyMatch:  leftEntry.stableKey == rightEntry.stableKey,
+			}
+		}
+		matrix[i] = row
+	}
+	return matrix
+}
+
+func schemaCompositionPairingSignature(candidates []schemaCompositionPairCandidate) []int {
+	sortedCandidates := slices.Clone(candidates)
+	sort.Slice(sortedCandidates, func(i, j int) bool {
+		if sortedCandidates[i].left.position != sortedCandidates[j].left.position {
+			return sortedCandidates[i].left.position < sortedCandidates[j].left.position
+		}
+		return sortedCandidates[i].right.position < sortedCandidates[j].right.position
+	})
+
+	signature := make([]int, 0, len(sortedCandidates)*2)
+	for i := range sortedCandidates {
+		signature = append(signature, sortedCandidates[i].left.position, sortedCandidates[i].right.position)
+	}
+	return signature
+}
+
+func schemaCompositionPairingIsBetter(
+	candidates []schemaCompositionPairCandidate,
+	best []schemaCompositionPairCandidate,
+) bool {
+	totalChanges := 0
+	totalBreaking := 0
+	stableKeyMismatches := 0
+	for i := range candidates {
+		totalChanges += candidates[i].totalChanges
+		totalBreaking += candidates[i].breakingChanges
+		if !candidates[i].stableKeyMatch {
+			stableKeyMismatches++
+		}
+	}
+
+	bestTotalChanges := 0
+	bestTotalBreaking := 0
+	bestStableKeyMismatches := 0
+	for i := range best {
+		bestTotalChanges += best[i].totalChanges
+		bestTotalBreaking += best[i].breakingChanges
+		if !best[i].stableKeyMatch {
+			bestStableKeyMismatches++
+		}
+	}
+
+	switch {
+	case len(best) == 0:
+		return true
+	case totalChanges != bestTotalChanges:
+		return totalChanges < bestTotalChanges
+	case stableKeyMismatches != bestStableKeyMismatches:
+		return stableKeyMismatches < bestStableKeyMismatches
+	case totalBreaking != bestTotalBreaking:
+		return totalBreaking < bestTotalBreaking
+	}
+
+	signature := schemaCompositionPairingSignature(candidates)
+	bestSignature := schemaCompositionPairingSignature(best)
+	for i := range signature {
+		if signature[i] != bestSignature[i] {
+			return signature[i] < bestSignature[i]
+		}
+	}
+	return false
+}
+
+func selectBestSchemaCompositionPairCandidates(
+	matrix [][]schemaCompositionPairCandidate,
+) []schemaCompositionPairCandidate {
+	if len(matrix) == 0 {
+		return nil
+	}
+
+	used := make([]bool, len(matrix[0]))
+	current := make([]schemaCompositionPairCandidate, 0, len(matrix))
+	var best []schemaCompositionPairCandidate
+
+	var search func(int)
+	search = func(row int) {
+		if row == len(matrix) {
+			if schemaCompositionPairingIsBetter(current, best) {
+				best = slices.Clone(current)
+			}
+			return
+		}
+
+		for i := range matrix[row] {
+			if used[i] {
+				continue
+			}
+			used[i] = true
+			current = append(current, matrix[row][i])
+			search(row + 1)
+			current = current[:len(current)-1]
+			used[i] = false
+		}
+	}
+
+	search(0)
+	return best
+}
+
+func pairUnmatchedSchemaCompositionEntries(
+	leftEntries, rightEntries []schemaCompositionEntry,
+) []schemaCompositionPair {
+	if len(leftEntries) == 0 || len(rightEntries) == 0 {
+		return nil
+	}
+
+	matrix := buildSchemaCompositionPairCandidateMatrix(leftEntries, rightEntries, false)
+	if len(leftEntries) > len(rightEntries) {
+		matrix = buildSchemaCompositionPairCandidateMatrix(rightEntries, leftEntries, true)
+	}
+
+	selected := selectBestSchemaCompositionPairCandidates(matrix)
+	pairs := make([]schemaCompositionPair, 0, len(selected))
+	for i := range selected {
+		pairs = append(pairs, schemaCompositionPair{
+			left:    selected[i].left,
+			right:   selected[i].right,
+			changes: selected[i].changes,
+		})
+	}
+
+	sort.Slice(pairs, func(i, j int) bool {
+		if pairs[i].left.position != pairs[j].left.position {
+			return pairs[i].left.position < pairs[j].left.position
+		}
+		return pairs[i].right.position < pairs[j].right.position
+	})
+	return pairs
 }
 
 func schemaCompositionChangeBreaking(label string, changeType int) bool {
@@ -2387,28 +2616,55 @@ func extractOrderInsensitiveSchemaChanges(
 ) {
 	leftEntries := buildSchemaCompositionEntries(lSchema)
 	rightEntries := buildSchemaCompositionEntries(rSchema)
-	matchedCounts := matchSchemaCompositionIdentityCounts(leftEntries, rightEntries)
 
-	leftUnmatched := filterUnmatchedSchemaCompositionEntries(leftEntries, matchedCounts)
-	rightUnmatched := filterUnmatchedSchemaCompositionEntries(rightEntries, matchedCounts)
+	exactPairs, leftUnmatched, rightUnmatched := pairExactSchemaCompositionEntries(leftEntries, rightEntries)
+	unmatchedPairs := pairUnmatchedSchemaCompositionEntries(leftUnmatched, rightUnmatched)
 
-	pairs := min(len(leftUnmatched), len(rightUnmatched))
-	for i := 0; i < pairs; i++ {
-		*sc = append(*sc, CompareSchemas(leftUnmatched[i].proxy, rightUnmatched[i].proxy))
+	for i := range exactPairs {
+		if changes := CompareSchemas(exactPairs[i].left.proxy, exactPairs[i].right.proxy); changes != nil {
+			*sc = append(*sc, changes)
+		}
+	}
+	for i := range unmatchedPairs {
+		if unmatchedPairs[i].changes != nil {
+			*sc = append(*sc, unmatchedPairs[i].changes)
+		}
 	}
 
-	for i := pairs; i < len(leftUnmatched); i++ {
+	matchedLeftPositions := make(map[int]bool)
+	matchedRightPositions := make(map[int]bool)
+	for i := range unmatchedPairs {
+		matchedLeftPositions[unmatchedPairs[i].left.position] = true
+		matchedRightPositions[unmatchedPairs[i].right.position] = true
+	}
+
+	remainingLeft := make([]schemaCompositionEntry, 0)
+	remainingRight := make([]schemaCompositionEntry, 0)
+	for i := range leftUnmatched {
+		if matchedLeftPositions[leftUnmatched[i].position] {
+			continue
+		}
+		remainingLeft = append(remainingLeft, leftUnmatched[i])
+	}
+	for i := range rightUnmatched {
+		if matchedRightPositions[rightUnmatched[i].position] {
+			continue
+		}
+		remainingRight = append(remainingRight, rightUnmatched[i])
+	}
+
+	for i := range remainingLeft {
 		CreateChange(changes, ObjectRemoved, label,
-			leftUnmatched[i].proxy.GetValueNode(), nil,
+			remainingLeft[i].proxy.GetValueNode(), nil,
 			schemaCompositionChangeBreaking(label, ObjectRemoved),
-			leftUnmatched[i].proxy, nil)
+			remainingLeft[i].proxy, nil)
 	}
 
-	for i := pairs; i < len(rightUnmatched); i++ {
+	for i := range remainingRight {
 		CreateChange(changes, ObjectAdded, label,
-			nil, rightUnmatched[i].proxy.GetValueNode(),
+			nil, remainingRight[i].proxy.GetValueNode(),
 			schemaCompositionChangeBreaking(label, ObjectAdded),
-			nil, rightUnmatched[i].proxy)
+			nil, remainingRight[i].proxy)
 	}
 }
 

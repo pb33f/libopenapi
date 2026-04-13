@@ -4,10 +4,12 @@
 package model
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/index"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
@@ -235,6 +237,78 @@ func TestCheckMapForAdditionRemoval(t *testing.T) {
 
 	CheckMapForAdditionRemoval(l, r, &changes, "label")
 	assert.Len(t, changes, 1)
+}
+
+func buildTestExample(t *testing.T, raw string) *base.Example {
+	t.Helper()
+
+	var node yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte(raw), &node))
+
+	var example base.Example
+	assert.NoError(t, low.BuildModel(node.Content[0], &example))
+	assert.NoError(t, example.Build(context.Background(), nil, node.Content[0], nil))
+	return &example
+}
+
+func TestOverrideChangeCollectionBreaking(t *testing.T) {
+	overrideChangeCollectionBreaking(nil, true)
+	overrideChangeCollectionBreaking("not-a-collection", true)
+
+	changes := &ExampleChanges{
+		PropertyChanges: NewPropertyChanges([]*Change{
+			{Breaking: true},
+			{Breaking: false},
+		}),
+	}
+
+	overrideChangeCollectionBreaking(changes, false)
+	assert.False(t, changes.Changes[0].Breaking)
+	assert.False(t, changes.Changes[1].Breaking)
+
+	overrideChangeCollectionBreaking(changes, true)
+	assert.True(t, changes.Changes[0].Breaking)
+	assert.True(t, changes.Changes[1].Breaking)
+}
+
+func TestCompareExamplesWithParentBreaking(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	defer ResetDefaultBreakingRules()
+	defer ResetActiveBreakingRulesConfig()
+
+	config := GenerateDefaultBreakingRules()
+	config.Example.Value = rule(false, true, false)
+	config.Parameter.Examples = rule(false, false, false)
+	config.MediaType.Examples = rule(true, false, true)
+	SetActiveBreakingRulesConfig(config)
+
+	modified := compareExamplesWithParentBreaking(CompParameter, PropExamples)(
+		buildTestExample(t, "value: left"),
+		buildTestExample(t, "value: right"),
+	)
+	assert.NotNil(t, modified)
+	assert.False(t, modified.GetAllChanges()[0].Breaking)
+
+	added := compareExamplesWithParentBreaking(CompMediaType, PropExamples)(
+		nil,
+		buildTestExample(t, "value: right"),
+	)
+	assert.NotNil(t, added)
+	assert.True(t, added.GetAllChanges()[0].Breaking)
+
+	removed := compareExamplesWithParentBreaking(CompMediaType, PropExamples)(
+		buildTestExample(t, "value: left"),
+		nil,
+	)
+	assert.NotNil(t, removed)
+	assert.True(t, removed.GetAllChanges()[0].Breaking)
+
+	unchanged := compareExamplesWithParentBreaking(CompParameter, PropExamples)(
+		buildTestExample(t, "value: same"),
+		buildTestExample(t, "value: same"),
+	)
+	assert.Nil(t, unchanged)
 }
 
 type test_hasIndex struct {

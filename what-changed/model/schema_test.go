@@ -4,8 +4,13 @@
 package model
 
 import (
+	"context"
 	"fmt"
+	"reflect"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"unsafe"
 
 	"github.com/pb33f/libopenapi/utils"
 
@@ -14,8 +19,10 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
+	"go.yaml.in/yaml/v4"
 )
 
 // These tests require full documents to be tested properly. schemas are perhaps the most complex
@@ -245,17 +252,15 @@ components:
 		{identity: "c"},
 		{identity: "a"},
 	}
-	matchedCounts := matchSchemaCompositionIdentityCounts(leftEntries, rightEntries)
-	assert.Equal(t, 2, matchedCounts["a"])
-	assert.Zero(t, matchedCounts["b"])
-
+	exactPairs, leftUnmatched, rightUnmatched := pairExactSchemaCompositionEntries(leftEntries, rightEntries)
+	assert.Len(t, exactPairs, 2)
 	assert.Equal(t,
 		[]schemaCompositionEntry{{identity: "b"}},
-		filterUnmatchedSchemaCompositionEntries(leftEntries, matchedCounts),
+		leftUnmatched,
 	)
 	assert.Equal(t,
 		[]schemaCompositionEntry{{identity: "c"}},
-		filterUnmatchedSchemaCompositionEntries(rightEntries, matchedCounts),
+		rightUnmatched,
 	)
 
 	assert.True(t, schemaCompositionChangeBreaking(v3.AllOfLabel, ObjectRemoved))
@@ -4137,6 +4142,243 @@ components:
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 }
 
+func TestCompareSchemas_OneOfReorderAndTwoBranchModificationsPairLocally(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    Input:
+      oneOf:
+        - type: string
+          title: StringBranch
+          description: left string
+        - type: integer
+          title: IntegerBranch
+          description: left integer`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Input:
+      oneOf:
+        - type: integer
+          title: IntegerBranch
+          description: right integer
+        - type: string
+          title: StringBranch
+          description: right string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Input").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Input").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Len(t, changes.Changes, 0)
+	assert.Len(t, changes.OneOfChanges, 2)
+	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+	first := changes.OneOfChanges[0]
+	second := changes.OneOfChanges[1]
+	assert.Equal(t, "left string", first.Changes[0].Original)
+	assert.Equal(t, "right string", first.Changes[0].New)
+	assert.Equal(t, "left integer", second.Changes[0].Original)
+	assert.Equal(t, "right integer", second.Changes[0].New)
+}
+
+func TestExtractOrderInsensitiveSchemaChanges_ExactRefPairsCanProduceChanges(t *testing.T) {
+	low.ClearHashCache()
+	leftProxy := buildPreloadedRefSchemaProxy(t, "#/components/schemas/Branch", "type: string\ndescription: left")
+	rightProxy := buildPreloadedRefSchemaProxy(t, "#/components/schemas/Branch", "type: string\ndescription: right")
+
+	var schemaChanges []*SchemaChanges
+	var changes []*Change
+	extractOrderInsensitiveSchemaChanges(
+		[]low.ValueReference[*base.SchemaProxy]{{Value: leftProxy}},
+		[]low.ValueReference[*base.SchemaProxy]{{Value: rightProxy}},
+		v3.OneOfLabel,
+		&schemaChanges,
+		&changes,
+	)
+
+	assert.Len(t, schemaChanges, 1)
+	assert.Empty(t, changes)
+	assert.Equal(t, "left", schemaChanges[0].Changes[0].Original)
+	assert.Equal(t, "right", schemaChanges[0].Changes[0].New)
+}
+
+func setSpecIndexAbsolutePath(idx *index.SpecIndex, absolutePath string) {
+	field := reflect.ValueOf(idx).Elem().FieldByName("specAbsolutePath")
+	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().SetString(absolutePath)
+}
+
+func buildPreloadedRefSchemaProxy(t *testing.T, ref, rawSchema string) *base.SchemaProxy {
+	t.Helper()
+
+	var node yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte(rawSchema), &node))
+
+	var schema base.Schema
+	assert.NoError(t, low.BuildModel(node.Content[0], &schema))
+	assert.NoError(t, schema.Build(context.Background(), node.Content[0], nil))
+
+	idx := index.NewSpecIndex(&yaml.Node{Content: []*yaml.Node{{Content: []*yaml.Node{}}}})
+	setSpecIndexAbsolutePath(idx, "/tmp/schema.yaml")
+
+	proxy := &base.SchemaProxy{}
+	assert.NoError(t, proxy.Build(context.Background(), nil, utils.CreateRefNode(ref), idx))
+	setSchemaProxyRendered(proxy, &schema)
+	markSchemaProxyBuilt(proxy)
+	return proxy
+}
+
+func setSchemaProxyRendered(proxy *base.SchemaProxy, schema *base.Schema) {
+	field := reflect.ValueOf(proxy).Elem().FieldByName("rendered")
+	rendered := reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem()
+	rendered.Addr().Interface().(*atomic.Pointer[base.Schema]).Store(schema)
+}
+
+func markSchemaProxyBuilt(proxy *base.SchemaProxy) {
+	field := reflect.ValueOf(proxy).Elem().FieldByName("schemaOnce")
+	done := sync.Once{}
+	done.Do(func() {})
+	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().Set(reflect.ValueOf(done))
+}
+
+func TestSchemaCompositionEntryStableKey(t *testing.T) {
+	assert.Equal(t, "nil", schemaCompositionEntryStableKey(nil))
+
+	refProxy := &base.SchemaProxy{}
+	refNode := utils.CreateRefNode("#/components/schemas/Test")
+	assert.NoError(t, refProxy.Build(context.Background(), nil, refNode, nil))
+	assert.Equal(t, "ref:#/components/schemas/Test", schemaCompositionEntryStableKey(refProxy))
+
+	inlineNode := utils.CreateEmptyMapNode()
+	inlineNode.Content = append(inlineNode.Content,
+		utils.CreateStringNode("type"),
+		utils.CreateStringNode("string"),
+	)
+	inlineProxy := &base.SchemaProxy{}
+	assert.NoError(t, inlineProxy.Build(context.Background(), nil, inlineNode, nil))
+	assert.Contains(t, schemaCompositionEntryStableKey(inlineProxy), "type:string")
+
+	complexNode := utils.CreateEmptyMapNode()
+	complexNode.Content = append(complexNode.Content,
+		utils.CreateStringNode("title"),
+		utils.CreateStringNode("ComplexBranch"),
+		utils.CreateStringNode("type"),
+		&yaml.Node{
+			Kind: yaml.SequenceNode,
+			Tag:  "!!seq",
+			Content: []*yaml.Node{
+				utils.CreateStringNode("integer"),
+				utils.CreateStringNode("null"),
+			},
+		},
+		utils.CreateStringNode("properties"),
+		&yaml.Node{
+			Kind: yaml.MappingNode,
+			Tag:  "!!map",
+			Content: []*yaml.Node{
+				utils.CreateStringNode("id"),
+				utils.CreateEmptyMapNode(),
+			},
+		},
+	)
+	complexProxy := &base.SchemaProxy{}
+	assert.NoError(t, complexProxy.Build(context.Background(), nil, complexNode, nil))
+	complexKey := schemaCompositionEntryStableKey(complexProxy)
+	assert.Contains(t, complexKey, "title:ComplexBranch")
+	assert.Contains(t, complexKey, "types:integer,null")
+	assert.Contains(t, complexKey, "props:id")
+
+	emptyProxy := &base.SchemaProxy{}
+	assert.NoError(t, emptyProxy.Build(context.Background(), nil, utils.CreateEmptyMapNode(), nil))
+	assert.Contains(t, schemaCompositionEntryStableKey(emptyProxy), "hash:")
+
+	invalidProxy := &base.SchemaProxy{}
+	assert.NoError(t, invalidProxy.Build(context.Background(), nil, utils.CreateStringNode("not-a-schema"), nil))
+	assert.Contains(t, schemaCompositionEntryStableKey(invalidProxy), "hash:")
+
+	unbuiltProxy := &base.SchemaProxy{}
+	assert.Contains(t, schemaCompositionEntryStableKey(unbuiltProxy), "hash:")
+}
+
+func TestSelectBestSchemaCompositionPairCandidates(t *testing.T) {
+	best := selectBestSchemaCompositionPairCandidates(nil)
+	assert.Nil(t, best)
+
+	matrix := [][]schemaCompositionPairCandidate{
+		{
+			{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 0}, totalChanges: 4, stableKeyMatch: false},
+			{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 1}, totalChanges: 1, stableKeyMatch: true},
+		},
+		{
+			{left: schemaCompositionEntry{position: 1}, right: schemaCompositionEntry{position: 0}, totalChanges: 1, stableKeyMatch: true},
+			{left: schemaCompositionEntry{position: 1}, right: schemaCompositionEntry{position: 1}, totalChanges: 4, stableKeyMatch: false},
+		},
+	}
+
+	best = selectBestSchemaCompositionPairCandidates(matrix)
+	assert.Len(t, best, 2)
+	assert.Equal(t, 1, best[0].right.position)
+	assert.Equal(t, 0, best[1].right.position)
+
+	tieMatrix := [][]schemaCompositionPairCandidate{
+		{
+			{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 0}, totalChanges: 1, stableKeyMatch: false},
+			{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 1}, totalChanges: 1, stableKeyMatch: true},
+		},
+		{
+			{left: schemaCompositionEntry{position: 1}, right: schemaCompositionEntry{position: 0}, totalChanges: 1, stableKeyMatch: true},
+			{left: schemaCompositionEntry{position: 1}, right: schemaCompositionEntry{position: 1}, totalChanges: 1, stableKeyMatch: false},
+		},
+	}
+
+	best = selectBestSchemaCompositionPairCandidates(tieMatrix)
+	assert.Len(t, best, 2)
+	assert.True(t, best[0].stableKeyMatch)
+	assert.True(t, best[1].stableKeyMatch)
+}
+
+func TestSchemaCompositionPairingHelpers(t *testing.T) {
+	signature := schemaCompositionPairingSignature([]schemaCompositionPairCandidate{
+		{left: schemaCompositionEntry{position: 1}, right: schemaCompositionEntry{position: 2}},
+		{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 1}},
+	})
+	assert.Equal(t, []int{0, 1, 1, 2}, signature)
+
+	signature = schemaCompositionPairingSignature([]schemaCompositionPairCandidate{
+		{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 2}},
+		{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 1}},
+	})
+	assert.Equal(t, []int{0, 1, 0, 2}, signature)
+
+	assert.True(t, schemaCompositionPairingIsBetter(
+		[]schemaCompositionPairCandidate{{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 0}, totalChanges: 1, stableKeyMatch: true, breakingChanges: 0}},
+		[]schemaCompositionPairCandidate{{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 1}, totalChanges: 1, stableKeyMatch: true, breakingChanges: 1}},
+	))
+	assert.False(t, schemaCompositionPairingIsBetter(
+		[]schemaCompositionPairCandidate{{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 1}, totalChanges: 1, stableKeyMatch: true, breakingChanges: 1}},
+		[]schemaCompositionPairCandidate{{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 0}, totalChanges: 1, stableKeyMatch: true, breakingChanges: 0}},
+	))
+	assert.False(t, schemaCompositionPairingIsBetter(
+		[]schemaCompositionPairCandidate{{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 0}, totalChanges: 1, stableKeyMatch: true, breakingChanges: 0}},
+		[]schemaCompositionPairCandidate{{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 0}, totalChanges: 1, stableKeyMatch: true, breakingChanges: 0}},
+	))
+
+	assert.Nil(t, pairUnmatchedSchemaCompositionEntries(nil, []schemaCompositionEntry{{position: 0}}))
+	assert.Nil(t, pairUnmatchedSchemaCompositionEntries([]schemaCompositionEntry{{position: 0}}, nil))
+	pairs := pairUnmatchedSchemaCompositionEntries(
+		[]schemaCompositionEntry{{position: 0}, {position: 0}},
+		[]schemaCompositionEntry{{position: 1}, {position: 0}},
+	)
+	assert.Len(t, pairs, 2)
+	assert.Equal(t, 0, pairs[0].right.position)
+	assert.Equal(t, 1, pairs[1].right.position)
+}
+
 func TestCompareSchemas_PrefixItemsRemoveItem(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
@@ -4322,6 +4564,38 @@ components:
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.Nil(t, changes)
+}
+
+func TestCompareSchemas_DefaultNumericKeyFormattingIsDetected(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0.0
+components:
+  schemas:
+    Config:
+      type: object
+      default:
+        1: coffee
+`
+
+	right := `openapi: 3.0.0
+components:
+  schemas:
+    Config:
+      type: object
+      default:
+        1.0: coffee
+`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Config").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Config").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, len(changes.Changes))
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, v3.DefaultLabel, changes.Changes[0].Property)
 }
 
 func TestCompareSchemas_ExclusiveMaximumNodeSwap(t *testing.T) {

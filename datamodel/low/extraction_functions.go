@@ -1255,6 +1255,10 @@ func hashYamlNodeFast(n *yaml.Node) string {
 
 // hashNodeTree walks the YAML tree and hashes it without marshaling
 func hashNodeTree(h *maphash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
+	hashNodeTreeWithNumericNormalization(h, n, visited, true)
+}
+
+func hashNodeTreeWithNumericNormalization(h *maphash.Hash, n *yaml.Node, visited map[*yaml.Node]bool, normalizeNumericScalars bool) {
 	if n == nil {
 		return
 	}
@@ -1268,7 +1272,7 @@ func hashNodeTree(h *maphash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 
 	// Hash node metadata. Numeric scalars are normalized so semantically equivalent
 	// values like `1e-08` and `1e-8` compare equal.
-	tag, value := comparableScalarTagAndValue(n)
+	tag, value := scalarTagAndValueForHash(n, normalizeNumericScalars)
 	h.Write([]byte{byte(n.Kind)})
 	h.Write([]byte(tag))
 	h.Write([]byte(value))
@@ -1290,7 +1294,7 @@ func hashNodeTree(h *maphash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 	case yaml.SequenceNode:
 		h.Write([]byte("["))
 		for _, child := range content {
-			hashNodeTree(h, child, visited)
+			hashNodeTreeWithNumericNormalization(h, child, visited, normalizeNumericScalars)
 			h.Write([]byte(","))
 		}
 		h.Write([]byte("]"))
@@ -1317,7 +1321,9 @@ func hashNodeTree(h *maphash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 			if i+1 < len(content) {
 				keyH := hasherPool.Get().(*maphash.Hash)
 				keyH.Reset()
-				hashNodeTree(keyH, content[i], visited)
+				keyVisited := getVisitedMap()
+				hashNodeTreeWithNumericNormalization(keyH, content[i], keyVisited, false)
+				putVisitedMap(keyVisited)
 				pairs = append(pairs, kvPair{
 					keyHash:   keyH.Sum64(),
 					keyNode:   content[i],
@@ -1334,9 +1340,9 @@ func hashNodeTree(h *maphash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 
 		// Hash in sorted order
 		for _, pair := range pairs {
-			hashNodeTree(h, pair.keyNode, visited)
+			hashNodeTreeWithNumericNormalization(h, pair.keyNode, visited, false)
 			h.Write([]byte(":"))
-			hashNodeTree(h, pair.valueNode, visited)
+			hashNodeTreeWithNumericNormalization(h, pair.valueNode, visited, true)
 			h.Write([]byte(","))
 		}
 		h.Write([]byte("}"))
@@ -1344,24 +1350,31 @@ func hashNodeTree(h *maphash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 	case yaml.DocumentNode:
 		h.Write([]byte("DOC["))
 		for _, child := range content {
-			hashNodeTree(h, child, visited)
+			hashNodeTreeWithNumericNormalization(h, child, visited, normalizeNumericScalars)
 		}
 		h.Write([]byte("]"))
 
 	case yaml.AliasNode:
 		h.Write([]byte("ALIAS["))
 		if n.Alias != nil {
-			hashNodeTree(h, n.Alias, visited)
+			hashNodeTreeWithNumericNormalization(h, n.Alias, visited, normalizeNumericScalars)
 		}
 		h.Write([]byte("]"))
 	}
 }
 
 func comparableScalarTagAndValue(n *yaml.Node) (string, string) {
+	return scalarTagAndValueForHash(n, true)
+}
+
+func scalarTagAndValueForHash(n *yaml.Node, normalizeNumericScalars bool) (string, string) {
 	if n == nil {
 		return "", ""
 	}
 	if n.Kind != yaml.ScalarNode {
+		return n.Tag, n.Value
+	}
+	if !normalizeNumericScalars {
 		return n.Tag, n.Value
 	}
 	if n.Tag != "!!int" && n.Tag != "!!float" {

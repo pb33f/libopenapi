@@ -96,3 +96,53 @@ paths:
 	assert.Equal(t, 1, report.ChangeReport[v3.PathsLabel].Total)
 	assert.Equal(t, 1, report.ChangeReport[v3.PathsLabel].Breaking)
 }
+
+func TestCreateSummary_OverallReport_NilChanges(t *testing.T) {
+	report := CreateOverallReport(nil)
+	assert.NotNil(t, report)
+	assert.Empty(t, report.ChangeReport)
+}
+
+func TestMergeRootPropertyChangesAndHelpers(t *testing.T) {
+	changedReport := make(map[string]*Changed)
+
+	mergeRootPropertyChanges(changedReport, nil)
+	assert.Empty(t, changedReport)
+
+	propertyChanges := model.NewPropertyChanges([]*model.Change{
+		nil,
+		{Property: "", Breaking: true},
+		{Property: v3.OpenAPILabel, Breaking: true},
+		{Property: v3.OpenAPILabel, Breaking: false},
+	})
+	mergeRootPropertyChanges(changedReport, propertyChanges)
+	assert.Equal(t, 2, changedReport[v3.OpenAPILabel].Total)
+	assert.Equal(t, 1, changedReport[v3.OpenAPILabel].Breaking)
+
+	mergeChangedModel(changedReport, v3.OpenAPILabel, &Changed{Total: 3, Breaking: 2})
+	assert.Equal(t, 5, changedReport[v3.OpenAPILabel].Total)
+	assert.Equal(t, 3, changedReport[v3.OpenAPILabel].Breaking)
+
+	mergeChangedModel(changedReport, v3.InfoLabel, nil)
+	assert.Nil(t, changedReport[v3.InfoLabel])
+
+	assert.Equal(t, changedReport[v3.OpenAPILabel], getOrCreateChanged(changedReport, v3.OpenAPILabel))
+}
+
+func TestCreateChangedModelHelpers(t *testing.T) {
+	changed := createChangedModel(&model.PropertyChanges{
+		Changes: []*model.Change{
+			{Breaking: true},
+			{Breaking: false},
+		},
+	})
+	assert.Equal(t, 2, changed.Total)
+	assert.Equal(t, 1, changed.Breaking)
+
+	fromSlice := createChangedModelFromSlice([]HasChanges{
+		&model.PropertyChanges{Changes: []*model.Change{{Breaking: true}}},
+		&model.PropertyChanges{Changes: []*model.Change{{Breaking: false}, {Breaking: false}}},
+	})
+	assert.Equal(t, 3, fromSlice.Total)
+	assert.Equal(t, 1, fromSlice.Breaking)
+}

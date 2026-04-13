@@ -84,6 +84,9 @@ func (p *ParameterChanges) TotalBreakingChanges() int {
 	if p.SchemaChanges != nil {
 		c += p.SchemaChanges.TotalBreakingChanges()
 	}
+	for i := range p.ExamplesChanges {
+		c += p.ExamplesChanges[i].TotalBreakingChanges()
+	}
 	if p.ItemsChanges != nil {
 		c += p.ItemsChanges.TotalBreakingChanges()
 	}
@@ -326,8 +329,8 @@ func CompareParameters(l, r any) *ParameterChanges {
 		checkParameterExample(lParam.Example, rParam.Example, changes)
 
 		// examples
-		pc.ExamplesChanges = CheckMapForChangesWithRules(lParam.Examples.Value, rParam.Examples.Value,
-			&changes, v3.ExamplesLabel, CompareExamples, CompParameter, PropExamples)
+		pc.ExamplesChanges = CheckExampleMapForChangesWithRules(lParam.Examples.Value, rParam.Examples.Value,
+			&changes, v3.ExamplesLabel, CompParameter, PropExamples)
 
 		// content
 		pc.ContentChanges = CheckMapForChanges(lParam.Content.Value, rParam.Content.Value,
