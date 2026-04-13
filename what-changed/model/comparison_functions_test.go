@@ -24,6 +24,9 @@ func Test_CheckForModification(t *testing.T) {
 		{"Same string quoted", `value`, `"value"`, false},
 		{"Same string", `value`, `value`, false},
 		{"Same boolean", `true`, `true`, false},
+		{"Equivalent exponent formatting", `1e-08`, `1e-8`, false},
+		{"Equivalent integer and float formatting", `1`, `1.0`, false},
+		{"Equivalent decimal formatting", `0.10`, `0.1`, false},
 		{"Different boolean", `true`, `false`, true},
 		{"Different string", `value_a`, `value_b`, true},
 		{"Different int", `123`, `"123"`, true},
@@ -574,6 +577,17 @@ func TestCheckForModificationWithEncoding(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCheckForModificationWithEncoding_NumericScalarEquivalence(t *testing.T) {
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`1e-08`), &lNode)
+	_ = yaml.Unmarshal([]byte(`1e-8`), &rNode)
+
+	changes := []*Change{}
+	CheckForModificationWithEncoding(lNode.Content[0], rNode.Content[0], "numeric", &changes, false, "old", "new")
+
+	assert.Empty(t, changes)
 }
 
 // TestCheckMapForChangesWithComp tests the deprecated CheckMapForChangesWithComp function

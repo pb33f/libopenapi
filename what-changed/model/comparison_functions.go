@@ -386,8 +386,10 @@ func checkForModificationInternal[T any](l, r *yaml.Node, label string, changes 
 	if withEncoding {
 		createFn = CreateChangeWithEncoding
 	}
-	if l != nil && l.Value != EMPTY_STR && r != nil && r.Value != EMPTY_STR && (r.Value != l.Value || r.Tag != l.Tag) {
-		createFn(changes, Modified, label, l, r, breaking, orig, new)
+	if l != nil && l.Value != EMPTY_STR && r != nil && r.Value != EMPTY_STR {
+		if !low.CompareYAMLNodes(l, r) {
+			createFn(changes, Modified, label, l, r, breaking, orig, new)
+		}
 		return
 	}
 	if l != nil && utils.IsNodeArray(l) && r != nil && !utils.IsNodeArray(r) {

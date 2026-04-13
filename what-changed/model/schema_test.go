@@ -3911,6 +3911,44 @@ components:
 	changes.PropertiesOnly() // this does nothing in this lib.
 }
 
+// https://github.com/pb33f/openapi-changes/issues/207
+func TestCompareSchemas_DefaultNumericFormattingIsSemanticallyEqual(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0.0
+components:
+  schemas:
+    Config:
+      type: object
+      properties:
+        angle_threshold:
+          type: number
+          exclusiveMinimum: 0.0
+          title: Angle Threshold
+          default: 1e-08
+`
+
+	right := `openapi: 3.0.0
+components:
+  schemas:
+    Config:
+      type: object
+      properties:
+        angle_threshold:
+          type: number
+          exclusiveMinimum: 0.0
+          title: Angle Threshold
+          default: 1e-8
+`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Config").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Config").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+}
+
 func TestCompareSchemas_ExclusiveMaximumNodeSwap(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()

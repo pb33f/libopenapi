@@ -2861,6 +2861,118 @@ func TestCompareYAMLNodes_ComplexNodes(t *testing.T) {
 	assert.False(t, result2)
 }
 
+func TestComparableScalarTagAndValue(t *testing.T) {
+	t.Run("nil node", func(t *testing.T) {
+		tag, value := comparableScalarTagAndValue(nil)
+		assert.Empty(t, tag)
+		assert.Empty(t, value)
+	})
+
+	t.Run("non scalar node", func(t *testing.T) {
+		node := utils.CreateEmptyMapNode()
+		tag, value := comparableScalarTagAndValue(node)
+		assert.Equal(t, node.Tag, tag)
+		assert.Equal(t, node.Value, value)
+	})
+
+	t.Run("non numeric scalar", func(t *testing.T) {
+		node := utils.CreateStringNode("pizza")
+		tag, value := comparableScalarTagAndValue(node)
+		assert.Equal(t, "!!str", tag)
+		assert.Equal(t, "pizza", value)
+	})
+
+	t.Run("numeric scalar normalizes", func(t *testing.T) {
+		node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "1e-08"}
+		tag, value := comparableScalarTagAndValue(node)
+		assert.Equal(t, "!!number", tag)
+		assert.Equal(t, "1/100000000", value)
+	})
+
+	t.Run("numeric scalar fallback", func(t *testing.T) {
+		node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: ".inf"}
+		tag, value := comparableScalarTagAndValue(node)
+		assert.Equal(t, "!!float", tag)
+		assert.Equal(t, ".inf", value)
+	})
+}
+
+func TestCompareYAMLNodes_NumericScalarEquivalence(t *testing.T) {
+	tests := []struct {
+		name  string
+		left  *yaml.Node
+		right *yaml.Node
+		equal bool
+	}{
+		{
+			name:  "equivalent exponent formatting",
+			left:  &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "1e-08"},
+			right: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "1e-8"},
+			equal: true,
+		},
+		{
+			name:  "equivalent int and float formatting",
+			left:  &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "1"},
+			right: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "1.0"},
+			equal: true,
+		},
+		{
+			name:  "different numeric values",
+			left:  &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "1e-08"},
+			right: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "2e-08"},
+			equal: false,
+		},
+		{
+			name:  "string and numeric stay different",
+			left:  &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "1.0"},
+			right: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "1.0"},
+			equal: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.equal, CompareYAMLNodes(tt.left, tt.right))
+		})
+	}
+}
+
+func TestCompareYAMLNodes_ComplexNodesNumericEquivalence(t *testing.T) {
+	left := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "default"},
+			{Kind: yaml.ScalarNode, Tag: "!!float", Value: "0.10"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "items"},
+			{
+				Kind: yaml.SequenceNode,
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Tag: "!!int", Value: "1"},
+					{Kind: yaml.ScalarNode, Tag: "!!float", Value: "1e-08"},
+				},
+			},
+		},
+	}
+
+	right := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "items"},
+			{
+				Kind: yaml.SequenceNode,
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Tag: "!!float", Value: "1.0"},
+					{Kind: yaml.ScalarNode, Tag: "!!float", Value: "1e-8"},
+				},
+			},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "default"},
+			{Kind: yaml.ScalarNode, Tag: "!!float", Value: "0.1"},
+		},
+	}
+
+	assert.True(t, CompareYAMLNodes(left, right))
+}
+
 func TestGenerateHashString_SchemaProxyNoCache(t *testing.T) {
 	// Test that SchemaProxy types don't get cached (shouldCache = false)
 	// We can't easily test this without creating actual SchemaProxy objects

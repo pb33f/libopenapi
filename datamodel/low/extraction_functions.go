@@ -13,6 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 	"hash/maphash"
+	"math/big"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -1265,10 +1266,12 @@ func hashNodeTree(h *maphash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 	}
 	visited[n] = true
 
-	// Hash node metadata
+	// Hash node metadata. Numeric scalars are normalized so semantically equivalent
+	// values like `1e-08` and `1e-8` compare equal.
+	tag, value := comparableScalarTagAndValue(n)
 	h.Write([]byte{byte(n.Kind)})
-	h.Write([]byte(n.Tag))
-	h.Write([]byte(n.Value))
+	h.Write([]byte(tag))
+	h.Write([]byte(value))
 	if n.Anchor != "" {
 		h.Write([]byte(n.Anchor))
 	}
@@ -1352,6 +1355,23 @@ func hashNodeTree(h *maphash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 		}
 		h.Write([]byte("]"))
 	}
+}
+
+func comparableScalarTagAndValue(n *yaml.Node) (string, string) {
+	if n == nil {
+		return "", ""
+	}
+	if n.Kind != yaml.ScalarNode {
+		return n.Tag, n.Value
+	}
+	if n.Tag != "!!int" && n.Tag != "!!float" {
+		return n.Tag, n.Value
+	}
+	rat, ok := new(big.Rat).SetString(n.Value)
+	if !ok {
+		return n.Tag, n.Value
+	}
+	return "!!number", rat.RatString()
 }
 
 // CompareYAMLNodes compares two YAML nodes for equality without marshaling to YAML.
