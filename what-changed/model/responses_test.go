@@ -558,3 +558,61 @@ func TestCompareResponses_V3_ConfigurableCodesBreaking(t *testing.T) {
 	assert.Equal(t, 3, changes3.TotalChanges())
 	assert.Equal(t, 1, changes3.TotalBreakingChanges()) // only the addition is breaking now
 }
+
+func TestCompareResponses_V3_BreakingNestedResponseExtensionRemovalCounted(t *testing.T) {
+	low.ClearHashCache()
+
+	left := `200:
+  description: OK response
+  x-summary: legacy summary`
+
+	right := `200:
+  description: OK response`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc v3.Responses
+	var rDoc v3.Responses
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	changes := CompareResponses(&lDoc, &rDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.NotNil(t, changes.ResponseChanges["200"])
+	assert.Equal(t, 1, changes.ResponseChanges["200"].TotalBreakingChanges())
+}
+
+func TestCompareResponses_V3_BreakingExtensionRemovalCounted(t *testing.T) {
+	low.ClearHashCache()
+
+	left := `200:
+  description: OK response
+x-summary: legacy summary`
+
+	right := `200:
+  description: OK response`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc v3.Responses
+	var rDoc v3.Responses
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	changes := CompareResponses(&lDoc, &rDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.NotNil(t, changes.ExtensionChanges)
+	assert.Equal(t, 1, changes.ExtensionChanges.TotalBreakingChanges())
+}
