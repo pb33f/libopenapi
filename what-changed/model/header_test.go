@@ -346,3 +346,39 @@ func TestCompareHeaders_v3_ExamplesRemoved(t *testing.T) {
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }
+
+func TestCompareHeaders_v3_ExamplesModified_WithCustomBreakingRule(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	defer ResetDefaultBreakingRules()
+	defer ResetActiveBreakingRulesConfig()
+
+	config := GenerateDefaultBreakingRules()
+	config.Header.Examples = rule(false, true, false)
+	SetActiveBreakingRulesConfig(config)
+
+	low.ClearHashCache()
+	left := `examples:
+  something:
+    value: left header`
+	right := `examples:
+  something:
+    value: right header`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc v3.Header
+	var rDoc v3.Header
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	extChanges := CompareHeadersV3(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Len(t, extChanges.ExamplesChanges, 1)
+	assert.True(t, extChanges.ExamplesChanges["something"].GetAllChanges()[0].Breaking)
+}

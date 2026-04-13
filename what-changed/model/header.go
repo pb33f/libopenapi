@@ -76,6 +76,9 @@ func (h *HeaderChanges) TotalChanges() int {
 // TotalBreakingChanges returns the total number of breaking changes made between two Header instances.
 func (h *HeaderChanges) TotalBreakingChanges() int {
 	c := h.PropertyChanges.TotalBreakingChanges()
+	for k := range h.ExamplesChanges {
+		c += h.ExamplesChanges[k].TotalBreakingChanges()
+	}
 	for k := range h.ContentChanges {
 		c += h.ContentChanges[k].TotalBreakingChanges()
 	}
@@ -282,8 +285,8 @@ func CompareHeaders(l, r any) *HeaderChanges {
 		}
 
 		// examples
-		hc.ExamplesChanges = CheckMapForChangesWithRules(lHeader.Examples.Value, rHeader.Examples.Value,
-			&changes, v3.ExamplesLabel, CompareExamples, CompHeader, PropExamples)
+		hc.ExamplesChanges = CheckExampleMapForChangesWithRules(lHeader.Examples.Value, rHeader.Examples.Value,
+			&changes, v3.ExamplesLabel, CompHeader, PropExamples)
 
 		// content
 		hc.ContentChanges = CheckMapForChanges(lHeader.Content.Value, rHeader.Content.Value,

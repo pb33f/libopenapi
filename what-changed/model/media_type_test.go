@@ -171,6 +171,47 @@ examples:
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
+func TestCompareMediaTypes_ExamplesModified_WithCustomBreakingRule(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	defer ResetDefaultBreakingRules()
+	defer ResetActiveBreakingRulesConfig()
+
+	config := GenerateDefaultBreakingRules()
+	config.MediaType.Examples = rule(false, true, false)
+	SetActiveBreakingRulesConfig(config)
+
+	left := `schema:
+  type: string
+examples:
+  exampleOne:
+    value: left coffee`
+
+	right := `schema:
+  type: string
+examples:
+  exampleOne:
+    value: right coffee`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc v3.MediaType
+	var rDoc v3.MediaType
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	extChanges := CompareMediaTypes(&lDoc, &rDoc)
+	assert.NotNil(t, extChanges)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Len(t, extChanges.ExampleChanges, 1)
+	assert.True(t, extChanges.ExampleChanges["exampleOne"].GetAllChanges()[0].Breaking)
+}
+
 func TestCompareMediaTypes_ExampleChangedToMap(t *testing.T) {
 	left := `schema:
   type: string`

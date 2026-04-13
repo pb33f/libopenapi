@@ -2973,6 +2973,32 @@ func TestCompareYAMLNodes_ComplexNodesNumericEquivalence(t *testing.T) {
 	assert.True(t, CompareYAMLNodes(left, right))
 }
 
+func TestScalarTagAndValueForHash_DisablesNumericNormalization(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "1.0"}
+	tag, value := scalarTagAndValueForHash(node, false)
+	assert.Equal(t, "!!float", tag)
+	assert.Equal(t, "1.0", value)
+}
+
+func TestCompareYAMLNodes_NumericMapKeysAreNotEquivalent(t *testing.T) {
+	left := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!int", Value: "1"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "coffee"},
+		},
+	}
+	right := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!float", Value: "1.0"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "coffee"},
+		},
+	}
+
+	assert.False(t, CompareYAMLNodes(left, right))
+}
+
 func TestGenerateHashString_SchemaProxyNoCache(t *testing.T) {
 	// Test that SchemaProxy types don't get cached (shouldCache = false)
 	// We can't easily test this without creating actual SchemaProxy objects
