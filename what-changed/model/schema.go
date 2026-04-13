@@ -2236,18 +2236,7 @@ func extractSchemaChanges(
 				*sc = append(*sc, CompareSchemas(lEntities[lKeys[w]], rEntities[rKeys[w]]))
 			}
 			if w >= len(rKeys) {
-				// determine breaking status based on label
-				breaking := true
-				switch label {
-				case v3.AllOfLabel:
-					breaking = BreakingRemoved(CompSchema, PropAllOf)
-				case v3.AnyOfLabel:
-					breaking = BreakingRemoved(CompSchema, PropAnyOf)
-				case v3.OneOfLabel:
-					breaking = BreakingRemoved(CompSchema, PropOneOf)
-				case v3.PrefixItemsLabel:
-					breaking = BreakingRemoved(CompSchema, PropPrefixItems)
-				}
+				breaking := schemaCompositionChangeBreaking(label, ObjectRemoved)
 				CreateChange(changes, ObjectRemoved, label,
 					lEntities[lKeys[w]].GetValueNode(), nil, breaking, lEntities[lKeys[w]], nil)
 			}
@@ -2261,18 +2250,7 @@ func extractSchemaChanges(
 				*sc = append(*sc, CompareSchemas(lEntities[lKeys[w]], rEntities[rKeys[w]]))
 			}
 			if w >= len(lKeys) {
-				// determine breaking status based on label
-				breaking := false
-				switch label {
-				case v3.AllOfLabel:
-					breaking = BreakingAdded(CompSchema, PropAllOf)
-				case v3.AnyOfLabel:
-					breaking = BreakingAdded(CompSchema, PropAnyOf)
-				case v3.OneOfLabel:
-					breaking = BreakingAdded(CompSchema, PropOneOf)
-				case v3.PrefixItemsLabel:
-					breaking = BreakingAdded(CompSchema, PropPrefixItems)
-				}
+				breaking := schemaCompositionChangeBreaking(label, ObjectAdded)
 				CreateChange(changes, ObjectAdded, label,
 					nil, rEntities[rKeys[w]].GetValueNode(), breaking, nil, rEntities[rKeys[w]])
 			}
