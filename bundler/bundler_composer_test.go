@@ -16,6 +16,7 @@ import (
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
@@ -148,6 +149,49 @@ func TestCheckReferenceAndBubbleUp(t *testing.T) {
 func TestRenameReference(t *testing.T) {
 	// test the rename reference function
 	assert.Equal(t, "#/_oh_#/_yeah", renameRef(nil, "#/_oh_#/_yeah", nil))
+}
+
+func TestDetectImportedComponentType(t *testing.T) {
+	parseNode := func(t *testing.T, input string) *yaml.Node {
+		t.Helper()
+
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(input), &node))
+		require.NotEmpty(t, node.Content)
+		return node.Content[0]
+	}
+
+	componentType, detected := detectImportedComponentType(nil)
+	assert.Equal(t, "", componentType)
+	assert.False(t, detected)
+
+	componentType, detected = detectImportedComponentType(&index.Reference{
+		FullDefinition: "User.yaml",
+		Node: parseNode(t, `
+type: object
+properties:
+  id:
+    type: string
+`),
+	})
+	assert.Equal(t, v3low.SchemasLabel, componentType)
+	assert.True(t, detected)
+
+	componentType, detected = detectImportedComponentType(&index.Reference{
+		FullDefinition: "https://example.com/schemas/User.JSON#/User",
+		Node:           parseNode(t, `{"type":"object","properties":{"id":{"type":"string"}}}`),
+	})
+	assert.Equal(t, v3low.SchemasLabel, componentType)
+	assert.True(t, detected)
+}
+
+func TestRefUsesJSONSyntax(t *testing.T) {
+	assert.False(t, refUsesJSONSyntax(""))
+	assert.True(t, refUsesJSONSyntax("User.json"))
+	assert.True(t, refUsesJSONSyntax("User.json#/User"))
+	assert.True(t, refUsesJSONSyntax("https://example.com/schemas/User.JSON#/User"))
+	assert.False(t, refUsesJSONSyntax("https://example.com"))
+	assert.False(t, refUsesJSONSyntax("User.yaml#/User"))
 }
 
 func TestBuildSchema(t *testing.T) {
