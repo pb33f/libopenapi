@@ -148,26 +148,38 @@ func hasPathItemProperties(node *yaml.Node) bool {
 	return containsKey(keys, v3.ParametersLabel)
 }
 
-// Helper function to get all keys from a mapping node
-// Excludes quoted keys since they should be treated as literal strings, not OpenAPI keywords
+// getNodeKeys returns the keys of a mapping node for component-type detection.
+//
+// When the source document mixes plain and quoted keys, a quoted key is interpreted as a
+// deliberate escape — the user is signalling "treat this as a literal string, not an OpenAPI
+// keyword" — and is excluded from the result. When every key in the mapping shares the same
+// quote style, the style carries no such signal: most commonly this is a JSON-sourced
+// mapping where quoting is syntactic (JSON requires `"key":`). In that case every key is
+// returned. See https://github.com/pb33f/libopenapi/issues/562.
 func getNodeKeys(node *yaml.Node) []string {
 	if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
 		node = node.Content[0]
 	}
-	if node.Kind != yaml.MappingNode {
+	if node.Kind != yaml.MappingNode || len(node.Content) == 0 {
 		return nil
+	}
+
+	mixedQuoteStyle := false
+	firstStyle := node.Content[0].Style
+	for i := 2; i < len(node.Content); i += 2 {
+		if node.Content[i].Style != firstStyle {
+			mixedQuoteStyle = true
+			break
+		}
 	}
 
 	var keys []string
 	for i := 0; i < len(node.Content); i += 2 {
-		if i < len(node.Content) {
-			keyNode := node.Content[i]
-			// Skip quoted keys - they should not be treated as OpenAPI keywords
-			if keyNode.Style == yaml.SingleQuotedStyle || keyNode.Style == yaml.DoubleQuotedStyle {
-				continue
-			}
-			keys = append(keys, keyNode.Value)
+		keyNode := node.Content[i]
+		if mixedQuoteStyle && (keyNode.Style == yaml.SingleQuotedStyle || keyNode.Style == yaml.DoubleQuotedStyle) {
+			continue
 		}
+		keys = append(keys, keyNode.Value)
 	}
 	return keys
 }

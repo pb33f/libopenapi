@@ -601,19 +601,35 @@ func parseYaml(t *testing.T, yamlStr string) *yaml.Node {
 }
 
 func TestDetectOpenAPIComponentType_QuotedKeys(t *testing.T) {
-	// Test that quoted "items" key is NOT treated as schema
-	quotedItemsYaml := `
+	// mixed-style: a user deliberately escaping a single OpenAPI keyword in otherwise
+	// plain YAML. The escape signals "treat this key as a literal string", so the
+	// quoted key must not participate in component-type detection. The unquoted key
+	// (`type`) still classifies this mapping as a schema.
+	mixedQuotedItemsYaml := `
+type: object
 "items":
   - product_id: 1000012
     fulfillment_node_id: US01
     count: 10
 `
-	node := parseYaml(t, quotedItemsYaml)
+	node := parseYaml(t, mixedQuotedItemsYaml)
 	componentType, detected := DetectOpenAPIComponentType(node)
+	assert.Equal(t, v3.SchemasLabel, componentType)
+	assert.True(t, detected)
+
+	// fully escaped: every key is quoted with no other schema indicators. With nothing
+	// left to classify on, detection correctly fails.
+	fullyEscapedYaml := `
+description: not a schema
+"items":
+  - product_id: 1000012
+`
+	node = parseYaml(t, fullyEscapedYaml)
+	componentType, detected = DetectOpenAPIComponentType(node)
 	assert.Equal(t, "", componentType)
 	assert.False(t, detected)
 
-	// Test that unquoted items key IS treated as schema
+	// unquoted `items` key on its own still detects as a schema.
 	unquotedItemsYaml := `
 items:
   type: string
@@ -623,17 +639,7 @@ items:
 	assert.Equal(t, v3.SchemasLabel, componentType)
 	assert.True(t, detected)
 
-	// Test that quoted "type" key is NOT treated as schema
-	quotedTypeYaml := `
-"type": "user"
-"name": "John"
-`
-	node = parseYaml(t, quotedTypeYaml)
-	componentType, detected = DetectOpenAPIComponentType(node)
-	assert.Equal(t, "", componentType)
-	assert.False(t, detected)
-
-	// Test that unquoted type key IS treated as schema
+	// plain-style schema is unaffected.
 	unquotedTypeYaml := `
 type: object
 properties:
@@ -645,7 +651,7 @@ properties:
 	assert.Equal(t, v3.SchemasLabel, componentType)
 	assert.True(t, detected)
 
-	// Test mixed quoted and unquoted keys - should detect schema from unquoted key
+	// mixed-style: the quoted `items` escape is ignored, classification driven by `type`.
 	mixedYaml := `
 type: object
 "items":
@@ -655,4 +661,90 @@ type: object
 	componentType, detected = DetectOpenAPIComponentType(node)
 	assert.Equal(t, v3.SchemasLabel, componentType)
 	assert.True(t, detected)
+}
+
+// TestDetectOpenAPIComponentType_JSONSourced covers https://github.com/pb33f/libopenapi/issues/562:
+// SON-parsed mappings arrive with every key marked yaml.DoubleQuotedStyle.
+// Uniform quoting on a JSON-sourced mapping is syntactic — not a
+// user escape — and must not disable component-type detection.
+func TestDetectOpenAPIComponentType_JSONSourced(t *testing.T) {
+	cases := []struct {
+		name string
+		json string
+		want string
+	}{
+		{
+			name: "schema with type and properties",
+			json: `{"type": "object", "properties": {"id": {"type": "string"}}}`,
+			want: v3.SchemasLabel,
+		},
+		{
+			name: "schema with items",
+			json: `{"type": "array", "items": {"type": "string"}}`,
+			want: v3.SchemasLabel,
+		},
+		{
+			name: "schema with allOf",
+			json: `{"allOf": [{"type": "object"}]}`,
+			want: v3.SchemasLabel,
+		},
+		{
+			name: "parameter",
+			json: `{"name": "id", "in": "query"}`,
+			want: v3.ParametersLabel,
+		},
+		{
+			name: "response with content",
+			json: `{"description": "ok", "content": {"application/json": {"schema": {"type": "object"}}}}`,
+			want: v3.ResponsesLabel,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			node := parseYaml(t, tc.json)
+			componentType, detected := DetectOpenAPIComponentType(node)
+			assert.True(t, detected, "expected detection to succeed for JSON input")
+			assert.Equal(t, tc.want, componentType)
+		})
+	}
+}
+
+// TestGetNodeKeys_UniformQuoting guards the detector's key-filter against JSON. When every
+// key in a mapping shares the same quote style, the style carries no intent to escape
+//  keywords, the filter only kicks in when styles are mixed within one mapping.
+func TestGetNodeKeys_UniformQuoting(t *testing.T) {
+	cases := []struct {
+		name string
+		yaml string
+		want []string
+	}{
+		{
+			name: "JSON (all double-quoted)",
+			yaml: `{"type": "object", "properties": {"x": {"type": "string"}}}`,
+			want: []string{"type", "properties"},
+		},
+		{
+			name: "YAML all single-quoted",
+			yaml: "'type': object\n'properties':\n  name:\n    type: string\n",
+			want: []string{"type", "properties"},
+		},
+		{
+			name: "mixed quoting drops the quoted keys",
+			yaml: "type: object\n\"properties\": literal\n",
+			want: []string{"type"},
+		},
+		{
+			name: "plain YAML untouched",
+			yaml: "type: object\nproperties:\n  x:\n    type: string\n",
+			want: []string{"type", "properties"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			node := parseYaml(t, tc.yaml)
+			assert.ElementsMatch(t, tc.want, getNodeKeys(node))
+		})
+	}
 }
