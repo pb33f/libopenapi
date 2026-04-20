@@ -1267,6 +1267,132 @@ properties:
 	}
 }
 
+func TestBundleBytesComposed_BareJSONSchemaFile(t *testing.T) {
+	rootSpec := `openapi: 3.0.3
+info: {title: t, version: '1'}
+paths:
+  /x:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: 'User.json'
+`
+
+	childSpec := `{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  }
+}`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("User.json", childSpec)
+
+	mainBytes, err := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	require.NoError(t, err)
+
+	docConfig := datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+		RecomposeRefs:       true,
+	}
+
+	bundleConfig := BundleCompositionConfig{
+		StrictValidation: true,
+	}
+
+	bundled, err := BundleBytesComposed(mainBytes, &docConfig, &bundleConfig)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	schema := doc["paths"].(map[string]any)["/x"].(map[string]any)["get"].(map[string]any)["responses"].(map[string]any)["200"].(map[string]any)["content"].(map[string]any)["application/json"].(map[string]any)["schema"].(map[string]any)
+	ref, hasRef := schema["$ref"].(string)
+	require.True(t, hasRef, "Schema should have $ref pointing to component")
+	assert.Equal(t, "#/components/schemas/User", ref)
+
+	components := doc["components"].(map[string]any)
+	schemas := components["schemas"].(map[string]any)
+	user, ok := schemas["User"].(map[string]any)
+	require.True(t, ok, "User schema should be added to components")
+	assert.Equal(t, "object", user["type"])
+}
+
+func TestBundleBytesComposed_JSONFileRefWithJSONPointer(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /nonreq:
+    get:
+      operationId: getNonReq
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'child.json#/NonRequired'
+`
+
+	childSpec := `{
+  "NonRequired": {
+    "type": "object",
+    "properties": {
+      "str": {
+        "type": "string",
+        "pattern": ".+"
+      }
+    }
+  }
+}`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("child.json", childSpec)
+
+	mainBytes, err := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	require.NoError(t, err)
+
+	docConfig := datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+		RecomposeRefs:       true,
+	}
+
+	bundleConfig := BundleCompositionConfig{
+		StrictValidation: true,
+	}
+
+	bundled, err := BundleBytesComposed(mainBytes, &docConfig, &bundleConfig)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	schema := doc["paths"].(map[string]any)["/nonreq"].(map[string]any)["get"].(map[string]any)["responses"].(map[string]any)["200"].(map[string]any)["content"].(map[string]any)["application/json"].(map[string]any)["schema"].(map[string]any)
+	ref, hasRef := schema["$ref"].(string)
+	require.True(t, hasRef, "Schema should have $ref pointing to component")
+	assert.Equal(t, "#/components/schemas/NonRequired", ref)
+
+	components := doc["components"].(map[string]any)
+	schemas := components["schemas"].(map[string]any)
+	_, ok := schemas["NonRequired"].(map[string]any)
+	assert.True(t, ok, "NonRequired schema should be added to components")
+}
+
 func TestBundleBytesComposed_BarePathItemFile_OAS30Inlines(t *testing.T) {
 	rootSpec := `openapi: 3.0.3
 paths:

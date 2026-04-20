@@ -162,6 +162,27 @@ func rootSupportsPathItemComponents(rootIdx *index.SpecIndex) bool {
 	return rootIdx.GetConfig().SpecInfo.VersionNumeric >= 3.1
 }
 
+func detectImportedComponentType(ref *index.Reference) (string, bool) {
+	if ref == nil {
+		return "", false
+	}
+	if refUsesJSONSyntax(ref.FullDefinition) {
+		return DetectOpenAPIComponentTypeForJSON(ref.Node)
+	}
+	return DetectOpenAPIComponentType(ref.Node)
+}
+
+func refUsesJSONSyntax(fullDefinition string) bool {
+	refPath := strings.SplitN(fullDefinition, "#", 2)[0]
+	if refPath == "" {
+		return false
+	}
+	if parsed, err := url.Parse(refPath); err == nil && parsed.Path != "" {
+		refPath = parsed.Path
+	}
+	return strings.EqualFold(filepath.Ext(refPath), ".json")
+}
+
 // processReference will extract a reference from the current index, and transform it into a first class
 // top-level component in the root OpenAPI document.
 func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig) error {
@@ -193,7 +214,7 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 		pr.ref.FullDefinition = pr.seqRef.FullDefinition
 		// this is a root document reference, there is no way to get the location from the fragment.
 		// first, lets try to determine the type of the import, if we can.
-		if importType, ok := DetectOpenAPIComponentType(pr.ref.Node); ok {
+		if importType, ok := detectImportedComponentType(pr.ref); ok {
 			// cool, using the filename as the reference name, check if we have any collisions.
 			switch importType {
 			case v3low.SchemasLabel:
@@ -319,7 +340,7 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 				// preserve original name before collision handling
 				pr.originalName = componentName
 
-				if importType, ok := DetectOpenAPIComponentType(pr.ref.Node); ok {
+				if importType, ok := detectImportedComponentType(pr.ref); ok {
 					switch importType {
 					case v3low.SchemasLabel:
 						if components.Schemas != nil {

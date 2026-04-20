@@ -548,6 +548,19 @@ key3: value3
 	assert.Nil(t, keys)
 }
 
+func TestGetNodeKeysWithOptions_IncludeQuotedKeys(t *testing.T) {
+	yamlStr := `
+"type": object
+"properties":
+  name:
+    type: string
+`
+	node := parseYaml(t, yamlStr)
+
+	assert.Empty(t, getNodeKeys(node))
+	assert.ElementsMatch(t, []string{"type", "properties"}, getNodeKeysWithOptions(node, true))
+}
+
 func TestContainsKey(t *testing.T) {
 	keys := []string{"key1", "key2", "key3"}
 
@@ -600,8 +613,9 @@ func parseYaml(t *testing.T, yamlStr string) *yaml.Node {
 	return &node
 }
 
-func TestDetectOpenAPIComponentType_QuotedKeys(t *testing.T) {
-	// Test that quoted "items" key is NOT treated as schema
+func TestDetectOpenAPIComponentType_DefaultQuotedKeysYAML(t *testing.T) {
+	// Quoted YAML keys are ignored by the default detector so users can escape
+	// reserved OpenAPI words without changing component classification.
 	quotedItemsYaml := `
 "items":
   - product_id: 1000012
@@ -653,6 +667,27 @@ type: object
 `
 	node = parseYaml(t, mixedYaml)
 	componentType, detected = DetectOpenAPIComponentType(node)
+	assert.Equal(t, v3.SchemasLabel, componentType)
+	assert.True(t, detected)
+}
+
+func TestDetectOpenAPIComponentTypeForJSON_QuotedKeys(t *testing.T) {
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(`{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    }
+  }
+}`), &node)
+	assert.NoError(t, err)
+
+	componentType, detected := DetectOpenAPIComponentType(node.Content[0])
+	assert.Equal(t, "", componentType)
+	assert.False(t, detected)
+
+	componentType, detected = DetectOpenAPIComponentTypeForJSON(node.Content[0])
 	assert.Equal(t, v3.SchemasLabel, componentType)
 	assert.True(t, detected)
 }
