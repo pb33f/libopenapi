@@ -2728,3 +2728,74 @@ func TestBundleComposed_DoubleBuildNoErrors(t *testing.T) {
 	assert.Contains(t, schemas, "File")
 	assert.Contains(t, schemas, "Error")
 }
+
+// TestBundleBytesComposed_JSONSchemaTarget covers https://github.com/pb33f/libopenapi/issues/562:
+// external $ref targets written as JSON (rather than YAML) must still be hoisted into
+// components.schemas rather than inlined at the ref site. JSON is a subset of YAML so every
+// key arrives as yaml.DoubleQuotedStyle; component-type detection must not treat that as an
+// opt-out from OpenAPI keyword recognition.
+func TestBundleBytesComposed_JSONSchemaTarget(t *testing.T) {
+	rootSpec := `openapi: 3.0.3
+info:
+  title: t
+  version: '1'
+paths:
+  /x:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: "User.json"
+`
+
+	userJSON := `{
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" }
+  }
+}
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("openapi.yaml", rootSpec)
+	write("User.json", userJSON)
+
+	specBytes, err := os.ReadFile(filepath.Join(tmp, "openapi.yaml"))
+	require.NoError(t, err)
+
+	var logBuf strings.Builder
+	logger := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	bundled, err := BundleBytesComposed(specBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		SpecFilePath:        filepath.Join(tmp, "openapi.yaml"),
+		AllowFileReferences: true,
+		Logger:              logger,
+	}, nil)
+	require.NoError(t, err)
+
+	// the composer should never give up on a recognisable schema just because it arrived
+	// from a JSON file — that warning is the bug's calling card.
+	assert.NotContains(t, logBuf.String(), "unable to compose reference",
+		"JSON schema refs must be classifiable; log:\n%s", logBuf.String())
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	components, ok := doc["components"].(map[string]any)
+	require.True(t, ok, "bundled doc must have components")
+	schemas, ok := components["schemas"].(map[string]any)
+	require.True(t, ok, "bundled doc must have components.schemas; got:\n%s", string(bundled))
+	assert.Contains(t, schemas, "User",
+		"JSON-sourced schema should be hoisted under components.schemas; got:\n%s", string(bundled))
+
+	// and the original $ref site should now point at the hoisted component, not contain the raw schema.
+	assert.Contains(t, string(bundled), "#/components/schemas/User")
+	assert.NotContains(t, string(bundled), "User.json")
+}
