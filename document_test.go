@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -2214,4 +2216,77 @@ paths: {}`
 	// SpecIndex internals must NOT be released by Document.Release()
 	// (they're needed for hashing during what-changed comparisons)
 	assert.NotNil(t, rootIdx.GetConfig())
+}
+
+func TestNewDocument_SelfDoesNotEnableRemoteReferences(t *testing.T) {
+	newCanary := func() (*httptest.Server, *int32) {
+		var hits int32
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			atomic.AddInt32(&hits, 1)
+			w.Header().Set("Content-Type", "application/yaml")
+			fmt.Fprint(w, `openapi: 3.1.0
+info:
+  title: remote
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    RemoteThing:
+      type: object
+`)
+		}))
+		return server, &hits
+	}
+
+	spec := func(base string) []byte {
+		return []byte(fmt.Sprintf(`openapi: 3.2.0
+$self: %s/root.yaml
+info:
+  title: issue565
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Thing:
+      $ref: %s/remote.yaml#/components/schemas/RemoteThing
+`, base, base))
+	}
+
+	t.Run("default NewDocument denies remote lookup", func(t *testing.T) {
+		server, hits := newCanary()
+		defer server.Close()
+
+		doc, err := NewDocument(spec(server.URL))
+		require.NoError(t, err)
+
+		model, buildErr := doc.BuildV3Model()
+
+		require.Error(t, buildErr)
+		assert.Nil(t, model)
+		assert.Contains(t, buildErr.Error(), "cannot resolve reference")
+		assert.Contains(t, buildErr.Error(), server.URL+"/remote.yaml#/components/schemas/RemoteThing")
+		assert.Equal(t, int32(0), atomic.LoadInt32(hits))
+		require.NotNil(t, doc.GetRolodex())
+		require.NotNil(t, doc.GetRolodex().GetRootIndex())
+		assert.False(t, doc.GetRolodex().GetRootIndex().GetConfig().AllowRemoteLookup)
+	})
+
+	t.Run("explicit AllowRemoteReferences permits remote lookup", func(t *testing.T) {
+		server, hits := newCanary()
+		defer server.Close()
+
+		config := datamodel.NewDocumentConfiguration()
+		config.AllowRemoteReferences = true
+		doc, err := NewDocumentWithConfiguration(spec(server.URL), config)
+		require.NoError(t, err)
+
+		model, buildErr := doc.BuildV3Model()
+		require.NoError(t, buildErr)
+		require.NotNil(t, model)
+
+		assert.Greater(t, atomic.LoadInt32(hits), int32(0))
+		require.NotNil(t, doc.GetRolodex())
+		require.NotNil(t, doc.GetRolodex().GetRootIndex())
+		assert.True(t, doc.GetRolodex().GetRootIndex().GetConfig().AllowRemoteLookup)
+	})
 }

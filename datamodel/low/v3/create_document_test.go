@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
+	"sync/atomic"
 	"testing"
 
 	"github.com/pb33f/libopenapi/index"
@@ -234,9 +236,51 @@ func TestRolodexRemoteFileSystem(t *testing.T) {
 	baseUrl := "https://raw.githubusercontent.com/pb33f/libopenapi/main/test_specs"
 	u, _ := url.Parse(baseUrl)
 	cf.BaseURL = u
+	cf.AllowRemoteReferences = true
 	lDoc, err := CreateDocumentFromConfig(info, cf)
 	assert.NotNil(t, lDoc)
 	assert.NoError(t, err)
+}
+
+func TestRolodexRemoteFileSystem_BaseURLDoesNotAllowRemoteReferences(t *testing.T) {
+	var hits int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		w.Header().Set("Content-Type", "application/yaml")
+		fmt.Fprint(w, `openapi: 3.1.0
+info:
+  title: remote
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    RemoteThing:
+      type: object
+`)
+	}))
+	defer server.Close()
+
+	spec := fmt.Sprintf(`openapi: 3.1.0
+info:
+  title: local
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Thing:
+      $ref: %s/remote.yaml#/components/schemas/RemoteThing
+`, server.URL)
+	info, err := datamodel.ExtractSpecInfo([]byte(spec))
+	require.NoError(t, err)
+
+	cf := datamodel.NewDocumentConfiguration()
+	cf.BaseURL, _ = url.Parse(server.URL)
+	lDoc, _ := CreateDocumentFromConfig(info, cf)
+
+	require.NotNil(t, lDoc)
+	require.NotNil(t, lDoc.Index)
+	assert.Equal(t, int32(0), atomic.LoadInt32(&hits))
+	assert.False(t, lDoc.Index.GetConfig().AllowRemoteLookup)
 }
 
 func TestRolodexRemoteFileSystem_BadBase(t *testing.T) {
@@ -248,6 +292,7 @@ func TestRolodexRemoteFileSystem_BadBase(t *testing.T) {
 	baseUrl := "https://no-no-this-will-not-work-it-just-will-not-get-the-job-done-mate.com"
 	u, _ := url.Parse(baseUrl)
 	cf.BaseURL = u
+	cf.AllowRemoteReferences = true
 	lDoc, err := CreateDocumentFromConfig(info, cf)
 	assert.NotNil(t, lDoc)
 	assert.Error(t, err)
@@ -273,6 +318,7 @@ func TestRolodexRemoteFileSystem_CustomHttpHandler(t *testing.T) {
 	baseUrl := "https://no-no-this-will-not-work-it-just-will-not-get-the-job-done-mate.com"
 	u, _ := url.Parse(baseUrl)
 	cf.BaseURL = u
+	cf.AllowRemoteReferences = true
 
 	pizza := func(url string) (resp *http.Response, err error) {
 		return nil, nil
