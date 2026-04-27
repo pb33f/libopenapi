@@ -247,8 +247,8 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 			rolodex.AddLocalFS(cwd, fileFS)
 		}
 	}
-	// if base url is provided, add a remote filesystem to the rolodex.
-	if idxConfig.BaseURL != nil || config.AllowRemoteReferences {
+	// Only create a remote filesystem when the caller explicitly allows remote references.
+	if config.AllowRemoteReferences {
 
 		// create a remote filesystem
 		remoteFS, _ := index.NewRemoteFSWithConfig(idxConfig)

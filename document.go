@@ -137,7 +137,7 @@ type DocumentModel[T v2high.Swagger | v3high.Document] struct {
 // This function will NOT automatically follow (meaning load) any file or remote references that are found.
 //
 // If this isn't the behavior you want, then you can use the NewDocumentWithConfiguration() function instead, which allows you to set a configuration that
-// will allow you to control if file or remote references are allowed. In particular the `AllowFileReferences` and `FollowRemoteReferences`
+// will allow you to control if file or remote references are allowed. In particular the `AllowFileReferences` and `AllowRemoteReferences`
 // properties.
 func NewDocument(specByteArray []byte) (Document, error) {
 	return NewDocumentWithTypeCheck(specByteArray, false)

@@ -112,10 +112,11 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 	// locked this in to a release, because the spec is throwing 404's occasionally.
 	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/ed0958267922794ec8cf540e19131a2d9664bfc7/specification")
 
-	// create a DocumentConfiguration that allows loading file and remote references, and sets the baseURL
+	// create a DocumentConfiguration that allows loading remote references, and sets the baseURL
 	// to somewhere that can resolve the relative references.
 	config := datamodel.DocumentConfiguration{
-		BaseURL: baseURL,
+		BaseURL:               baseURL,
+		AllowRemoteReferences: true,
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelError,
 		})),
