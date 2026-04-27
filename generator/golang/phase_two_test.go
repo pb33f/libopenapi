@@ -1,0 +1,344 @@
+// Copyright 2026 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
+package golang
+
+import (
+	"archive/zip"
+	"mime/multipart"
+	"reflect"
+	"strings"
+	"testing"
+
+	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/orderedmap"
+)
+
+type PhaseTwoAddress struct {
+	Street string `json:"street"`
+	City   string `json:"city"`
+}
+
+type PhaseTwoPaymentMethod interface {
+	phaseTwoPaymentMethod()
+}
+
+type PhaseTwoCard struct {
+	Object string `json:"object"`
+	Last4  string `json:"last4"`
+}
+
+func (PhaseTwoCard) phaseTwoPaymentMethod() {}
+
+type PhaseTwoBank struct {
+	Object  string `json:"object"`
+	Routing string `json:"routing"`
+}
+
+func (PhaseTwoBank) phaseTwoPaymentMethod() {}
+
+type PhaseTwoCustomer struct {
+	ID      string                  `json:"id"`
+	Address PhaseTwoAddress         `json:"address"`
+	Labels  map[string]string       `json:"labels,omitempty"`
+	Payment PhaseTwoPaymentMethod   `json:"payment,omitempty"`
+	History []PhaseTwoPaymentMethod `json:"history,omitempty"`
+}
+
+func TestPhaseTwoSchemaSetComponents(t *testing.T) {
+	if set, err := SchemasFromTypes(reflect.TypeOf(PhaseTwoAddress{})); err != nil || set.Root == nil {
+		t.Fatalf("package SchemasFromTypes failed: %#v %v", set, err)
+	}
+	if set, err := SchemasFromValues(PhaseTwoAddress{}); err != nil || set.Root == nil {
+		t.Fatalf("package SchemasFromValues failed: %#v %v", set, err)
+	}
+	if _, err := SchemasFromValues(nil); err == nil {
+		t.Fatal("expected nil value error")
+	}
+	if _, err := SchemasFromTypes(nil); err == nil {
+		t.Fatal("expected nil type error")
+	}
+	if _, err := NewGenerator().SchemasFromTypes(reflect.TypeOf(make(chan string))); err == nil {
+		t.Fatal("expected unsupported type error")
+	}
+
+	gen := NewGenerator(
+		WithOneOfTypes((*PhaseTwoPaymentMethod)(nil), PhaseTwoCard{}, PhaseTwoBank{}),
+		WithDiscriminatorMapping((*PhaseTwoPaymentMethod)(nil), "object", map[string]string{
+			"bank": "#/components/schemas/PhaseTwoBank",
+			"card": "#/components/schemas/PhaseTwoCard",
+		}),
+	)
+	set, err := gen.SchemasFromValues(PhaseTwoCustomer{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !set.Root.IsReference() || set.Root.GetReference() != "#/components/schemas/PhaseTwoCustomer" {
+		t.Fatalf("unexpected root reference: %q", set.Root.GetReference())
+	}
+	assertComponentKeysSorted(t, set.Components)
+	for _, name := range []string{"PhaseTwoAddress", "PhaseTwoBank", "PhaseTwoCard", "PhaseTwoCustomer", "PhaseTwoCustomerPayment"} {
+		if _, ok := set.Components.Get(name); !ok {
+			t.Fatalf("missing component %s", name)
+		}
+	}
+
+	customer := componentSchema(t, set, "PhaseTwoCustomer")
+	address, ok := customer.Properties.Get("address")
+	if !ok {
+		t.Fatal("missing address property")
+	}
+	if !address.IsReference() || address.GetReference() != "#/components/schemas/PhaseTwoAddress" {
+		t.Fatalf("address should be a component reference, got %q", address.GetReference())
+	}
+	payment, ok := customer.Properties.Get("payment")
+	if !ok {
+		t.Fatal("missing payment property")
+	}
+	if !payment.IsReference() || payment.GetReference() != "#/components/schemas/PhaseTwoCustomerPayment" {
+		t.Fatalf("payment should be a component reference, got %q", payment.GetReference())
+	}
+	paymentSchema := componentSchema(t, set, "PhaseTwoCustomerPayment")
+	if len(paymentSchema.OneOf) != 2 || paymentSchema.Discriminator == nil {
+		t.Fatalf("payment component should be discriminated oneOf: %#v", paymentSchema)
+	}
+
+	collisionSet, err := NewGenerator().SchemasFromTypes(reflect.TypeOf(zip.FileHeader{}), reflect.TypeOf(multipart.FileHeader{}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasDiagnostic(collisionSet.Diagnostics, "component name collision") {
+		t.Fatalf("expected component collision diagnostic, got %#v", collisionSet.Diagnostics)
+	}
+}
+
+func TestPhaseTwoOpenAPIShapeRendering(t *testing.T) {
+	schemas := orderedmap.New[string, *highbase.SchemaProxy]()
+	schemas.Set("shape probe", schemaProxyFromYAML(t, `
+title: Shape Probe
+type: object
+required: [id]
+propertyNames:
+  pattern: "^[a-z_]+$"
+dependentSchemas:
+  card:
+    type: object
+dependentRequired:
+  card: [billing]
+if:
+  properties:
+    kind:
+      const: business
+then:
+  required: [tax_id]
+else:
+  required: [ssn]
+not:
+  required: [forbidden]
+unevaluatedProperties: false
+patternProperties:
+  "^x-":
+    type: string
+additionalProperties:
+  type: integer
+properties:
+  id:
+    type: string
+    readOnly: true
+    default: id-1
+    example: id-2
+  secret:
+    type: string
+    writeOnly: true
+    deprecated: true
+    examples:
+      - secret
+  titled:
+    title: Display title
+    type: string
+  tuple:
+    type: array
+    prefixItems:
+      - type: string
+      - type: integer
+`))
+	gen := NewGenerator(
+		WithGeneratedComment(true),
+		WithHeaderComment("internal models\nschema generated"),
+		WithPackageComment("contains generated models"),
+	)
+	file, err := gen.RenderSchemas(schemas)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(file.Source)
+	assertContains(t, src, "// Code generated by libopenapi generator/golang. DO NOT EDIT.")
+	assertContains(t, src, "// internal models.")
+	assertContains(t, src, "// schema generated.")
+	assertContains(t, src, "// Package models contains generated models.")
+	assertContains(t, src, "// ShapeProbe Shape Probe.")
+	assertContains(t, src, "// ID readOnly.")
+	assertContains(t, src, "// ID default value is defined in the OpenAPI schema.")
+	assertContains(t, src, "// ID example value is defined in the OpenAPI schema.")
+	assertContains(t, src, "// Secret writeOnly.")
+	assertContains(t, src, "// Secret Deprecated.")
+	assertContains(t, src, "// Titled Display title.")
+	assertContains(t, src, "Tuple")
+	assertContains(t, src, "[]any")
+	assertContains(t, src, "`json:\"tuple,omitempty\"`")
+	assertContains(t, src, "AdditionalProperties")
+	assertContains(t, src, "map[string]int")
+	assertParsesAndCompiles(t, file.Source)
+
+	for _, expected := range []string{
+		"propertyNames",
+		"dependentSchemas",
+		"dependentRequired",
+		"if/then/else",
+		"not",
+		"unevaluatedProperties",
+		"patternProperties",
+		"prefixItems",
+	} {
+		if !hasDiagnostic(file.Diagnostics, expected) {
+			t.Fatalf("missing diagnostic containing %q: %#v", expected, file.Diagnostics)
+		}
+	}
+}
+
+func TestPhaseTwoNameCollisionsAndOpenAPIShapeExport(t *testing.T) {
+	schemas := orderedmap.New[string, *highbase.SchemaProxy]()
+	schemas.Set("collision probe", schemaProxyFromYAML(t, `
+type: object
+properties:
+  id:
+    type: string
+  ID:
+    type: string
+additionalProperties:
+  type: string
+`))
+	gen := NewGenerator()
+	file, err := gen.RenderSchemas(schemas)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(file.Source)
+	assertContains(t, src, "ID")
+	assertContains(t, src, "ID2")
+	assertContains(t, src, "`json:\"id,omitempty\"`")
+	assertContains(t, src, "`json:\"ID,omitempty\"`")
+	assertContains(t, src, "AdditionalProperties")
+	assertContains(t, src, "map[string]string")
+	if !hasDiagnostic(file.Diagnostics, "field name collision") {
+		t.Fatalf("expected field collision diagnostic, got %#v", file.Diagnostics)
+	}
+
+	registry := newNameRegistry()
+	if name, collision := registry.resolve("blank", ""); name != "Value" || collision {
+		t.Fatalf("unexpected blank resolution: %s %v", name, collision)
+	}
+	if name, collision := registry.resolve("blank", "Value"); name != "Value" || collision {
+		t.Fatalf("same original should not collide: %s %v", name, collision)
+	}
+	registry = newNameRegistry()
+	registry.resolve("one", "Value")
+	registry.resolve("two", "Value2")
+	if name, collision := registry.resolve("three", "Value"); name != "Value3" || !collision {
+		t.Fatalf("expected suffixed collision resolution, got %s %v", name, collision)
+	}
+
+	props := orderedmap.New[string, *SchemaIR]()
+	props.Set("id", &SchemaIR{Kind: KindString})
+	patternProps := orderedmap.New[string, *SchemaIR]()
+	patternProps.Set("^x-", &SchemaIR{Kind: KindInteger})
+	proxy := NewGenerator().openapiFromIR(&SchemaIR{
+		Kind:                 KindObject,
+		Properties:           props,
+		PatternProperties:    patternProps,
+		Required:             map[string]struct{}{"id": {}},
+		AdditionalProperties: &SchemaIR{Kind: KindString},
+	})
+	rendered, err := proxy.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(rendered)
+	assertContains(t, text, "properties:")
+	assertContains(t, text, "patternProperties:")
+	assertContains(t, text, "additionalProperties:")
+
+	arrayProxy := NewGenerator().openapiFromIR(&SchemaIR{
+		Kind: KindArray,
+		PrefixItems: []*SchemaIR{
+			{Kind: KindString},
+			{Kind: KindInteger},
+		},
+	})
+	rendered, err = arrayProxy.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertContains(t, string(rendered), "prefixItems:")
+}
+
+func TestPhaseTwoCommentAndShapeHelpers(t *testing.T) {
+	gen := NewGenerator()
+	gen.collectShapeDiagnostics("nil", nil)
+	gen.renderChildren(&SchemaIR{
+		PatternProperties: orderedmap.New[string, *SchemaIR](),
+		PrefixItems:       []*SchemaIR{{Name: "PrefixAlias", Kind: KindString}},
+	})
+	gen.renderChildren(&SchemaIR{
+		PatternProperties: func() *orderedmap.Map[string, *SchemaIR] {
+			props := orderedmap.New[string, *SchemaIR]()
+			props.Set("^x-", &SchemaIR{Name: "PatternAlias", Kind: KindString})
+			return props
+		}(),
+	})
+	if got := gen.goType(&SchemaIR{Kind: KindArray, PrefixItems: []*SchemaIR{{Kind: KindString}}}, true, false); got != "[]any" {
+		t.Fatalf("prefixItems should render as []any, got %s", got)
+	}
+
+	var b strings.Builder
+	writeIRComments(&b, nil)
+	writeFieldComments(&b, "Field", nil)
+	writeLineComment(&b, "")
+	writeLineCommentBlock(&b, "first\nsecond")
+	if got := b.String(); !strings.Contains(got, "// first.") || !strings.Contains(got, "// second.") {
+		t.Fatalf("comment block not written: %q", got)
+	}
+}
+
+func componentSchema(t *testing.T, set *SchemaSet, name string) *highbase.Schema {
+	t.Helper()
+	proxy, ok := set.Components.Get(name)
+	if !ok {
+		t.Fatalf("missing component %s", name)
+	}
+	schema := proxy.Schema()
+	if schema == nil {
+		t.Fatalf("component %s has nil schema", name)
+	}
+	return schema
+}
+
+func assertComponentKeysSorted(t *testing.T, components *orderedmap.Map[string, *highbase.SchemaProxy]) {
+	t.Helper()
+	previous := ""
+	for name := range components.FromOldest() {
+		if previous != "" && name < previous {
+			t.Fatalf("components not sorted: %s before %s", name, previous)
+		}
+		previous = name
+	}
+}
+
+func hasDiagnostic(diagnostics []Diagnostic, substr string) bool {
+	for _, diagnostic := range diagnostics {
+		if strings.Contains(diagnostic.Message, substr) || strings.Contains(diagnostic.Path, substr) {
+			return true
+		}
+	}
+	return false
+}

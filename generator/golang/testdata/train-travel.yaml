@@ -1,0 +1,158 @@
+openapi: 3.1.0
+info:
+  title: Train Travel API
+  version: 1.2.1
+paths: {}
+components:
+  schemas:
+    Station:
+      description: A train station.
+      type: object
+      required:
+        - id
+        - name
+        - address
+        - country_code
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        address:
+          type: string
+        country_code:
+          type: string
+          format: iso-country-code
+        timezone:
+          type: string
+    Trip:
+      description: A train trip.
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        origin:
+          type: string
+        destination:
+          type: string
+        departure_time:
+          type: string
+          format: date-time
+        arrival_time:
+          type: string
+          format: date-time
+        price:
+          type: number
+        bicycles_allowed:
+          type: boolean
+        dogs_allowed:
+          type: boolean
+    Booking:
+      description: A booking for a train trip.
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        trip_id:
+          type: string
+          format: uuid
+        passenger_name:
+          type: string
+        has_bicycle:
+          type: boolean
+        has_dog:
+          type: boolean
+    BookingPayment:
+      description: A payment for a booking.
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        amount:
+          type: number
+          exclusiveMinimum: 0
+        currency:
+          type: string
+          enum:
+            - bam
+            - bgn
+            - chf
+            - eur
+            - gbp
+            - nok
+            - sek
+            - try
+        source:
+          unevaluatedProperties: false
+          description: The payment source to take the payment from.
+          oneOf:
+            - title: Card
+              description: A card to take payment from.
+              type: object
+              properties:
+                object:
+                  type: string
+                  const: card
+                name:
+                  type: string
+                number:
+                  type: string
+                cvc:
+                  type: string
+                  minLength: 3
+                  maxLength: 4
+                  writeOnly: true
+                exp_month:
+                  type: integer
+                  format: int64
+                exp_year:
+                  type: integer
+                  format: int64
+                address_country:
+                  type: string
+              required:
+                - name
+                - number
+                - cvc
+                - exp_month
+                - exp_year
+                - address_country
+            - title: Bank Account
+              description: A bank account to take payment from.
+              type: object
+              properties:
+                object:
+                  const: bank_account
+                  type: string
+                name:
+                  type: string
+                number:
+                  type: string
+                account_type:
+                  enum:
+                    - individual
+                    - company
+                  type: string
+                bank_name:
+                  type: string
+                country:
+                  type: string
+              required:
+                - name
+                - number
+                - account_type
+                - bank_name
+                - country
+        status:
+          type: string
+          enum:
+            - pending
+            - succeeded
+            - failed
+          readOnly: true
