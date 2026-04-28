@@ -33,6 +33,17 @@ func TestInternalBranchCoverage(t *testing.T) {
 	if got := toPublicName("type"); got != "Type" {
 		t.Fatalf("keyword public name: %s", got)
 	}
+	if got := gen.nestedTypeName("", "child value"); got != "ChildValue" {
+		t.Fatalf("empty parent nested name: %s", got)
+	}
+	if names := gen.resolveComponentTypeNames(nil); len(names) != 0 {
+		t.Fatalf("nil component name map should be empty: %#v", names)
+	}
+	componentNameProbe := orderedmap.New[string, *highbase.SchemaProxy]()
+	componentNameProbe.Set("component", highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{"string"}}))
+	if names := gen.resolveComponentTypeNames(componentNameProbe); names["component"] != "Component" {
+		t.Fatalf("component name map should resolve without an active registry: %#v", names)
+	}
 	if got := refName("Pet"); got != "Pet" {
 		t.Fatalf("plain ref: %s", got)
 	}
@@ -76,6 +87,27 @@ func TestInternalBranchCoverage(t *testing.T) {
 	if bare.formatMappings["date"].goType != "civil.Date" {
 		t.Fatal("format mapping should initialize nil map")
 	}
+	WithAdditionalPropertiesMethods(false)(&bare)
+	if bare.additionalPropertiesMethods {
+		t.Fatal("additional properties methods option not applied")
+	}
+	WithExternalRefTypeResolver(func(ref string) string { return "ResolvedExternal" })(&bare)
+	if bare.refTypeName("../common.yaml#/components/schemas/Pet") != "ResolvedExternal" {
+		t.Fatal("external ref resolver not applied")
+	}
+	if bare.refTypeName("") != "" {
+		t.Fatal("empty ref type should stay empty")
+	}
+	bare.externalRefResolver = nil
+	if bare.refTypeName("AlreadyNamed") != "AlreadyNamed" {
+		t.Fatal("plain ref type should stay unchanged")
+	}
+	WithTypeSchema(nil, highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{"string"}}))(&bare)
+	WithTypeSchema(reflect.TypeOf(""), nil)(&bare)
+	WithTypeSchema(reflect.TypeOf(""), highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{"string"}}))(&bare)
+	if bare.typeSchemas[reflect.TypeOf("")] == nil {
+		t.Fatal("type schema option should initialize nil map")
+	}
 	WithOneOfTypes(struct{}{}, nil)(&bare)
 	WithDiscriminatorMapping(struct{}{}, "kind", map[string]string{"x": "Y"})(&bare)
 
@@ -87,7 +119,7 @@ func TestInternalBranchCoverage(t *testing.T) {
 	if !tag.skip {
 		t.Fatal("skip tag not parsed")
 	}
-	if tagLiteral("x", false, false, false, false) != "" {
+	if tagLiteral("x", false, false, false, false, "") != "" {
 		t.Fatal("expected empty literal")
 	}
 	if quoted := strconvQuote(`a"b\c`); quoted != `"a\"b\\c"` {
@@ -185,8 +217,17 @@ func TestInternalBranchCoverage(t *testing.T) {
 	if got := gen.goType(&SchemaIR{Kind: KindRef, Ref: "#/components/schemas/Pet"}, true, false); got != "Pet" {
 		t.Fatalf("ref type: %s", got)
 	}
+	gen.componentKinds = map[string]Kind{"Choice": KindUnion}
+	if got := gen.goType(&SchemaIR{Kind: KindRef, Name: "Choice", Ref: "#/components/schemas/Choice"}, true, false); got != "ChoiceUnion" {
+		t.Fatalf("union ref type: %s", got)
+	}
+	gen.componentKinds = nil
 	if got := gen.goType(&SchemaIR{Kind: KindObject, Name: "Obj", Properties: orderedmap.New[string, *SchemaIR]()}, true, false); got != "map[string]any" {
 		t.Fatalf("empty object type: %s", got)
+	}
+	closed := false
+	if got := gen.goType(&SchemaIR{Kind: KindObject, Name: "ClosedObj", AdditionalAllowed: &closed}, true, false); got != "ClosedObj" {
+		t.Fatalf("closed object type: %s", got)
 	}
 	props := orderedmap.New[string, *SchemaIR]()
 	props.Set("id", &SchemaIR{Kind: KindString})
@@ -247,6 +288,42 @@ func TestInternalBranchCoverage(t *testing.T) {
 	if !strings.Contains(comment.String(), "already.") || !strings.Contains(comment.String(), "missing.") {
 		t.Fatal("comment not written")
 	}
+	if gen.stringEncodedIR(nil, "nil") != nil {
+		t.Fatal("nil string encoded IR should stay nil")
+	}
+	unsupportedStringEncoded := &SchemaIR{Kind: KindArray}
+	if got := gen.stringEncodedIR(unsupportedStringEncoded, "array"); got != unsupportedStringEncoded {
+		t.Fatal("unsupported string encoded IR should return original")
+	}
+
+	if shape := enumShapeFor(nil); shape.goType != "any" || shape.constants {
+		t.Fatalf("nil enum shape should be any without constants: %#v", shape)
+	}
+	if shape := enumShapeFor([]*yaml.Node{{Kind: yaml.ScalarNode, Tag: "!!int", Value: "1"}, {Kind: yaml.ScalarNode, Tag: "!!float", Value: "1.5"}}); shape.goType != "float64" || !shape.constants {
+		t.Fatalf("numeric enum shape should widen to float64: %#v", shape)
+	}
+	if shape := enumShapeFor([]*yaml.Node{{Kind: yaml.ScalarNode, Tag: "!!binary", Value: "abc"}}); shape.goType != "string" || !shape.constants {
+		t.Fatalf("unknown scalar enum shape should fall back to string: %#v", shape)
+	}
+	if enumLiteral(nil, "string") != "" || enumLiteral(stringNode("x"), "any") != "" {
+		t.Fatal("enum literal should skip nil and unsupported bases")
+	}
+	for typ, kind := range map[string]Kind{
+		"string":  KindString,
+		"integer": KindInteger,
+		"number":  KindNumber,
+		"boolean": KindBoolean,
+		"array":   KindArray,
+		"object":  KindObject,
+		"unknown": KindAny,
+	} {
+		if got := kindForJSONType(typ); got != kind {
+			t.Fatalf("kind for %s: %v", typ, got)
+		}
+	}
+	if schemaDeclaresType(nil) {
+		t.Fatal("nil schema should not declare a type")
+	}
 }
 
 func TestOpenAPIBranchCoverage(t *testing.T) {
@@ -290,6 +367,29 @@ func TestOpenAPIBranchCoverage(t *testing.T) {
 			t.Fatalf("%s failed: %v", name, err)
 		}
 	}
+	unknownIR := &SchemaIR{Name: "Unknown", Required: make(map[string]struct{})}
+	gen.populateSchemaShape(unknownIR, &highbase.Schema{Type: []string{"unknown"}}, "unknown")
+	if unknownIR.Kind != KindAny {
+		t.Fatalf("unknown explicit type should render as any: %#v", unknownIR)
+	}
+	unknownObjectIR := &SchemaIR{Name: "UnknownObject", Required: make(map[string]struct{})}
+	unknownObjectProps := orderedmap.New[string, *highbase.SchemaProxy]()
+	unknownObjectProps.Set("id", highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{"string"}}))
+	gen.populateSchemaShape(unknownObjectIR, &highbase.Schema{Type: []string{"unknown"}, Properties: unknownObjectProps}, "unknownObject")
+	if unknownObjectIR.Kind != KindObject {
+		t.Fatalf("unknown explicit type with properties should render as object: %#v", unknownObjectIR)
+	}
+	unknownMapIR := &SchemaIR{Name: "UnknownMap", Required: make(map[string]struct{})}
+	gen.populateSchemaShape(unknownMapIR, &highbase.Schema{
+		Type: []string{"unknown"},
+		AdditionalProperties: &highbase.DynamicValue[*highbase.SchemaProxy, bool]{
+			N: 1,
+			B: true,
+		},
+	}, "unknownMap")
+	if unknownMapIR.Kind != KindObject {
+		t.Fatalf("unknown explicit type with additionalProperties should render as object: %#v", unknownMapIR)
+	}
 
 	merged := &SchemaIR{
 		Name: "Merged",
@@ -306,8 +406,28 @@ func TestOpenAPIBranchCoverage(t *testing.T) {
 		t.Fatalf("bad allOf merge: %#v", merged)
 	}
 
-	if len(nonNullVariants([]*SchemaIR{nil, {Kind: KindAny, Nullable: true}, {Kind: KindString}})) != 1 {
-		t.Fatal("nonNullVariants failed")
+	nullableAny := true
+	if len(nonNullVariants([]*SchemaIR{
+		nil,
+		{Kind: KindAny, Nullable: true, SourceSchema: &highbase.Schema{Nullable: &nullableAny}},
+		{Kind: KindAny, Nullable: true, SourceSchema: &highbase.Schema{Type: []string{"null"}}},
+		{Kind: KindAny, Const: nullNode()},
+		{Kind: KindEnum, Enum: []*yaml.Node{nullNode()}},
+		{Kind: KindString},
+	})) != 2 {
+		t.Fatal("nonNullVariants should only remove null-only variants")
+	}
+	if isNullOnlyIR(nil) || schemaOnlyAllowsNull(nil) {
+		t.Fatal("nil null-only checks should be false")
+	}
+	if isNullOnlyIR(&SchemaIR{Const: stringNode("x")}) {
+		t.Fatal("non-null const should not be null-only")
+	}
+	if schemaOnlyAllowsNull(&highbase.Schema{Enum: []*yaml.Node{stringNode("x")}}) {
+		t.Fatal("non-null enum should not be null-only")
+	}
+	if schemaNeedsNullAlternative(nil) || schemaNeedsNullAlternative(&highbase.Schema{Type: []string{"string"}}) {
+		t.Fatal("plain schemas should not need a null alternative wrapper")
 	}
 	if inferConstDiscriminator(nil) != nil {
 		t.Fatal("nil variants should not infer discriminator")
@@ -365,8 +485,12 @@ func TestReflectBranchCoverage(t *testing.T) {
 	if _, err := gen.irFromReflect(reflect.TypeOf(&Numbers{}), "Numbers", "Numbers"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := gen.irFromReflect(reflect.TypeOf(&Provider{}), "Provider", "Provider"); err != nil {
+	providerIR, err := gen.irFromReflect(reflect.TypeOf(&Provider{}), "Provider", "Provider")
+	if err != nil {
 		t.Fatal(err)
+	}
+	if !providerIR.Nullable {
+		t.Fatal("pointer schema provider should preserve nullable")
 	}
 	type WithPrivate struct {
 		name string
@@ -379,6 +503,12 @@ func TestReflectBranchCoverage(t *testing.T) {
 	brokenGen := NewGenerator(WithOneOfTypes((*BrokenInterface)(nil), make(chan string)))
 	if _, err := brokenGen.irFromReflect(reflect.TypeOf((*BrokenInterface)(nil)).Elem(), "BrokenInterface", "BrokenInterface"); err == nil {
 		t.Fatal("expected broken interface variant error")
+	}
+	type ProviderLikeInterface interface {
+		OpenAPISchema() *highbase.SchemaProxy
+	}
+	if _, err := gen.irFromReflect(reflect.TypeOf((*ProviderLikeInterface)(nil)).Elem(), "ProviderLikeInterface", "ProviderLikeInterface"); err == nil {
+		t.Fatal("provider-like interfaces should fail cleanly unless registered as oneOf")
 	}
 	type BadSlice []chan string
 	if _, err := gen.irFromReflect(reflect.TypeOf(BadSlice{}), "BadSlice", "BadSlice"); err == nil {
@@ -395,6 +525,12 @@ func TestReflectBranchCoverage(t *testing.T) {
 
 func TestToOpenAPIBranchCoverage(t *testing.T) {
 	gen := NewGenerator()
+	applySchemaFidelity(nil, nil)
+	fidelitySchema := &highbase.Schema{}
+	applySchemaFidelity(fidelitySchema, &SchemaIR{SourceSchema: &highbase.Schema{DynamicRef: "#dynamic"}})
+	if fidelitySchema.DynamicRef != "#dynamic" {
+		t.Fatalf("dynamic ref fidelity not applied: %#v", fidelitySchema)
+	}
 	gen.populateOpenAPIUnion(&highbase.Schema{}, &SchemaIR{})
 	falseValue := false
 	obj := &SchemaIR{
@@ -420,5 +556,36 @@ func TestToOpenAPIBranchCoverage(t *testing.T) {
 	emptyUnion := &SchemaIR{Kind: KindUnion, Union: &UnionIR{}}
 	if out := gen.openapiFromIR(emptyUnion); out == nil {
 		t.Fatal("expected empty union schema")
+	}
+	nullableDynamic := gen.openapiFromIR(&SchemaIR{
+		Kind:       KindRef,
+		Ref:        "#dynamic",
+		DynamicRef: true,
+		Nullable:   true,
+		SourceSchema: &highbase.Schema{
+			DynamicRef: "#dynamic",
+			Comment:    "dynamic nullable ref",
+		},
+	}).Schema()
+	if nullableDynamic == nil || len(nullableDynamic.AnyOf) != 2 || nullableDynamic.AnyOf[0].Schema().DynamicRef != "#dynamic" {
+		t.Fatalf("expected nullable dynamic ref anyOf, got %#v", nullableDynamic)
+	}
+	nullableEnum := gen.openapiFromIR(&SchemaIR{
+		Kind:     KindEnum,
+		Nullable: true,
+		Enum:     []*yaml.Node{stringNode("active")},
+	}).Schema()
+	if nullableEnum == nil || !schemaTypeContains(nullableEnum.Type, "null") || !enumHasNull(nullableEnum.Enum) {
+		t.Fatalf("expected nullable enum to include null type and enum value, got %#v", nullableEnum)
+	}
+	for _, enumIR := range []*SchemaIR{
+		{Kind: KindEnum, Enum: []*yaml.Node{{Kind: yaml.ScalarNode, Tag: "!!int", Value: "1"}}},
+		{Kind: KindEnum, Enum: []*yaml.Node{{Kind: yaml.ScalarNode, Tag: "!!float", Value: "1.5"}}},
+		{Kind: KindEnum, Enum: []*yaml.Node{{Kind: yaml.ScalarNode, Tag: "!!bool", Value: "true"}}},
+		{Kind: KindEnum, Enum: []*yaml.Node{{Kind: yaml.ScalarNode, Tag: "!!str", Value: "x"}, {Kind: yaml.ScalarNode, Tag: "!!int", Value: "1"}}},
+	} {
+		if out := gen.openapiFromIR(enumIR); out == nil {
+			t.Fatalf("expected enum schema for %#v", enumIR)
+		}
 	}
 }

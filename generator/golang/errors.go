@@ -14,7 +14,8 @@ var (
 	ErrUnsupportedType    = errors.New("unsupported type")
 	ErrUnsupportedMapKey  = errors.New("unsupported map key")
 	ErrInvalidPackageName = errors.New("invalid package name")
-	ErrNameCollision      = errors.New("name collision")
+	// Deprecated: name collisions are reported through DiagnosticCode values.
+	ErrNameCollision = errors.New("name collision")
 )
 
 func wrapPath(err error, path string) error {

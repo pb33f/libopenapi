@@ -77,7 +77,7 @@ func TestPhaseTwoSchemaSetComponents(t *testing.T) {
 		t.Fatalf("unexpected root reference: %q", set.Root.GetReference())
 	}
 	assertComponentKeysSorted(t, set.Components)
-	for _, name := range []string{"PhaseTwoAddress", "PhaseTwoBank", "PhaseTwoCard", "PhaseTwoCustomer", "PhaseTwoCustomerPayment"} {
+	for _, name := range []string{"PhaseTwoAddress", "PhaseTwoBank", "PhaseTwoCard", "PhaseTwoCustomer", "PhaseTwoCustomer_Payment"} {
 		if _, ok := set.Components.Get(name); !ok {
 			t.Fatalf("missing component %s", name)
 		}
@@ -95,10 +95,10 @@ func TestPhaseTwoSchemaSetComponents(t *testing.T) {
 	if !ok {
 		t.Fatal("missing payment property")
 	}
-	if !payment.IsReference() || payment.GetReference() != "#/components/schemas/PhaseTwoCustomerPayment" {
+	if !payment.IsReference() || payment.GetReference() != "#/components/schemas/PhaseTwoCustomer_Payment" {
 		t.Fatalf("payment should be a component reference, got %q", payment.GetReference())
 	}
-	paymentSchema := componentSchema(t, set, "PhaseTwoCustomerPayment")
+	paymentSchema := componentSchema(t, set, "PhaseTwoCustomer_Payment")
 	if len(paymentSchema.OneOf) != 2 || paymentSchema.Discriminator == nil {
 		t.Fatalf("payment component should be discriminated oneOf: %#v", paymentSchema)
 	}
@@ -225,7 +225,7 @@ additionalProperties:
 	}
 	src := string(file.Source)
 	assertContains(t, src, "ID")
-	assertContains(t, src, "ID2")
+	assertContains(t, src, "ID__2")
 	assertContains(t, src, "`json:\"id,omitempty\"`")
 	assertContains(t, src, "`json:\"ID,omitempty\"`")
 	assertContains(t, src, "AdditionalProperties")
@@ -243,8 +243,8 @@ additionalProperties:
 	}
 	registry = newNameRegistry()
 	registry.resolve("one", "Value")
-	registry.resolve("two", "Value2")
-	if name, collision := registry.resolve("three", "Value"); name != "Value3" || !collision {
+	registry.resolve("two", "Value__2")
+	if name, collision := registry.resolve("three", "Value"); name != "Value__3" || !collision {
 		t.Fatalf("expected suffixed collision resolution, got %s %v", name, collision)
 	}
 
@@ -336,7 +336,7 @@ func assertComponentKeysSorted(t *testing.T, components *orderedmap.Map[string, 
 
 func hasDiagnostic(diagnostics []Diagnostic, substr string) bool {
 	for _, diagnostic := range diagnostics {
-		if strings.Contains(diagnostic.Message, substr) || strings.Contains(diagnostic.Path, substr) {
+		if strings.Contains(diagnostic.Code, substr) || strings.Contains(diagnostic.Message, substr) || strings.Contains(diagnostic.Path, substr) {
 			return true
 		}
 	}
