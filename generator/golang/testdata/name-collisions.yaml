@@ -1,0 +1,163 @@
+openapi: 3.1.0
+info:
+  title: Go Name Collision Model Torture API
+  version: 1.0.0
+  summary: OpenAPI 3.1 fixture for generated Go identifier collision coverage.
+components:
+  schemas:
+    collision-root:
+      type: object
+      required:
+        - type
+        - user-id
+        - user_id
+        - UserID
+        - map
+        - choice
+        - map_ref
+        - alias
+        - enum
+      properties:
+        type:
+          type: string
+        user-id:
+          $ref: '#/components/schemas/user-id'
+        user_id:
+          $ref: '#/components/schemas/user_id'
+        UserID:
+          $ref: '#/components/schemas/UserID'
+        map:
+          $ref: '#/components/schemas/map'
+        choice:
+          $ref: '#/components/schemas/choice'
+        recursive:
+          $ref: '#/components/schemas/recursive-node'
+        map_ref:
+          $ref: '#/components/schemas/string-map'
+        alias:
+          $ref: '#/components/schemas/alias-value'
+        enum:
+          $ref: '#/components/schemas/enum-collision'
+        additional_properties:
+          type: string
+        nested:
+          type: object
+          required:
+            - value-id
+            - value_id
+          properties:
+            value-id:
+              type: string
+            value_id:
+              type: integer
+            dup-obj:
+              type: object
+              properties:
+                name:
+                  type: string
+            dup_obj:
+              type: object
+              properties:
+                count:
+                  type: integer
+            inline-item:
+              type: object
+              properties:
+                func:
+                  type: string
+      additionalProperties:
+        type: string
+    user-id:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+    user_id:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: integer
+    UserID:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: boolean
+    map:
+      type: object
+      required:
+        - func
+        - type
+        - interface
+      properties:
+        func:
+          type: string
+        type:
+          type: string
+        interface:
+          type: string
+      additionalProperties: false
+    choice:
+      oneOf:
+        - $ref: '#/components/schemas/choice-card'
+        - $ref: '#/components/schemas/choice_card'
+      discriminator:
+        propertyName: type
+        mapping:
+          card: '#/components/schemas/choice-card'
+          card_duplicate: '#/components/schemas/choice_card'
+    choice-card:
+      type: object
+      required:
+        - type
+        - value
+      properties:
+        type:
+          type: string
+          const: card
+        value:
+          type: string
+      additionalProperties: false
+    choice_card:
+      type: object
+      required:
+        - type
+        - value
+      properties:
+        type:
+          type: string
+          const: card_duplicate
+        value:
+          type: integer
+      additionalProperties: false
+    recursive-node:
+      type: object
+      properties:
+        next:
+          $ref: '#/components/schemas/recursive-node'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/recursive-node'
+    string-map:
+      type: object
+      additionalProperties:
+        type: string
+    alias-value:
+      type: string
+    enum-collision:
+      type: string
+      enum:
+        - ""
+        - in-progress
+        - in progress
+        - "true"
+        - "True"
+        - "1.5"
+        - "1_5"
+        - "1-5"

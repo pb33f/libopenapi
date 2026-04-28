@@ -1,0 +1,238 @@
+openapi: 3.1.0
+info:
+  title: JSON Schema 2020-12 Model Torture API
+  version: 1.0.0
+  summary: OpenAPI 3.1 schema coverage for generator/golang.
+components:
+  schemas:
+    TortureDocument:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      $id: https://pb33f.io/schemas/torture-document
+      $anchor: torture-document
+      $comment: Exercises JSON Schema 2020-12 model-generation edge cases.
+      type: object
+      required:
+        - id
+        - kind
+        - payment
+      minProperties: 3
+      maxProperties: 20
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        kind:
+          type: string
+          const: torture
+        multi_value:
+          description: A nullable multi-type value.
+          type:
+            - string
+            - integer
+            - "null"
+        nullable_status:
+          $ref: '#/components/schemas/NullableStatus'
+        mixed_enum:
+          $ref: '#/components/schemas/MixedEnum'
+        string_enum:
+          $ref: '#/components/schemas/StringEnum'
+        int_enum:
+          $ref: '#/components/schemas/IntEnum'
+        float_enum:
+          $ref: '#/components/schemas/FloatEnum'
+        bool_enum:
+          $ref: '#/components/schemas/BoolEnum'
+        closed_config:
+          $ref: '#/components/schemas/ClosedConfig'
+        labels:
+          $ref: '#/components/schemas/StringMap'
+        tuple:
+          $ref: '#/components/schemas/TupleProbe'
+        object_rules:
+          $ref: '#/components/schemas/ObjectRules'
+        encoded_payload:
+          $ref: '#/components/schemas/EncodedPayload'
+        payment:
+          $ref: '#/components/schemas/PaymentSource'
+        loose_choice:
+          $ref: '#/components/schemas/LooseChoice'
+        dynamic_node:
+          $dynamicRef: '#tree-node'
+      dependentRequired:
+        payment:
+          - labels
+      dependentSchemas:
+        encoded_payload:
+          required:
+            - object_rules
+      unevaluatedProperties:
+        type: string
+    StringEnum:
+      type: string
+      enum:
+        - draft
+        - published
+    IntEnum:
+      type: integer
+      enum:
+        - 1
+        - 2
+    FloatEnum:
+      type: number
+      enum:
+        - 1.5
+        - 2
+    BoolEnum:
+      type: boolean
+      enum:
+        - true
+        - false
+    NullableStatus:
+      enum:
+        - null
+        - active
+        - inactive
+    MixedEnum:
+      enum:
+        - "off"
+        - 1
+        - true
+    ClosedConfig:
+      type: object
+      required:
+        - enabled
+      properties:
+        enabled:
+          type: boolean
+        threshold:
+          type: number
+          minimum: 0
+          exclusiveMaximum: 100
+      additionalProperties: false
+    StringMap:
+      type: object
+      additionalProperties:
+        type: string
+    TupleProbe:
+      type: array
+      prefixItems:
+        - type: string
+        - type: integer
+      items: false
+      contains:
+        type: string
+      minContains: 1
+      maxContains: 2
+      minItems: 1
+      maxItems: 2
+      uniqueItems: true
+      unevaluatedItems:
+        type: boolean
+    ObjectRules:
+      type: object
+      minProperties: 1
+      maxProperties: 6
+      propertyNames:
+        pattern: '^[a-z_]+$'
+      patternProperties:
+        '^x-':
+          type: string
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 30
+          pattern: '^[A-Za-z0-9 _-]+$'
+        count:
+          type: integer
+          multipleOf: 1
+          minimum: 0
+      dependentRequired:
+        name:
+          - count
+      dependentSchemas:
+        count:
+          properties:
+            name:
+              type: string
+      if:
+        required:
+          - name
+      then:
+        required:
+          - count
+      else:
+        maxProperties: 2
+      not:
+        required:
+          - forbidden
+      unevaluatedProperties: false
+    EncodedPayload:
+      type: string
+      contentEncoding: base64
+      contentMediaType: application/json
+      contentSchema:
+        type: object
+        properties:
+          payload_id:
+            type: string
+    TreeNode:
+      $id: https://pb33f.io/schemas/tree-node
+      $dynamicAnchor: tree-node
+      type: object
+      properties:
+        name:
+          type: string
+        children:
+          type: array
+          items:
+            $dynamicRef: '#tree-node'
+    PaymentSource:
+      description: A discriminated payment source.
+      oneOf:
+        - $ref: '#/components/schemas/CardSource'
+        - $ref: '#/components/schemas/BankSource'
+      discriminator:
+        propertyName: object
+        mapping:
+          card: '#/components/schemas/CardSource'
+          bank_account: '#/components/schemas/BankSource'
+    CardSource:
+      type: object
+      required:
+        - object
+        - number
+        - cvc
+      properties:
+        object:
+          type: string
+          const: card
+        number:
+          type: string
+          minLength: 12
+          maxLength: 19
+        cvc:
+          type: string
+          minLength: 3
+          maxLength: 4
+          writeOnly: true
+      additionalProperties: false
+    BankSource:
+      type: object
+      required:
+        - object
+        - account_number
+      properties:
+        object:
+          type: string
+          const: bank_account
+        account_number:
+          type: string
+        bank_name:
+          type: string
+      additionalProperties: false
+    LooseChoice:
+      anyOf:
+        - type: string
+        - type: integer

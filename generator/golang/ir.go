@@ -4,6 +4,7 @@
 package golang
 
 import (
+	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"go.yaml.in/yaml/v4"
 )
@@ -57,6 +58,7 @@ type SchemaIR struct {
 	Name                 string
 	Ref                  string
 	Kind                 Kind
+	DynamicRef           bool
 	Format               string
 	Description          string
 	Title                string
@@ -77,7 +79,10 @@ type SchemaIR struct {
 	ReadOnly             bool
 	WriteOnly            bool
 	Deprecated           bool
+	FieldMetadata        bool
+	ExactSource          bool
 	Comments             []string
+	SourceSchema         *highbase.Schema
 }
 
 type UnionIR struct {
@@ -85,6 +90,7 @@ type UnionIR struct {
 	Variants      []*SchemaIR
 	Discriminator *Discriminator
 	Strategy      UnionStrategy
+	FromMultiType bool
 }
 
 func newObjectIR(name string) *SchemaIR {

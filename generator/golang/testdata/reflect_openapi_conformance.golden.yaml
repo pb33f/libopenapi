@@ -1,0 +1,135 @@
+openapi: 3.1.0
+info:
+  title: Reflected Go Model Conformance API
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    ReflectConformanceAddress:
+      type: object
+      properties:
+          line1:
+              type: string
+          line2:
+              type:
+                  - string
+                  - "null"
+          city:
+              type: string
+      required:
+          - city
+          - line1
+    ReflectConformanceAttribute:
+      type: object
+      properties:
+          name:
+              type: string
+          value:
+              type: string
+      required:
+          - name
+    ReflectConformanceBank:
+      type: object
+      properties:
+          object:
+              type: string
+          account_number:
+              type: string
+          bank_name:
+              type:
+                  - string
+                  - "null"
+      required:
+          - account_number
+          - object
+    ReflectConformanceCard:
+      type: object
+      properties:
+          object:
+              type: string
+          number:
+              type: string
+          cvc:
+              type: string
+      required:
+          - number
+          - object
+    ReflectConformanceEmbedded:
+      type: object
+      properties:
+          trace_id:
+              type: string
+      required:
+          - trace_id
+    ReflectConformanceRoot:
+      type: object
+      properties:
+          trace_id:
+              type: string
+          id:
+              type: string
+              format: uuid
+          status:
+              $ref: '#/components/schemas/ReflectConformanceStatus'
+          active:
+              type: boolean
+          count:
+              type: string
+          limit:
+              type: integer
+          nickname:
+              type:
+                  - string
+                  - "null"
+          data:
+              type: string
+              format: byte
+          raw: {}
+          tags:
+              type: array
+              items:
+                  type: string
+          labels:
+              $ref: '#/components/schemas/ReflectConformanceRoot_Labels'
+          attributes:
+              $ref: '#/components/schemas/ReflectConformanceRoot_Attributes'
+          address:
+              anyOf:
+                  - $ref: '#/components/schemas/ReflectConformanceAddress'
+                  - type: "null"
+          payment:
+              $ref: '#/components/schemas/ReflectConformanceRoot_Payment'
+          history:
+              type: array
+              items:
+                  $ref: '#/components/schemas/ReflectConformanceRoot_Payment'
+          self:
+              anyOf:
+                  - $ref: '#/components/schemas/ReflectConformanceRoot'
+                  - type: "null"
+      required:
+          - active
+          - id
+          - status
+    ReflectConformanceRoot_Attributes:
+      type: object
+      additionalProperties:
+          $ref: '#/components/schemas/ReflectConformanceAttribute'
+    ReflectConformanceRoot_Labels:
+      type: object
+      additionalProperties:
+          type: string
+    ReflectConformanceRoot_Payment:
+      oneOf:
+          - $ref: '#/components/schemas/ReflectConformanceCard'
+          - $ref: '#/components/schemas/ReflectConformanceBank'
+      discriminator:
+          propertyName: object
+          mapping:
+              bank_account: '#/components/schemas/ReflectConformanceBank'
+              card: '#/components/schemas/ReflectConformanceCard'
+    ReflectConformanceStatus:
+      type: string
+      enum:
+          - active
+          - paused

@@ -3,6 +3,8 @@
 
 package golang
 
+const conflictNameDelimiter = "__"
+
 type nameRegistry struct {
 	used map[string]string
 }
@@ -22,7 +24,7 @@ func (r *nameRegistry) resolve(original, candidate string) (string, bool) {
 		return candidate, false
 	}
 	for i := 2; ; i++ {
-		next := candidate + intString(i)
+		next := candidate + conflictNameDelimiter + intString(i)
 		if _, ok := r.used[next]; !ok {
 			r.used[next] = original
 			return next, true

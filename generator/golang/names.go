@@ -12,20 +12,79 @@ import (
 
 var initialisms = map[string]string{
 	"API": "API", "ASCII": "ASCII", "CPU": "CPU", "CSS": "CSS", "DNS": "DNS", "EOF": "EOF",
-	"GUID": "GUID", "HTML": "HTML", "HTTP": "HTTP", "HTTPS": "HTTPS", "ID": "ID", "IP": "IP",
-	"JSON": "JSON", "QPS": "QPS", "RAM": "RAM", "RPC": "RPC", "SLA": "SLA", "SMTP": "SMTP",
+	"BIC": "BIC", "CVC": "CVC", "CVV": "CVV", "GUID": "GUID", "HTML": "HTML", "HTTP": "HTTP",
+	"HTTPS": "HTTPS", "IBAN": "IBAN", "ID": "ID", "IP": "IP", "JSON": "JSON", "JWT": "JWT",
+	"QPS": "QPS", "RAM": "RAM", "RPC": "RPC", "SLA": "SLA", "SMTP": "SMTP",
 	"SQL": "SQL", "SSH": "SSH", "TCP": "TCP", "TLS": "TLS", "TTL": "TTL", "UDP": "UDP",
 	"UI": "UI", "UID": "UID", "URI": "URI", "URL": "URL", "UTF8": "UTF8", "UUID": "UUID",
 	"VM": "VM", "XML": "XML", "XMPP": "XMPP", "XSRF": "XSRF", "XSS": "XSS",
 }
 
 func (g *Generator) publicName(name string) string {
+	if g.typeNameResolver != nil {
+		if resolved := g.typeNameResolver(name); resolved != "" {
+			return resolved
+		}
+	}
 	if g.nameResolver != nil {
 		if resolved := g.nameResolver(name); resolved != "" {
 			return resolved
 		}
 	}
 	return toPublicName(name)
+}
+
+func (g *Generator) fieldName(name string) string {
+	if g.fieldNameResolver != nil {
+		if resolved := g.fieldNameResolver(name); resolved != "" {
+			return resolved
+		}
+	}
+	if g.nameResolver != nil {
+		if resolved := g.nameResolver(name); resolved != "" {
+			return resolved
+		}
+	}
+	return toPublicName(name)
+}
+
+func (g *Generator) enumValueName(name string) string {
+	if g.enumValueNameResolver != nil {
+		if resolved := g.enumValueNameResolver(name); resolved != "" {
+			return resolved
+		}
+	}
+	if g.nameResolver != nil {
+		if resolved := g.nameResolver(name); resolved != "" {
+			return resolved
+		}
+	}
+	return toPublicName(enumNameSeed(name))
+}
+
+func (g *Generator) componentTypeName(name string) string {
+	if g.componentTypeNames != nil {
+		if resolved := g.componentTypeNames[name]; resolved != "" {
+			return resolved
+		}
+	}
+	return g.publicName(name)
+}
+
+func (g *Generator) nestedTypeName(parent, child string) string {
+	childName := g.publicName(child)
+	if parent == "" {
+		return childName
+	}
+	return parent + g.nestedTypeNameDelimiter + childName
+}
+
+func enumNameSeed(value string) string {
+	value = strings.Trim(strings.ReplaceAll(strings.ReplaceAll(value, "-", "_"), " ", "_"), "_")
+	if value == "" {
+		return "empty"
+	}
+	return value
 }
 
 func toPublicName(name string) string {
@@ -120,6 +179,24 @@ func refName(ref string) string {
 	return ref[i+1:]
 }
 
+func (g *Generator) refTypeName(ref string) string {
+	if ref == "" {
+		return ""
+	}
+	if strings.HasPrefix(ref, "#/") {
+		return g.componentTypeName(refName(ref))
+	}
+	if g.externalRefResolver != nil {
+		if resolved := g.externalRefResolver(ref); resolved != "" {
+			return resolved
+		}
+	}
+	if strings.Contains(ref, "/") || strings.Contains(ref, "#") {
+		return g.publicName(refName(ref))
+	}
+	return ref
+}
+
 func uniqueName(base string, used map[string]struct{}) string {
 	if base == "" {
 		base = "Value"
@@ -129,7 +206,7 @@ func uniqueName(base string, used map[string]struct{}) string {
 		return base
 	}
 	for i := 2; ; i++ {
-		name := base + intString(i)
+		name := base + conflictNameDelimiter + intString(i)
 		if _, ok := used[name]; !ok {
 			used[name] = struct{}{}
 			return name

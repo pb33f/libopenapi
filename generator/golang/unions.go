@@ -42,6 +42,7 @@ func (g *Generator) renderRawUnion(ir *SchemaIR) {
 	b.WriteString(name)
 	b.WriteString(") Bytes() []byte {\n\treturn append([]byte(nil), u.Raw...)\n}\n")
 	g.decls = append(g.decls, b.String())
+	g.recordSchemaMetadata(name, ir.SourceSchema)
 }
 
 func (g *Generator) renderDiscriminatedUnion(ir *SchemaIR) {
@@ -97,8 +98,8 @@ func (g *Generator) renderDiscriminatedUnion(ir *SchemaIR) {
 	for _, value := range values {
 		target := ir.Union.Discriminator.Mapping[value]
 		typeName := target
-		if strings.HasPrefix(target, "#") {
-			typeName = g.publicName(refName(target))
+		if strings.HasPrefix(target, "#") || strings.Contains(target, "/") {
+			typeName = g.refTypeName(target)
 		}
 		b.WriteString("\tcase ")
 		b.WriteString(strconvQuote(value))
@@ -110,4 +111,5 @@ func (g *Generator) renderDiscriminatedUnion(ir *SchemaIR) {
 	b.WriteString(ir.Union.Discriminator.PropertyName)
 	b.WriteString(" discriminator value %q\", discriminator.Value)\n\t}\n\treturn nil\n}\n")
 	g.decls = append(g.decls, b.String())
+	g.recordSchemaMetadata(ir.Name+"Union", ir.SourceSchema)
 }

@@ -22,6 +22,18 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+func TestDeprecatedGeneratedResultAliases(t *testing.T) {
+	var file *File = &GeneratedFile{}
+	var generatedFile *GeneratedFile = file
+	var result *RenderResult = generatedFile
+	var generatedResult *GeneratedFile = result
+	var typ *Type = &GeneratedType{}
+	var generatedType *GeneratedType = typ
+	if generatedResult == nil || generatedType == nil {
+		t.Fatal("deprecated aliases should be assignment-compatible")
+	}
+}
+
 func TestTrainTravelDefaultRawUnion(t *testing.T) {
 	file := renderTrainTravel(t)
 	src := string(file.Source)
@@ -31,15 +43,17 @@ func TestTrainTravelDefaultRawUnion(t *testing.T) {
 	assertContains(t, src, "type Booking struct")
 	assertContains(t, src, "type BookingPayment struct")
 	assertContains(t, src, "Source")
-	assertContains(t, src, "*BookingPaymentSourceUnion")
+	assertContains(t, src, "*BookingPayment_SourceUnion")
 	assertContains(t, src, "`json:\"source,omitempty\"`")
-	assertContains(t, src, "type BookingPaymentSourceUnion struct")
+	assertContains(t, src, "type BookingPayment_SourceUnion struct")
 	assertContains(t, src, "Raw json.RawMessage")
-	assertNotContains(t, src, "type BookingPaymentSource interface")
-	if len(file.Diagnostics) != 2 {
-		t.Fatalf("expected two diagnostics, got %d: %#v", len(file.Diagnostics), file.Diagnostics)
+	assertNotContains(t, src, "type BookingPayment_Source interface")
+	if !hasDiagnosticCode(file.Diagnostics, DiagnosticOptionalConstDiscriminator) {
+		t.Fatalf("expected optional discriminator diagnostic, got %#v", file.Diagnostics)
 	}
-	assertContains(t, file.Diagnostics[0].Message+file.Diagnostics[1].Message, "optional")
+	if !hasDiagnosticCode(file.Diagnostics, DiagnosticValidationKeyword) {
+		t.Fatalf("expected validation keyword diagnostic, got %#v", file.Diagnostics)
+	}
 	assertParsesAndCompiles(t, file.Source)
 }
 
@@ -47,17 +61,16 @@ func TestTrainTravelOptionalConstDiscriminatorTypedUnion(t *testing.T) {
 	file := renderTrainTravel(t, WithOptionalConstDiscriminatorUnions(true))
 	src := string(file.Source)
 
-	assertContains(t, src, "type BookingPaymentSource interface")
-	assertContains(t, src, "type BookingPaymentSourceUnion struct")
-	assertContains(t, src, "Value BookingPaymentSource")
+	assertContains(t, src, "type BookingPayment_Source interface")
+	assertContains(t, src, "type BookingPayment_SourceUnion struct")
+	assertContains(t, src, "Value BookingPayment_Source")
 	assertContains(t, src, "case \"bank_account\":")
 	assertContains(t, src, "case \"card\":")
-	assertContains(t, src, "func (BookingPaymentSourceCard) isBookingPaymentSource() {}")
-	assertContains(t, src, "func (BookingPaymentSourceBankAccount) isBookingPaymentSource() {}")
-	if len(file.Diagnostics) != 1 {
-		t.Fatalf("expected one diagnostic, got %#v", file.Diagnostics)
+	assertContains(t, src, "func (BookingPayment_Source_Card) isBookingPayment_Source() {}")
+	assertContains(t, src, "func (BookingPayment_Source_BankAccount) isBookingPayment_Source() {}")
+	if !hasDiagnosticCode(file.Diagnostics, DiagnosticUnevaluatedProperties) {
+		t.Fatalf("expected unevaluatedProperties diagnostic, got %#v", file.Diagnostics)
 	}
-	assertContains(t, file.Diagnostics[0].Message, "unevaluatedProperties")
 	assertParsesAndCompiles(t, file.Source)
 }
 
@@ -201,6 +214,9 @@ func TestSchemaFromTypeErrorsAndProvider(t *testing.T) {
 	if proxy == nil {
 		t.Fatal("expected proxy")
 	}
+	if _, err := SchemaFromType(reflect.TypeOf(BadProvider{})); err == nil {
+		t.Fatal("expected bad provider schema error")
+	}
 }
 
 func (Provider) OpenAPISchema() *highbase.SchemaProxy {
@@ -208,6 +224,12 @@ func (Provider) OpenAPISchema() *highbase.SchemaProxy {
 }
 
 type Provider struct{}
+
+func (BadProvider) OpenAPISchema() *highbase.SchemaProxy {
+	return &highbase.SchemaProxy{}
+}
+
+type BadProvider struct{}
 
 func TestHelpersAndErrors(t *testing.T) {
 	if got := toPublicName("links-self"); got != "LinksSelf" {
@@ -226,7 +248,7 @@ func TestHelpersAndErrors(t *testing.T) {
 		t.Fatalf("unexpected ref name %q", got)
 	}
 	used := map[string]struct{}{}
-	if uniqueName("Pet", used) != "Pet" || uniqueName("Pet", used) != "Pet2" {
+	if uniqueName("Pet", used) != "Pet" || uniqueName("Pet", used) != "Pet__2" {
 		t.Fatal("uniqueName did not allocate suffix")
 	}
 	if intString(0) != "0" || intString(42) != "42" {
@@ -308,7 +330,7 @@ components:
 	assertContains(t, string(src), "case \"cat\":")
 }
 
-func renderTrainTravel(t *testing.T, opts ...Option) *File {
+func renderTrainTravel(t *testing.T, opts ...Option) *GeneratedFile {
 	t.Helper()
 	spec, err := os.ReadFile("testdata/train-travel.yaml")
 	if err != nil {
@@ -364,17 +386,29 @@ func indent(in, prefix string) string {
 
 func assertParsesAndCompiles(t *testing.T, src []byte) {
 	t.Helper()
-	if !bytes.Equal(bytes.TrimSpace(src), bytes.TrimSpace(mustFormat(t, src))) {
-		t.Fatal("source is not gofmt formatted")
-	}
-	if _, err := parser.ParseFile(token.NewFileSet(), "models.go", src, parser.AllErrors); err != nil {
-		t.Fatalf("generated source does not parse: %v\n%s", err, src)
-	}
+	assertParsesCompilesAndTests(t, src, "package models\n\nimport \"testing\"\n\nfunc TestGeneratedPackage(t *testing.T) {}\n")
+}
+
+func assertParsesCompilesAndTests(t *testing.T, src []byte, testSource string) {
+	t.Helper()
+	assertParsesCompilesAndTestsWithFiles(t, map[string][]byte{"models.go": src}, testSource)
+}
+
+func assertParsesCompilesAndTestsWithFiles(t *testing.T, files map[string][]byte, testSource string) {
+	t.Helper()
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "models.go"), src, 0o600); err != nil {
-		t.Fatal(err)
+	for name, src := range files {
+		if !bytes.Equal(bytes.TrimSpace(src), bytes.TrimSpace(mustFormat(t, src))) {
+			t.Fatalf("%s is not gofmt formatted", name)
+		}
+		if _, err := parser.ParseFile(token.NewFileSet(), name, src, parser.AllErrors); err != nil {
+			t.Fatalf("generated source %s does not parse: %v\n%s", name, err, src)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), src, 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err := os.WriteFile(filepath.Join(dir, "models_test.go"), []byte("package models\n\nimport \"testing\"\n\nfunc TestGeneratedPackage(t *testing.T) {}\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "models_test.go"), []byte(testSource), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	cmd := exec.Command("go", "test")
@@ -382,7 +416,7 @@ func assertParsesAndCompiles(t *testing.T, src []byte) {
 	cmd.Env = append(os.Environ(), "GO111MODULE=off")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("generated source does not compile: %v\n%s\n%s", err, out, src)
+		t.Fatalf("generated source does not compile: %v\n%s", err, out)
 	}
 }
 
