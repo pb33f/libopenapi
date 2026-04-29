@@ -454,9 +454,12 @@ $self: something`
 	assert.Equal(t, "something", r.Self)
 }
 
-// TestUnescapeJSONSlashes tests the unescapeJSONSlashes helper function
-// This addresses issue #479 where JSON files with \/ escape sequences fail to parse
-func TestUnescapeJSONSlashes(t *testing.T) {
+// TestNormalizeJSONForYAMLParser tests JSON escapes that are valid JSON but
+// rejected by the YAML parser used for YAML-node construction.
+func TestNormalizeJSONForYAMLParser(t *testing.T) {
+	thumbsUp := string(rune(0x1F44D))
+	rocket := string(rune(0x1F680))
+
 	tests := []struct {
 		name     string
 		input    string
@@ -475,22 +478,61 @@ func TestUnescapeJSONSlashes(t *testing.T) {
 		{"other escapes preserved", `\n\t\/`, `\n\t/`},
 		{"multiple escaped slashes", `\/one\/two\/three`, `/one/two/three`},
 		{"mixed content", `{"path":"\/test","url":"https:\/\/example.com"}`, `{"path":"/test","url":"https://example.com"}`},
+		{"valid surrogate pair", `\ud83d\udc4d`, thumbsUp},
+		{"valid uppercase surrogate pair", `\uD83D\uDC4D`, thumbsUp},
+		{"multiple surrogate pairs", `\ud83d\udc4d \ud83d\ude80`, thumbsUp + " " + rocket},
+		{"surrogate pair with escaped slash", `https:\/\/example.com\/\ud83d\udc4d`, `https://example.com/` + thumbsUp},
+		{"double escaped surrogate pair", `\\ud83d\\udc4d`, `\\ud83d\\udc4d`},
+		{"trailing backslash", `\`, `\`},
+		{"lone high surrogate", `\ud83d`, `\ud83d`},
+		{"high surrogate without low escape", `\ud83dxxxxxx`, `\ud83dxxxxxx`},
+		{"high surrogate followed by non-low surrogate", `\ud83d\u0041`, `\ud83d\u0041`},
+		{"lone low surrogate", `\udc4d`, `\udc4d`},
+		{"invalid high surrogate hex", `\ud83x\udc4d`, `\ud83x\udc4d`},
+		{"invalid low surrogate hex", `\ud83d\udc4x`, `\ud83d\udc4x`},
+		{"truncated unicode escape", `\u12`, `\u12`},
+		{"non surrogate unicode escape", `\u003c`, `\u003c`},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := unescapeJSONSlashes([]byte(tt.input))
+			result := normalizeJSONForYAMLParser([]byte(tt.input))
 			assert.Equal(t, tt.expected, string(result))
 		})
 	}
 }
 
-// TestUnescapeJSONSlashes_NoAllocation tests that the fast path returns original slice
-func TestUnescapeJSONSlashes_NoAllocation(t *testing.T) {
-	input := []byte(`{"path":"/test"}`)
-	result := unescapeJSONSlashes(input)
-	// Should return same slice when no \/ present
-	assert.Equal(t, &input[0], &result[0], "Should return original slice when no \\/ present")
+func TestDecodeJSONUnicodeEscape(t *testing.T) {
+	value, ok := decodeJSONUnicodeEscape([]byte("D83D"))
+	assert.True(t, ok)
+	assert.Equal(t, uint16(0xD83D), value)
+
+	_, ok = decodeJSONUnicodeEscape([]byte("123"))
+	assert.False(t, ok)
+
+	_, ok = decodeJSONUnicodeEscape([]byte("12xz"))
+	assert.False(t, ok)
+}
+
+// TestNormalizeJSONForYAMLParser_NoAllocation tests that unchanged inputs
+// return the original slice.
+func TestNormalizeJSONForYAMLParser_NoAllocation(t *testing.T) {
+	tests := []string{
+		`{"path":"/test"}`,
+		`{"text":"line\nquoted\"tab\tunicode\u003c"}`,
+		`{"text":"\\ud83d\\udc4d"}`,
+		`{"text":"\ud83d"}`,
+		`{"text":"\udc4d"}`,
+	}
+
+	for _, tt := range tests {
+		t.Run(tt, func(t *testing.T) {
+			input := []byte(tt)
+			result := normalizeJSONForYAMLParser(input)
+			assert.Equal(t, tt, string(result))
+			assert.Equal(t, &input[0], &result[0], "Should return original slice when no rewrite is needed")
+		})
+	}
 }
 
 // TestExtractSpecInfo_JSON_EscapedSlashes tests issue #479
@@ -502,6 +544,49 @@ func TestExtractSpecInfo_JSON_EscapedSlashes(t *testing.T) {
 	r, e := ExtractSpecInfo([]byte(jsonWithEscapedSlash))
 	assert.NoError(t, e)
 	assert.Equal(t, "3.0.0", r.Version)
+	assert.Equal(t, JSONFileType, r.SpecFileType)
+	assert.Equal(t, utils.OpenApi3, r.SpecType)
+}
+
+func TestExtractSpecInfo_JSON_SurrogatePairInExample(t *testing.T) {
+	jsonWithSurrogatePair := `{
+  "openapi": "3.0.1",
+  "info": {"title": "r", "version": "1"},
+  "paths": {
+    "/t": {
+      "post": {
+        "operationId": "t",
+        "responses": {
+          "201": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object", "properties": {"x": {"type": "string"}}},
+                "examples": {
+                  "e": {"value": {"x": "Hello \ud83d\udc4d"}}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}`
+
+	r, e := ExtractSpecInfo([]byte(jsonWithSurrogatePair))
+	assert.NoError(t, e)
+	assert.Equal(t, "3.0.1", r.Version)
+	assert.Equal(t, JSONFileType, r.SpecFileType)
+	assert.Equal(t, utils.OpenApi3, r.SpecType)
+}
+
+func TestExtractSpecInfo_JSON_SurrogatePairInDescription(t *testing.T) {
+	jsonWithSurrogatePair := `{"openapi":"3.0.1","info":{"title":"r","version":"1","description":"Hello \ud83d\udc4d"},"paths":{}}`
+
+	r, e := ExtractSpecInfo([]byte(jsonWithSurrogatePair))
+	assert.NoError(t, e)
+	assert.Equal(t, "3.0.1", r.Version)
 	assert.Equal(t, JSONFileType, r.SpecFileType)
 	assert.Equal(t, utils.OpenApi3, r.SpecType)
 }
@@ -617,6 +702,48 @@ func TestSpecInfo_Release(t *testing.T) {
 	assert.Nil(t, s.SpecJSON)
 	// non-pointer fields are untouched
 	assert.Equal(t, "3.1.0", s.Version)
+}
+
+var normalizeJSONForYAMLParserSink []byte
+
+func BenchmarkNormalizeJSONForYAMLParser_NoEscapes(b *testing.B) {
+	input := []byte(`{"openapi":"3.0.1","info":{"title":"r","version":"1"},"paths":{}}`)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(input)))
+
+	for i := 0; i < b.N; i++ {
+		normalizeJSONForYAMLParserSink = normalizeJSONForYAMLParser(input)
+	}
+}
+
+func BenchmarkNormalizeJSONForYAMLParser_CommonEscapesNoRewrite(b *testing.B) {
+	input := []byte(`{"openapi":"3.0.1","info":{"title":"line\nquoted\"tab\tunicode\u003c","version":"1"},"paths":{}}`)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(input)))
+
+	for i := 0; i < b.N; i++ {
+		normalizeJSONForYAMLParserSink = normalizeJSONForYAMLParser(input)
+	}
+}
+
+func BenchmarkNormalizeJSONForYAMLParser_EscapedSlashes(b *testing.B) {
+	input := []byte(`{"openapi":"3.0.1","info":{"title":"r","version":"1"},"servers":[{"url":"https:\/\/api.example.com\/v1"}],"paths":{"\/test":{}}}`)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(input)))
+
+	for i := 0; i < b.N; i++ {
+		normalizeJSONForYAMLParserSink = normalizeJSONForYAMLParser(input)
+	}
+}
+
+func BenchmarkNormalizeJSONForYAMLParser_SurrogatePair(b *testing.B) {
+	input := []byte(`{"openapi":"3.0.1","info":{"title":"r","version":"1","description":"Hello \ud83d\udc4d"},"paths":{}}`)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(input)))
+
+	for i := 0; i < b.N; i++ {
+		normalizeJSONForYAMLParserSink = normalizeJSONForYAMLParser(input)
+	}
 }
 
 func TestSpecInfo_Release_Nil(t *testing.T) {
