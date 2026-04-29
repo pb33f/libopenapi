@@ -643,6 +643,40 @@ func TestDocument_Serialize_JSON_Modified(t *testing.T) {
 	assert.Equal(t, jsonModified, string(serial))
 }
 
+func TestNewDocument_JSONSurrogatePairExample(t *testing.T) {
+	spec := []byte(`{
+  "openapi": "3.0.1",
+  "info": {"title": "r", "version": "1"},
+  "paths": {
+    "/t": {
+      "post": {
+        "operationId": "t",
+        "responses": {
+          "201": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {"type": "object", "properties": {"x": {"type": "string"}}},
+                "examples": {
+                  "e": {"value": {"x": "Hello \ud83d\udc4d"}}
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}`)
+
+	doc, err := NewDocument(spec)
+	require.NoError(t, err)
+
+	model, buildErr := doc.BuildV3Model()
+	require.NoError(t, buildErr)
+	require.NotNil(t, model)
+}
+
 func TestExtractReference(t *testing.T) {
 	data := `
 openapi: "3.1"
