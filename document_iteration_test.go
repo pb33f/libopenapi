@@ -23,18 +23,18 @@ type context struct {
 	stack   []loopFrame
 }
 
-func BenchmarkMemory_Speakeasy(b *testing.B) {
+func BenchmarkMemory_VendorExtensions(b *testing.B) {
 	// Tell the benchmark to report memory allocations
 	b.ReportAllocs()
 
 	// Run the benchmark the specified number of iterations
 	for i := 0; i < b.N; i++ {
-		runTest(nil, "test_specs/speakeasy-test.yaml")
+		runTest(nil, "test_specs/vendor-extensions-test.yaml")
 	}
 }
 
-func Test_Speakeasy_Document_Iteration(t *testing.T) {
-	runTest(t, "test_specs/speakeasy-test.yaml")
+func Test_VendorExtensions_Document_Iteration(t *testing.T) {
+	runTest(t, "test_specs/vendor-extensions-test.yaml")
 }
 
 func runTest(t *testing.T, specLocation string) {

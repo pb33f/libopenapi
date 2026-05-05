@@ -6,11 +6,11 @@ info:
   description: |-
     Some test description.
     About our test document.
-x-speakeasy-extension-rewrite:
-  x-speakeasy-ignore: x-my-ignore
+x-vendor-extension-rewrite:
+  x-vendor-ignore: x-my-ignore
 externalDocs:
-  url: https://speakeasyapi.dev/docs/home
-  description: Speakeasy Docs
+  url: https://example.com/docs
+  description: Example Docs
 servers:
   - url: http://localhost:35123
     description: The default server.
@@ -47,7 +47,7 @@ servers:
       hostname:
         default: localhost
         description: The hostname of the server.
-x-speakeasy-globals:
+x-vendor-globals:
   parameters:
     - name: globalQueryParam
       in: query
@@ -61,7 +61,7 @@ x-speakeasy-globals:
       schema:
         type: integer
         example: 100
-x-speakeasy-name-override:
+x-vendor-name-override:
   - operationId: getGlobalNameOverride
     methodNameOverride: globalNameOverridden
 tags:
@@ -95,7 +95,7 @@ tags:
     description: Endpoints for testing the pagination extension
   - name: documentation
     description: Testing for documentation extensions and tooling.
-    x-speakeasy-docs:
+    x-vendor-docs:
       go:
         description: Testing for documentation extensions in Go.
       python:
@@ -129,10 +129,10 @@ paths:
       servers:
         - url: http://localhost:35123
           description: The default server.
-          x-speakeasy-server-id: valid
+          x-vendor-server-id: valid
         - url: http://broken
           description: A server url to a non-existent server.
-          x-speakeasy-server-id: broken
+          x-vendor-server-id: broken
       responses:
         "200":
           description: OK
@@ -168,7 +168,7 @@ paths:
             hostname:
               default: localhost
               description: The hostname of the server.
-          x-speakeasy-server-id: main
+          x-vendor-server-id: main
       responses:
         "200":
           description: OK
@@ -197,7 +197,7 @@ paths:
             hostname:
               default: localhost
               description: The hostname of the server.
-          x-speakeasy-server-id: main
+          x-vendor-server-id: main
       responses:
         "200":
           description: OK
@@ -244,7 +244,7 @@ paths:
         - auth
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/tokenAuthResponse"
         "401":
           description: Unsuccessful authentication.
   /bearer#operation:
@@ -256,7 +256,7 @@ paths:
         - apiKeyAuth: []
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/tokenAuthResponse"
         "401":
           description: Unsuccessful authentication.
   /bearer#oauth2:
@@ -268,7 +268,7 @@ paths:
         - oauth2: []
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/tokenAuthResponse"
         "401":
           description: Unsuccessful authentication.
   /bearer#global:
@@ -278,7 +278,7 @@ paths:
         - auth
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/tokenAuthResponse"
         "401":
           description: Unsuccessful authentication.
   /bearer#openIdConnect:
@@ -290,7 +290,7 @@ paths:
         - openIdConnect: []
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/tokenAuthResponse"
         "401":
           description: Unsuccessful authentication.
   /bearer#bearer:
@@ -302,7 +302,7 @@ paths:
         - bearerAuth: []
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/tokenAuthResponse"
         "401":
           description: Unsuccessful authentication.
   /bearer#oauth2AuthOverride:
@@ -320,7 +320,7 @@ paths:
         - oauth2: []
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/tokenAuthResponse"
         "401":
           description: Unsuccessful authentication.
   /auth#basicAuth:
@@ -336,7 +336,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/authServiceRequestBody"
         required: true
       responses:
         "200":
@@ -354,7 +354,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/authServiceRequestBody"
         required: true
       responses:
         "200":
@@ -374,7 +374,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/authServiceRequestBody"
         required: true
       responses:
         "200":
@@ -392,7 +392,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/authServiceRequestBody"
         required: true
       responses:
         "200":
@@ -412,7 +412,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/authServiceRequestBody"
         required: true
       responses:
         "200":
@@ -433,7 +433,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/authServiceRequestBody"
         required: true
       responses:
         "200":
@@ -454,7 +454,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/authServiceRequestBody"
         required: true
       responses:
         "200":
@@ -475,7 +475,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/authServiceRequestBody"
         required: true
       responses:
         "200":
@@ -496,7 +496,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/authServiceRequestBody"
         required: true
       responses:
         "200":
@@ -519,7 +519,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/authServiceRequestBody"
         required: true
       responses:
         "200":
@@ -542,7 +542,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/authServiceRequestBody"
         required: true
       responses:
         "200":
@@ -551,7 +551,7 @@ paths:
           description: Unsuccessful authentication.
   /anything/mixedParams/path/{pathParam}:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: mixedParametersPrimitives
       tags:
         - parameters
@@ -630,7 +630,7 @@ paths:
                     type: string
   /anything/mixedParams/path/{path_param}/camelcase:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: mixedParametersCamelCase
       tags:
         - parameters
@@ -687,15 +687,15 @@ paths:
                   - headers
   /anything/pathParams/str/{strParam}/bool/{boolParam}/int/{intParam}/num/{numParam}:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: simplePathParameterPrimitives
       tags:
         - parameters
       parameters:
-        - $ref: "speakeasy-components.yaml#/components/parameters/strPathParam"
-        - $ref: "speakeasy-components.yaml#/components/parameters/boolPathParam"
-        - $ref: "speakeasy-components.yaml#/components/parameters/intPathParam"
-        - $ref: "speakeasy-components.yaml#/components/parameters/numPathParam"
+        - $ref: "vendor-extensions-components.yaml#/components/parameters/strPathParam"
+        - $ref: "vendor-extensions-components.yaml#/components/parameters/boolPathParam"
+        - $ref: "vendor-extensions-components.yaml#/components/parameters/intPathParam"
+        - $ref: "vendor-extensions-components.yaml#/components/parameters/numPathParam"
       responses:
         "200":
           description: OK
@@ -712,7 +712,7 @@ paths:
                   - url
   /anything/pathParams/obj/{objParam}/objExploded/{objParamExploded}:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: simplePathParameterObjects
       tags:
         - parameters
@@ -721,13 +721,13 @@ paths:
           in: path
           required: true
           schema:
-            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+            $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         - name: objParamExploded
           in: path
           required: true
           explode: true
           schema:
-            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+            $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
       responses:
         "200":
           description: OK
@@ -744,7 +744,7 @@ paths:
                   - url
   /anything/pathParams/arr/{arrParam}:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: simplePathParameterArrays
       tags:
         - parameters
@@ -775,7 +775,7 @@ paths:
                   - url
   /anything/pathParams/map/{mapParam}/mapExploded/{mapParamExploded}:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: simplePathParameterMaps
       tags:
         - parameters
@@ -809,7 +809,7 @@ paths:
                   url:
                     type: string
                     example: http://localhost:35123/anything/pathParams/map/test,value,test2,value2/mapExploded/test=1,test2=2
-                    x-speakeasy-test-internal-directives:
+                    x-vendor-test-internal-directives:
                       - sortSerializedMaps:
                           {
                             "regex": ".*?\\/map\\/(.*?)\\/mapExploded\\/(.*)",
@@ -819,7 +819,7 @@ paths:
                   - url
   /anything/pathParams/json/{jsonObj}:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: pathParameterJson
       tags:
         - parameters
@@ -830,7 +830,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
       responses:
         "200":
           content:
@@ -847,7 +847,7 @@ paths:
           description: OK
   /anything/queryParams/form/primitive:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: formQueryParamsPrimitive
       tags:
         - parameters
@@ -913,7 +913,7 @@ paths:
                   - url
   /anything/queryParams/form/obj:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: formQueryParamsObject
       tags:
         - parameters
@@ -922,13 +922,13 @@ paths:
           in: query
           explode: true
           schema:
-            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+            $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           required: true
         - name: objParam
           in: query
           explode: false
           schema:
-            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+            $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
       responses:
         "200":
           description: OK
@@ -1024,7 +1024,7 @@ paths:
                   - args
   /anything/queryParams/form/camelObj:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: formQueryParamsCamelObject
       tags:
         - parameters
@@ -1083,13 +1083,13 @@ paths:
                   - args
   /anything/queryParams/form/refParamObject:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: formQueryParamsRefParamObject
       tags:
         - parameters
       parameters:
-        - $ref: "speakeasy-components.yaml#/components/parameters/refQueryParamObjExploded"
-        - $ref: "speakeasy-components.yaml#/components/parameters/refQueryParamObj"
+        - $ref: "vendor-extensions-components.yaml#/components/parameters/refQueryParamObjExploded"
+        - $ref: "vendor-extensions-components.yaml#/components/parameters/refQueryParamObj"
       responses:
         "200":
           description: OK
@@ -1131,7 +1131,7 @@ paths:
                   - args
   /anything/queryParams/form/array:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: formQueryParamsArray
       tags:
         - parameters
@@ -1189,7 +1189,7 @@ paths:
                   - args
   /anything/queryParams/pipe/array:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: pipeDelimitedQueryParamsArray
       tags:
         - parameters
@@ -1221,7 +1221,7 @@ paths:
           in: query
           explode: false
           schema:
-            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+            $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         - name: mapParam
           style: pipeDelimited
           in: query
@@ -1243,7 +1243,7 @@ paths:
                   url:
                     type: string
                     example: "http://localhost:35123/anything/queryParams/pipe/array?arrParam=test|test2&arrParamExploded=1&arrParamExploded=2&mapParam=key1|val1|key2|val2&objParam=any|any|bigint|8821239038968084|bigintStr|9223372036854775808|bool|true|boolOpt|true|date|2020-01-01|dateTime|2020-01-01T00%3A00%3A00.000000001Z|decimal|3.141592653589793|decimalStr|3.14159265358979344719667586|enum|one|float32|1.1|int|1|int32|1|int32Enum|55|intEnum|2|num|1.1|str|test|strOpt|testOptional"
-                    x-speakeasy-test-internal-directives:
+                    x-vendor-test-internal-directives:
                       - sortSerializedMaps:
                           { "regex": ".*?&mapParam=(.*?)&.*", "delim": "|" }
                   args:
@@ -1267,7 +1267,7 @@ paths:
                   - args
   /anything/queryParams/form/map:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: formQueryParamsMap
       tags:
         - parameters
@@ -1300,7 +1300,7 @@ paths:
                   url:
                     type: string
                     example: http://localhost:35123/anything/queryParams/form/map?mapParam=test%2Cvalue%2Ctest2%2Cvalue2&test=1&test2=2
-                    x-speakeasy-test-internal-directives:
+                    x-vendor-test-internal-directives:
                       - sortSerializedMaps:
                           {
                             "regex": ".*?\\?mapParam=(.*?)&(.*)",
@@ -1316,14 +1316,14 @@ paths:
                         "test": "1",
                         "test2": "2",
                       }
-                    x-speakeasy-test-internal-directives:
+                    x-vendor-test-internal-directives:
                       - sortSerializedMaps: { "regex": "(.*)", "delim": "," }
                 required:
                   - url
                   - args
   /anything/queryParams/deepObject/obj:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: deepObjectQueryParamsObject
       tags:
         - parameters
@@ -1332,7 +1332,7 @@ paths:
           in: query
           style: deepObject
           schema:
-            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+            $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           required: true
         - name: objArrParam
           in: query
@@ -1444,7 +1444,7 @@ paths:
                   - args
   /anything/queryParams/deepObject/map:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: deepObjectQueryParamsMap
       tags:
         - parameters
@@ -1500,7 +1500,7 @@ paths:
                   - args
   /anything/queryParams/json/obj:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: jsonQueryParamsObject
       tags:
         - parameters
@@ -1510,14 +1510,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           required: true
         - name: deepObjParam
           in: query
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/deepObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/deepObject"
           required: true
       responses:
         "200":
@@ -1548,7 +1548,7 @@ paths:
                   - args
   /anything/queryParams/mixed:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: mixedQueryParams
       tags:
         - parameters
@@ -1558,19 +1558,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           required: true
         - name: formParam
           in: query
           style: form
           schema:
-            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+            $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           required: true
         - name: deepObjectParam
           in: query
           style: deepObject
           schema:
-            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+            $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           required: true
       responses:
         "200":
@@ -1633,7 +1633,7 @@ paths:
                   - args
   /anything/headers/primitive:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: headerParamsPrimitive
       tags:
         - parameters
@@ -1695,7 +1695,7 @@ paths:
                   - headers
   /anything/headers/obj:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: headerParamsObject
       tags:
         - parameters
@@ -1703,13 +1703,13 @@ paths:
         - name: X-Header-Obj
           in: header
           schema:
-            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+            $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           required: true
         - name: X-Header-Obj-Explode
           in: header
           explode: true
           schema:
-            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+            $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           required: true
       responses:
         "200":
@@ -1736,7 +1736,7 @@ paths:
                   - headers
   /anything/headers/map:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: headerParamsMap
       tags:
         - parameters
@@ -1773,13 +1773,13 @@ paths:
                       X-Header-Map:
                         type: string
                         example: "key1,value1,key2,value2"
-                        x-speakeasy-test-internal-directives:
+                        x-vendor-test-internal-directives:
                           - sortSerializedMaps:
                               { "regex": "(.*)", "delim": "," }
                       X-Header-Map-Explode:
                         type: string
                         example: "test1=val1,test2=val2"
-                        x-speakeasy-test-internal-directives:
+                        x-vendor-test-internal-directives:
                           - sortSerializedMaps:
                               { "regex": "(.*)", "delim": "," }
                     required:
@@ -1789,7 +1789,7 @@ paths:
                   - headers
   /anything/headers/array:
     get:
-      x-speakeasy-test: true
+      x-vendor-test: true
       operationId: headerParamsArray
       tags:
         - parameters
@@ -1834,7 +1834,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/readOnlyObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/readOnlyObject"
         required: true
       responses:
         "200":
@@ -1842,7 +1842,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/readOnlyObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/readOnlyObject"
   /writeonlyoutput#writeOnlyOutput:
     post:
       operationId: requestBodyWriteOnlyOutput
@@ -1854,7 +1854,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/writeOnlyObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/writeOnlyObject"
         required: true
       responses:
         "200":
@@ -1862,7 +1862,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/writeOnlyObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/writeOnlyObject"
   /readonlyorwriteonly#writeOnly:
     post:
       operationId: requestBodyWriteOnly
@@ -1874,7 +1874,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/writeOnlyObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/writeOnlyObject"
         required: true
       responses:
         "200":
@@ -1882,7 +1882,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/readOnlyObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/readOnlyObject"
   /readonlyandwriteonly:
     post:
       operationId: requestBodyReadAndWrite
@@ -1894,7 +1894,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/readWriteObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/readWriteObject"
         required: true
       responses:
         "200":
@@ -1902,7 +1902,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/readWriteObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/readWriteObject"
   /readonlyorwriteonly#readOnlyUnion:
     post:
       operationId: requestBodyReadOnlyUnion
@@ -1914,7 +1914,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfReadOnlyObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/weaklyTypedOneOfReadOnlyObject"
         required: true
       responses:
         "200":
@@ -1922,7 +1922,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfReadOnlyObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/weaklyTypedOneOfReadOnlyObject"
   /writeonlyoutput#writeOnlyUnion:
     post:
       operationId: requestBodyWriteOnlyUnion
@@ -1934,7 +1934,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfWriteOnlyObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/weaklyTypedOneOfWriteOnlyObject"
         required: true
       responses:
         "200":
@@ -1942,7 +1942,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfWriteOnlyObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/weaklyTypedOneOfWriteOnlyObject"
   /readonlyandwriteonly#readWriteOnlyUnion:
     post:
       operationId: requestBodyReadWriteOnlyUnion
@@ -1954,7 +1954,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfReadWriteObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/weaklyTypedOneOfReadWriteObject"
         required: true
       responses:
         "200":
@@ -1962,7 +1962,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfReadWriteObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/weaklyTypedOneOfReadWriteObject"
   /anything/requestBodies/post/application/json/simple:
     post:
       operationId: requestBodyPostApplicationJsonSimple
@@ -1972,7 +1972,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         required: true
       responses:
         "200":
@@ -1984,7 +1984,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
                 required:
                   - json
   /anything/requestBodies/post/application/json/camelcase:
@@ -1996,7 +1996,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObjectCamelCase"
         required: true
       responses:
         "200":
@@ -2008,7 +2008,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObjectCamelCase"
                 required:
                   - json
   /requestbody#array:
@@ -2022,7 +2022,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/arrValue"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/arrValue"
         required: true
       responses:
         "200":
@@ -2033,7 +2033,7 @@ paths:
                 title: res
                 type: array
                 items:
-                  $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                  $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
   /requestbody#arrayCamelCase:
     post:
       operationId: requestBodyPostApplicationJsonArrayCamelCase
@@ -2045,7 +2045,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/arrValueCamelCase"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/arrValueCamelCase"
         required: true
       responses:
         "200":
@@ -2056,7 +2056,7 @@ paths:
                 title: res
                 type: array
                 items:
-                  $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+                  $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObjectCamelCase"
   /requestbody#arrayOfArrays:
     post:
       operationId: requestBodyPostApplicationJsonArrayOfArray
@@ -2068,7 +2068,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/arrArrValue"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/arrArrValue"
         required: true
       responses:
         "200":
@@ -2082,7 +2082,7 @@ paths:
                   type: array
                   title: arr
                   items:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
   /requestbody#arrayOfArraysCamelCase:
     post:
       operationId: requestBodyPostApplicationJsonArrayOfArrayCamelCase
@@ -2094,7 +2094,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/arrArrValueCamelCase"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/arrArrValueCamelCase"
         required: true
       responses:
         "200":
@@ -2108,7 +2108,7 @@ paths:
                   type: array
                   title: arr
                   items:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObjectCamelCase"
   /requestbody#map:
     post:
       operationId: requestBodyPostApplicationJsonMap
@@ -2120,7 +2120,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/mapValue"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/mapValue"
         required: true
       responses:
         "200":
@@ -2131,7 +2131,7 @@ paths:
                 title: res
                 type: object
                 additionalProperties:
-                  $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                  $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
   /requestbody#mapCamelCase:
     post:
       operationId: requestBodyPostApplicationJsonMapCamelCase
@@ -2143,7 +2143,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/mapValueCamelCase"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/mapValueCamelCase"
         required: true
       responses:
         "200":
@@ -2154,7 +2154,7 @@ paths:
                 title: res
                 type: object
                 additionalProperties:
-                  $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+                  $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObjectCamelCase"
   /requestbody#mapOfMaps:
     post:
       operationId: requestBodyPostApplicationJsonMapOfMap
@@ -2166,7 +2166,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/mapMapValue"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/mapMapValue"
         required: true
       responses:
         "200":
@@ -2179,7 +2179,7 @@ paths:
                 additionalProperties:
                   type: object
                   additionalProperties:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
   /requestbody#mapOfMapsCamelCase:
     post:
       operationId: requestBodyPostApplicationJsonMapOfMapCamelCase
@@ -2191,7 +2191,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/mapMapValueCamelCase"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/mapMapValueCamelCase"
         required: true
       responses:
         "200":
@@ -2204,7 +2204,7 @@ paths:
                 additionalProperties:
                   type: object
                   additionalProperties:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObjectCamelCase"
   /requestbody#mapOfArrays:
     post:
       operationId: requestBodyPostApplicationJsonMapOfArray
@@ -2216,7 +2216,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/mapArrValue"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/mapArrValue"
         required: true
       responses:
         "200":
@@ -2229,7 +2229,7 @@ paths:
                 additionalProperties:
                   type: array
                   items:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
   /requestbody#mapOfArraysCamelCase:
     post:
       operationId: requestBodyPostApplicationJsonMapOfArrayCamelCase
@@ -2241,7 +2241,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/mapArrValueCamelCase"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/mapArrValueCamelCase"
         required: true
       responses:
         "200":
@@ -2254,7 +2254,7 @@ paths:
                 additionalProperties:
                   type: array
                   items:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObjectCamelCase"
   /requestbody#arrayOfMaps:
     post:
       operationId: requestBodyPostApplicationJsonArrayOfMap
@@ -2266,7 +2266,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/arrMapValue"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/arrMapValue"
         required: true
       responses:
         "200":
@@ -2280,7 +2280,7 @@ paths:
                   title: map
                   type: object
                   additionalProperties:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
   /requestbody#arrayOfMapsCamelCase:
     post:
       operationId: requestBodyPostApplicationJsonArrayOfMapCamelCase
@@ -2292,7 +2292,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/arrMapValueCamelCase"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/arrMapValueCamelCase"
         required: true
       responses:
         "200":
@@ -2306,7 +2306,7 @@ paths:
                   title: map
                   type: object
                   additionalProperties:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObjectCamelCase"
   /requestbody#mapOfPrimitives:
     post:
       operationId: requestBodyPostApplicationJsonMapOfPrimitive
@@ -2318,7 +2318,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/mapPrimitiveValue"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/mapPrimitiveValue"
         required: true
       responses:
         "200":
@@ -2341,7 +2341,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/arrPrimitiveValue"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/arrPrimitiveValue"
         required: true
       responses:
         "200":
@@ -2365,7 +2365,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/arrArrPrimitiveValue"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/arrArrPrimitiveValue"
         required: true
       responses:
         "200":
@@ -2392,7 +2392,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/mapMapPrimitiveValue"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/mapMapPrimitiveValue"
         required: true
       responses:
         "200":
@@ -2417,7 +2417,7 @@ paths:
             schema:
               type: array
               items:
-                $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         required: true
       responses:
         "200":
@@ -2425,7 +2425,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/arrObjValue"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/arrObjValue"
   /anything/requestBodies/post/application/json/array/objResponseCamelCase:
     post:
       operationId: requestBodyPostApplicationJsonArrayObjCamelCase
@@ -2437,7 +2437,7 @@ paths:
             schema:
               type: array
               items:
-                $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObjectCamelCase"
         required: true
       responses:
         "200":
@@ -2445,7 +2445,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/arrObjValueCamelCase"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/arrObjValueCamelCase"
   /anything/requestBodies/post/application/json/map/objResponse:
     post:
       operationId: requestBodyPostApplicationJsonMapObj
@@ -2457,7 +2457,7 @@ paths:
             schema:
               type: object
               additionalProperties:
-                $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         required: true
       responses:
         "200":
@@ -2465,7 +2465,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/mapObjValue"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/mapObjValue"
   /anything/requestBodies/post/application/json/map/objResponseCamelCase:
     post:
       operationId: requestBodyPostApplicationJsonMapObjCamelCase
@@ -2477,7 +2477,7 @@ paths:
             schema:
               type: object
               additionalProperties:
-                $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObjectCamelCase"
         required: true
       responses:
         "200":
@@ -2485,7 +2485,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/mapObjValueCamelCase"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/mapObjValueCamelCase"
   /anything/requestBodies/post/application/json/deep:
     post:
       operationId: requestBodyPostApplicationJsonDeep
@@ -2495,7 +2495,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/deepObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/deepObject"
         required: true
       responses:
         "200":
@@ -2507,7 +2507,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/deepObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/deepObject"
   /anything/requestBodies/post/application/json/deep/camelcase:
     post:
       operationId: requestBodyPostApplicationJsonDeepCamelCase
@@ -2517,7 +2517,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/deepObjectCamelCase"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/deepObjectCamelCase"
         required: true
       responses:
         "200":
@@ -2529,7 +2529,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/deepObjectCamelCase"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/deepObjectCamelCase"
   /anything/requestBodies/post/application/json/multiple/json/filtered:
     post:
       operationId: requestBodyPostApplicationJsonMultipleJsonFiltered
@@ -2539,16 +2539,16 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           text/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           application/test+json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           text/json.test:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         required: true
       responses:
         "200":
@@ -2560,7 +2560,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
                 required:
                   - json
   /anything/requestBodies/post/multiple/contentTypes/component/filtered:
@@ -2572,13 +2572,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           multipart/form-data:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
           application/x-www-form-urlencoded:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         required: true
       responses:
         "200":
@@ -2590,7 +2590,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
                 required:
                   - json
   /anything/requestBodies/post/multiple/contentTypes/inline/filtered:
@@ -2804,11 +2804,11 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         required: true
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/simpleObjectFormResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/simpleObjectFormResponse"
   /anything/requestBodies/put/multipart/deep:
     put:
       operationId: requestBodyPutMultipartDeep
@@ -2818,11 +2818,11 @@ paths:
         content:
           multipart/form-data:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/deepObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/deepObject"
         required: true
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/deepObjectFormResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/deepObjectFormResponse"
   /anything/requestBodies/put/multipart/file:
     put:
       operationId: requestBodyPutMultipartFile
@@ -2892,11 +2892,11 @@ paths:
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         required: true
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/simpleObjectFormResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/simpleObjectFormResponse"
   /anything/requestBodies/post/form/deep:
     post:
       operationId: requestBodyPostFormDeep
@@ -2906,11 +2906,11 @@ paths:
         content:
           application/x-www-form-urlencoded:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/deepObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/deepObject"
         required: true
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/deepObjectFormResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/deepObjectFormResponse"
   /anything/requestBodies/post/form/map/primitive:
     post:
       operationId: requestBodyPostFormMapPrimitive
@@ -3319,7 +3319,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/complexNumberTypes"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/complexNumberTypes"
         required: true
       responses:
         "200":
@@ -3330,7 +3330,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/complexNumberTypes"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/complexNumberTypes"
                   url:
                     type: string
                 required:
@@ -3345,7 +3345,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/defaultsAndConsts"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/defaultsAndConsts"
         required: true
       responses:
         "200":
@@ -3356,7 +3356,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/defaultsAndConstsOutput"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/defaultsAndConstsOutput"
                 required:
                   - json
   /anything/requestBodies/post/jsonDataTypes/string:
@@ -3987,7 +3987,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         required: true
       parameters:
         - name: paramStr
@@ -4005,7 +4005,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
                   args:
                     type: object
                     additionalProperties:
@@ -4067,7 +4067,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         required: true
       parameters:
         - name: str
@@ -4085,7 +4085,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
                   args:
                     type: object
                     additionalProperties:
@@ -4137,7 +4137,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/httpBinSimpleJsonObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/httpBinSimpleJsonObject"
   /html:
     get:
       operationId: responseBodyStringGet
@@ -4191,7 +4191,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/typedObject1"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/typedObject1"
             text/plain:
               schema:
                 type: string
@@ -4208,7 +4208,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/readOnlyObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/readOnlyObject"
   /response-headers:
     post:
       operationId: responseBodyEmptyWithHeaders
@@ -4244,7 +4244,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/objWithStringAdditionalProperties"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/objWithStringAdditionalProperties"
         required: true
       responses:
         "200":
@@ -4255,7 +4255,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/objWithStringAdditionalProperties"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/objWithStringAdditionalProperties"
                 required:
                   - json
   /anything/responseBodies/additionalPropertiesComplexNumbers:
@@ -4267,7 +4267,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/objWithComplexNumbersAdditionalProperties"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/objWithComplexNumbersAdditionalProperties"
         required: true
       responses:
         "200":
@@ -4278,7 +4278,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/objWithComplexNumbersAdditionalProperties"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/objWithComplexNumbersAdditionalProperties"
                 required:
                   - json
   /anything/responseBodies/zeroValueComplexTypePtrs:
@@ -4290,7 +4290,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/objWithZeroValueComplexTypePtrs"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/objWithZeroValueComplexTypePtrs"
         required: true
       responses:
         "200":
@@ -4301,7 +4301,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/objWithZeroValueComplexTypePtrs"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/objWithZeroValueComplexTypePtrs"
                 required:
                   - json
   /anything/responseBodies/additionalPropertiesDate:
@@ -4313,7 +4313,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/objWithDateAdditionalProperties"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/objWithDateAdditionalProperties"
         required: true
       responses:
         "200":
@@ -4324,7 +4324,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/objWithDateAdditionalProperties"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/objWithDateAdditionalProperties"
                 required:
                   - json
   /anything/responseBodies/additionalPropertiesObject:
@@ -4336,7 +4336,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/objWithObjAdditionalProperties"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/objWithObjAdditionalProperties"
         required: true
       responses:
         "200":
@@ -4347,7 +4347,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/objWithObjAdditionalProperties"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/objWithObjAdditionalProperties"
                 required:
                   - json
   /anything/{emptyObject}:
@@ -4356,7 +4356,7 @@ paths:
       tags:
         - generation
       parameters:
-        - $ref: "speakeasy-components.yaml#/components/parameters/emptyObjectParam"
+        - $ref: "vendor-extensions-components.yaml#/components/parameters/emptyObjectParam"
       responses:
         "200":
           description: OK
@@ -4371,7 +4371,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/validCircularReferenceObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/validCircularReferenceObject"
   /anything/arrayCircularReference:
     get:
       operationId: arrayCircularReferenceGet
@@ -4383,7 +4383,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/arrayCircularReferenceObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/arrayCircularReferenceObject"
   /anything/objectCircularReference:
     get:
       operationId: objectCircularReferenceGet
@@ -4395,7 +4395,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/objectCircularReferenceObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/objectCircularReferenceObject"
   /anything/oneOfCircularReference:
     get:
       operationId: oneOfCircularReferenceGet
@@ -4407,7 +4407,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/oneOfCircularReferenceObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/oneOfCircularReferenceObject"
   /anything/emptyResponseObjectWithComment:
     get:
       operationId: emptyResponseObjectWithCommentGet
@@ -4480,15 +4480,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/httpBinSimpleJsonObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/httpBinSimpleJsonObject"
             application/xml:
               x-my-ignore: true
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/httpBinSimpleJsonObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/httpBinSimpleJsonObject"
             text/plain:
               x-my-ignore: true
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/httpBinSimpleJsonObject"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/httpBinSimpleJsonObject"
         "201":
           x-my-ignore: true
           description: Created
@@ -4517,7 +4517,7 @@ paths:
       externalDocs:
         description: Usage example docs
         url: https://docs.example.com
-      x-speakeasy-usage-example:
+      x-vendor-usage-example:
         title: "Second"
         description: "Do this second"
         position: 2
@@ -4707,11 +4707,11 @@ paths:
               type: object
               properties:
                 simpleObject:
-                  $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                  $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
                 fakerStrings:
-                  $ref: "speakeasy-components.yaml#/components/schemas/fakerStrings"
+                  $ref: "vendor-extensions-components.yaml#/components/schemas/fakerStrings"
                 fakerFormattedStrings:
-                  $ref: "speakeasy-components.yaml#/components/schemas/fakerFormattedStrings"
+                  $ref: "vendor-extensions-components.yaml#/components/schemas/fakerFormattedStrings"
       responses:
         "200":
           description: A successful response that contains the simpleObject sent in the request body
@@ -4725,11 +4725,11 @@ paths:
                     type: object
                     properties:
                       simpleObject:
-                        $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                        $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
                       fakerStrings:
-                        $ref: "speakeasy-components.yaml#/components/schemas/fakerStrings"
+                        $ref: "vendor-extensions-components.yaml#/components/schemas/fakerStrings"
                       fakerFormattedStrings:
-                        $ref: "speakeasy-components.yaml#/components/schemas/fakerFormattedStrings"
+                        $ref: "vendor-extensions-components.yaml#/components/schemas/fakerFormattedStrings"
                 required:
                   - json
   /anything/dateParamWithDefault:
@@ -4802,17 +4802,17 @@ paths:
                 $anchor: TypeFromAnchor
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
   /anything/nameOverride:
     get:
       operationId: nameOverrideGet
-      x-speakeasy-name-override: nameOverride
-      x-speakeasy-usage-example: false
+      x-vendor-name-override: nameOverride
+      x-vendor-usage-example: false
       tags:
         - generation
       parameters:
         - name: nameOverride
-          x-speakeasy-name-override: testQueryParam
+          x-vendor-name-override: testQueryParam
           in: query
           required: true
           schema:
@@ -4820,7 +4820,7 @@ paths:
             description: A string type
             example: "example"
         - name: enumNameOverride
-          x-speakeasy-name-override: testEnumQueryParam
+          x-vendor-name-override: testEnumQueryParam
           in: query
           required: true
           schema:
@@ -4838,13 +4838,13 @@ paths:
             application/json:
               schema:
                 type: object
-                x-speakeasy-name-override: overriddenResponse
+                x-vendor-name-override: overriddenResponse
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
   /anything/globalNameOverride:
     get:
-      x-speakeasy-usage-example: true
+      x-vendor-usage-example: true
       operationId: getGlobalNameOverride
       tags:
         - generation
@@ -4857,7 +4857,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
   /anything/ignoredGeneration:
     get:
       operationId: ignoredGenerationGet
@@ -4881,7 +4881,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
                   ignoredProperty:
                     type: string
                     x-my-ignore: true
@@ -4991,8 +4991,8 @@ paths:
       tags:
         - generation
       deprecated: true
-      x-speakeasy-deprecation-replacement: simplePathParameterObjects
-      x-speakeasy-deprecation-message: This operation is deprecated
+      x-vendor-deprecation-replacement: simplePathParameterObjects
+      x-vendor-deprecation-message: This operation is deprecated
       summary: This is an endpoint setup to test deprecation with comments
       parameters:
         - name: deprecatedParameter
@@ -5000,8 +5000,8 @@ paths:
           schema:
             type: string
           deprecated: true
-          x-speakeasy-deprecation-replacement: newParameter
-          x-speakeasy-deprecation-message: This parameter is deprecated
+          x-vendor-deprecation-replacement: newParameter
+          x-vendor-deprecation-message: This parameter is deprecated
           description: This is a string parameter
         - name: newParameter
           in: query
@@ -5040,7 +5040,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/deprecatedObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/deprecatedObject"
   /anything/deprecatedFieldInSchema:
     post:
       operationId: deprecatedFieldInSchemaPost
@@ -5050,7 +5050,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/deprecatedFieldInObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/deprecatedFieldInObject"
         required: true
       responses:
         "200":
@@ -5102,7 +5102,7 @@ paths:
           description: OK
   /anything/globals/queryParameter:
     get:
-      x-speakeasy-usage-example:
+      x-vendor-usage-example:
         tags:
           - global-parameters
       operationId: globalsQueryParameterGet
@@ -5134,7 +5134,7 @@ paths:
                   - args
   /anything/globals/pathParameter/{globalPathParam}:
     get:
-      x-speakeasy-usage-example:
+      x-vendor-usage-example:
         tags:
           - global-parameters
       operationId: globalPathParameterGet
@@ -5168,7 +5168,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/stronglyTypedOneOfObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/stronglyTypedOneOfObject"
         required: true
       responses:
         "200":
@@ -5180,7 +5180,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/stronglyTypedOneOfObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/stronglyTypedOneOfObject"
                 required:
                   - json
   /anything/weaklyTypedOneOf:
@@ -5192,7 +5192,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfObject"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/weaklyTypedOneOfObject"
         required: true
       responses:
         "200":
@@ -5204,7 +5204,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfObject"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/weaklyTypedOneOfObject"
                 required:
                   - json
   /anything/typedObjectOneOf:
@@ -5216,7 +5216,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/typedObjectOneOf"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/typedObjectOneOf"
         required: true
       responses:
         "200":
@@ -5228,7 +5228,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/typedObjectOneOf"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/typedObjectOneOf"
                 required:
                   - json
   /anything/typedObjectNullableOneOf:
@@ -5240,7 +5240,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/typedObjectNullableOneOf"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/typedObjectNullableOneOf"
         required: true
       responses:
         "200":
@@ -5252,7 +5252,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/typedObjectNullableOneOf"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/typedObjectNullableOneOf"
                 required:
                   - json
   /anything/flattenedTypedObject:
@@ -5264,7 +5264,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/flattenedTypedObject1"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/flattenedTypedObject1"
         required: true
       responses:
         "200":
@@ -5276,7 +5276,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/flattenedTypedObject1"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/flattenedTypedObject1"
                 required:
                   - json
   /anything/nullableTypedObject:
@@ -5288,7 +5288,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/nullableTypedObject1"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/nullableTypedObject1"
         required: true
       responses:
         "200":
@@ -5300,7 +5300,7 @@ paths:
                 type: object
                 properties:
                   json:
-                    $ref: "speakeasy-components.yaml#/components/schemas/nullableTypedObject1"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/nullableTypedObject1"
                 required:
                   - json
   /anything/nullableOneOfSchema:
@@ -5313,8 +5313,8 @@ paths:
           application/json:
             schema:
               oneOf:
-                - $ref: "speakeasy-components.yaml#/components/schemas/typedObject1"
-                - $ref: "speakeasy-components.yaml#/components/schemas/typedObject2"
+                - $ref: "vendor-extensions-components.yaml#/components/schemas/typedObject1"
+                - $ref: "vendor-extensions-components.yaml#/components/schemas/typedObject2"
                 - type: "null"
         required: true
       responses:
@@ -5328,8 +5328,8 @@ paths:
                 properties:
                   json:
                     oneOf:
-                      - $ref: "speakeasy-components.yaml#/components/schemas/typedObject1"
-                      - $ref: "speakeasy-components.yaml#/components/schemas/typedObject2"
+                      - $ref: "vendor-extensions-components.yaml#/components/schemas/typedObject1"
+                      - $ref: "vendor-extensions-components.yaml#/components/schemas/typedObject2"
                       - type: "null"
                 required:
                   - json
@@ -5425,7 +5425,7 @@ paths:
               oneOf:
                 - type: string
                 - type: integer
-                - $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                - $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         required: true
       responses:
         "200":
@@ -5440,7 +5440,7 @@ paths:
                     oneOf:
                       - type: string
                       - type: integer
-                      - $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                      - $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
                 required:
                   - json
   /anything/unionDateNull:
@@ -5591,14 +5591,14 @@ paths:
     servers:
       - url: http://localhost:35456
     get:
-      x-speakeasy-errors:
+      x-vendor-errors:
         statusCodes:
           - "400"
           - "401"
           - "4XX"
           - "500"
           - "501"
-      operationId: statusGetXSpeakeasyErrors
+      operationId: statusGetXVendorErrors
       tags:
         - errors
       parameters:
@@ -5619,7 +5619,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "speakeasy-components.yaml#/components/schemas/error"
+                $ref: "vendor-extensions-components.yaml#/components/schemas/error"
         "501":
           description: Not Implemented
           content:
@@ -5632,7 +5632,7 @@ paths:
                   message:
                     type: string
                   type:
-                    $ref: "speakeasy-components.yaml#/components/schemas/errorType"
+                    $ref: "vendor-extensions-components.yaml#/components/schemas/errorType"
   /anything/connectionError:
     get:
       operationId: connectionErrorGet
@@ -5663,9 +5663,9 @@ paths:
                       type: string
                 required:
                   - headers
-  /anything/telemetry/speakeasy-user-agent:
+  /anything/telemetry/custom-user-agent:
     get:
-      operationId: telemetrySpeakeasyUserAgentGet
+      operationId: telemetryCustomUserAgentGet
       tags:
         - telemetry
       parameters:
@@ -5702,10 +5702,10 @@ paths:
           required: true
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/paginationResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/paginationResponse"
       tags:
         - pagination
-      x-speakeasy-pagination:
+      x-vendor-pagination:
         type: offsetLimit
         inputs:
           - name: page
@@ -5721,14 +5721,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/limitOffsetConfig"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/limitOffsetConfig"
         required: true
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/paginationResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/paginationResponse"
       tags:
         - pagination
-      x-speakeasy-pagination:
+      x-vendor-pagination:
         type: offsetLimit
         inputs:
           - name: limit
@@ -5755,10 +5755,10 @@ paths:
             type: integer
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/paginationResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/paginationResponse"
       tags:
         - pagination
-      x-speakeasy-pagination:
+      x-vendor-pagination:
         type: offsetLimit
         inputs:
           - name: limit
@@ -5777,14 +5777,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "speakeasy-components.yaml#/components/schemas/limitOffsetConfig"
+              $ref: "vendor-extensions-components.yaml#/components/schemas/limitOffsetConfig"
         required: true
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/paginationResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/paginationResponse"
       tags:
         - pagination
-      x-speakeasy-pagination:
+      x-vendor-pagination:
         type: offsetLimit
         inputs:
           - name: limit
@@ -5808,10 +5808,10 @@ paths:
           required: true
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/paginationResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/paginationResponse"
       tags:
         - pagination
-      x-speakeasy-pagination:
+      x-vendor-pagination:
         type: cursor
         inputs:
           - name: cursor
@@ -5836,10 +5836,10 @@ paths:
         required: true
       responses:
         "200":
-          $ref: "speakeasy-components.yaml#/components/responses/paginationResponse"
+          $ref: "vendor-extensions-components.yaml#/components/responses/paginationResponse"
       tags:
         - pagination
-      x-speakeasy-pagination:
+      x-vendor-pagination:
         type: cursor
         inputs:
           - name: cursor
@@ -5850,54 +5850,54 @@ paths:
   /group/first:
     get:
       operationId: groupFirstGet
-      x-speakeasy-name-override: get
-      x-speakeasy-group: first
+      x-vendor-name-override: get
+      x-vendor-group: first
       responses:
         "200":
           description: OK
   /group/second:
     get:
       operationId: groupSecondGet
-      x-speakeasy-name-override: get
-      x-speakeasy-group: second
+      x-vendor-name-override: get
+      x-vendor-group: second
       responses:
         "200":
           description: OK
   /anything/nested:
     get:
       operationId: nestedGet
-      x-speakeasy-name-override: get
-      x-speakeasy-group: nested
+      x-vendor-name-override: get
+      x-vendor-group: nested
       responses:
         "200":
           description: OK
   /anything/nested/first:
     get:
       operationId: nestedFirstGet
-      x-speakeasy-name-override: get
-      x-speakeasy-group: nested.first
+      x-vendor-name-override: get
+      x-vendor-group: nested.first
       responses:
         "200":
           description: OK
   /anything/nested/second:
     get:
       operationId: nestedSecondGet
-      x-speakeasy-name-override: get
-      x-speakeasy-group: nested.second
+      x-vendor-name-override: get
+      x-vendor-group: nested.second
       responses:
         "200":
           description: OK
   /anything/nest/first:
     get:
       operationId: nestFirstGet
-      x-speakeasy-name-override: get
-      x-speakeasy-group: nest.first
+      x-vendor-name-override: get
+      x-vendor-group: nest.first
       responses:
         "200":
           description: OK
   /resource:
     post:
-      x-speakeasy-entity-operation: ExampleResource#create
+      x-vendor-entity-operation: ExampleResource#create
       operationId: createResource
       tags:
         - resource
@@ -5916,7 +5916,7 @@ paths:
                 $ref: "#/components/schemas/ExampleResource"
   /fileResource:
     post:
-      x-speakeasy-entity-operation: File#create
+      x-vendor-entity-operation: File#create
       operationId: createFile
       tags:
         - resource
@@ -5939,14 +5939,14 @@ paths:
                 $ref: "#/components/schemas/FileResource"
   /resource/{resourceId}:
     get:
-      x-speakeasy-entity-operation: ExampleResource#read
+      x-vendor-entity-operation: ExampleResource#read
       operationId: getResource
       tags:
         - resource
       parameters:
         - name: resourceId
           in: path
-          x-speakeasy-match: id
+          x-vendor-match: id
           schema:
             type: string
           required: true
@@ -5958,14 +5958,14 @@ paths:
               schema:
                 $ref: "#/components/schemas/ExampleResource"
     post:
-      x-speakeasy-entity-operation: ExampleResource#update
+      x-vendor-entity-operation: ExampleResource#update
       operationId: updateResource
       tags:
         - resource
       parameters:
         - name: resourceId
           in: path
-          x-speakeasy-match: id
+          x-vendor-match: id
           schema:
             type: string
           required: true
@@ -5973,14 +5973,14 @@ paths:
         "202":
           description: OK
     delete:
-      x-speakeasy-entity-operation: ExampleResource#delete
+      x-vendor-entity-operation: ExampleResource#delete
       operationId: deleteResource
       tags:
         - resource
       parameters:
         - name: resourceId
           in: path
-          x-speakeasy-match: id
+          x-vendor-match: id
           schema:
             type: string
           required: true
@@ -6022,7 +6022,7 @@ paths:
                     type: integer
                 required:
                   - retries
-      x-speakeasy-retries:
+      x-vendor-retries:
         strategy: backoff
         backoff:
           initialInterval: 10 # 10 ms
@@ -6036,7 +6036,7 @@ paths:
     get:
       operationId: getDocumentationPerLanguage
       description: Gets documentation for some language, I guess.
-      x-speakeasy-docs:
+      x-vendor-docs:
         go:
           description: Get stuff in Golang.
         python:
@@ -6050,7 +6050,7 @@ paths:
           required: true
           schema:
             type: string
-          x-speakeasy-docs:
+          x-vendor-docs:
             go:
               description: The Golang language is uptight.
             python:
@@ -6062,7 +6062,7 @@ paths:
       responses:
         "200":
           description: OK
-          x-speakeasy-docs:
+          x-vendor-docs:
             go:
               description: Golang is OK
             python:
@@ -6125,7 +6125,7 @@ components:
         - model
         - year
     FileResource:
-      x-speakeasy-entity: File
+      x-vendor-entity: File
       type: object
       properties:
         id:
@@ -6133,7 +6133,7 @@ components:
       required:
         - id
     ExampleResource:
-      x-speakeasy-entity: ExampleResource
+      x-vendor-entity: ExampleResource
       type: object
       properties:
         id:
@@ -6191,7 +6191,7 @@ components:
         - chocolates
         - vehicle
     primitiveTypeUnion:
-      x-speakeasy-include: true
+      x-vendor-include: true
       oneOf:
         - type: string
         - type: integer
@@ -6202,7 +6202,7 @@ components:
           format: float
         - type: boolean
     numericUnion:
-      x-speakeasy-include: true
+      x-vendor-include: true
       oneOf:
         - type: integer
         - type: number
@@ -6231,10 +6231,10 @@ components:
           type: string
     oneOfObjectOrArrayOfObjects:
       oneOf:
-        - $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        - $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
         - type: "array"
           items:
-            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+            $ref: "vendor-extensions-components.yaml#/components/schemas/simpleObject"
     nullableOneOfTypeInObject:
       type: object
       required:
@@ -6263,18 +6263,18 @@ components:
       properties:
         OneOfOne:
           oneOf:
-            - $ref: "speakeasy-components.yaml#/components/schemas/typedObject1"
+            - $ref: "vendor-extensions-components.yaml#/components/schemas/typedObject1"
         NullableOneOfOne:
           oneOf:
-            - $ref: "speakeasy-components.yaml#/components/schemas/typedObject1"
+            - $ref: "vendor-extensions-components.yaml#/components/schemas/typedObject1"
             - type: "null"
         NullableOneOfTwo:
           oneOf:
-            - $ref: "speakeasy-components.yaml#/components/schemas/typedObject1"
-            - $ref: "speakeasy-components.yaml#/components/schemas/typedObject2"
+            - $ref: "vendor-extensions-components.yaml#/components/schemas/typedObject1"
+            - $ref: "vendor-extensions-components.yaml#/components/schemas/typedObject2"
             - type: "null"
     allOfToAllOf:
-      x-speakeasy-include: true
+      x-vendor-include: true
       title: "allOf1"
       type: object
       allOf:
@@ -6294,7 +6294,7 @@ components:
           title: "allOf4"
     unsupportedEnums:
       type: object
-      x-speakeasy-include: true
+      x-vendor-include: true
       properties:
         booleanEnum:
           type: boolean
@@ -6309,7 +6309,7 @@ components:
         - booleanEnum
         - numberEnum
     oneOfGenerationStressTest:
-      x-speakeasy-include: true
+      x-vendor-include: true
       type: object
       properties:
         oneOfSameType:
@@ -6335,30 +6335,30 @@ components:
     basicAuth:
       type: http
       scheme: basic
-      x-speakeasy-example: YOUR_USERNAME;YOUR_PASSWORD
+      x-vendor-example: YOUR_USERNAME;YOUR_PASSWORD
     apiKeyAuth:
       type: apiKey
       in: header
       name: Authorization
       description: Authenticate using an API Key generated via our platform.
-      x-speakeasy-example: Token YOUR_API_KEY
+      x-vendor-example: Token YOUR_API_KEY
     bearerAuth:
       type: http
       scheme: bearer
-      x-speakeasy-example: YOUR_JWT
+      x-vendor-example: YOUR_JWT
     apiKeyAuthNew:
       type: apiKey
       in: header
       name: x-api-key
-      x-speakeasy-example: Token <YOUR_API_KEY>
+      x-vendor-example: Token <YOUR_API_KEY>
     oauth2:
       type: oauth2
       flows:
         implicit:
           authorizationUrl: http://localhost:35123/oauth2/authorize
           scopes: {}
-      x-speakeasy-example: Bearer YOUR_OAUTH2_TOKEN
+      x-vendor-example: Bearer YOUR_OAUTH2_TOKEN
     openIdConnect:
       type: openIdConnect
       openIdConnectUrl: http://localhost:35123/.well-known/openid-configuration
-      x-speakeasy-example: Bearer YOUR_OPENID_TOKEN
+      x-vendor-example: Bearer YOUR_OPENID_TOKEN
