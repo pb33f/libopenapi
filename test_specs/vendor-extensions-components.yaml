@@ -174,7 +174,7 @@ components:
       description: "A simple object that uses all our supported primitive types and enums and has optional properties."
       externalDocs:
         description: "A link to the external docs."
-        url: "https://docs.speakeasyapi.dev"
+        url: "https://example.com/docs"
       type: object
       properties:
         str:
@@ -240,7 +240,7 @@ components:
             - 2
             - 3
           example: 2
-          x-speakeasy-enums:
+          x-vendor-enums:
             - First
             - Second
             - Third
@@ -286,7 +286,7 @@ components:
       description: "A simple object that uses all our supported primitive types and enums and has optional properties."
       externalDocs:
         description: "A link to the external docs."
-        url: "https://docs.speakeasyapi.dev"
+        url: "https://example.com/docs"
       type: object
       properties:
         str_val:
@@ -354,7 +354,7 @@ components:
             - 2
             - 3
           example: 3
-          x-speakeasy-enums:
+          x-vendor-enums:
             - First
             - Second
             - Third
@@ -816,7 +816,7 @@ components:
         additionalProperties:
           type: string
     orphanedObject:
-      x-speakeasy-include: true
+      x-vendor-include: true
       type: object
       properties:
         orphaned:
@@ -856,7 +856,7 @@ components:
     deprecatedObject:
       type: object
       deprecated: true
-      x-speakeasy-deprecation-message: This object is deprecated
+      x-vendor-deprecation-message: This object is deprecated
       properties:
         str:
           type: string
@@ -866,12 +866,12 @@ components:
         deprecatedField:
           type: string
           deprecated: true
-          x-speakeasy-deprecation-replacement: newField
+          x-vendor-deprecation-replacement: newField
         deprecatedEnum:
           type: string
           enum: ["a", "b", "c"]
           deprecated: true
-          x-speakeasy-deprecation-message: This enum is deprecated
+          x-vendor-deprecation-message: This enum is deprecated
         newField:
           type: string
     limitOffsetConfig:
@@ -890,7 +890,7 @@ components:
           type: string
         message:
           type: string
-          x-speakeasy-error-message: true
+          x-vendor-error-message: true
         type:
           $ref: "#/components/schemas/errorType"
     errorType:

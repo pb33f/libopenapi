@@ -1498,7 +1498,7 @@ func TestDocument_AdvanceCallbackReferences(t *testing.T) {
 func BenchmarkLoadDocTwice(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 
-		spec, err := os.ReadFile("test_specs/speakeasy-test.yaml")
+		spec, err := os.ReadFile("test_specs/vendor-extensions-test.yaml")
 		require.NoError(b, err)
 
 		doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
@@ -1527,7 +1527,7 @@ func BenchmarkLoadDocTwice(b *testing.B) {
 }
 
 func TestDocument_LoadDocTwice(t *testing.T) {
-	spec, err := os.ReadFile("test_specs/speakeasy-test.yaml")
+	spec, err := os.ReadFile("test_specs/vendor-extensions-test.yaml")
 	require.NoError(t, err)
 
 	doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
