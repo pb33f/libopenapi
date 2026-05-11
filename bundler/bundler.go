@@ -20,6 +20,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
@@ -27,6 +28,272 @@ import (
 
 // ErrInvalidModel is returned when the model is not usable.
 var ErrInvalidModel = errors.New("invalid model")
+
+func renderBundledModel(model *v3.Document, rootIndex *index.SpecIndex) ([]byte, error) {
+	if rootIndex != nil && rootIndex.GetConfig() != nil && rootIndex.GetConfig().SpecInfo != nil {
+		specInfo := rootIndex.GetConfig().SpecInfo
+		if specInfo.SpecFileType == datamodel.YAMLFileType && specInfo.OriginalIndentation > 0 {
+			return model.RenderWithIndention(specInfo.OriginalIndentation), nil
+		}
+	}
+	return model.Render()
+}
+
+func validateDiscriminatorMappings(rolodex *index.Rolodex) error {
+	if rolodex == nil {
+		return nil
+	}
+
+	if err := validateDiscriminatorMappingsFromIndex(rolodex.GetRootIndex()); err != nil {
+		return err
+	}
+	for _, idx := range rolodex.GetIndexes() {
+		if err := validateDiscriminatorMappingsFromIndex(idx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateDiscriminatorMappingsFromIndex(idx *index.SpecIndex) error {
+	if idx == nil {
+		return nil
+	}
+	return validateDiscriminatorMappingsFromNode(idx.GetRootNode())
+}
+
+func validateDiscriminatorMappingsFromNode(n *yaml.Node) error {
+	return validateDiscriminatorMappingsFromRootNode(n, make(map[*yaml.Node]struct{}))
+}
+
+func validateDiscriminatorMappingsFromRootNode(n *yaml.Node, seen map[*yaml.Node]struct{}) error {
+	n = discriminatorValidationNode(n)
+	if n == nil {
+		return nil
+	}
+
+	switch n.Kind {
+	case yaml.MappingNode:
+		if !isOpenAPIDocumentRoot(n) && isDiscriminatorValidationSchemaCandidate(n) {
+			return validateDiscriminatorMappingsFromSchemaNode(n, seen)
+		}
+		if err := validateDiscriminatorMappingsFromOpenAPIObject(n, seen, make(map[*yaml.Node]struct{}), nil); err != nil {
+			return err
+		}
+		if isDiscriminatorValidationSchemaCandidate(n) {
+			return validateDiscriminatorMappingsFromSchemaNode(n, seen)
+		}
+	}
+	return nil
+}
+
+func isOpenAPIDocumentRoot(n *yaml.Node) bool {
+	n = discriminatorValidationNode(n)
+	if n == nil || n.Kind != yaml.MappingNode {
+		return false
+	}
+	for i := 0; i < len(n.Content); i += 2 {
+		keyNode := utils.NodeAlias(n.Content[i])
+		if keyNode == nil {
+			continue
+		}
+		if keyNode.Value == "openapi" || keyNode.Value == "swagger" {
+			return true
+		}
+	}
+	return false
+}
+
+func discriminatorValidationNode(n *yaml.Node) *yaml.Node {
+	n = utils.NodeAlias(n)
+	if n != nil && n.Kind == yaml.DocumentNode && len(n.Content) > 0 {
+		n = utils.NodeAlias(n.Content[0])
+	}
+	return n
+}
+
+func validateDiscriminatorMappingsFromOpenAPIObject(n *yaml.Node, schemaSeen, objectSeen map[*yaml.Node]struct{}, path []string) error {
+	n = discriminatorValidationNode(n)
+	if n == nil {
+		return nil
+	}
+	if _, ok := objectSeen[n]; ok {
+		return nil
+	}
+	objectSeen[n] = struct{}{}
+
+	switch n.Kind {
+	case yaml.SequenceNode:
+		for _, c := range n.Content {
+			if err := validateDiscriminatorMappingsFromOpenAPIObject(c, schemaSeen, objectSeen, path); err != nil {
+				return err
+			}
+		}
+	case yaml.MappingNode:
+		for i := 0; i < len(n.Content); i += 2 {
+			keyNode := utils.NodeAlias(n.Content[i])
+			valueNode := utils.NodeAlias(n.Content[i+1])
+			if keyNode == nil || valueNode == nil {
+				continue
+			}
+			key := keyNode.Value
+			if shouldSkipDiscriminatorValidationOpenAPIValue(key) {
+				continue
+			}
+
+			switch {
+			case key == lowbase.SchemaLabel:
+				if err := validateDiscriminatorMappingsFromSchemaNode(valueNode, schemaSeen); err != nil {
+					return err
+				}
+				continue
+			case key == "schemas" && (len(path) == 0 || path[len(path)-1] == "components"):
+				if err := validateDiscriminatorMappingsFromSchemaMap(valueNode, schemaSeen); err != nil {
+					return err
+				}
+				continue
+			case key == "definitions" && len(path) == 0:
+				if err := validateDiscriminatorMappingsFromSchemaMap(valueNode, schemaSeen); err != nil {
+					return err
+				}
+				continue
+			}
+
+			if valueNode.Kind == yaml.MappingNode || valueNode.Kind == yaml.SequenceNode {
+				if err := validateDiscriminatorMappingsFromOpenAPIObject(valueNode, schemaSeen, objectSeen, append(path, key)); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func shouldSkipDiscriminatorValidationOpenAPIValue(key string) bool {
+	return key == lowbase.ExampleLabel ||
+		key == lowbase.ExamplesLabel ||
+		strings.HasPrefix(key, "x-")
+}
+
+func validateDiscriminatorMappingsFromSchemaNode(n *yaml.Node, seen map[*yaml.Node]struct{}) error {
+	n = discriminatorValidationNode(n)
+	if n == nil || n.Kind != yaml.MappingNode {
+		return nil
+	}
+	if _, ok := seen[n]; ok {
+		return nil
+	}
+	seen[n] = struct{}{}
+
+	for i := 0; i < len(n.Content); i += 2 {
+		keyNode := utils.NodeAlias(n.Content[i])
+		valueNode := utils.NodeAlias(n.Content[i+1])
+		if keyNode == nil || valueNode == nil {
+			continue
+		}
+		key := keyNode.Value
+		switch {
+		case key == lowbase.DiscriminatorLabel:
+			if err := lowbase.ValidateDiscriminatorMappingValueNodes(valueNode); err != nil {
+				return err
+			}
+		case isDirectSchemaChildKey(key):
+			if err := validateDiscriminatorMappingsFromSchemaNode(valueNode, seen); err != nil {
+				return err
+			}
+		case isSchemaMapChildKey(key):
+			if err := validateDiscriminatorMappingsFromSchemaMap(valueNode, seen); err != nil {
+				return err
+			}
+		case isSchemaArrayChildKey(key):
+			if err := validateDiscriminatorMappingsFromSchemaArray(valueNode, seen); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func validateDiscriminatorMappingsFromSchemaMap(n *yaml.Node, seen map[*yaml.Node]struct{}) error {
+	n = discriminatorValidationNode(n)
+	if n == nil || n.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 1; i < len(n.Content); i += 2 {
+		if err := validateDiscriminatorMappingsFromSchemaNode(n.Content[i], seen); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateDiscriminatorMappingsFromSchemaArray(n *yaml.Node, seen map[*yaml.Node]struct{}) error {
+	n = discriminatorValidationNode(n)
+	if n == nil || n.Kind != yaml.SequenceNode {
+		return nil
+	}
+	for _, c := range n.Content {
+		if err := validateDiscriminatorMappingsFromSchemaNode(c, seen); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func isDiscriminatorValidationSchemaCandidate(n *yaml.Node) bool {
+	n = discriminatorValidationNode(n)
+	if n == nil || n.Kind != yaml.MappingNode {
+		return false
+	}
+	for i := 0; i < len(n.Content); i += 2 {
+		keyNode := utils.NodeAlias(n.Content[i])
+		if keyNode == nil {
+			continue
+		}
+		switch keyNode.Value {
+		case "$ref", lowbase.SchemaTypeLabel, lowbase.IdLabel, lowbase.TypeLabel,
+			lowbase.DiscriminatorLabel, lowbase.PropertiesLabel,
+			lowbase.PatternPropertiesLabel, lowbase.DependentSchemasLabel,
+			lowbase.AdditionalPropertiesLabel, lowbase.ItemsLabel,
+			lowbase.PrefixItemsLabel, lowbase.ContainsLabel, lowbase.AllOfLabel,
+			lowbase.AnyOfLabel, lowbase.OneOfLabel, lowbase.NotLabel,
+			lowbase.IfLabel, lowbase.ThenLabel, lowbase.ElseLabel,
+			lowbase.PropertyNamesLabel, lowbase.UnevaluatedItemsLabel,
+			lowbase.UnevaluatedPropertiesLabel, lowbase.ContentSchemaLabel,
+			"required", "enum", "const", "$defs", "definitions":
+			return true
+		}
+	}
+	return false
+}
+
+func isDirectSchemaChildKey(key string) bool {
+	switch key {
+	case lowbase.SchemaLabel, lowbase.ItemsLabel, lowbase.AdditionalPropertiesLabel,
+		lowbase.ContainsLabel, lowbase.NotLabel, lowbase.IfLabel, lowbase.ThenLabel,
+		lowbase.ElseLabel, lowbase.PropertyNamesLabel, lowbase.UnevaluatedItemsLabel,
+		lowbase.UnevaluatedPropertiesLabel, lowbase.ContentSchemaLabel:
+		return true
+	}
+	return false
+}
+
+func isSchemaMapChildKey(key string) bool {
+	switch key {
+	case lowbase.PropertiesLabel, lowbase.PatternPropertiesLabel,
+		lowbase.DependentSchemasLabel, "$defs", "definitions":
+		return true
+	}
+	return false
+}
+
+func isSchemaArrayChildKey(key string) bool {
+	switch key {
+	case lowbase.AllOfLabel, lowbase.AnyOfLabel, lowbase.OneOfLabel, lowbase.PrefixItemsLabel:
+		return true
+	}
+	return false
+}
 
 type invalidModelBuildError struct {
 	cause error
@@ -237,6 +504,9 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 	rolodex := model.Rolodex
 	indexes := rolodex.GetIndexes()
 	rootIndex := rolodex.GetRootIndex()
+	if err := validateDiscriminatorMappings(rolodex); err != nil {
+		return nil, err
+	}
 
 	// Step 1: Collect discriminator mappings WITH context (early)
 	discriminatorMappings := collectDiscriminatorMappingNodesWithContext(rolodex)
@@ -258,6 +528,9 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 	enqueueDiscriminatorMappingTargets(discriminatorMappings, cf, rootIndex)
 	// Refresh indexes in case mapping resolution loaded new ones
 	cf.indexes = rolodex.GetIndexes()
+	if err := validateDiscriminatorMappings(rolodex); err != nil {
+		return nil, err
+	}
 
 	if err := handleIndex(cf); err != nil {
 		return nil, err
@@ -358,7 +631,7 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 		}
 	}
 
-	b, err := model.Render()
+	b, err := renderBundledModel(model, rootIndex)
 	errs = append(errs, err)
 
 	result := &BundleResult{
@@ -394,6 +667,9 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	rolodex := model.Rolodex
 	indexes := rolodex.GetIndexes()
 	rootIndex := rolodex.GetRootIndex()
+	if err := validateDiscriminatorMappings(rolodex); err != nil {
+		return nil, err
+	}
 
 	// Collect discriminator mappings WITH context (early)
 	discriminatorMappings := collectDiscriminatorMappingNodesWithContext(rolodex)
@@ -415,6 +691,9 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	enqueueDiscriminatorMappingTargets(discriminatorMappings, cf, rootIndex)
 	// Refresh indexes in case mapping resolution loaded new ones
 	cf.indexes = rolodex.GetIndexes()
+	if err := validateDiscriminatorMappings(rolodex); err != nil {
+		return nil, err
+	}
 
 	if err := handleIndex(cf); err != nil {
 		return nil, err
@@ -515,7 +794,7 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		}
 	}
 
-	b, err := model.Render()
+	b, err := renderBundledModel(model, rootIndex)
 	errs = append(errs, err)
 
 	return b, errors.Join(errs...)
@@ -893,6 +1172,9 @@ func walkDiscriminatorMapping(idx *index.SpecIndex, discriminatorNode *yaml.Node
 	for i := 0; i < len(discriminatorNode.Content); i += 2 {
 		if discriminatorNode.Content[i].Value == "mapping" {
 			mappingNode := discriminatorNode.Content[i+1]
+			if mappingNode.Kind != yaml.MappingNode {
+				continue
+			}
 
 			for j := 0; j < len(mappingNode.Content); j += 2 {
 				refValue := mappingNode.Content[j+1].Value
@@ -985,6 +1267,9 @@ func collectDiscriminatorMappingNodesFromIndexWithContext(idx *index.SpecIndex, 
 		for i := 0; i < len(discriminator.Content); i += 2 {
 			if discriminator.Content[i].Value == "mapping" {
 				mappingNode := discriminator.Content[i+1]
+				if mappingNode.Kind != yaml.MappingNode {
+					continue
+				}
 				for j := 0; j < len(mappingNode.Content); j += 2 {
 					*mappings = append(*mappings, &discriminatorMappingWithContext{
 						node:      mappingNode.Content[j+1],
@@ -1028,6 +1313,9 @@ func collectDiscriminatorMappingNodesFromIndex(idx *index.SpecIndex, n *yaml.Nod
 		for i := 0; i < len(discriminator.Content); i += 2 {
 			if discriminator.Content[i].Value == "mapping" {
 				mappingNode := discriminator.Content[i+1]
+				if mappingNode.Kind != yaml.MappingNode {
+					continue
+				}
 				for j := 0; j < len(mappingNode.Content); j += 2 {
 					*mappingNodes = append(*mappingNodes, mappingNode.Content[j+1])
 				}

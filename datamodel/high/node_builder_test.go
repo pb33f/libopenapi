@@ -1598,3 +1598,71 @@ func TestNodeBuilder_SliceMultipleRefsAndNilLow(t *testing.T) {
 	assert.Contains(t, result, "$ref: '#/ref2'")
 	assert.Contains(t, result, "mixed-new2")
 }
+
+func TestOriginalFloatLexeme(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    float64
+		lowValue any
+		want     string
+		wantOK   bool
+	}{
+		{
+			name:  "preserves original spelling",
+			value: 100,
+			lowValue: low.NodeReference[float64]{
+				ValueNode: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "100.0"},
+			},
+			want:   "100.0",
+			wantOK: true,
+		},
+		{
+			name:     "ignores non low references",
+			value:    100,
+			lowValue: "100.0",
+		},
+		{
+			name:  "ignores nil value node",
+			value: 100,
+			lowValue: low.NodeReference[float64]{
+				ValueNode: nil,
+			},
+		},
+		{
+			name:  "ignores non numeric nodes",
+			value: 100,
+			lowValue: low.NodeReference[float64]{
+				ValueNode: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "100.0"},
+			},
+		},
+		{
+			name:  "ignores invalid numeric lexemes",
+			value: 100,
+			lowValue: low.NodeReference[float64]{
+				ValueNode: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "not-a-number"},
+			},
+		},
+		{
+			name:  "ignores changed values",
+			value: 101,
+			lowValue: low.NodeReference[float64]{
+				ValueNode: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "100.0"},
+			},
+		},
+		{
+			name:  "ignores changed zero sign",
+			value: 0,
+			lowValue: low.NodeReference[float64]{
+				ValueNode: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "-0.0"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := originalFloatLexeme(tt.value, tt.lowValue)
+			assert.Equal(t, tt.wantOK, ok)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}

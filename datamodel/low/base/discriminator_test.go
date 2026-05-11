@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -71,6 +72,139 @@ defaultMapping: '#/components/schemas/UnknownPet'`
 	assert.Equal(t, "#/components/schemas/UnknownPet", n.DefaultMapping.Value)
 	assert.Equal(t, "#/components/schemas/Dog", n.FindMappingValue("dog").Value)
 	assert.Equal(t, "#/components/schemas/Cat", n.FindMappingValue("cat").Value)
+}
+
+func TestValidateDiscriminatorMappingValueNodesRejectsNonStringValues(t *testing.T) {
+	tests := []struct {
+		name    string
+		mapping string
+		wantErr string
+	}{
+		{
+			name: "object",
+			mapping: `propertyName: type
+mapping:
+  properties:
+    type: object`,
+			wantErr: "discriminator.mapping.properties must be a string",
+		},
+		{
+			name: "array",
+			mapping: `propertyName: type
+mapping:
+  required:
+    - type`,
+			wantErr: "discriminator.mapping.required must be a string",
+		},
+		{
+			name: "boolean",
+			mapping: `propertyName: type
+mapping:
+  additionalProperties: false`,
+			wantErr: "discriminator.mapping.additionalProperties must be a string",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var idxNode yaml.Node
+			mErr := yaml.Unmarshal([]byte(tt.mapping), &idxNode)
+			assert.NoError(t, mErr)
+
+			err := ValidateDiscriminatorMappingValueNodes(idxNode.Content[0])
+			assert.ErrorContains(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestValidateDiscriminatorMappingValueNodesAcceptsStringValues(t *testing.T) {
+	yml := `propertyName: type
+mapping:
+  dog: '#/components/schemas/Dog'
+  cat: Cat`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+
+	assert.NoError(t, ValidateDiscriminatorMappingValueNodes(idxNode.Content[0]))
+}
+
+func TestValidateDiscriminatorMappingValueNodesAcceptsAliasMapping(t *testing.T) {
+	yml := `petMap: &petMap
+  dog: '#/components/schemas/Dog'
+  cat: '#/components/schemas/Cat'
+discriminator:
+  propertyName: type
+  mapping: *petMap`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+
+	var discriminatorNode *yaml.Node
+	for i := 0; i < len(idxNode.Content[0].Content); i += 2 {
+		if idxNode.Content[0].Content[i].Value == "discriminator" {
+			discriminatorNode = idxNode.Content[0].Content[i+1]
+			break
+		}
+	}
+
+	assert.NoError(t, ValidateDiscriminatorMappingValueNodes(discriminatorNode))
+
+	var n Discriminator
+	err := low.BuildModel(discriminatorNode, &n)
+	assert.NoError(t, err)
+	assert.Equal(t, "#/components/schemas/Dog", n.FindMappingValue("dog").Value)
+	assert.Equal(t, "#/components/schemas/Cat", n.FindMappingValue("cat").Value)
+}
+
+func TestValidateDiscriminatorMappingValueNodesAcceptsMergedMapping(t *testing.T) {
+	yml := `petMap: &petMap
+  dog: '#/components/schemas/Dog'
+  cat: '#/components/schemas/Cat'
+type: object
+discriminator:
+  propertyName: type
+  mapping:
+    <<: *petMap
+    lizard: '#/components/schemas/Lizard'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+
+	var schema Schema
+	err := schema.Build(context.Background(), idxNode.Content[0], nil)
+	assert.NoError(t, err)
+	assert.Equal(t, "#/components/schemas/Dog", schema.Discriminator.Value.FindMappingValue("dog").Value)
+	assert.Equal(t, "#/components/schemas/Cat", schema.Discriminator.Value.FindMappingValue("cat").Value)
+	assert.Equal(t, "#/components/schemas/Lizard", schema.Discriminator.Value.FindMappingValue("lizard").Value)
+}
+
+func TestValidateDiscriminatorMappingValueNodesNonMappingCases(t *testing.T) {
+	assert.NoError(t, ValidateDiscriminatorMappingValueNodes(nil))
+	assert.NoError(t, ValidateDiscriminatorMappingValueNodes(&yaml.Node{Kind: yaml.SequenceNode}))
+
+	yml := `propertyName: type`
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	assert.NoError(t, ValidateDiscriminatorMappingValueNodes(idxNode.Content[0]))
+
+	yml = `propertyName: type
+mapping:
+  - nope`
+	mErr = yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	assert.ErrorContains(t, ValidateDiscriminatorMappingValueNodes(idxNode.Content[0]), "discriminator.mapping must be an object")
+}
+
+func TestDescribeDiscriminatorMappingNode(t *testing.T) {
+	assert.Equal(t, "nil", describeDiscriminatorMappingNode(nil))
+	assert.Equal(t, "document", describeDiscriminatorMappingNode(&yaml.Node{Kind: yaml.DocumentNode}))
+	assert.Equal(t, "alias", describeDiscriminatorMappingNode(&yaml.Node{Kind: yaml.AliasNode}))
+	assert.Equal(t, "kind 99", describeDiscriminatorMappingNode(&yaml.Node{Kind: 99}))
 }
 
 func TestDiscriminator_DefaultMapping_Hash(t *testing.T) {

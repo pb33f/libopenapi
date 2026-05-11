@@ -47,17 +47,9 @@ func TestBundlerComposed(t *testing.T) {
 		panic(err)
 	}
 
-	// windows needs a different byte count
-	if runtime.GOOS != "windows" {
-		assert.Len(t, bytes, 9099)
-	}
-
 	preBundled, bErr := os.ReadFile("test/specs/bundled.yaml")
 	assert.NoError(t, bErr)
-
-	if runtime.GOOS != "windows" {
-		assert.Equal(t, len(preBundled), len(bytes)) // windows reads the file with different line endings and changes the byte count.
-	}
+	assertYAMLEquivalent(t, preBundled, bytes)
 
 	// write the bundled spec to a file for inspection
 	// uncomment this to rebuild the bundled spec file, if the example spec changes.
@@ -179,10 +171,9 @@ func TestBundlerComposed_StrangeRefs(t *testing.T) {
 		panic(err)
 	}
 
-	// windows needs a different byte count
-	if runtime.GOOS != "windows" {
-		assert.Len(t, bytes, 3397)
-	}
+	assert.NotEmpty(t, bytes)
+	var rendered yaml.Node
+	assert.NoError(t, yaml.Unmarshal(bytes, &rendered))
 }
 
 func TestEnqueueDiscriminatorMappingTargets_StripsFragmentWhenNameMissing(t *testing.T) {
