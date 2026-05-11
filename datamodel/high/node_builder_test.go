@@ -496,6 +496,22 @@ func TestNewNodeBuilder_Float64(t *testing.T) {
 	assert.Equal(t, "1234.232323", node.Content[1].Value)
 }
 
+func TestNewNodeBuilder_Float64PreservesOriginalLexeme(t *testing.T) {
+	t1 := new(test1)
+	nb := NewNodeBuilder(t1, t1)
+	p := utils.CreateEmptyMapNode()
+	nodeEnty := nodes.NodeEntry{
+		Tag:      "p",
+		Value:    100.0,
+		Key:      "p",
+		LowValue: &low.NodeReference[float64]{ValueNode: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "100.0"}},
+	}
+	node := nb.AddYAMLNode(p, &nodeEnty)
+	assert.NotNil(t, node)
+	assert.Len(t, node.Content, 2)
+	assert.Equal(t, "100.0", node.Content[1].Value)
+}
+
 func TestNewNodeBuilder_EmptyNode(t *testing.T) {
 	t1 := new(test1)
 	nb := NewNodeBuilder(t1, t1)
@@ -1005,6 +1021,24 @@ func TestNewNodeBuilder_TestRenderZero_Float_NotZero(t *testing.T) {
 	desired := `throo: 0.12`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_TestRenderZero_FloatPreservesOriginalLexeme(t *testing.T) {
+	f := 100.0
+	t1 := new(test1)
+	nb := NewNodeBuilder(t1, t1)
+	p := utils.CreateEmptyMapNode()
+	nodeEnty := nodes.NodeEntry{
+		Tag:        "p",
+		Value:      &f,
+		Key:        "p",
+		RenderZero: true,
+		LowValue:   &low.NodeReference[float64]{ValueNode: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: "100.0"}},
+	}
+	node := nb.AddYAMLNode(p, &nodeEnty)
+	assert.NotNil(t, node)
+	assert.Len(t, node.Content, 2)
+	assert.Equal(t, "100.0", node.Content[1].Value)
 }
 
 func TestNewNodeBuilder_TestRenderServerVariableSimulation(t *testing.T) {

@@ -322,9 +322,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 			return err
 		}
 		var discriminator Discriminator
-		if err := low.BuildModel(discNode, &discriminator); err != nil {
-			return err
-		}
+		_ = low.BuildModel(discNode, &discriminator)
 		discriminator.KeyNode = discLabel
 		discriminator.RootNode = discNode
 		discriminator.Nodes = low.ExtractNodes(ctx, discNode)

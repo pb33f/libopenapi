@@ -333,6 +333,205 @@ x-any:
 	assert.ErrorContains(t, validateDiscriminatorMappings(rolodex), "discriminator.mapping.required")
 }
 
+func TestValidateDiscriminatorMappingsCoverageBranches(t *testing.T) {
+	validSchema := parseYAMLNode(t, []byte(`type: object
+discriminator:
+  propertyName: type
+  mapping:
+    dog: '#/components/schemas/Dog'
+`)).Content[0]
+
+	assert.NoError(t, validateDiscriminatorMappingsFromOpenAPIObject(nil, nil, nil, nil))
+	assert.False(t, isOpenAPIDocumentRoot(&yaml.Node{Kind: yaml.ScalarNode}))
+	assert.False(t, isOpenAPIDocumentRoot(&yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			nil,
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ignored"},
+		},
+	}))
+	assert.False(t, isDiscriminatorValidationSchemaCandidate(nil))
+	assert.False(t, isDiscriminatorValidationSchemaCandidate(&yaml.Node{Kind: yaml.ScalarNode}))
+	assert.False(t, isDiscriminatorValidationSchemaCandidate(&yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			nil,
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ignored"},
+		},
+	}))
+
+	seenOpenAPI := make(map[*yaml.Node]struct{})
+	openAPIRootWithSchemaCandidate := parseYAMLNode(t, []byte(`openapi: 3.1.0
+info:
+  title: root discriminator
+  version: 1.0.0
+paths: {}
+discriminator:
+  propertyName: type
+  mapping:
+    bad:
+      type: object
+`)).Content[0]
+	assert.ErrorContains(t,
+		validateDiscriminatorMappingsFromRootNode(openAPIRootWithSchemaCandidate, seenOpenAPI),
+		"discriminator.mapping.bad",
+	)
+
+	seenObject := make(map[*yaml.Node]struct{})
+	assert.NoError(t, validateDiscriminatorMappingsFromOpenAPIObject(openAPIRootWithSchemaCandidate, nil, seenObject, nil))
+	assert.NoError(t, validateDiscriminatorMappingsFromOpenAPIObject(openAPIRootWithSchemaCandidate, nil, seenObject, nil))
+
+	assert.NoError(t, validateDiscriminatorMappingsFromOpenAPIObject(&yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			nil,
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ignored"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ignored"},
+			nil,
+		},
+	}, nil, make(map[*yaml.Node]struct{}), nil))
+
+	invalidSchemaObject := parseYAMLNode(t, []byte(`schema:
+  discriminator:
+    propertyName: type
+    mapping:
+      bad:
+        type: object
+`)).Content[0]
+	assert.ErrorContains(t,
+		validateDiscriminatorMappingsFromOpenAPIObject(invalidSchemaObject, make(map[*yaml.Node]struct{}), make(map[*yaml.Node]struct{}), nil),
+		"discriminator.mapping.bad",
+	)
+
+	invalidComponentsSchemas := parseYAMLNode(t, []byte(`components:
+  schemas:
+    Pet:
+      discriminator:
+        propertyName: type
+        mapping:
+          bad:
+            type: object
+`)).Content[0]
+	assert.ErrorContains(t,
+		validateDiscriminatorMappingsFromOpenAPIObject(invalidComponentsSchemas, make(map[*yaml.Node]struct{}), make(map[*yaml.Node]struct{}), nil),
+		"discriminator.mapping.bad",
+	)
+
+	invalidDefinitions := parseYAMLNode(t, []byte(`definitions:
+  Pet:
+    discriminator:
+      propertyName: type
+      mapping:
+        bad:
+          type: object
+`)).Content[0]
+	assert.ErrorContains(t,
+		validateDiscriminatorMappingsFromOpenAPIObject(invalidDefinitions, make(map[*yaml.Node]struct{}), make(map[*yaml.Node]struct{}), nil),
+		"discriminator.mapping.bad",
+	)
+	validDefinitions := parseYAMLNode(t, []byte(`definitions:
+  Pet:
+    discriminator:
+      propertyName: type
+      mapping:
+        dog: '#/definitions/Dog'
+`)).Content[0]
+	assert.NoError(t,
+		validateDiscriminatorMappingsFromOpenAPIObject(validDefinitions, make(map[*yaml.Node]struct{}), make(map[*yaml.Node]struct{}), nil),
+	)
+
+	invalidNestedObject := parseYAMLNode(t, []byte(`nested:
+  schema:
+    discriminator:
+      propertyName: type
+      mapping:
+        bad:
+          type: object
+`)).Content[0]
+	assert.ErrorContains(t,
+		validateDiscriminatorMappingsFromOpenAPIObject(invalidNestedObject, make(map[*yaml.Node]struct{}), make(map[*yaml.Node]struct{}), nil),
+		"discriminator.mapping.bad",
+	)
+
+	assert.NoError(t, validateDiscriminatorMappingsFromOpenAPIObject(&yaml.Node{
+		Kind: yaml.SequenceNode,
+		Content: []*yaml.Node{
+			parseYAMLNode(t, []byte("x-any:\n  discriminator:\n    mapping:\n      bad:\n        type: object\n")).Content[0],
+		},
+	}, make(map[*yaml.Node]struct{}), make(map[*yaml.Node]struct{}), nil))
+	assert.ErrorContains(t, validateDiscriminatorMappingsFromOpenAPIObject(&yaml.Node{
+		Kind:    yaml.SequenceNode,
+		Content: []*yaml.Node{invalidSchemaObject},
+	}, make(map[*yaml.Node]struct{}), make(map[*yaml.Node]struct{}), nil), "discriminator.mapping.bad")
+
+	assert.NoError(t, validateDiscriminatorMappingsFromSchemaNode(nil, make(map[*yaml.Node]struct{})))
+	assert.NoError(t, validateDiscriminatorMappingsFromSchemaNode(&yaml.Node{Kind: yaml.ScalarNode}, make(map[*yaml.Node]struct{})))
+	seenSchema := make(map[*yaml.Node]struct{})
+	assert.NoError(t, validateDiscriminatorMappingsFromSchemaNode(validSchema, seenSchema))
+	assert.NoError(t, validateDiscriminatorMappingsFromSchemaNode(validSchema, seenSchema))
+
+	assert.NoError(t, validateDiscriminatorMappingsFromSchemaNode(&yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			nil,
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ignored"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ignored"},
+			nil,
+		},
+	}, make(map[*yaml.Node]struct{})))
+
+	assert.ErrorContains(t, validateDiscriminatorMappingsFromSchemaNode(parseYAMLNode(t, []byte(`items:
+  discriminator:
+    propertyName: type
+    mapping:
+      bad:
+        type: object
+`)).Content[0], make(map[*yaml.Node]struct{})), "discriminator.mapping.bad")
+
+	assert.ErrorContains(t, validateDiscriminatorMappingsFromSchemaNode(parseYAMLNode(t, []byte(`properties:
+  pet:
+    discriminator:
+      propertyName: type
+      mapping:
+        bad:
+          type: object
+`)).Content[0], make(map[*yaml.Node]struct{})), "discriminator.mapping.bad")
+
+	assert.ErrorContains(t, validateDiscriminatorMappingsFromSchemaNode(parseYAMLNode(t, []byte(`oneOf:
+  - discriminator:
+      propertyName: type
+      mapping:
+        bad:
+          type: object
+`)).Content[0], make(map[*yaml.Node]struct{})), "discriminator.mapping.bad")
+
+	assert.NoError(t, validateDiscriminatorMappingsFromSchemaMap(nil, make(map[*yaml.Node]struct{})))
+	assert.NoError(t, validateDiscriminatorMappingsFromSchemaMap(&yaml.Node{Kind: yaml.ScalarNode}, make(map[*yaml.Node]struct{})))
+	assert.NoError(t, validateDiscriminatorMappingsFromSchemaArray(nil, make(map[*yaml.Node]struct{})))
+	assert.NoError(t, validateDiscriminatorMappingsFromSchemaArray(&yaml.Node{Kind: yaml.ScalarNode}, make(map[*yaml.Node]struct{})))
+}
+
+func TestComposeWithOriginsReturnsDiscriminatorValidationError(t *testing.T) {
+	invalidRoot := parseYAMLNode(t, []byte(`components:
+  schemas:
+    Pet:
+      discriminator:
+        propertyName: type
+        mapping:
+          bad:
+            type: object
+`))
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	rolodex := index.NewRolodex(cfg)
+	rolodex.SetRootIndex(index.NewSpecIndexWithConfig(invalidRoot, cfg))
+
+	result, err := composeWithOrigins(&v3.Document{Rolodex: rolodex}, nil)
+	require.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "discriminator.mapping.bad")
+}
+
 func TestDiscriminatorMappingCollectorsIgnoreMalformedMappingNode(t *testing.T) {
 	spec := []byte(`discriminator:
   propertyName: type

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
@@ -180,6 +181,45 @@ discriminator:
 	assert.Equal(t, "#/components/schemas/Dog", schema.Discriminator.Value.FindMappingValue("dog").Value)
 	assert.Equal(t, "#/components/schemas/Cat", schema.Discriminator.Value.FindMappingValue("cat").Value)
 	assert.Equal(t, "#/components/schemas/Lizard", schema.Discriminator.Value.FindMappingValue("lizard").Value)
+}
+
+func TestValidateDiscriminatorMappingValueNodesDefensiveNilKeys(t *testing.T) {
+	discriminatorNode := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			nil,
+			utils.CreateStringNode("ignored"),
+			utils.CreateStringNode("mapping"),
+			{
+				Kind: yaml.MappingNode,
+				Content: []*yaml.Node{
+					nil,
+					utils.CreateStringNode("#/components/schemas/Ignored"),
+					utils.CreateStringNode("dog"),
+					utils.CreateStringNode("#/components/schemas/Dog"),
+				},
+			},
+		},
+	}
+
+	assert.NoError(t, ValidateDiscriminatorMappingValueNodes(discriminatorNode))
+}
+
+func TestSchemaBuildRejectsInvalidDiscriminatorMappingValue(t *testing.T) {
+	yml := `type: object
+discriminator:
+  propertyName: type
+  mapping:
+    dog:
+      type: object`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+
+	var schema Schema
+	err := schema.Build(context.Background(), idxNode.Content[0], nil)
+	assert.ErrorContains(t, err, "discriminator.mapping.dog must be a string")
 }
 
 func TestValidateDiscriminatorMappingValueNodesNonMappingCases(t *testing.T) {
