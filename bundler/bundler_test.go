@@ -774,16 +774,9 @@ func TestBundleDocument_BundleBytesComposed_NestedFiles(t *testing.T) {
 
 	assert.NoError(t, e)
 
-	if runtime.GOOS != "windows" {
-
-		preBundled, _ := os.ReadFile("../test_specs/nested_files/openapi-bundled.yaml")
-
-		len1 := len(preBundled)
-		len2 := len(bundledBytes)
-		assert.Equal(t, len1, len2)
-
-		assert.Equal(t, preBundled, bundledBytes)
-	}
+	preBundled, readErr := os.ReadFile("../test_specs/nested_files/openapi-bundled.yaml")
+	assert.NoError(t, readErr)
+	assertYAMLEquivalent(t, preBundled, bundledBytes)
 }
 
 func TestBundleDocument_BundleBytesComposed_ErrorDoc(t *testing.T) {

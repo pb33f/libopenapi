@@ -56,8 +56,8 @@ type Schema struct {
 
 	// 3.1 Specific properties
 	Contains          *SchemaProxy                          `json:"contains,omitempty" yaml:"contains,omitempty"`
-	MinContains       *int64                                `json:"minContains,omitempty" yaml:"minContains,omitempty"`
-	MaxContains       *int64                                `json:"maxContains,omitempty" yaml:"maxContains,omitempty"`
+	MinContains       *int64                                `json:"minContains,renderZero,omitempty" yaml:"minContains,renderZero,omitempty"`
+	MaxContains       *int64                                `json:"maxContains,renderZero,omitempty" yaml:"maxContains,renderZero,omitempty"`
 	If                *SchemaProxy                          `json:"if,omitempty" yaml:"if,omitempty"`
 	Else              *SchemaProxy                          `json:"else,omitempty" yaml:"else,omitempty"`
 	Then              *SchemaProxy                          `json:"then,omitempty" yaml:"then,omitempty"`
@@ -102,15 +102,15 @@ type Schema struct {
 	MultipleOf           *float64                              `json:"multipleOf,omitempty" yaml:"multipleOf,omitempty"`
 	Maximum              *float64                              `json:"maximum,renderZero,omitempty" yaml:"maximum,renderZero,omitempty"`
 	Minimum              *float64                              `json:"minimum,renderZero,omitempty," yaml:"minimum,renderZero,omitempty"`
-	MaxLength            *int64                                `json:"maxLength,omitempty" yaml:"maxLength,omitempty"`
-	MinLength            *int64                                `json:"minLength,omitempty" yaml:"minLength,omitempty"`
+	MaxLength            *int64                                `json:"maxLength,renderZero,omitempty" yaml:"maxLength,renderZero,omitempty"`
+	MinLength            *int64                                `json:"minLength,renderZero,omitempty" yaml:"minLength,renderZero,omitempty"`
 	Pattern              string                                `json:"pattern,omitempty" yaml:"pattern,omitempty"`
 	Format               string                                `json:"format,omitempty" yaml:"format,omitempty"`
-	MaxItems             *int64                                `json:"maxItems,omitempty" yaml:"maxItems,omitempty"`
-	MinItems             *int64                                `json:"minItems,omitempty" yaml:"minItems,omitempty"`
+	MaxItems             *int64                                `json:"maxItems,renderZero,omitempty" yaml:"maxItems,renderZero,omitempty"`
+	MinItems             *int64                                `json:"minItems,renderZero,omitempty" yaml:"minItems,renderZero,omitempty"`
 	UniqueItems          *bool                                 `json:"uniqueItems,omitempty" yaml:"uniqueItems,omitempty"`
-	MaxProperties        *int64                                `json:"maxProperties,omitempty" yaml:"maxProperties,omitempty"`
-	MinProperties        *int64                                `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
+	MaxProperties        *int64                                `json:"maxProperties,renderZero,omitempty" yaml:"maxProperties,renderZero,omitempty"`
+	MinProperties        *int64                                `json:"minProperties,renderZero,omitempty" yaml:"minProperties,renderZero,omitempty"`
 	Required             []string                              `json:"required,omitempty" yaml:"required,omitempty"`
 	Enum                 []*yaml.Node                          `json:"enum,omitempty" yaml:"enum,omitempty"`
 	AdditionalProperties *DynamicValue[*SchemaProxy, bool]     `json:"additionalProperties,renderZero,omitempty" yaml:"additionalProperties,renderZero,omitempty"`
@@ -431,11 +431,17 @@ func NewSchema(schema *base.Schema) *Schema {
 	}
 
 	props := orderedmap.New[string, *SchemaProxy]()
+	if !schema.Properties.IsEmpty() {
+		s.Properties = props
+	}
 	for name, schemaProxy := range schema.Properties.Value.FromOldest() {
 		buildProps(name, schemaProxy, props, 0)
 	}
 
 	dependents := orderedmap.New[string, *SchemaProxy]()
+	if !schema.DependentSchemas.IsEmpty() {
+		s.DependentSchemas = dependents
+	}
 	for name, schemaProxy := range schema.DependentSchemas.Value.FromOldest() {
 		buildProps(name, schemaProxy, dependents, 1)
 	}
@@ -450,6 +456,9 @@ func NewSchema(schema *base.Schema) *Schema {
 	}
 
 	patternProps := orderedmap.New[string, *SchemaProxy]()
+	if !schema.PatternProperties.IsEmpty() {
+		s.PatternProperties = patternProps
+	}
 	for name, schemaProxy := range schema.PatternProperties.Value.FromOldest() {
 		buildProps(name, schemaProxy, patternProps, 2)
 	}

@@ -123,7 +123,7 @@ maximum: 0.5`
 	assert.NoError(t, err)
 
 	renderedStr := string(rendered)
-	assert.Contains(t, renderedStr, "minimum: 0")
+	assert.Contains(t, renderedStr, "minimum: 0.0")
 	assert.Contains(t, renderedStr, "maximum: 0.5")
 	assert.Contains(t, renderedStr, "type: number")
 }
@@ -143,14 +143,13 @@ maximum: 0.0`
 	assert.Equal(t, float64(-0.0), *highSchema.Minimum)
 	assert.Equal(t, float64(0.0), *highSchema.Maximum)
 
-	// Render back to YAML - Go renders -0.0 as "-0", 0.0 as "0"
+	// Render back to YAML.
 	rendered, err := highSchema.Render()
 	assert.NoError(t, err)
 
 	renderedStr := string(rendered)
-	// Accept either "-0" or "0" for negative zero since Go may render it as "-0"
-	assert.True(t, strings.Contains(renderedStr, "minimum: -0") || strings.Contains(renderedStr, "minimum: 0"))
-	assert.Contains(t, renderedStr, "maximum: 0")
+	assert.Contains(t, renderedStr, "minimum: -0.0")
+	assert.Contains(t, renderedStr, "maximum: 0.0")
 	assert.Contains(t, renderedStr, "type: number")
 }
 
@@ -274,21 +273,27 @@ properties:
 
 	renderedStr := string(rendered)
 
-	// Check that zero values are rendered for fields with renderZero tag
-	// Based on schema.go, only Maximum and Minimum have renderZero tags
+	// Check that zero values are rendered for numeric constraints with renderZero tags.
 	assert.Contains(t, renderedStr, "minimum: 0")
 	assert.Contains(t, renderedStr, "maximum: 0")
-
-	// Other fields like minItems, maxItems, etc. do NOT have renderZero tags,
-	// so they will be omitted when they have zero values (due to omitempty)
-	// We should NOT expect them to appear in the rendered output
-	assert.NotContains(t, renderedStr, "minItems: 0")
-	assert.NotContains(t, renderedStr, "maxItems: 0")
-	assert.NotContains(t, renderedStr, "minProperties: 0")
-	assert.NotContains(t, renderedStr, "maxProperties: 0")
-	assert.NotContains(t, renderedStr, "minLength: 0")
+	assert.Contains(t, renderedStr, "minItems: 0")
+	assert.Contains(t, renderedStr, "maxItems: 0")
+	assert.Contains(t, renderedStr, "minProperties: 0")
+	assert.Contains(t, renderedStr, "maxProperties: 0")
+	assert.Contains(t, renderedStr, "minLength: 0")
 
 	// But maxLength: 10 should appear since it's non-zero
 	assert.Contains(t, renderedStr, "maxLength: 10")
 	assert.Contains(t, renderedStr, "multipleOf: 1")
+}
+
+func TestSchemaEmptyPropertiesAreRendered(t *testing.T) {
+	yml := `type: object
+properties: {}`
+
+	highSchema := getHighSchema(t, yml)
+
+	rendered, err := highSchema.Render()
+	assert.NoError(t, err)
+	assert.Contains(t, string(rendered), "properties: {}")
 }
