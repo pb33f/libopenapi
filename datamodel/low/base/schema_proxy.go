@@ -85,18 +85,9 @@ func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *in
 
 	// transform sibling refs to allOf structure if enabled and applicable
 	// this ensures sp.vn contains the pre-transformed YAML as the source of truth
-	transformedValue := value
-	wasTransformed := false
-	if idx != nil && idx.GetConfig() != nil && idx.GetConfig().TransformSiblingRefs {
-		transformer := NewSiblingRefTransformer(idx)
-		if transformer.ShouldTransform(value) {
-			transformed, _ := transformer.TransformSiblingRef(value)
-			if transformed != nil {
-				transformedValue = transformed
-				wasTransformed = true
-				sp.TransformedRef = value // store original node that had the ref
-			}
-		}
+	transformedValue, wasTransformed := transformSiblingRefNode(value, idx)
+	if wasTransformed {
+		sp.TransformedRef = value // store original node that had the ref
 	}
 
 	sp.vn = transformedValue
@@ -117,14 +108,27 @@ func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *in
 	return nil
 }
 
+func transformSiblingRefNode(value *yaml.Node, idx *index.SpecIndex) (*yaml.Node, bool) {
+	if idx == nil || idx.GetConfig() == nil || !idx.GetConfig().TransformSiblingRefs {
+		return value, false
+	}
+	transformer := NewSiblingRefTransformer(idx)
+	if !transformer.ShouldTransform(value) {
+		return value, false
+	}
+	transformed, _ := transformer.TransformSiblingRef(value)
+	return transformed, true
+}
+
 // prepareForResolvedBuild initializes proxy state when the caller has already resolved any reference metadata.
 // This avoids re-running the full Build ref-detection path for child-schema helpers that already did that work.
-func (sp *SchemaProxy) prepareForResolvedBuild(ctx context.Context, key, value *yaml.Node, idx *index.SpecIndex, refLocation string, refNode *yaml.Node) {
+func (sp *SchemaProxy) prepareForResolvedBuild(ctx context.Context, key, value, scopeNode *yaml.Node, idx *index.SpecIndex, refLocation string, refNode, transformed *yaml.Node) {
 	sp.kn = key
 	sp.idx = idx
 	sp.vn = value
-	sp.ctx = applySchemaIdScope(ctx, value, idx)
+	sp.ctx = applySchemaIdScope(ctx, scopeNode, idx)
 	sp.Reference = low.Reference{}
+	sp.TransformedRef = transformed
 	if refLocation != "" {
 		sp.SetReference(refLocation, refNode)
 	}

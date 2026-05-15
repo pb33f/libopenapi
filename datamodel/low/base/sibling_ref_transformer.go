@@ -4,6 +4,8 @@
 package base
 
 import (
+	"sort"
+
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
@@ -53,7 +55,13 @@ func (srt *SiblingRefTransformer) CreateAllOfStructure(refValue string, siblings
 	// first element: schema with sibling properties (excluding $ref)
 	if len(siblings) > 0 {
 		siblingSchemaNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		for key, valueNode := range siblings {
+		keys := make([]string, 0, len(siblings))
+		for key := range siblings {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			valueNode := siblings[key]
 			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}
 			// create a copy of the value node to avoid modifying original
 			copiedValueNode := srt.copyNode(valueNode)

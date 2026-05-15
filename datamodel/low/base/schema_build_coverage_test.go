@@ -82,6 +82,91 @@ func TestResolveSchemaBuildInput_NilAndRefFailures(t *testing.T) {
 	assert.Contains(t, err.Error(), "boom: ./missing.yaml#/Pet")
 }
 
+func TestTransformSiblingRefNode(t *testing.T) {
+	var siblingRef yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("$ref: '#/components/schemas/Name'\ndeprecated: true"), &siblingRef))
+
+	transformed, ok := transformSiblingRefNode(siblingRef.Content[0], nil)
+	require.False(t, ok)
+	assert.Equal(t, siblingRef.Content[0], transformed)
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	cfg.TransformSiblingRefs = true
+	idx := index.NewSpecIndexWithConfig(&siblingRef, cfg)
+
+	var refOnly yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("$ref: '#/components/schemas/Name'"), &refOnly))
+	transformed, ok = transformSiblingRefNode(refOnly.Content[0], idx)
+	require.False(t, ok)
+	assert.Equal(t, refOnly.Content[0], transformed)
+
+	transformed, ok = transformSiblingRefNode(siblingRef.Content[0], idx)
+	require.True(t, ok)
+	require.NotNil(t, transformed)
+	require.Len(t, transformed.Content, 2)
+	assert.Equal(t, "allOf", transformed.Content[0].Value)
+}
+
+func TestResolveSchemaBuildInput_TransformsSiblingRefBeforeResolution(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: sibling refs
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Name:
+      type: string
+    Container:
+      type: object
+      properties:
+        foo:
+          $ref: '#/components/schemas/Name'
+          deprecated: true`
+
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	cfg.TransformSiblingRefs = true
+	idx := index.NewSpecIndexWithConfig(&root, cfg)
+
+	fooNode := findNestedSchemaTestNode(t, root.Content[0], "components", "schemas", "Container", "properties", "foo")
+	resolved, err := resolveSchemaBuildInput(context.Background(), fooNode, idx, "boom: %s")
+	require.NoError(t, err)
+	require.NotNil(t, resolved.valueNode)
+	assert.Equal(t, "allOf", resolved.valueNode.Content[0].Value)
+	assert.Equal(t, fooNode, resolved.scopeNode)
+	assert.Nil(t, resolved.refNode)
+	assert.Equal(t, fooNode, resolved.transformed)
+	assert.Empty(t, resolved.refLocation)
+	assert.Equal(t, idx, resolved.idx)
+
+	built := buildSchemaProxy(resolved.ctx, resolved.idx, fooNode, resolved.valueNode, resolved.scopeNode, resolved.refNode, resolved.transformed, resolved.refLocation)
+	assert.Equal(t, fooNode, built.Value.TransformedRef)
+}
+
+func findNestedSchemaTestNode(t *testing.T, node *yaml.Node, path ...string) *yaml.Node {
+	t.Helper()
+
+	current := node
+	for _, key := range path {
+		require.NotNil(t, current)
+		require.Equal(t, yaml.MappingNode, current.Kind)
+
+		var next *yaml.Node
+		for i := 0; i+1 < len(current.Content); i += 2 {
+			if current.Content[i].Value == key {
+				next = current.Content[i+1]
+				break
+			}
+		}
+		require.NotNil(t, next, "missing key %q", key)
+		current = next
+	}
+	return current
+}
+
 func TestSchemaBuild_BuildModelError(t *testing.T) {
 	var root yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte("type: string\n"), &root))
