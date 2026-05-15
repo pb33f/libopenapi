@@ -538,6 +538,7 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 	if err := handleDiscriminatorMappingIndexes(cf, rootIndex, rolodex); err != nil {
 		return nil, err
 	}
+	rewriteExtensionRefsForComposedBundle(rolodex)
 
 	processedNodes := orderedmap.New[string, *processRef]()
 	var errs []error
@@ -701,6 +702,7 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	if err := handleDiscriminatorMappingIndexes(cf, rootIndex, rolodex); err != nil {
 		return nil, err
 	}
+	rewriteExtensionRefsForComposedBundle(rolodex)
 
 	processedNodes := orderedmap.New[string, *processRef]()
 	var errs []error

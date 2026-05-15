@@ -215,6 +215,9 @@ func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *pr
 	rewiredRefNodes := make(map[*yaml.Node]struct{}, len(seq))
 
 	for _, sequenced := range seq {
+		if sequenced.IsExtensionRef {
+			continue
+		}
 		if refValNode := utils.GetRefValueNode(sequenced.Node); refValNode != nil {
 			rewiredRefNodes[refValNode] = struct{}{}
 		}
@@ -224,6 +227,9 @@ func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *pr
 	mapped := idx.GetMappedReferences()
 
 	for _, mRef := range mapped {
+		if mRef.IsExtensionRef {
+			continue
+		}
 		if refValNode := utils.GetRefValueNode(mRef.Node); refValNode != nil {
 			if _, ok := rewiredRefNodes[refValNode]; ok {
 				continue

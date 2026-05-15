@@ -1128,6 +1128,85 @@ properties:
 		"Extension internal refs should be preserved as-is")
 }
 
+func TestBundlerComposed_RewritesExcludedVendorExtensionDollarRefsFromExternalPathItem(t *testing.T) {
+	tmpDir := t.TempDir()
+	rootBytes := writeComposedExtensionRefFixture(t, tmpDir)
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+	config.AllowFileReferences = true
+	config.ExcludeExtensionRefs = true
+
+	bundled, err := BundleBytesComposed(rootBytes, config, nil)
+	require.NoError(t, err)
+
+	bundledStr := string(bundled)
+	assert.Contains(t, bundledStr, "code_samples/C_sharp/echo/post.cs")
+	assert.NotContains(t, bundledStr, "../code_samples/C_sharp/echo/post.cs")
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(bundled, &datamodel.DocumentConfiguration{
+		BasePath:             tmpDir,
+		AllowFileReferences:  true,
+		ExcludeExtensionRefs: true,
+	})
+	require.NoError(t, err)
+	v3Doc, buildErr := doc.BuildV3Model()
+	require.NoError(t, buildErr)
+	require.NotNil(t, v3Doc)
+}
+
+func TestBundlerComposed_RewritesIncludedVendorExtensionDollarRefsWithoutComposingThem(t *testing.T) {
+	tmpDir := t.TempDir()
+	rootBytes := writeComposedExtensionRefFixture(t, tmpDir)
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+	config.AllowFileReferences = true
+
+	bundled, err := BundleBytesComposed(rootBytes, config, nil)
+	require.NoError(t, err)
+
+	bundledStr := string(bundled)
+	assert.Contains(t, bundledStr, "code_samples/C_sharp/echo/post.cs")
+	assert.NotContains(t, bundledStr, "../code_samples/C_sharp/echo/post.cs")
+	assert.NotContains(t, bundledStr, "Console.WriteLine",
+		"Extension $refs should be rebased, not composed or inlined")
+}
+
+func writeComposedExtensionRefFixture(t *testing.T, tmpDir string) []byte {
+	t.Helper()
+
+	rootSpec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /echo:
+    $ref: ./paths/echo.yaml
+`
+
+	echoPath := `post:
+  summary: Echo
+  responses:
+    '200':
+      description: OK
+  x-codeSamples:
+    - lang: C#
+      source:
+        $ref: ../code_samples/C_sharp/echo/post.cs
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "openapi.yaml"), []byte(rootSpec), 0644))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "paths"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "paths", "echo.yaml"), []byte(echoPath), 0644))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "code_samples", "C_sharp", "echo"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "code_samples", "C_sharp", "echo", "post.cs"), []byte(`Console.WriteLine("hello");`), 0644))
+
+	rootBytes, err := os.ReadFile(filepath.Join(tmpDir, "openapi.yaml"))
+	require.NoError(t, err)
+	return rootBytes
+}
+
 // TestBundlerComposed_HandlesEmptyMappingValues verifies that empty discriminator
 // mapping values don't cause errors
 func TestBundlerComposed_HandlesEmptyMappingValues(t *testing.T) {
