@@ -351,9 +351,10 @@ func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
 
 	dat, newDoc, _, _ := doc.RenderAndReload()
 	assert.NotNil(t, dat)
-	if runtime.GOOS != "windows" {
-		assert.Equal(t, string(bs), string(dat))
-	}
+	// Sibling $ref nodes are normalized into allOf structures when TransformSiblingRefs
+	// is enabled, so this fixture no longer renders byte-for-byte with the input.
+	assert.Contains(t, string(dat), "allOf:")
+
 	// compare documents
 	compReport, errs := CompareDocuments(doc, newDoc)
 
@@ -2179,6 +2180,112 @@ components:
 	// Second allOf item should be the $ref
 	refItem := schema.AllOf[1]
 	assert.Equal(t, "#/components/schemas/Base", refItem.GetReference())
+}
+
+func TestNewDocument_TransformSiblingRefs_NestedSchemas(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: SiblingRefRepro
+  version: 1.0.0
+paths:
+  /things:
+    post:
+      parameters:
+        - name: name
+          in: query
+          schema:
+            $ref: '#/components/schemas/Name'
+            deprecated: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Name'
+              deprecated: true
+      responses:
+        '200':
+          description: ok
+components:
+  schemas:
+    Name:
+      type: string
+    TopLevel:
+      $ref: '#/components/schemas/Name'
+      deprecated: true
+    Container:
+      type: object
+      properties:
+        foo:
+          $ref: '#/components/schemas/Name'
+          deprecated: true
+    ArrayContainer:
+      type: array
+      items:
+        $ref: '#/components/schemas/Name'
+        deprecated: true
+    Composed:
+      allOf:
+        - $ref: '#/components/schemas/Name'
+          deprecated: true`
+
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	require.NotNil(t, model)
+
+	topLevel := model.Model.Components.Schemas.GetOrZero("TopLevel")
+	assertSiblingRefAllOf(t, topLevel)
+
+	container := model.Model.Components.Schemas.GetOrZero("Container").Schema()
+	require.NotNil(t, container)
+	assertSiblingRefAllOf(t, container.Properties.GetOrZero("foo"))
+
+	arrayContainer := model.Model.Components.Schemas.GetOrZero("ArrayContainer").Schema()
+	require.NotNil(t, arrayContainer)
+	require.NotNil(t, arrayContainer.Items)
+	require.True(t, arrayContainer.Items.IsA())
+	assertSiblingRefAllOf(t, arrayContainer.Items.A)
+
+	composed := model.Model.Components.Schemas.GetOrZero("Composed").Schema()
+	require.NotNil(t, composed)
+	require.Len(t, composed.AllOf, 1)
+	assertSiblingRefAllOf(t, composed.AllOf[0])
+
+	operation := model.Model.Paths.PathItems.GetOrZero("/things").Post
+	require.NotNil(t, operation)
+	require.Len(t, operation.Parameters, 1)
+	assertSiblingRefAllOf(t, operation.Parameters[0].Schema)
+
+	requestBody := operation.RequestBody
+	require.NotNil(t, requestBody)
+	mediaType := requestBody.Content.GetOrZero("application/json")
+	require.NotNil(t, mediaType)
+	assertSiblingRefAllOf(t, mediaType.Schema)
+}
+
+func assertSiblingRefAllOf(t *testing.T, proxy *base.SchemaProxy) {
+	t.Helper()
+
+	require.NotNil(t, proxy)
+	assert.False(t, proxy.IsReference())
+	assert.Empty(t, proxy.GetReference())
+	require.NotNil(t, proxy.GoLow())
+	assert.NotNil(t, proxy.GoLow().TransformedRef)
+
+	schema := proxy.Schema()
+	require.NotNil(t, schema)
+	require.Len(t, schema.AllOf, 2)
+
+	siblingSchema := schema.AllOf[0].Schema()
+	require.NotNil(t, siblingSchema)
+	require.NotNil(t, siblingSchema.Deprecated)
+	assert.True(t, *siblingSchema.Deprecated)
+
+	refItem := schema.AllOf[1]
+	assert.True(t, refItem.IsReference())
+	assert.Equal(t, "#/components/schemas/Name", refItem.GetReference())
 }
 
 func TestDocument_Release(t *testing.T) {
