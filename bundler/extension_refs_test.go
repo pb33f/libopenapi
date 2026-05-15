@@ -6,7 +6,9 @@ package bundler
 
 import (
 	"context"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 
 	"github.com/pb33f/libopenapi/index"
@@ -19,6 +21,143 @@ import (
 func TestResolveExtensionRefs_NilRolodex(t *testing.T) {
 	// Should not panic with nil rolodex
 	resolveExtensionRefs(nil)
+}
+
+func TestRewriteExtensionRefsForComposedBundle_NilAndRootCases(t *testing.T) {
+	rewriteExtensionRefsForComposedBundle(nil)
+
+	rolo := index.NewRolodex(index.CreateOpenAPIIndexConfig())
+	rewriteExtensionRefsForComposedBundle(rolo)
+
+	rewriteExtensionRefsForComposedIndex(nil, nil)
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`openapi: 3.1.0`), &node)
+	idx := index.NewSpecIndexWithConfig(&node, index.CreateOpenAPIIndexConfig())
+	idx.SetAbsolutePath(filepath.Join(t.TempDir(), "openapi.yaml"))
+	rewriteExtensionRefsForComposedIndex(idx, idx)
+	walkAndRewriteComposedExtensionRefs(nil, idx, idx, false)
+}
+
+func TestRewriteExtensionRefsForComposedBundle_RebasesNestedExtensionRefs(t *testing.T) {
+	rootDir := t.TempDir()
+	rootIdx := newComposedRefIndex(t, filepath.Join(rootDir, "openapi.yaml"), `openapi: 3.1.0`)
+	sourceIdx := newComposedRefIndex(t, filepath.Join(rootDir, "paths", "echo.yaml"), `post:
+  x-codeSamples:
+    - lang: C#
+      source:
+        $ref: ../code_samples/C_sharp/echo/post.cs
+  x-empty-key-test: keep
+`)
+
+	rootNode := sourceIdx.GetRootNode()
+	mappingNode := rootNode.Content[0]
+	mappingNode.Content = append(mappingNode.Content,
+		nil,
+		&yaml.Node{Kind: yaml.ScalarNode, Value: "ignored"},
+	)
+
+	walkAndRewriteComposedExtensionRefs(&yaml.Node{
+		Kind:    yaml.DocumentNode,
+		Content: []*yaml.Node{rootNode},
+	}, sourceIdx, rootIdx, false)
+
+	var refValue string
+	findRefValue(rootNode, &refValue)
+	if refValue != "code_samples/C_sharp/echo/post.cs" {
+		t.Fatalf("expected rebased ref, got %q", refValue)
+	}
+}
+
+func TestRebaseExtensionRefForComposed(t *testing.T) {
+	rootDir := t.TempDir()
+	rootIdx := newComposedRefIndex(t, filepath.Join(rootDir, "openapi.yaml"), `openapi: 3.1.0`)
+	sourceIdx := newComposedRefIndex(t, filepath.Join(rootDir, "paths", "echo.yaml"), `post: {}`)
+
+	got := rebaseExtensionRefForComposed("../code_samples/post.md#/snippet", sourceIdx, rootIdx)
+	if got != "code_samples/post.md#/snippet" {
+		t.Fatalf("expected relative ref with fragment, got %q", got)
+	}
+
+	absTarget := filepath.Join(rootDir, "samples", "post.md")
+	got = rebaseExtensionRefForComposed(absTarget, sourceIdx, rootIdx)
+	if got != "samples/post.md" {
+		t.Fatalf("expected absolute ref rebased to root, got %q", got)
+	}
+
+	otherRootIdx := newComposedRefIndex(t, "other-root/openapi.yaml", `openapi: 3.1.0`)
+	absTarget = filepath.Join(rootDir, "external", "post.md")
+	got = rebaseExtensionRefForComposed(absTarget+"#/snippet", sourceIdx, otherRootIdx)
+	if got != filepath.ToSlash(absTarget)+"#/snippet" {
+		t.Fatalf("expected absolute ref preserved when it cannot be rebased, got %q", got)
+	}
+
+	if got = rebaseExtensionRefForComposed("#/components/schemas/Pet", sourceIdx, rootIdx); got != "paths/echo.yaml#/components/schemas/Pet" {
+		t.Fatalf("expected local source ref rebased to source file, got %q", got)
+	}
+	if got = rebaseExtensionRefForComposed("https://example.com/sample.md", sourceIdx, rootIdx); got != "https://example.com/sample.md" {
+		t.Fatalf("expected remote ref unchanged, got %q", got)
+	}
+	if got = rebaseExtensionRefForComposed("sample.md", nil, rootIdx); got != "sample.md" {
+		t.Fatalf("expected ref unchanged without source index, got %q", got)
+	}
+	if got = rebaseExtensionRefForComposed("#/components/schemas/Pet", nil, rootIdx); got != "#/components/schemas/Pet" {
+		t.Fatalf("expected local ref unchanged without source index, got %q", got)
+	}
+
+	dirIdx := newComposedRefIndex(t, rootDir, `openapi: 3.1.0`)
+	if got = specDir(dirIdx); got != rootDir {
+		t.Fatalf("expected directory spec path to be preserved, got %q", got)
+	}
+
+	remoteIdx := newComposedRefIndex(t, "https://example.com/openapi.yaml", `openapi: 3.1.0`)
+	if got = specDir(remoteIdx); got != "" {
+		t.Fatalf("expected remote spec dir to be empty, got %q", got)
+	}
+}
+
+func TestRebaseExtensionRefForComposed_PreservesWindowsAbsoluteRefOnDifferentVolume(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows volume behavior")
+	}
+
+	rootIdx := newComposedRefIndex(t, `C:\root\openapi.yaml`, `openapi: 3.1.0`)
+	sourceIdx := newComposedRefIndex(t, `D:\paths\echo.yaml`, `post: {}`)
+
+	got := rebaseExtensionRefForComposed(`D:\samples\post.md#/snippet`, sourceIdx, rootIdx)
+	if got != "D:/samples/post.md#/snippet" {
+		t.Fatalf("expected absolute Windows ref preserved when it cannot be rebased, got %q", got)
+	}
+}
+
+func newComposedRefIndex(t *testing.T, absPath, spec string) *index.SpecIndex {
+	t.Helper()
+	var node yaml.Node
+	if err := yaml.Unmarshal([]byte(spec), &node); err != nil {
+		t.Fatal(err)
+	}
+	idx := index.NewSpecIndexWithConfig(&node, index.CreateOpenAPIIndexConfig())
+	idx.SetAbsolutePath(absPath)
+	return idx
+}
+
+func findRefValue(node *yaml.Node, out *string) {
+	if node == nil || *out != "" {
+		return
+	}
+	if node.Kind == yaml.MappingNode {
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			if node.Content[i] != nil && node.Content[i].Value == "$ref" {
+				*out = node.Content[i+1].Value
+				return
+			}
+			findRefValue(node.Content[i+1], out)
+		}
+		return
+	}
+	for _, child := range node.Content {
+		findRefValue(child, out)
+	}
 }
 
 func TestResolveExtensionRefsFromIndex_NilIndex(t *testing.T) {

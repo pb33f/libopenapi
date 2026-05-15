@@ -13,6 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestHandleFileImport_StripsFragment(t *testing.T) {
@@ -34,6 +35,30 @@ func TestWalkAndRewriteRefs_NilNode(t *testing.T) {
 	require.NotPanics(t, func() {
 		walkAndRewriteRefs(nil, nil, nil, nil, false)
 	})
+}
+
+func TestRemapIndexSkipsMappedExtensionRefs(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`openapi: 3.1.0`), &root))
+	idx := index.NewSpecIndexWithConfig(&root, index.CreateOpenAPIIndexConfig())
+
+	refNode := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "$ref"},
+			{Kind: yaml.ScalarNode, Value: "./sample.md"},
+		},
+	}
+	idx.SetMappedReferences(map[string]*index.Reference{
+		"./sample.md": {
+			FullDefinition: "./sample.md",
+			Node:           refNode,
+			IsExtensionRef: true,
+		},
+	})
+
+	remapIndex(idx, orderedmap.New[string, *processRef]())
+	assert.Equal(t, "./sample.md", refNode.Content[1].Value)
 }
 
 func TestResolveRefToComposed_PreservesExternalRefs(t *testing.T) {

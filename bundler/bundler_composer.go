@@ -62,6 +62,9 @@ func handleIndex(c *handleIndexConfig) error {
 	var indexesToExplore []*index.SpecIndex
 
 	for _, sequenced := range sequencedReferences {
+		if sequenced.IsExtensionRef {
+			continue
+		}
 		mappedReference := mappedReferences[sequenced.FullDefinition]
 
 		// Check for invalid sibling properties if strict validation is enabled

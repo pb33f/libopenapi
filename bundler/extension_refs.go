@@ -6,7 +6,11 @@ package bundler
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 
 	"github.com/pb33f/libopenapi/index"
@@ -122,4 +126,119 @@ func replaceRefNodeWithContent(refNode, content *yaml.Node) {
 	refNode.HeadComment = content.HeadComment
 	refNode.LineComment = content.LineComment
 	refNode.FootComment = content.FootComment
+}
+
+// rewriteExtensionRefsForComposedBundle rebases $ref values found under x-* extension
+// keys from their original source file location to the bundled root document.
+func rewriteExtensionRefsForComposedBundle(rolodex *index.Rolodex) {
+	if rolodex == nil {
+		return
+	}
+	rootIdx := rolodex.GetRootIndex()
+	if rootIdx == nil {
+		return
+	}
+	rewriteExtensionRefsForComposedIndex(rootIdx, rootIdx)
+	for _, idx := range rolodex.GetIndexes() {
+		rewriteExtensionRefsForComposedIndex(idx, rootIdx)
+	}
+}
+
+func rewriteExtensionRefsForComposedIndex(sourceIdx, rootIdx *index.SpecIndex) {
+	if sourceIdx == nil || rootIdx == nil {
+		return
+	}
+	if sourceIdx.GetSpecAbsolutePath() == rootIdx.GetSpecAbsolutePath() {
+		return
+	}
+	walkAndRewriteComposedExtensionRefs(sourceIdx.GetRootNode(), sourceIdx, rootIdx, false)
+}
+
+func walkAndRewriteComposedExtensionRefs(node *yaml.Node, sourceIdx, rootIdx *index.SpecIndex, inExtension bool) {
+	if node == nil {
+		return
+	}
+	switch node.Kind {
+	case yaml.DocumentNode:
+		for _, child := range node.Content {
+			walkAndRewriteComposedExtensionRefs(child, sourceIdx, rootIdx, inExtension)
+		}
+	case yaml.SequenceNode:
+		for _, child := range node.Content {
+			walkAndRewriteComposedExtensionRefs(child, sourceIdx, rootIdx, inExtension)
+		}
+	case yaml.MappingNode:
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			keyNode := node.Content[i]
+			valueNode := node.Content[i+1]
+			if keyNode == nil {
+				continue
+			}
+			childInExtension := inExtension || strings.HasPrefix(keyNode.Value, "x-")
+			if childInExtension && keyNode.Value == "$ref" && valueNode != nil && valueNode.Kind == yaml.ScalarNode {
+				valueNode.Value = rebaseExtensionRefForComposed(valueNode.Value, sourceIdx, rootIdx)
+				continue
+			}
+			walkAndRewriteComposedExtensionRefs(valueNode, sourceIdx, rootIdx, childInExtension)
+		}
+	}
+}
+
+func rebaseExtensionRefForComposed(refValue string, sourceIdx, rootIdx *index.SpecIndex) string {
+	pathPart, fragment := splitRefPathAndFragment(refValue)
+	if pathPart == "" {
+		if fragment == "" || sourceIdx == nil || sourceIdx.GetSpecAbsolutePath() == "" || isExternalRefURI(sourceIdx.GetSpecAbsolutePath()) {
+			return refValue
+		}
+		pathPart = sourceIdx.GetSpecAbsolutePath()
+	}
+	if isExternalRefURI(pathPart) {
+		return refValue
+	}
+	sourceDir := specDir(sourceIdx)
+	rootDir := specDir(rootIdx)
+	if sourceDir == "" || rootDir == "" {
+		return refValue
+	}
+	targetPath := pathPart
+	if !filepath.IsAbs(targetPath) {
+		targetPath = utils.CheckPathOverlap(sourceDir, targetPath, string(os.PathSeparator))
+	}
+	absTarget, err := filepath.Abs(targetPath)
+	if err != nil {
+		return refValue
+	}
+	relTarget, err := filepath.Rel(rootDir, absTarget)
+	if err != nil {
+		return filepath.ToSlash(absTarget) + fragment
+	}
+	return filepath.ToSlash(relTarget) + fragment
+}
+
+func splitRefPathAndFragment(refValue string) (string, string) {
+	pathPart, fragment, found := strings.Cut(refValue, "#")
+	if found {
+		return pathPart, "#" + fragment
+	}
+	return refValue, ""
+}
+
+func isExternalRefURI(refPath string) bool {
+	return strings.HasPrefix(refPath, "http://") ||
+		strings.HasPrefix(refPath, "https://") ||
+		strings.HasPrefix(refPath, "urn:")
+}
+
+func specDir(idx *index.SpecIndex) string {
+	if idx == nil {
+		return ""
+	}
+	specPath := idx.GetSpecAbsolutePath()
+	if specPath == "" || isExternalRefURI(specPath) {
+		return ""
+	}
+	if filepath.Ext(specPath) == "" {
+		return specPath
+	}
+	return filepath.Dir(specPath)
 }
