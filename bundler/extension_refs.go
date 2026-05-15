@@ -204,13 +204,10 @@ func rebaseExtensionRefForComposed(refValue string, sourceIdx, rootIdx *index.Sp
 	if !filepath.IsAbs(targetPath) {
 		targetPath = utils.CheckPathOverlap(sourceDir, targetPath, string(os.PathSeparator))
 	}
-	absTarget, err := filepath.Abs(targetPath)
+	targetPath = filepath.Clean(targetPath)
+	relTarget, err := filepath.Rel(rootDir, targetPath)
 	if err != nil {
-		return refValue
-	}
-	relTarget, err := filepath.Rel(rootDir, absTarget)
-	if err != nil {
-		return filepath.ToSlash(absTarget) + fragment
+		return filepath.ToSlash(targetPath) + fragment
 	}
 	return filepath.ToSlash(relTarget) + fragment
 }
