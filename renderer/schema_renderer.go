@@ -5,7 +5,7 @@ package renderer
 
 import (
 	cryptoRand "crypto/rand"
-	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/lucasjones/reggen"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
@@ -49,21 +50,93 @@ const (
 	anyOfType        = "anyOf"
 	oneOfType        = "oneOf"
 	itemsType        = "items"
+
+	mockDepthExceededPlaceholder = "too deep to continue rendering..."
+
+	// DefaultMaxPatternRepeatBudget is the default regex repeat budget used when generating string mocks from patterns.
+	DefaultMaxPatternRepeatBudget = 32
+
+	// DefaultMaxGeneratedStringBytes is the default byte ceiling for each generated string mock value.
+	DefaultMaxGeneratedStringBytes = 4096
+
+	// DefaultMaxMockDepth is the default maximum recursive schema depth for generated mocks.
+	DefaultMaxMockDepth = 100
+
+	// DefaultMaxMockNodes is the default maximum number of schema nodes visited for a generated mock.
+	DefaultMaxMockNodes = 10000
+
+	// DefaultMaxMockProperties is the default maximum number of object properties rendered for a generated mock.
+	DefaultMaxMockProperties = 5000
+
+	// DefaultMaxMockRefExpansions is the default maximum number of reference expansions for a generated mock.
+	DefaultMaxMockRefExpansions = 2000
+
+	// DefaultMaxMockBytes is the default approximate generated mock byte budget before serialization.
+	DefaultMaxMockBytes = 1024 * 1024
+
+	// letterBytes is used to generate random words when no dictionary is configured.
+	letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
-// used to generate random words if there is no dictionary applied.
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+// ErrMockGenerationBudgetExceeded is wrapped by errors caused by configured mock generation budgets.
+var ErrMockGenerationBudgetExceeded = errors.New("mock generation budget exceeded")
 
 // UnresolvedRefHandler is called when a $ref property cannot be resolved during rendering.
 type UnresolvedRefHandler func(propertyName string, proxy *base.SchemaProxy, err error)
 
-// SchemaRenderer is a renderer that will generate random words, numbers and values based on a dictionary file.
-// The dictionary is just a slice of strings that is used to generate random words.
+// SchemaRenderer generates mock values from schemas, examples and schema constraints.
+//
+// When a dictionary is configured, it is used as the source for generated words.
 type SchemaRenderer struct {
 	words           []string
 	disableRequired bool
 	rand            *rand.Rand
 	onUnresolvedRef UnresolvedRefHandler
+	mockOptions     MockGenerationOptions
+}
+
+// MockGenerationBudgetError describes which mock generation budget was exceeded.
+type MockGenerationBudgetError struct {
+	// Budget is the name of the budget that was exceeded.
+	Budget string
+	// Limit is the configured budget value.
+	Limit int
+	// Actual is the observed value that exceeded the limit.
+	Actual int
+}
+
+func (e *MockGenerationBudgetError) Error() string {
+	if e == nil {
+		return ErrMockGenerationBudgetExceeded.Error()
+	}
+	return fmt.Sprintf("%s: %s budget exceeded: %d > %d",
+		ErrMockGenerationBudgetExceeded, e.Budget, e.Actual, e.Limit)
+}
+
+// Unwrap returns ErrMockGenerationBudgetExceeded for errors.Is checks.
+func (e *MockGenerationBudgetError) Unwrap() error {
+	return ErrMockGenerationBudgetExceeded
+}
+
+// MockGenerationOptions controls how much work the renderer may spend generating mock values.
+//
+// Zero or negative values use the package defaults. OpenAPI schema constraints such as maxLength are still used as
+// validity hints, but they are not treated as permission to perform unbounded generation work.
+type MockGenerationOptions struct {
+	// MaxPatternRepeatBudget limits the repeat budget passed to regex-based string generation.
+	MaxPatternRepeatBudget int
+	// MaxGeneratedStringBytes limits the final size of generated string values.
+	MaxGeneratedStringBytes int
+	// MaxMockDepth limits recursive schema depth while building mock structures.
+	MaxMockDepth int
+	// MaxMockNodes limits the number of schema nodes visited while building a mock.
+	MaxMockNodes int
+	// MaxMockProperties limits the number of object properties rendered while building a mock.
+	MaxMockProperties int
+	// MaxMockRefExpansions limits the number of $ref schema expansions while building a mock.
+	MaxMockRefExpansions int
+	// MaxMockBytes limits approximate mock structure size before serialization.
+	MaxMockBytes int
 }
 
 // SetUnresolvedRefHandler sets a callback that is invoked when a $ref cannot be resolved during rendering.
@@ -71,38 +144,77 @@ func (wr *SchemaRenderer) SetUnresolvedRefHandler(handler UnresolvedRefHandler) 
 	wr.onUnresolvedRef = handler
 }
 
-// CreateRendererUsingDictionary will create a new SchemaRenderer using a custom dictionary file.
+// SetMockGenerationOptions sets work and output budgets for generated mock values.
+//
+// Zero or negative option values are replaced with the package defaults.
+func (wr *SchemaRenderer) SetMockGenerationOptions(options MockGenerationOptions) {
+	wr.mockOptions = normalizeMockGenerationOptions(options)
+}
+
+// CreateRendererUsingDictionary creates a SchemaRenderer using a custom dictionary file.
+//
 // The location of a text file with one word per line is expected.
 func CreateRendererUsingDictionary(dictionaryLocation string) *SchemaRenderer {
-	// try and read in the dictionary file
 	words := ReadDictionary(dictionaryLocation)
 	return &SchemaRenderer{
-		words: words,
-		rand:  rand.New(rand.NewSource(time.Now().UnixNano())),
+		words:       words,
+		rand:        rand.New(rand.NewSource(time.Now().UnixNano())),
+		mockOptions: normalizeMockGenerationOptions(MockGenerationOptions{}),
 	}
 }
 
-// CreateRendererUsingDefaultDictionary will create a new SchemaRenderer using the default dictionary file.
+// CreateRendererUsingDefaultDictionary creates a SchemaRenderer using the default dictionary file.
+//
 // The default dictionary is located at /usr/share/dict/words on most systems.
-// Windows users will need to use CreateRendererUsingDictionary to specify a custom dictionary.
+// Windows users need to use CreateRendererUsingDictionary to specify a custom dictionary.
 func CreateRendererUsingDefaultDictionary() *SchemaRenderer {
 	wr := new(SchemaRenderer)
 	wr.words = ReadDictionary("/usr/share/dict/words")
 	wr.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	wr.mockOptions = normalizeMockGenerationOptions(MockGenerationOptions{})
 	return wr
 }
 
-// RenderSchema takes a schema and renders it into an interface, ready to be converted to JSON or YAML.
+// RenderSchema renders a schema into a value that can be serialized as JSON or YAML.
+//
+// RenderSchema preserves its historical best-effort behavior. Use RenderSchemaWithError to enforce and inspect mock
+// generation work budget failures.
 func (wr *SchemaRenderer) RenderSchema(schema *base.Schema) any {
-	// dive into the schema and render it
-	structure := make(map[string]any)
-	visited := make(map[string]bool)
-	wr.DiveIntoSchema(schema, rootType, structure, visited, 0)
-	return structure[rootType]
+	return wr.renderSchemaBestEffort(schema)
 }
 
-// DisableRequiredCheck will disable the required check when rendering a schema. This means that all properties
-// will be rendered, not just the required ones.
+// RenderSchemaWithError renders a schema into a value that can be serialized as JSON or YAML.
+//
+// If mock generation exceeds a configured work budget, the returned error wraps ErrMockGenerationBudgetExceeded.
+func (wr *SchemaRenderer) RenderSchemaWithError(schema *base.Schema) (any, error) {
+	return wr.renderSchema(schema)
+}
+
+func (wr *SchemaRenderer) renderSchema(schema *base.Schema) (any, error) {
+	return wr.renderSchemaWithBudgets(schema, true)
+}
+
+func (wr *SchemaRenderer) renderSchemaBestEffort(schema *base.Schema) any {
+	rendered, _ := wr.renderSchemaWithBudgets(schema, false)
+	return rendered
+}
+
+func (wr *SchemaRenderer) renderSchemaWithBudgets(schema *base.Schema, enforceBudgets bool) (any, error) {
+	structure := make(map[string]any)
+	ctx := newMockRenderContext(wr)
+	ctx.enforceBudgets = enforceBudgets
+	if !ctx.diveIntoSchema(schema, rootType, structure, 0) {
+		if ctx.err != nil {
+			return nil, ctx.err
+		}
+		return nil, nil
+	}
+	return structure[rootType], nil
+}
+
+// DisableRequiredCheck disables required-property filtering when rendering a schema.
+//
+// When disabled, all properties are rendered, not just required properties.
 // https://github.com/pb33f/libopenapi/issues/200
 func (wr *SchemaRenderer) DisableRequiredCheck() {
 	wr.disableRequired = true
@@ -114,13 +226,14 @@ func (wr *SchemaRenderer) SetSeed(seed int64) {
 	wr.rand = rand.New(rand.NewSource(seed))
 }
 
-// DiveIntoSchema will dive into a schema and inject values from examples into a map. If there are no examples in
-// the schema, then the renderer will attempt to generate a value based on the schema type, format and pattern.
+// DiveIntoSchema renders a schema into structure at key.
+//
+// Examples are preferred. If no examples are available, the renderer generates a value from the schema type, format
+// and pattern.
 func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, structure map[string]any, visited map[string]bool, depth int) bool {
 	if schema == nil {
 		return false
 	}
-	// got an example? use it, we're done here.
 	if schema.Example != nil {
 		var example any
 		_ = schema.Example.Decode(&example)
@@ -129,120 +242,16 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		return true
 	}
 
-	// emergency break to prevent stack overflow from ever occurring
+	// Prevent unbounded recursion on deeply nested schemas.
 	if depth > 100 {
-		structure[key] = "to deep to continue rendering..."
+		structure[key] = mockDepthExceededPlaceholder
 		return true
 	}
 
 	// render out a string.
 	if slices.Contains(schema.Type, stringType) {
-		// check for an enum, if there is one, then pick a random value from it.
-		if schema.Enum != nil && len(schema.Enum) > 0 {
-			enum := schema.Enum[wr.rand.Int()%len(schema.Enum)]
-
-			var example any
-			_ = enum.Decode(&example)
-
-			structure[key] = example
-		} else {
-
-			// generate a random value based on the schema format, pattern and length values.
-			var minLength int64 = 3
-			var maxLength int64 = 10
-
-			if schema.MinLength != nil {
-				minLength = *schema.MinLength
-			}
-			if schema.MaxLength != nil {
-				maxLength = *schema.MaxLength
-			}
-
-			// if there are examples, use them.
-			if schema.Examples != nil && len(schema.Examples) > 0 {
-				var renderedExample any
-
-				// multi examples and the type is an array? then render all examples.
-				if len(schema.Examples) > 1 && key == itemsType {
-					renderedExamples := make([]any, len(schema.Examples))
-					for i, exmp := range schema.Examples {
-						if exmp != nil {
-							var ex any
-							_ = exmp.Decode(&ex)
-							renderedExamples[i] = fmt.Sprint(ex)
-						}
-					}
-					structure[key] = renderedExamples
-					return true
-				} else {
-					// render the first example
-					exmp := schema.Examples[0]
-					if exmp != nil {
-						var ex any
-						_ = exmp.Decode(&ex)
-						renderedExample = fmt.Sprint(ex)
-					}
-					structure[key] = renderedExample
-					return true
-				}
-			}
-
-			switch schema.Format {
-			case dateTimeType:
-				structure[key] = time.Now().Format(time.RFC3339)
-			case dateType:
-				structure[key] = time.Now().Format("2006-01-02")
-			case timeType:
-				structure[key] = time.Now().Format("15:04:05")
-			case emailType:
-				structure[key] = fmt.Sprintf("%s@%s.com",
-					wr.RandomWord(minLength, maxLength, 0),
-					wr.RandomWord(minLength, maxLength, 0))
-			case hostnameType:
-				structure[key] = fmt.Sprintf("%s.com", wr.RandomWord(minLength, maxLength, 0))
-			case ipv4Type:
-				structure[key] = fmt.Sprintf("%d.%d.%d.%d",
-					wr.rand.Int()%255, wr.rand.Int()%255, wr.rand.Int()%255, wr.rand.Int()%255)
-			case ipv6Type:
-				structure[key] = fmt.Sprintf("%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
-					wr.rand.Intn(65535), wr.rand.Intn(65535), wr.rand.Intn(65535), wr.rand.Intn(65535),
-					wr.rand.Intn(65535), wr.rand.Intn(65535), wr.rand.Intn(65535), wr.rand.Intn(65535),
-				)
-			case uriType:
-				structure[key] = fmt.Sprintf("https://%s-%s-%s.com/%s",
-					wr.RandomWord(minLength, maxLength, 0),
-					wr.RandomWord(minLength, maxLength, 0),
-					wr.RandomWord(minLength, maxLength, 0),
-					wr.RandomWord(minLength, maxLength, 0))
-			case uriReferenceType:
-				structure[key] = fmt.Sprintf("/%s/%s",
-					wr.RandomWord(minLength, maxLength, 0),
-					wr.RandomWord(minLength, maxLength, 0))
-			case uuidType:
-				structure[key] = wr.PseudoUUID()
-			case byteType:
-				structure[key] = wr.RandomWord(minLength, maxLength, 0)
-			case passwordType:
-				structure[key] = wr.RandomWord(minLength, maxLength, 0)
-			case binaryType:
-				structure[key] = base64.StdEncoding.EncodeToString([]byte(wr.RandomWord(minLength, maxLength, 0)))
-			case bigIntType:
-				structure[key] = fmt.Sprint(wr.RandomInt(minLength, maxLength))
-			case decimalType:
-				structure[key] = fmt.Sprint(wr.RandomFloat64())
-			default:
-				// if there is a pattern supplied, then try and generate a string from it.
-				if schema.Pattern != "" {
-					str, err := reggen.Generate(schema.Pattern, int(maxLength))
-					if err == nil {
-						structure[key] = str
-					}
-				} else {
-					// last resort, generate a random value
-					structure[key] = wr.RandomWord(minLength, maxLength, 0)
-				}
-			}
-		}
+		options := wr.effectiveMockGenerationOptions()
+		structure[key] = wr.renderMockStringValue(schema, key, options.MaxGeneratedStringBytes)
 		return true
 	}
 
@@ -252,54 +261,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		slices.Contains(schema.Type, bigIntType) ||
 		slices.Contains(schema.Type, decimalType) {
 
-		if schema.Enum != nil && len(schema.Enum) > 0 {
-			enum := schema.Enum[wr.rand.Int()%len(schema.Enum)]
-
-			var example any
-			_ = enum.Decode(&example)
-
-			structure[key] = example
-		} else {
-
-			var minimum int64 = 1
-			var maximum int64 = 100
-
-			if schema.Minimum != nil {
-				minimum = int64(*schema.Minimum)
-			}
-			if schema.Maximum != nil {
-				maximum = int64(*schema.Maximum)
-			}
-
-			if schema.Examples != nil {
-				if len(schema.Examples) > 0 {
-					var renderedExample any
-					exmp := schema.Examples[0]
-					if exmp != nil {
-						var ex any
-						_ = exmp.Decode(&ex)
-						renderedExample = ex
-					}
-					structure[key] = renderedExample
-					return true
-				}
-			}
-
-			switch schema.Format {
-			case floatType:
-				structure[key] = wr.rand.Float32()
-			case doubleType:
-				structure[key] = wr.rand.Float64()
-			case int32Type:
-				structure[key] = int(wr.RandomInt(minimum, maximum))
-			case bigIntType:
-				structure[key] = wr.RandomInt(minimum, maximum)
-			case decimalType:
-				structure[key] = wr.RandomFloat64()
-			default:
-				structure[key] = wr.RandomInt(minimum, maximum)
-			}
-		}
+		structure[key] = wr.renderMockNumberValue(schema)
 		return true
 	}
 
@@ -340,7 +302,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 
 			for propName, propValue := range checkProps.FromOldest() {
 				// propValue is nil when a required property is listed but absent from the
-				// properties map (GetOrZero returns nil). Emit {} — existing behavior.
+				// properties map. Emit {} to preserve existing behavior.
 				if propValue == nil {
 					propertyMap[propName] = make(map[string]any)
 					continue
@@ -357,13 +319,13 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 						continue
 					}
 				} else if propValue.IsReference() {
-					// $ref could not be resolved — emit null placeholder and notify callback
+					// Emit null for unresolved $ref properties and notify the callback.
 					propertyMap[propName] = nil
 					if wr.onUnresolvedRef != nil {
 						wr.onUnresolvedRef(propName, propValue, propValue.GetBuildError())
 					}
 				} else {
-					// Non-reference property with no schema. Emit {} — existing behavior.
+					// Emit {} for non-reference properties with no schema to preserve existing behavior.
 					propertyMap[propName] = make(map[string]any)
 				}
 			}
@@ -554,6 +516,79 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 	return true
 }
 
+func normalizeMockGenerationOptions(options MockGenerationOptions) MockGenerationOptions {
+	if options.MaxPatternRepeatBudget <= 0 {
+		options.MaxPatternRepeatBudget = DefaultMaxPatternRepeatBudget
+	}
+	if options.MaxGeneratedStringBytes <= 0 {
+		options.MaxGeneratedStringBytes = DefaultMaxGeneratedStringBytes
+	}
+	if options.MaxMockDepth <= 0 {
+		options.MaxMockDepth = DefaultMaxMockDepth
+	}
+	if options.MaxMockNodes <= 0 {
+		options.MaxMockNodes = DefaultMaxMockNodes
+	}
+	if options.MaxMockProperties <= 0 {
+		options.MaxMockProperties = DefaultMaxMockProperties
+	}
+	if options.MaxMockRefExpansions <= 0 {
+		options.MaxMockRefExpansions = DefaultMaxMockRefExpansions
+	}
+	if options.MaxMockBytes <= 0 {
+		options.MaxMockBytes = DefaultMaxMockBytes
+	}
+	return options
+}
+
+func (wr *SchemaRenderer) effectiveMockGenerationOptions() MockGenerationOptions {
+	if wr == nil {
+		return normalizeMockGenerationOptions(MockGenerationOptions{})
+	}
+	return normalizeMockGenerationOptions(wr.mockOptions)
+}
+
+func (wr *SchemaRenderer) generatePatternString(pattern string, schemaMaxLength int64, hasSchemaMaxLength bool) (string, error) {
+	options := wr.effectiveMockGenerationOptions()
+	repeatBudget := options.MaxPatternRepeatBudget
+	if hasSchemaMaxLength && schemaMaxLength > 0 && schemaMaxLength < int64(repeatBudget) {
+		repeatBudget = int(schemaMaxLength)
+	}
+	str, err := reggen.Generate(pattern, repeatBudget)
+	if err != nil {
+		return "", err
+	}
+	return truncateStringBytes(str, options.MaxGeneratedStringBytes), nil
+}
+
+func boundedGeneratedStringRange(minLength, maxLength int64, maxBytes int) (int64, int64) {
+	if maxBytes <= 0 {
+		return minLength, maxLength
+	}
+	capLength := int64(maxBytes)
+	if minLength > capLength {
+		minLength = capLength
+	}
+	if maxLength <= 0 || maxLength > capLength {
+		maxLength = capLength
+	}
+	if maxLength < minLength {
+		maxLength = minLength
+	}
+	return minLength, maxLength
+}
+
+func truncateStringBytes(value string, maxBytes int) string {
+	if maxBytes <= 0 || len(value) <= maxBytes {
+		return value
+	}
+	cut := maxBytes
+	for cut > 0 && !utf8.RuneStart(value[cut]) {
+		cut--
+	}
+	return value[:cut]
+}
+
 func readFile(file io.ReadCloser) []string {
 	defer file.Close()
 
@@ -572,7 +607,7 @@ func copyMap(m map[string]bool) map[string]bool {
 	return res
 }
 
-// ReadDictionary will read a dictionary file and return a slice of strings.
+// ReadDictionary reads a dictionary file and returns one entry per line.
 func ReadDictionary(dictionaryLocation string) []string {
 	file, err := os.Open(dictionaryLocation)
 	if err != nil {
@@ -581,19 +616,18 @@ func ReadDictionary(dictionaryLocation string) []string {
 	return readFile(file)
 }
 
-// RandomWord will return a random word from the dictionary file between the min and max values. The depth is used
-// to prevent a stack overflow, the maximum depth is 100 (anything more than this is probably a bug).
-// set the values to 0 to return the first word returned, essentially ignore the min and max values.
+// RandomWord returns a random word between the min and max lengths.
+//
+// If no dictionary is configured, RandomWord returns a generated alphabetic string. Set min and max to 0 to return the
+// selected dictionary word without length filtering. The depth parameter prevents unbounded retries.
 func (wr *SchemaRenderer) RandomWord(min, max int64, depth int) string {
-	// break out if we've gone too deep
 	if depth > 100 {
 		return fmt.Sprintf("no-word-found-%d-%d", min, max)
 	}
 
-	// no dictionary? then just return a random string.
 	if len(wr.words) == 0 {
 		if min == 0 {
-			min = 7 // seems like a good default
+			min = 7
 		}
 		b := make([]byte, min)
 		for i := range b {
@@ -612,7 +646,7 @@ func (wr *SchemaRenderer) RandomWord(min, max int64, depth int) string {
 	return word
 }
 
-// RandomInt will return a random int between the min and max values.
+// RandomInt returns a random integer between min and max.
 func (wr *SchemaRenderer) RandomInt(min, max int64) int64 {
 	if max <= min {
 		return min
@@ -620,12 +654,12 @@ func (wr *SchemaRenderer) RandomInt(min, max int64) int64 {
 	return wr.rand.Int63n(max-min) + min
 }
 
-// RandomFloat64 will return a random float64 between 0 and 1.
+// RandomFloat64 returns a random float64 between 0 and 1.
 func (wr *SchemaRenderer) RandomFloat64() float64 {
 	return wr.rand.Float64()
 }
 
-// PseudoUUID will return a random UUID, it's not a real UUID, but it's good enough for mock /example data.
+// PseudoUUID returns a UUID-shaped random value for mock data.
 func (wr *SchemaRenderer) PseudoUUID() string {
 	b := make([]byte, 16)
 	_, _ = cryptoRand.Read(b)
