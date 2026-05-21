@@ -125,9 +125,9 @@ func appendNamespaceAttr(attrs []xml.Attr, prefix, namespace string) []xml.Attr 
 
 // RenderXML renders a value as XML. If schema is provided, uses its XML metadata
 // (xml.name, xml.attribute, xml.namespace, xml.prefix, xml.wrapped) for correct output.
-// If schema is nil, falls back to basic element-based XML (map keys → element names).
+// If schema is nil, falls back to basic element-based XML using map keys as element names.
 //
-// Note: nodeType "cdata" is treated as "text" in this version — Go's xml.Encoder has
+// Note: nodeType "cdata" is treated as "text" in this version because Go's xml.Encoder has
 // no first-class CDATA token support.
 func (mg *MockGenerator) RenderXML(value any, schema *highbase.Schema) []byte {
 	if value == nil {
@@ -192,7 +192,7 @@ func (mg *MockGenerator) renderXMLValue(enc *xml.Encoder, start xml.StartElement
 // renderXMLMap renders a map as an XML element with child elements, attributes, and text content.
 func (mg *MockGenerator) renderXMLMap(enc *xml.Encoder, start xml.StartElement, m map[string]any, schema *highbase.Schema) {
 	// Three-pass rendering:
-	// 1. Collect attributes → add to start element
+	// 1. Collect attributes and add them to the start element.
 	// 2. Collect text/cdata nodes
 	// 3. Emit child elements
 

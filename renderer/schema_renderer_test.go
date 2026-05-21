@@ -2288,7 +2288,7 @@ func TestRenderSchema_NestedDeep(t *testing.T) {
 	dive = func(mapNode map[string]any, level int) {
 		child := mapNode["child"]
 		if level >= 100 {
-			assert.Equal(t, "to deep to continue rendering...", child)
+			assert.Equal(t, mockDepthExceededPlaceholder, child)
 			journeyLevel = level
 			return
 		}
