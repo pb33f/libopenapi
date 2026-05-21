@@ -23,13 +23,81 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+const contextualRefKeySeparator = "\x00"
+
 // extractFragment returns the JSON pointer fragment from a full definition.
-// e.g., "file.yaml#/components/schemas/Pet" → "#/components/schemas/Pet"
+// e.g., "file.yaml#/components/schemas/Pet" -> "#/components/schemas/Pet"
 func extractFragment(fullDef string) string {
 	if idx := strings.Index(fullDef, "#/"); idx != -1 {
 		return fullDef[idx:]
 	}
 	return "#/"
+}
+
+// processRefMapKey scopes ambiguous target refs by the source component bucket.
+func processRefMapKey(target, source *index.Reference) string {
+	fullDefinition := ""
+	if target != nil {
+		fullDefinition = target.FullDefinition
+	}
+	if fullDefinition == "" && source != nil {
+		fullDefinition = source.FullDefinition
+	}
+	return contextualProcessRefKey(fullDefinition, source)
+}
+
+// processRefMapKeyForComponent scopes a target ref by an already-known component bucket.
+func processRefMapKeyForComponent(target *index.Reference, componentType string) string {
+	if target == nil {
+		return ""
+	}
+	if target.FullDefinition == "" || componentType == "" {
+		return target.FullDefinition
+	}
+	if isExplicitComponentDefinition(target.FullDefinition) {
+		return target.FullDefinition
+	}
+	return target.FullDefinition + contextualRefKeySeparator + componentType
+}
+
+// contextualProcessRefKey scopes ambiguous target refs by source path inference.
+func contextualProcessRefKey(fullDefinition string, source *index.Reference) string {
+	if fullDefinition == "" || source == nil {
+		return fullDefinition
+	}
+	if isExplicitComponentDefinition(fullDefinition) {
+		return fullDefinition
+	}
+	if componentType, ok := inferComponentTypeFromSourcePath(source.SourcePath); ok {
+		return fullDefinition + contextualRefKeySeparator + componentType
+	}
+	return fullDefinition
+}
+
+// isExplicitComponentDefinition reports whether a full definition already names
+// an OpenAPI component bucket, such as #/components/schemas/Pet.
+func isExplicitComponentDefinition(fullDefinition string) bool {
+	fragment := extractFragment(fullDefinition)
+	segments := strings.Split(strings.TrimPrefix(fragment, "#/"), "/")
+	return len(segments) >= 3 && segments[0] == v3low.ComponentsLabel
+}
+
+// processedRefFor prefers a source-contextual processed ref and falls back to
+// the canonical full definition for refs that do not need source scoping.
+func processedRefFor(
+	processedNodes *orderedmap.Map[string, *processRef],
+	fullDefinition string,
+	source *index.Reference,
+) *processRef {
+	if processedNodes == nil {
+		return nil
+	}
+	if key := contextualProcessRefKey(fullDefinition, source); key != fullDefinition {
+		if pr := processedNodes.GetOrZero(key); pr != nil {
+			return pr
+		}
+	}
+	return processedNodes.GetOrZero(fullDefinition)
 }
 
 func calculateCollisionName(name, pointer, delimiter string, iteration int) string {
@@ -137,10 +205,160 @@ func checkReferenceAndCapture[T any](
 	origins ComponentOriginMap,
 ) error {
 	err := checkReferenceAndBubbleUp(name, delimiter, pr, idx, componentMap, buildFunc)
+	if err == nil && pr != nil {
+		pr.location = []string{v3low.ComponentsLabel, componentType, pr.name}
+	}
 	if err == nil && origins != nil {
 		captureOrigin(pr, componentType, origins)
 	}
 	return err
+}
+
+func composeReferenceAs(
+	componentType, name string,
+	components *v3.Components,
+	pr *processRef,
+	idx *index.SpecIndex,
+	cf *handleIndexConfig,
+) (bool, error) {
+	delimiter := cf.compositionConfig.Delimiter
+
+	switch componentType {
+	case v3low.SchemasLabel:
+		if components.Schemas == nil {
+			return false, nil
+		}
+		return true, checkReferenceAndCapture(name, delimiter, v3low.SchemasLabel, pr, idx, components.Schemas, buildSchema, cf.origins)
+	case v3low.ResponsesLabel:
+		if components.Responses == nil {
+			return false, nil
+		}
+		return true, checkReferenceAndCapture(name, delimiter, v3low.ResponsesLabel, pr, idx, components.Responses, buildResponse, cf.origins)
+	case v3low.ParametersLabel:
+		if components.Parameters == nil {
+			return false, nil
+		}
+		return true, checkReferenceAndCapture(name, delimiter, v3low.ParametersLabel, pr, idx, components.Parameters, buildParameter, cf.origins)
+	case v3low.HeadersLabel:
+		if components.Headers == nil {
+			return false, nil
+		}
+		return true, checkReferenceAndCapture(name, delimiter, v3low.HeadersLabel, pr, idx, components.Headers, buildHeader, cf.origins)
+	case v3low.RequestBodiesLabel:
+		if components.RequestBodies == nil {
+			return false, nil
+		}
+		return true, checkReferenceAndCapture(name, delimiter, v3low.RequestBodiesLabel, pr, idx, components.RequestBodies, buildRequestBody, cf.origins)
+	case v3low.ExamplesLabel:
+		if components.Examples == nil {
+			return false, nil
+		}
+		return true, checkReferenceAndCapture(name, delimiter, v3low.ExamplesLabel, pr, idx, components.Examples, buildExample, cf.origins)
+	case v3low.LinksLabel:
+		if components.Links == nil {
+			return false, nil
+		}
+		return true, checkReferenceAndCapture(name, delimiter, v3low.LinksLabel, pr, idx, components.Links, buildLink, cf.origins)
+	case v3low.CallbacksLabel:
+		if components.Callbacks == nil {
+			return false, nil
+		}
+		return true, checkReferenceAndCapture(name, delimiter, v3low.CallbacksLabel, pr, idx, components.Callbacks, buildCallback, cf.origins)
+	case v3low.PathItemsLabel:
+		if !rootSupportsPathItemComponents(cf.rootIdx) {
+			cf.inlineRequired = append(cf.inlineRequired, pr)
+			return true, nil
+		}
+		if components.PathItems == nil {
+			return false, nil
+		}
+		return true, checkReferenceAndCapture(name, delimiter, v3low.PathItemsLabel, pr, idx, components.PathItems, buildPathItem, cf.origins)
+	case v3low.MediaTypesLabel:
+		if !rootSupportsMediaTypeComponents(cf.rootIdx) {
+			pr.location = nil
+			cf.inlineRequired = append(cf.inlineRequired, pr)
+			return true, nil
+		}
+		if components.MediaTypes == nil {
+			return false, nil
+		}
+		return true, checkReferenceAndCapture(name, delimiter, v3low.MediaTypesLabel, pr, idx, components.MediaTypes, buildMediaType, cf.origins)
+	default:
+		return false, nil
+	}
+}
+
+func fileImportLocationForType(
+	componentType string,
+	components *v3.Components,
+	pr *processRef,
+	cf *handleIndexConfig,
+) (bool, []string) {
+	delimiter := cf.compositionConfig.Delimiter
+
+	switch componentType {
+	case v3low.SchemasLabel:
+		if components.Schemas == nil {
+			return false, nil
+		}
+		return true, handleFileImport(pr, v3low.SchemasLabel, delimiter, components.Schemas)
+	case v3low.ResponsesLabel:
+		if components.Responses == nil {
+			return false, nil
+		}
+		return true, handleFileImport(pr, v3low.ResponsesLabel, delimiter, components.Responses)
+	case v3low.ParametersLabel:
+		if components.Parameters == nil {
+			return false, nil
+		}
+		return true, handleFileImport(pr, v3low.ParametersLabel, delimiter, components.Parameters)
+	case v3low.HeadersLabel:
+		if components.Headers == nil {
+			return false, nil
+		}
+		return true, handleFileImport(pr, v3low.HeadersLabel, delimiter, components.Headers)
+	case v3low.RequestBodiesLabel:
+		if components.RequestBodies == nil {
+			return false, nil
+		}
+		return true, handleFileImport(pr, v3low.RequestBodiesLabel, delimiter, components.RequestBodies)
+	case v3low.ExamplesLabel:
+		if components.Examples == nil {
+			return false, nil
+		}
+		return true, handleFileImport(pr, v3low.ExamplesLabel, delimiter, components.Examples)
+	case v3low.LinksLabel:
+		if components.Links == nil {
+			return false, nil
+		}
+		return true, handleFileImport(pr, v3low.LinksLabel, delimiter, components.Links)
+	case v3low.CallbacksLabel:
+		if components.Callbacks == nil {
+			return false, nil
+		}
+		return true, handleFileImport(pr, v3low.CallbacksLabel, delimiter, components.Callbacks)
+	case v3low.PathItemsLabel:
+		if !rootSupportsPathItemComponents(cf.rootIdx) {
+			cf.inlineRequired = append(cf.inlineRequired, pr)
+			return true, nil
+		}
+		if components.PathItems == nil {
+			return false, nil
+		}
+		return true, handleFileImport(pr, v3low.PathItemsLabel, delimiter, components.PathItems)
+	case v3low.MediaTypesLabel:
+		if !rootSupportsMediaTypeComponents(cf.rootIdx) {
+			pr.location = nil
+			cf.inlineRequired = append(cf.inlineRequired, pr)
+			return true, nil
+		}
+		if components.MediaTypes == nil {
+			return false, nil
+		}
+		return true, handleFileImport(pr, v3low.MediaTypesLabel, delimiter, components.MediaTypes)
+	default:
+		return false, nil
+	}
 }
 
 func isZeroOfType[T any](v T) bool {
@@ -243,7 +461,7 @@ func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *pr
 }
 
 // encodeJSONPointerSegment encodes a string for use in a JSON Pointer per RFC 6901.
-// The escape sequence is: ~ → ~0, / → ~1 (order matters: ~ must be escaped first).
+// The escape sequence is: ~ -> ~0, / -> ~1 (order matters: ~ must be escaped first).
 func encodeJSONPointerSegment(s string) string {
 	if !strings.ContainsAny(s, "~/") {
 		return s
@@ -264,6 +482,15 @@ func joinLocationAsJSONPointer(location []string) string {
 }
 
 func renameRef(idx *index.SpecIndex, def string, processedNodes *orderedmap.Map[string, *processRef]) string {
+	return renameRefWithSource(idx, def, nil, processedNodes)
+}
+
+func renameRefWithSource(
+	idx *index.SpecIndex,
+	def string,
+	source *index.Reference,
+	processedNodes *orderedmap.Map[string, *processRef],
+) string {
 	if strings.Contains(def, "#/") {
 		defSplit := strings.Split(def, "#/")
 		if len(defSplit) != 2 {
@@ -273,7 +500,7 @@ func renameRef(idx *index.SpecIndex, def string, processedNodes *orderedmap.Map[
 		segs := strings.Split(ptr, "/")
 		if len(segs) < 2 {
 			// check if this single-segment pointer was processed and has a location
-			if pr := processedNodes.GetOrZero(def); pr != nil && len(pr.location) > 0 {
+			if pr := processedRefFor(processedNodes, def, source); pr != nil && len(pr.location) > 0 {
 				return "#/" + joinLocationAsJSONPointer(pr.location)
 			}
 			return def
@@ -281,7 +508,7 @@ func renameRef(idx *index.SpecIndex, def string, processedNodes *orderedmap.Map[
 		prefix := strings.Join(segs[:len(segs)-1], "/")
 
 		// reference already renamed during composition
-		if pr := processedNodes.GetOrZero(def); pr != nil {
+		if pr := processedRefFor(processedNodes, def, source); pr != nil {
 			return fmt.Sprintf("#/%s/%s", prefix, encodeJSONPointerSegment(pr.name))
 		}
 
@@ -296,7 +523,7 @@ func renameRef(idx *index.SpecIndex, def string, processedNodes *orderedmap.Map[
 	}
 
 	// root-file import lifted into components
-	if pn := processedNodes.GetOrZero(def); pn != nil && len(pn.location) > 0 {
+	if pn := processedRefFor(processedNodes, def, source); pn != nil && len(pn.location) > 0 {
 		return "#/" + joinLocationAsJSONPointer(pn.location)
 	}
 
@@ -307,7 +534,7 @@ func rewireRef(idx *index.SpecIndex, ref *index.Reference, fullDef string, proce
 	isRef, _, _ := utils.IsNodeRefValue(ref.Node)
 
 	// extract the pr from the processed nodes.
-	if pr := processedNodes.GetOrZero(fullDef); pr != nil {
+	if pr := processedRefFor(processedNodes, fullDef, ref); pr != nil {
 		if kk, _, _ := utils.IsNodeRefValue(pr.ref.Node); kk {
 			if pr.refPointer == "" {
 				// Use GetRefValueNode to handle OA 3.1 sibling properties correctly
@@ -318,7 +545,7 @@ func rewireRef(idx *index.SpecIndex, ref *index.Reference, fullDef string, proce
 		}
 	}
 
-	rename := renameRef(idx, fullDef, processedNodes)
+	rename := renameRefWithSource(idx, fullDef, ref, processedNodes)
 	if isRef {
 		// Use GetRefValueNode to find the correct $ref value node
 		// This handles OA 3.1 sibling properties where $ref may not be at index 0
@@ -424,6 +651,14 @@ func buildPathItem(node *yaml.Node, idx *index.SpecIndex) (*v3.PathItem, error) 
 	ctx := context.Background()
 	err := pathItem.Build(ctx, &yaml.Node{}, node, idx)
 	return v3.NewPathItem(&pathItem), err
+}
+
+func buildMediaType(node *yaml.Node, idx *index.SpecIndex) (*v3.MediaType, error) {
+	mediaType := v3low.MediaType{}
+	_ = low.BuildModel(node, &mediaType)
+	ctx := context.Background()
+	err := mediaType.Build(ctx, &yaml.Node{}, node, idx)
+	return v3.NewMediaType(&mediaType), err
 }
 
 // captureOrigin records origin information for a processed reference.

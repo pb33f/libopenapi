@@ -4,6 +4,7 @@
 package bundler
 
 import (
+	"bytes"
 	"errors"
 	"log/slog"
 	"os"
@@ -1850,6 +1851,324 @@ paths:
 		}
 	}
 	assert.True(t, foundOkResponse, "OkResponse should be added to components")
+}
+
+func TestBundleBytesComposed_RepeatedDescriptionOnlyExternalResponses(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+info:
+  title: Repeated description-only responses
+  version: 1.0.0
+paths:
+  /bookmarks:
+    post:
+      operationId: createBookmark
+      responses:
+        "201":
+          $ref: 'responses.yaml#/RecordCreated'
+        "401":
+          $ref: 'responses.yaml#/AuthenticationFailed'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+  /bookmarks/{id}:
+    get:
+      operationId: getBookmark
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+        "401":
+          $ref: 'responses.yaml#/AuthenticationFailed'
+        "404":
+          $ref: 'responses.yaml#/NotFound'
+`
+	responsesFile := `AuthenticationFailed:
+  description: Authentication Failure (401)
+NotFound:
+  description: The record does not exist (404)
+RecordCreated:
+  description: Successful creation of a record (201)
+`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(rootSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "responses.yaml"), []byte(responsesFile), 0644))
+	mainBytes, err := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	require.NoError(t, err)
+
+	var logBuf bytes.Buffer
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+		Logger:              slog.New(slog.NewTextHandler(&logBuf, nil)),
+	}, nil)
+	require.NoError(t, err)
+
+	bundledText := string(bundled)
+	assert.NotContains(t, logBuf.String(), "unable to compose reference")
+	assert.NotContains(t, bundledText, "#/AuthenticationFailed")
+	assert.NotContains(t, bundledText, "#/NotFound")
+	assert.NotContains(t, bundledText, "responses.yaml")
+	assert.Contains(t, bundledText, "$ref: '#/components/responses/AuthenticationFailed'")
+	assert.Contains(t, bundledText, "$ref: '#/components/responses/NotFound'")
+	assert.Contains(t, bundledText, "$ref: '#/components/responses/RecordCreated'")
+
+	doc, err := libopenapi.NewDocument(bundled)
+	require.NoError(t, err)
+	_, buildErr := doc.BuildV3Model()
+	require.NoError(t, buildErr)
+
+	var parsed map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &parsed))
+	components := parsed["components"].(map[string]any)
+	responses := components["responses"].(map[string]any)
+	assert.Contains(t, responses, "AuthenticationFailed")
+	assert.Contains(t, responses, "NotFound")
+	assert.Contains(t, responses, "RecordCreated")
+}
+
+func TestBundleBytesComposed_ContextClassifiesDescriptionOnlySchema(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+info:
+  title: Sparse schema
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      operationId: getPets
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/SparsePet'
+`
+	schemasFile := `SparsePet:
+  description: A schema with no structural keywords
+`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(rootSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "schemas.yaml"), []byte(schemasFile), 0644))
+	mainBytes, err := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	require.NoError(t, err)
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	var parsed map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &parsed))
+	components := parsed["components"].(map[string]any)
+	assert.Contains(t, components["schemas"].(map[string]any), "SparsePet")
+	assert.NotContains(t, components, "responses")
+	assert.Contains(t, string(bundled), "$ref: '#/components/schemas/SparsePet'")
+}
+
+func TestBundleBytesComposed_ContextClassifiesSparseExample(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+info:
+  title: Sparse example
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      operationId: getPets
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+              examples:
+                sparse:
+                  $ref: 'examples.yaml#/SparseExample'
+`
+	examplesFile := `SparseExample:
+  summary: Sparse reusable example
+`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(rootSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "examples.yaml"), []byte(examplesFile), 0644))
+	mainBytes, err := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	require.NoError(t, err)
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	var parsed map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &parsed))
+	components := parsed["components"].(map[string]any)
+	assert.Contains(t, components["examples"].(map[string]any), "SparseExample")
+	assert.Contains(t, string(bundled), "$ref: '#/components/examples/SparseExample'")
+}
+
+func TestBundleBytesComposed_ContextualRefsSameTargetDifferentBuckets(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+info:
+  title: Shared sparse target
+  version: 1.0.0
+paths:
+  /as-response:
+    get:
+      operationId: getAsResponse
+      responses:
+        "200":
+          $ref: 'common.yaml#/Thing'
+  /as-schema:
+    get:
+      operationId: getAsSchema
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'common.yaml#/Thing'
+`
+	commonFile := `Thing:
+  description: Shared description-only target
+`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(rootSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "common.yaml"), []byte(commonFile), 0644))
+	mainBytes, err := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	require.NoError(t, err)
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	var parsed map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &parsed))
+	components := parsed["components"].(map[string]any)
+	require.Contains(t, components["responses"].(map[string]any), "Thing")
+	require.Contains(t, components["schemas"].(map[string]any), "Thing")
+
+	paths := parsed["paths"].(map[string]any)
+	getOp := paths["/as-response"].(map[string]any)["get"].(map[string]any)
+	responseRef := getOp["responses"].(map[string]any)["200"].(map[string]any)["$ref"]
+	assert.Equal(t, "#/components/responses/Thing", responseRef)
+
+	schemaOp := paths["/as-schema"].(map[string]any)["get"].(map[string]any)
+	schemaResponse := schemaOp["responses"].(map[string]any)["200"].(map[string]any)
+	content := schemaResponse["content"].(map[string]any)["application/json"].(map[string]any)
+	thingRef := content["schema"].(map[string]any)["$ref"]
+	assert.Equal(t, "#/components/schemas/Thing", thingRef)
+}
+
+func TestBundleBytesComposed_SingularExampleRefPreservesExampleComponent(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+info:
+  title: Singular example ref
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Pet:
+      type: object
+      example:
+        $ref: 'examples.yaml#/PetExample'
+`
+	examplesFile := `PetExample:
+  value:
+    id: 123
+    name: Buster
+`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(rootSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "examples.yaml"), []byte(examplesFile), 0644))
+	mainBytes, err := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	require.NoError(t, err)
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	var parsed map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &parsed))
+	components := parsed["components"].(map[string]any)
+	examples := components["examples"].(map[string]any)
+	require.Contains(t, examples, "PetExample")
+	assert.NotContains(t, components["schemas"].(map[string]any), "PetExample")
+
+	petExample := examples["PetExample"].(map[string]any)
+	value := petExample["value"].(map[string]any)
+	assert.Equal(t, 123, value["id"])
+
+	pet := components["schemas"].(map[string]any)["Pet"].(map[string]any)
+	exampleRef := pet["example"].(map[string]any)["$ref"]
+	assert.Equal(t, "#/components/examples/PetExample", exampleRef)
+}
+
+func TestBundleBytesComposed_UnsupportedRepeatedMediaTypeRefsInlineAll(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+info:
+  title: Repeated media type refs
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      operationId: getPets
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              $ref: 'media.yaml#/Json'
+            application/problem+json:
+              $ref: 'media.yaml#/Json'
+`
+	mediaFile := `Json:
+  schema:
+    type: object
+    properties:
+      id:
+        type: string
+`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(rootSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "media.yaml"), []byte(mediaFile), 0644))
+	mainBytes, err := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	require.NoError(t, err)
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	assert.NotContains(t, string(bundled), "components/mediaTypes")
+	assert.NotContains(t, string(bundled), "media.yaml")
+
+	var parsed map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &parsed))
+	paths := parsed["paths"].(map[string]any)
+	content := paths["/pets"].(map[string]any)["get"].(map[string]any)["responses"].(map[string]any)["200"].(map[string]any)["content"].(map[string]any)
+	for _, mediaType := range []string{"application/json", "application/problem+json"} {
+		entry := content[mediaType].(map[string]any)
+		assert.NotContains(t, entry, "$ref")
+		require.Contains(t, entry, "schema")
+	}
 }
 
 // TestBundleBytesComposed_SingleSegmentParameter tests that single-segment JSON pointer

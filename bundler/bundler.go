@@ -508,7 +508,7 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 		return nil, err
 	}
 
-	// Step 1: Collect discriminator mappings WITH context (early)
+	// Collect discriminator mappings before ref processing so mapping-only targets can be composed.
 	discriminatorMappings := collectDiscriminatorMappingNodesWithContext(rolodex)
 
 	cf := &handleIndexConfig{
@@ -523,10 +523,9 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 		origins:               make(ComponentOriginMap),
 	}
 
-	// Step 2: Enqueue mapping targets for composition (AFTER cf is created, BEFORE handleIndex)
-	// Pass rootIndex so we can skip root-local #/ refs
+	// Enqueue mapping targets after cf exists; root-local #/ refs stay in place.
 	enqueueDiscriminatorMappingTargets(discriminatorMappings, cf, rootIndex)
-	// Refresh indexes in case mapping resolution loaded new ones
+	// Refresh indexes in case mapping resolution loaded new ones.
 	cf.indexes = rolodex.GetIndexes()
 	if err := validateDiscriminatorMappings(rolodex); err != nil {
 		return nil, err
@@ -545,7 +544,10 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 	for _, ref := range cf.refMap.FromOldest() {
 		err := processReference(model, ref, cf)
 		errs = append(errs, err)
-		processedNodes.Set(ref.ref.FullDefinition, ref)
+		processedNodes.Set(ref.mapKey, ref)
+		if ref.ref != nil && ref.mapKey != ref.ref.FullDefinition {
+			processedNodes.Set(ref.ref.FullDefinition, ref)
+		}
 	}
 
 	slices.SortFunc(indexes, func(i, j *index.SpecIndex) int {
@@ -555,56 +557,20 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 		return 0
 	})
 
-	// Step 3: Remap indexed refs
+	// Remap indexed refs.
 	remapIndex(rootIndex, processedNodes)
 
 	for _, idx := range indexes {
 		remapIndex(idx, processedNodes)
 	}
 
-	// Step 4: Update discriminator mappings (uses renameRef for collision handling)
+	// Update discriminator mapping values after component names are final.
 	updateDiscriminatorMappingsComposed(discriminatorMappings, processedNodes, rolodex)
 
-	// Step 5: Inline handling with guard for synthetic discriminator refs
-	// anything that could not be recomposed and needs inlining
-	inlinedPaths := make(map[string]*yaml.Node)
-	for _, pr := range cf.inlineRequired {
-		// Skip synthetic refs from discriminator mappings - their seqRef.Node is a
-		// scalar value node, not a $ref node with Content array
-		if pr.fromDiscriminator {
-			continue
-		}
+	// Inline anything that could not be recomposed.
+	inlinedPaths := inlineRequiredRefs(cf.inlineRequired, rolodex)
 
-		if pr.refPointer != "" {
-
-			// if the ref is a pointer to an external pointer, then we need to stitch it.
-			uri := strings.Split(pr.refPointer, "#/")
-			if len(uri) == 2 {
-				if uri[0] != "" {
-					if !filepath.IsAbs(uri[0]) && !strings.HasPrefix(uri[0], "http") {
-						// if the uri is not absolute, then we need to make it absolute.
-						uri[0] = utils.CheckPathOverlap(filepath.Dir(pr.idx.GetSpecAbsolutePath()), uri[0], string(os.PathSeparator))
-					}
-					pointerRef := pr.idx.FindComponent(context.Background(), strings.Join(uri, "#/"))
-					pr.seqRef.Node.Content = pointerRef.Node.Content
-					// Track this inlined content for reuse
-					if pr.ref != nil {
-						inlinedPaths[pr.ref.FullDefinition] = pointerRef.Node
-					}
-					continue
-				}
-			}
-		}
-		pr.seqRef.Node.Content = pr.ref.Node.Content
-		// Track this inlined content for reuse
-		if pr.ref != nil {
-			inlinedPaths[pr.ref.FullDefinition] = pr.ref.Node
-		}
-	}
-
-	// Step 6: Tree walk for any remaining unindexed refs
-	// Re-fetch indexes since new ones may have been loaded during composition
-	// (e.g., discriminator mapping targets that weren't indexed initially)
+	// Rewrite any remaining unindexed refs after mapping resolution loads new indexes.
 	allLoadedIndexes := rolodex.GetIndexes()
 	rewriteAllRefs(rootIndex, processedNodes, rolodex)
 	for _, idx := range allLoadedIndexes {
@@ -672,7 +638,7 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		return nil, err
 	}
 
-	// Collect discriminator mappings WITH context (early)
+	// Collect discriminator mappings before ref processing so mapping-only targets can be composed.
 	discriminatorMappings := collectDiscriminatorMappingNodesWithContext(rolodex)
 
 	cf := &handleIndexConfig{
@@ -687,10 +653,9 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		origins:               make(ComponentOriginMap),
 	}
 
-	// Enqueue mapping targets for composition (AFTER cf is created, BEFORE handleIndex)
-	// Pass rootIndex so we can skip root-local #/ refs
+	// Enqueue mapping targets after cf exists; root-local #/ refs stay in place.
 	enqueueDiscriminatorMappingTargets(discriminatorMappings, cf, rootIndex)
-	// Refresh indexes in case mapping resolution loaded new ones
+	// Refresh indexes in case mapping resolution loaded new ones.
 	cf.indexes = rolodex.GetIndexes()
 	if err := validateDiscriminatorMappings(rolodex); err != nil {
 		return nil, err
@@ -709,7 +674,10 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	for _, ref := range cf.refMap.FromOldest() {
 		err := processReference(model, ref, cf)
 		errs = append(errs, err)
-		processedNodes.Set(ref.ref.FullDefinition, ref)
+		processedNodes.Set(ref.mapKey, ref)
+		if ref.ref != nil && ref.mapKey != ref.ref.FullDefinition {
+			processedNodes.Set(ref.ref.FullDefinition, ref)
+		}
 	}
 
 	slices.SortFunc(indexes, func(i, j *index.SpecIndex) int {
@@ -719,56 +687,20 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		return 0
 	})
 
-	// Remap indexed refs
+	// Remap indexed refs.
 	remapIndex(rootIndex, processedNodes)
 
 	for _, idx := range indexes {
 		remapIndex(idx, processedNodes)
 	}
 
-	// Update discriminator mappings (uses renameRef for collision handling)
+	// Update discriminator mapping values after component names are final.
 	updateDiscriminatorMappingsComposed(discriminatorMappings, processedNodes, rolodex)
 
-	// Inline handling with guard for synthetic discriminator refs
-	// anything that could not be recomposed and needs inlining
-	inlinedPaths := make(map[string]*yaml.Node)
-	for _, pr := range cf.inlineRequired {
-		// Skip synthetic refs from discriminator mappings - their seqRef.Node is a
-		// scalar value node, not a $ref node with a Content array
-		if pr.fromDiscriminator {
-			continue
-		}
+	// Inline anything that could not be recomposed.
+	inlinedPaths := inlineRequiredRefs(cf.inlineRequired, rolodex)
 
-		if pr.refPointer != "" {
-
-			// if the ref is a pointer to an external pointer, then we need to stitch it.
-			uri := strings.Split(pr.refPointer, "#/")
-			if len(uri) == 2 {
-				if uri[0] != "" {
-					if !filepath.IsAbs(uri[0]) && !strings.HasPrefix(uri[0], "http") {
-						// if the uri is not absolute, then we need to make it absolute.
-						uri[0] = utils.CheckPathOverlap(filepath.Dir(pr.idx.GetSpecAbsolutePath()), uri[0], string(os.PathSeparator))
-					}
-					pointerRef := pr.idx.FindComponent(context.Background(), strings.Join(uri, "#/"))
-					pr.seqRef.Node.Content = pointerRef.Node.Content
-					// Track this inlined content for reuse
-					if pr.ref != nil {
-						inlinedPaths[pr.ref.FullDefinition] = pointerRef.Node
-					}
-					continue
-				}
-			}
-		}
-		pr.seqRef.Node.Content = pr.ref.Node.Content
-		// Track this inlined content for reuse
-		if pr.ref != nil {
-			inlinedPaths[pr.ref.FullDefinition] = pr.ref.Node
-		}
-	}
-
-	// Tree walk for any remaining unindexed refs
-	// Re-fetch indexes since new ones may have been loaded during composition
-	// (e.g., discriminator mapping targets that weren't indexed initially)
+	// Rewrite any remaining unindexed refs after mapping resolution loads new indexes.
 	allLoadedIndexes := rolodex.GetIndexes()
 	rewriteAllRefs(rootIndex, processedNodes, rolodex)
 	for _, idx := range allLoadedIndexes {
@@ -800,6 +732,103 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	errs = append(errs, err)
 
 	return b, errors.Join(errs...)
+}
+
+// inlineRequiredRefs inlines refs that cannot be represented as root components.
+func inlineRequiredRefs(required []*processRef, rolodex *index.Rolodex) map[string]*yaml.Node {
+	inlinedPaths := make(map[string]*yaml.Node)
+	if len(required) == 0 {
+		return inlinedPaths
+	}
+
+	refsByDefinition := sequencedRefsByFullDefinition(rolodex)
+	for _, pr := range required {
+		inlinedNode := inlineProcessRef(pr)
+		if inlinedNode == nil {
+			continue
+		}
+		if pr.ref != nil {
+			inlinedPaths[pr.ref.FullDefinition] = inlinedNode
+		}
+		inlineMatchingRefs(pr, inlinedNode, refsByDefinition)
+	}
+	return inlinedPaths
+}
+
+// sequencedRefsByFullDefinition buckets refs once for inlineRequiredRefs.
+func sequencedRefsByFullDefinition(rolodex *index.Rolodex) map[string][]*index.Reference {
+	refsByDefinition := make(map[string][]*index.Reference)
+	if rolodex == nil {
+		return refsByDefinition
+	}
+
+	indexes := append([]*index.SpecIndex{}, rolodex.GetIndexes()...)
+	indexes = append(indexes, rolodex.GetRootIndex())
+	seen := make(map[*index.SpecIndex]struct{}, len(indexes))
+
+	for _, idx := range indexes {
+		if idx == nil {
+			continue
+		}
+		if _, ok := seen[idx]; ok {
+			continue
+		}
+		seen[idx] = struct{}{}
+
+		for _, seqRef := range idx.GetRawReferencesSequenced() {
+			if seqRef == nil || seqRef.IsExtensionRef || seqRef.Node == nil || seqRef.FullDefinition == "" {
+				continue
+			}
+			refsByDefinition[seqRef.FullDefinition] = append(refsByDefinition[seqRef.FullDefinition], seqRef)
+		}
+	}
+	return refsByDefinition
+}
+
+// inlineProcessRef replaces the source ref node with its resolved target node.
+func inlineProcessRef(pr *processRef) *yaml.Node {
+	if pr == nil || pr.fromDiscriminator || pr.seqRef == nil || pr.seqRef.Node == nil || pr.ref == nil {
+		return nil
+	}
+
+	if pr.refPointer != "" {
+		uri := strings.Split(pr.refPointer, "#/")
+		if len(uri) == 2 && uri[0] != "" {
+			if !filepath.IsAbs(uri[0]) && !strings.HasPrefix(uri[0], "http") {
+				uri[0] = utils.CheckPathOverlap(filepath.Dir(pr.idx.GetSpecAbsolutePath()), uri[0], string(os.PathSeparator))
+			}
+			pointerRef := pr.idx.FindComponent(context.Background(), strings.Join(uri, "#/"))
+			if pointerRef == nil || pointerRef.Node == nil {
+				return nil
+			}
+			pr.seqRef.Node.Content = pointerRef.Node.Content
+			return pointerRef.Node
+		}
+	}
+
+	if pr.ref.Node == nil {
+		return nil
+	}
+	pr.seqRef.Node.Content = pr.ref.Node.Content
+	return pr.ref.Node
+}
+
+// inlineMatchingRefs applies the same inline replacement to repeated matching refs.
+func inlineMatchingRefs(pr *processRef, inlinedNode *yaml.Node, refsByDefinition map[string][]*index.Reference) {
+	if pr == nil || pr.ref == nil || inlinedNode == nil || refsByDefinition == nil {
+		return
+	}
+	key := pr.mapKey
+	if key == "" {
+		key = processRefMapKey(pr.ref, pr.seqRef)
+	}
+
+	for _, seqRef := range refsByDefinition[pr.ref.FullDefinition] {
+		if contextualProcessRefKey(pr.ref.FullDefinition, seqRef) != key {
+			continue
+		}
+		seqRef.Node.Content = inlinedNode.Content
+	}
 }
 
 // resolveBundleInlineConfig resolves the inlineLocalRefs setting from the fallback chain:
@@ -1341,9 +1370,8 @@ func updateDiscriminatorMappingsComposed(mappings []*discriminatorMappingWithCon
 			continue
 		}
 
-		// Use the cached canonicalKey and targetIdx from enqueue time.
-		// At enqueue time, we captured ref.FullDefinition BEFORE any mutation.
-		// Using SearchIndexForReference again here would return a potentially mutated
+		// Use the canonicalKey and targetIdx captured before bundling mutates refs.
+		// Calling SearchIndexForReference again here could return a mutated
 		// ref.FullDefinition that won't match processedNodes keys.
 		canonicalKey := mapping.canonicalKey
 		targetIdx := mapping.targetIdx
@@ -1359,7 +1387,7 @@ func updateDiscriminatorMappingsComposed(mappings []*discriminatorMappingWithCon
 				continue
 			}
 			canonicalKey = ref.FullDefinition
-			targetIdx = refIdx // Use the resolved index, NOT mapping.sourceIdx
+			targetIdx = refIdx // Use the resolved index, not mapping.sourceIdx.
 		}
 
 		// Gate rewrites on processedNodes presence.
