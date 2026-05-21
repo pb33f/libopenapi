@@ -20,7 +20,7 @@ paths:
         $ref: "common.yaml#/components/requestBodies/testBody"
       responses:
         403:
-          # this can only be inlined, there is no way to know what type of object this is.
+          # sparse response target classified from its source slot.
           $ref: "clash/unknown.yaml"
         404:
           description: another test
@@ -83,4 +83,3 @@ paths:
             application/json:
               schema:
                 $ref:  "paging.yaml#/components/schemas/paging"
-

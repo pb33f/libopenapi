@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -523,6 +524,42 @@ components:
 
 	assert.NotNil(t, normalRef, "Normal ref should be found")
 	assert.False(t, normalRef.IsExtensionRef, "Normal ref should NOT be marked as IsExtensionRef")
+}
+
+func TestSpecIndex_ExtractRefs_CapturesSourcePath(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+paths:
+  /test:
+    get:
+      responses:
+        "200":
+          $ref: '#/components/responses/OK'
+components:
+  responses:
+    OK:
+      description: OK`
+
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &rootNode))
+
+	c := CreateClosedAPIIndexConfig()
+	c.AvoidCircularReferenceCheck = true
+
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+
+	var responseRef *Reference
+	for _, ref := range idx.GetRawReferencesSequenced() {
+		if ref.RawRef == "#/components/responses/OK" {
+			responseRef = ref
+			break
+		}
+	}
+
+	require.NotNil(t, responseRef)
+	assert.Equal(t, []string{"paths", "~1test", "get", "responses", "200"}, responseRef.SourcePath)
 }
 
 func TestSpecIndex_GetExtensionRefsSequenced(t *testing.T) {

@@ -18,7 +18,7 @@ paths:
                 $ref: "#/components/requestBodies/testBody"
             responses:
                 "403":
-                    description: could be meat, could be cake. only option is to inline.
+                    $ref: "#/components/responses/unknown"
                 "404":
                     description: another test
                     content:
@@ -202,6 +202,8 @@ components:
                                 errorCode: ErrOperationForbidden
                                 requestId: "x837ant-000007"
                                 message: Forbidden
+        unknown:
+            description: could be meat, could be cake. only option is to inline.
     parameters:
         query:
             description: Query param
