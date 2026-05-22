@@ -61,6 +61,32 @@ func TestBundlerComposed(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestProcessReference_ContextualSingleSegmentRejectsUnsafeNode(t *testing.T) {
+	model := &v3.Document{
+		Components: &v3.Components{},
+	}
+	idx := newVersionedIndex(3.1)
+	cf := &handleIndexConfig{
+		idx:               idx,
+		rootIdx:           idx,
+		inlineRequired:    nil,
+		compositionConfig: &BundleCompositionConfig{Delimiter: "__"},
+	}
+	pr := &processRef{
+		idx: idx,
+		ref: &index.Reference{
+			FullDefinition: "/tmp/common.yaml#/Thing",
+		},
+		seqRef: &index.Reference{
+			SourcePath: []string{"paths", "/pets", "get", "responses", "200"},
+		},
+	}
+
+	require.NoError(t, processReference(model, pr, cf))
+	require.Len(t, cf.inlineRequired, 1)
+	assert.Same(t, pr, cf.inlineRequired[0])
+}
+
 func TestCheckFileIteration(t *testing.T) {
 	name := calculateCollisionName("bundled", "/test/specs/bundled.yaml", "__", 1)
 	assert.Equal(t, "bundled__specs", name)
