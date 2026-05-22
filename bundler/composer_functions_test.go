@@ -13,6 +13,7 @@ import (
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
@@ -416,6 +417,65 @@ x-extension:
 	assert.NotEqual(t, replacement.Content, schemaRef.Node.Content)
 }
 
+func TestRewriteInlinedAbsoluteRefs(t *testing.T) {
+	tmpDir := t.TempDir()
+	rootPath := filepath.Join(tmpDir, "root.yaml")
+	matchedPath := filepath.Join(tmpDir, "matched.yaml")
+
+	rootSource := strings.ReplaceAll(`openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+paths:
+  /matched:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: 'MATCHED_PATH'
+  /relative:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: './relative.yaml'
+`, "MATCHED_PATH", matchedPath)
+	require.NoError(t, os.WriteFile(rootPath, []byte(rootSource), 0644))
+
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(rootSource), &root))
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	cfg.BasePath = tmpDir
+	cfg.SpecAbsolutePath = rootPath
+	idx := index.NewSpecIndexWithConfig(&root, cfg)
+
+	matchedRef := findRawRefByValue(t, idx, matchedPath)
+	relativeRef := findRawRefByValue(t, idx, "./relative.yaml")
+	replacement := testYAMLContentNode(t, "type: object\nproperties:\n  id:\n    type: string\n")
+
+	rolodex := index.NewRolodex(cfg)
+	rolodex.SetRootIndex(idx)
+	rolodex.AddIndex(idx)
+
+	rewriteInlinedAbsoluteRefs(nil, []*index.SpecIndex{idx}, map[string]*yaml.Node{matchedPath: replacement})
+	assert.NotEqual(t, replacement.Content, matchedRef.Node.Content)
+
+	rewriteInlinedAbsoluteRefs(rolodex, []*index.SpecIndex{nil, idx}, nil)
+	rewriteInlinedAbsoluteRefs(rolodex, []*index.SpecIndex{nil, idx}, map[string]*yaml.Node{matchedPath: nil})
+	assert.NotEqual(t, replacement.Content, matchedRef.Node.Content)
+
+	rewriteInlinedAbsoluteRefs(rolodex, []*index.SpecIndex{nil, idx}, map[string]*yaml.Node{matchedPath: replacement})
+	assert.Equal(t, replacement.Content, matchedRef.Node.Content)
+	assert.NotEqual(t, replacement.Content, relativeRef.Node.Content)
+}
+
 func newVersionedIndex(version float32) *index.SpecIndex {
 	var root yaml.Node
 	_ = yaml.Unmarshal([]byte(`openapi: 3.1.0
@@ -451,6 +511,21 @@ func findRawRefByComponentType(t *testing.T, idx *index.SpecIndex, componentType
 		}
 	}
 	t.Fatalf("expected raw %s ref ending in %q", componentType, refSuffix)
+	return nil
+}
+
+func findRawRefByValue(t *testing.T, idx *index.SpecIndex, refValue string) *index.Reference {
+	t.Helper()
+
+	for _, ref := range idx.GetRawReferencesSequenced() {
+		if ref == nil || ref.Node == nil {
+			continue
+		}
+		if isRef, _, value := utils.IsNodeRefValue(ref.Node); isRef && value == refValue {
+			return ref
+		}
+	}
+	t.Fatalf("expected raw ref value %q", refValue)
 	return nil
 }
 
