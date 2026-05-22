@@ -577,26 +577,7 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 		rewriteAllRefs(idx, processedNodes, rolodex)
 	}
 
-	// Fix any remaining absolute path references that match inlined content
-	// Also check the root index
-	allIndexes := append(allLoadedIndexes, rolodex.GetRootIndex())
-	for _, idx := range allIndexes {
-		for _, seqRef := range idx.GetRawReferencesSequenced() {
-			if isRef, _, refVal := utils.IsNodeRefValue(seqRef.Node); isRef {
-				// Check if this is an absolute path that should have been inlined
-				if filepath.IsAbs(refVal) {
-					// Try to find matching inlined content
-					for inlinedPath, inlinedNode := range inlinedPaths {
-						// Match if paths are the same or if they refer to the same file
-						if refVal == inlinedPath {
-							seqRef.Node.Content = inlinedNode.Content
-							break
-						}
-					}
-				}
-			}
-		}
-	}
+	rewriteInlinedAbsoluteRefs(rolodex, allLoadedIndexes, inlinedPaths)
 
 	b, err := renderBundledModel(model, rootIndex)
 	errs = append(errs, err)
@@ -707,31 +688,46 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		rewriteAllRefs(idx, processedNodes, rolodex)
 	}
 
-	// Fix any remaining absolute path references that match inlined content
-	// Also check the root index
-	allIndexes := append(allLoadedIndexes, rolodex.GetRootIndex())
-	for _, idx := range allIndexes {
-		for _, seqRef := range idx.GetRawReferencesSequenced() {
-			if isRef, _, refVal := utils.IsNodeRefValue(seqRef.Node); isRef {
-				// Check if this is an absolute path that should have been inlined
-				if filepath.IsAbs(refVal) {
-					// Try to find matching inlined content
-					for inlinedPath, inlinedNode := range inlinedPaths {
-						// Match if paths are the same or if they refer to the same file
-						if refVal == inlinedPath {
-							seqRef.Node.Content = inlinedNode.Content
-							break
-						}
-					}
-				}
-			}
-		}
-	}
+	rewriteInlinedAbsoluteRefs(rolodex, allLoadedIndexes, inlinedPaths)
 
 	b, err := renderBundledModel(model, rootIndex)
 	errs = append(errs, err)
 
 	return b, errors.Join(errs...)
+}
+
+// rewriteInlinedAbsoluteRefs updates absolute $ref values that were resolved by
+// the inline fallback after the index's normal rewrite pass has already run.
+func rewriteInlinedAbsoluteRefs(rolodex *index.Rolodex, indexes []*index.SpecIndex, inlinedPaths map[string]*yaml.Node) {
+	if rolodex == nil || len(inlinedPaths) == 0 {
+		return
+	}
+
+	allIndexes := append([]*index.SpecIndex{}, indexes...)
+	allIndexes = append(allIndexes, rolodex.GetRootIndex())
+	seen := make(map[*index.SpecIndex]struct{}, len(allIndexes))
+
+	for _, idx := range allIndexes {
+		if idx == nil {
+			continue
+		}
+		if _, ok := seen[idx]; ok {
+			continue
+		}
+		seen[idx] = struct{}{}
+
+		for _, seqRef := range idx.GetRawReferencesSequenced() {
+			isRef, _, refVal := utils.IsNodeRefValue(seqRef.Node)
+			if !isRef || !filepath.IsAbs(refVal) {
+				continue
+			}
+			inlinedNode := inlinedPaths[refVal]
+			if inlinedNode == nil {
+				continue
+			}
+			seqRef.Node.Content = inlinedNode.Content
+		}
+	}
 }
 
 // inlineRequiredRefs inlines refs that cannot be represented as root components.
