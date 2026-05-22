@@ -210,6 +210,12 @@ func TestRootSupportsMediaTypeComponents(t *testing.T) {
 	assert.True(t, rootSupportsMediaTypeComponents(newVersionedIndex(3.2)))
 }
 
+func TestRootSupportsPathItemComponents(t *testing.T) {
+	assert.True(t, rootSupportsPathItemComponents(nil))
+	assert.False(t, rootSupportsPathItemComponents(newVersionedIndex(3.0)))
+	assert.True(t, rootSupportsPathItemComponents(newVersionedIndex(3.1)))
+}
+
 func TestProcessRefMapKeys(t *testing.T) {
 	target := &index.Reference{FullDefinition: "/tmp/common.yaml#/Thing"}
 	responseSource := &index.Reference{
