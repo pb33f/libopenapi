@@ -72,6 +72,8 @@ See all the documentation at https://pb33f.io/libopenapi/
 - [What Changed / Diff Engine](https://pb33f.io/libopenapi/what-changed/)
 - [Overlays](https://pb33f.io/libopenapi/overlays/)
 - [Arazzo](https://pb33f.io/libopenapi/arazzo/)
+- [Generating Code](https://pb33f.io/libopenapi/generating-code/)
+- [Parsing Code](https://pb33f.io/libopenapi/parsing-code/)
 - [FAQ](https://pb33f.io/libopenapi/faq/)
 - [About libopenapi](https://pb33f.io/libopenapi/about/)
 ---
