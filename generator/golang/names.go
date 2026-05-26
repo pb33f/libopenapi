@@ -191,10 +191,7 @@ func (g *Generator) refTypeName(ref string) string {
 			return resolved
 		}
 	}
-	if strings.Contains(ref, "/") || strings.Contains(ref, "#") {
-		return g.publicName(refName(ref))
-	}
-	return ref
+	return g.publicName(refName(ref))
 }
 
 func uniqueName(base string, used map[string]struct{}) string {

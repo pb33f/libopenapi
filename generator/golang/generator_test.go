@@ -22,18 +22,6 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-func TestDeprecatedGeneratedResultAliases(t *testing.T) {
-	var file *File = &GeneratedFile{}
-	var generatedFile *GeneratedFile = file
-	var result *RenderResult = generatedFile
-	var generatedResult *GeneratedFile = result
-	var typ *Type = &GeneratedType{}
-	var generatedType *GeneratedType = typ
-	if generatedResult == nil || generatedType == nil {
-		t.Fatal("deprecated aliases should be assignment-compatible")
-	}
-}
-
 func TestTrainTravelDefaultRawUnion(t *testing.T) {
 	file := renderTrainTravel(t)
 	src := string(file.Source)
@@ -143,6 +131,122 @@ allOf:
 	}
 }
 
+func TestTopLevelArrayInlineItemDeclarations(t *testing.T) {
+	source, err := RenderSchema("pets", schemaProxyFromYAML(t, `
+type: array
+items:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := strings.Join(strings.Fields(string(source)), " ")
+	assertContains(t, src, "type Pets []Pets_Item")
+	assertContains(t, src, "type Pets_Item struct")
+	assertContains(t, src, "Name string `json:\"name\"`")
+	assertParsesAndCompiles(t, source)
+}
+
+func TestTopLevelFreeFormObjectRendersMapAlias(t *testing.T) {
+	for name, yml := range map[string]string{
+		"payload":   "type: object\n",
+		"free bool": "type: object\nadditionalProperties: true\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			source, err := RenderSchema(name, schemaProxyFromYAML(t, yml))
+			if err != nil {
+				t.Fatal(err)
+			}
+			typeName := toPublicName(name)
+			assertContains(t, strings.Join(strings.Fields(string(source)), " "), "type "+typeName+" map[string]any")
+			assertParsesCompilesAndTests(t, source, "package models\n\n"+
+				"import (\n"+
+				"\t\"encoding/json\"\n"+
+				"\t\"testing\"\n"+
+				")\n\n"+
+				"func TestFreeFormObjectRoundTrip(t *testing.T) {\n"+
+				"\tvar model "+typeName+"\n"+
+				"\tif err := json.Unmarshal([]byte(`{\"x\":7}`), &model); err != nil {\n"+
+				"\t\tt.Fatal(err)\n"+
+				"\t}\n"+
+				"\tif model[\"x\"].(float64) != 7 {\n"+
+				"\t\tt.Fatalf(\"unexpected model: %#v\", model)\n"+
+				"\t}\n"+
+				"\tout, err := json.Marshal(model)\n"+
+				"\tif err != nil {\n"+
+				"\t\tt.Fatal(err)\n"+
+				"\t}\n"+
+				"\tif string(out) != `{\"x\":7}` {\n"+
+				"\t\tt.Fatalf(\"unexpected output: %s\", out)\n"+
+				"\t}\n"+
+				"}\n")
+		})
+	}
+}
+
+func TestNullableAllOfPreservesWrapperMetadata(t *testing.T) {
+	source, err := RenderSchema("holder", schemaProxyFromYAML(t, `
+type: object
+required: [value]
+properties:
+  value:
+    title: Nullable Value
+    nullable: true
+    allOf:
+      - type: object
+        required: [id]
+        properties:
+          id:
+            type: string
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := strings.Join(strings.Fields(string(source)), " ")
+	assertContains(t, src, "Value *Holder_Value `json:\"value\"`")
+	assertContains(t, string(source), "// Holder_Value Nullable Value.")
+	assertParsesAndCompiles(t, source)
+}
+
+func TestSchemaFromPointerRootPreservesNullability(t *testing.T) {
+	for name, proxy := range map[string]*highbase.SchemaProxy{
+		"type":  mustSchemaFromType(t, reflect.TypeOf((*string)(nil))),
+		"value": mustSchemaFromValue(t, (*string)(nil)),
+	} {
+		schema := proxy.Schema()
+		if schema == nil || !schemaTypeContains(schema.Type, "string") || !schemaTypeContains(schema.Type, "null") {
+			t.Fatalf("%s pointer root should render as nullable string, got %#v", name, schema)
+		}
+	}
+
+	for name, set := range map[string]*SchemaSet{
+		"types":  mustSchemasFromTypes(t, reflect.TypeOf((*string)(nil))),
+		"values": mustSchemasFromValues(t, (*string)(nil)),
+	} {
+		assertNullableStringSchema(t, name+" root", set.Root)
+		assertNullableStringSchema(t, name+" roots entry", set.Roots.GetOrZero("String"))
+	}
+
+	type PointerRootModel struct {
+		ID string `json:"id"`
+	}
+	for name, set := range map[string]*SchemaSet{
+		"types":  mustSchemasFromTypes(t, reflect.TypeOf((*PointerRootModel)(nil))),
+		"values": mustSchemasFromValues(t, (*PointerRootModel)(nil)),
+	} {
+		assertNullableRef(t, set.Root, "#/components/schemas/PointerRootModel")
+		assertNullableRef(t, set.Roots.GetOrZero("PointerRootModel"), "#/components/schemas/PointerRootModel")
+		component := componentSchema(t, set, "PointerRootModel")
+		if schemaTypeContains(component.Type, "null") || component.Nullable != nil {
+			t.Fatalf("%s component should stay non-nullable, got %#v", name, component)
+		}
+	}
+}
+
 func TestSchemaFromTypeReflection(t *testing.T) {
 	type Embedded struct {
 		TraceID string `json:"trace_id"`
@@ -247,6 +351,9 @@ func TestHelpersAndErrors(t *testing.T) {
 	if got := refName("#/components/schemas/Pet"); got != "Pet" {
 		t.Fatalf("unexpected ref name %q", got)
 	}
+	if got := NewGenerator().refTypeName("pet.yaml"); got != "PetYaml" {
+		t.Fatalf("unexpected bare external ref name %q", got)
+	}
 	used := map[string]struct{}{}
 	if uniqueName("Pet", used) != "Pet" || uniqueName("Pet", used) != "Pet__2" {
 		t.Fatal("uniqueName did not allocate suffix")
@@ -328,6 +435,72 @@ components:
 	}
 	assertContains(t, string(src), "type Pet interface")
 	assertContains(t, string(src), "case \"cat\":")
+}
+
+func TestImplicitDiscriminatorSchema(t *testing.T) {
+	spec := []byte(`openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    cat:
+      type: object
+      required: [kind, name]
+      properties:
+        kind:
+          type: string
+        name:
+          type: string
+    dog:
+      type: object
+      required: [kind, bark]
+      properties:
+        kind:
+          type: string
+        bark:
+          type: string
+    Pet:
+      discriminator:
+        propertyName: kind
+      oneOf:
+        - $ref: '#/components/schemas/cat'
+        - $ref: '#/components/schemas/dog'
+`)
+	doc, err := libopenapi.NewDocument(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model, err := doc.BuildV3Model()
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := NewGenerator().RenderSchemas(model.Model.Components.Schemas)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(file.Source)
+	assertContains(t, src, "case \"cat\":")
+	assertContains(t, src, "case \"dog\":")
+	assertParsesCompilesAndTests(t, file.Source, `package models
+
+import (
+	"encoding/json"
+	"testing"
+)
+
+func TestImplicitDiscriminatorJSON(t *testing.T) {
+	var pet PetUnion
+	if err := json.Unmarshal([]byte("{\"kind\":\"cat\",\"name\":\"milo\"}"), &pet); err != nil {
+		t.Fatal(err)
+	}
+	cat, ok := pet.Value.(Cat)
+	if !ok || cat.Name != "milo" {
+		t.Fatalf("unexpected pet value: %#v", pet.Value)
+	}
+}
+`)
 }
 
 func renderTrainTravel(t *testing.T, opts ...Option) *GeneratedFile {
@@ -427,6 +600,50 @@ func mustFormat(t *testing.T, src []byte) []byte {
 		t.Fatal(err)
 	}
 	return out
+}
+
+func mustSchemaFromType(t *testing.T, typ reflect.Type) *highbase.SchemaProxy {
+	t.Helper()
+	proxy, err := SchemaFromType(typ)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return proxy
+}
+
+func mustSchemaFromValue(t *testing.T, value any) *highbase.SchemaProxy {
+	t.Helper()
+	proxy, err := SchemaFromValue(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return proxy
+}
+
+func mustSchemasFromTypes(t *testing.T, types ...reflect.Type) *SchemaSet {
+	t.Helper()
+	set, err := SchemasFromTypes(types...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return set
+}
+
+func mustSchemasFromValues(t *testing.T, values ...any) *SchemaSet {
+	t.Helper()
+	set, err := SchemasFromValues(values...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return set
+}
+
+func assertNullableStringSchema(t *testing.T, name string, proxy *highbase.SchemaProxy) {
+	t.Helper()
+	schema := proxy.Schema()
+	if schema == nil || !schemaTypeContains(schema.Type, "string") || !schemaTypeContains(schema.Type, "null") {
+		t.Fatalf("%s should render as nullable string, got %#v", name, schema)
+	}
 }
 
 func assertContains(t *testing.T, s, substr string) {

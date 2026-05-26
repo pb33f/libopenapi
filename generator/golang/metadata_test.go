@@ -896,8 +896,7 @@ func TestMetadataHelpersCoverage(t *testing.T) {
 	}
 	var bare Generator
 	WithOpenAPITags(true)(&bare)
-	WithSchemaMetadataSidecar(false)(&bare)
-	WithSchemaProviderMethods(true)(&bare)
+	WithSchemaMetadataSidecar(true)(&bare)
 	WithFieldSchema(nil, "Field", highbase.CreateSchemaProxy(&highbase.Schema{}))(&bare)
 	WithFieldSchema(reflect.TypeOf(MetadataFieldOverride{}), "", highbase.CreateSchemaProxy(&highbase.Schema{}))(&bare)
 	WithFieldSchema(reflect.TypeOf(MetadataFieldOverride{}), "Field", nil)(&bare)

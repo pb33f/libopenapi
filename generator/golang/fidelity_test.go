@@ -321,6 +321,7 @@ func TestModelFidelityRecursiveAndExternalReferences(t *testing.T) {
 	nodeProps.Set("next", highbase.CreateSchemaProxyRef("#/components/schemas/Node"))
 	ownerProps := orderedmap.New[string, *highbase.SchemaProxy]()
 	ownerProps.Set("pet", highbase.CreateSchemaProxyRef("../common.yaml#/components/schemas/Pet"))
+	ownerProps.Set("bare", highbase.CreateSchemaProxyRef("pet.yaml"))
 	schemas := orderedmap.New[string, *highbase.SchemaProxy]()
 	schemas.Set("Node", highbase.CreateSchemaProxy(&highbase.Schema{
 		Type:       []string{"object"},
@@ -339,6 +340,7 @@ func TestModelFidelityRecursiveAndExternalReferences(t *testing.T) {
 	assertContains(t, src, "type Node struct")
 	assertContains(t, compact, "Next *Node `json:\"next,omitempty\"`")
 	assertContains(t, compact, "Pet *Pet `json:\"pet,omitempty\"`")
+	assertContains(t, compact, "Bare *PetYaml `json:\"bare,omitempty\"`")
 	if !hasDiagnosticCode(file.Diagnostics, DiagnosticExternalReference) {
 		t.Fatalf("expected external ref diagnostic, got %#v", file.Diagnostics)
 	}

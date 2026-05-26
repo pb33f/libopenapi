@@ -54,6 +54,15 @@ type Source struct {
 	Ref    string
 }
 
+// SchemaIR is the neutral hub both generation directions converge on. It
+// carries two distinct channels. The shaping fields (Kind, Properties, Items,
+// AdditionalProperties, Union, AllOf, Required, Nullable, Format, …) determine
+// the generated Go type. SourceSchema carries the full original schema for the
+// fidelity the IR does not model (validation keywords, conditionals, content,
+// vocabulary, and so on); when ExactSource is set, openapiFromIR emits
+// SourceSchema verbatim and ignores the shaping fields. FieldMetadata marks an
+// IR whose SourceSchema should be rendered as $ref sibling metadata rather than
+// inlined.
 type SchemaIR struct {
 	Name                 string
 	Ref                  string

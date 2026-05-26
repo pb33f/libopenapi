@@ -30,6 +30,7 @@ type Diagnostic struct {
 
 const (
 	DiagnosticComponentNameCollision     = "componentNameCollision"
+	DiagnosticChildSchema                = "childSchema"
 	DiagnosticAdditionalPropertiesFalse  = "additionalPropertiesFalse"
 	DiagnosticArrayContains              = "arrayContains"
 	DiagnosticBooleanItems               = "booleanItems"
@@ -160,16 +161,6 @@ func WithOpenAPITags(enabled bool) Option {
 // generated model code leaner, but OpenAPI -> Go -> OpenAPI reconstruction is
 // intentionally lossy and falls back to Go type shape plus tags.
 func WithSchemaMetadataSidecar(enabled bool) Option {
-	return func(g *Generator) {
-		g.schemaMetadataSidecar = enabled
-	}
-}
-
-// WithSchemaProviderMethods is kept as a compatibility alias for
-// WithSchemaMetadataSidecar.
-//
-// Deprecated: use WithSchemaMetadataSidecar.
-func WithSchemaProviderMethods(enabled bool) Option {
 	return func(g *Generator) {
 		g.schemaMetadataSidecar = enabled
 	}

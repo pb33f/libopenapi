@@ -44,6 +44,18 @@ func (g *Generator) irFromOpenAPIName(name string, nameResolved bool, proxy *hig
 	return ir, nil
 }
 
+// childIR builds a nested schema. If the nested schema cannot be built it
+// records a diagnostic and falls back to an any-typed shape so the surrounding
+// field, item, or variant is preserved rather than silently dropped.
+func (g *Generator) childIR(name string, proxy *highbase.SchemaProxy, path string) *SchemaIR {
+	ir, err := g.irFromOpenAPIName(name, true, proxy, path)
+	if err != nil {
+		g.addDiagnostic(DiagnosticChildSchema, path, "nested schema could not be built and was rendered as any: "+err.Error())
+		return &SchemaIR{Name: name, Kind: KindAny}
+	}
+	return ir
+}
+
 func (g *Generator) irFromSchema(name string, nameResolved bool, schema *highbase.Schema, path string) *SchemaIR {
 	g.collectShapeDiagnostics(path, schema)
 	if schema.DynamicRef != "" && schemaHasOnlyDynamicRefShape(schema) {
@@ -110,10 +122,7 @@ func (g *Generator) irFromSchema(name string, nameResolved bool, schema *highbas
 	if len(schema.AllOf) > 0 {
 		ir.Kind = KindAllOf
 		for i, child := range schema.AllOf {
-			childIR, err := g.irFromOpenAPIName(g.nestedTypeName(ir.Name, "AllOf"+intString(i+1)), true, child, path+".allOf")
-			if err == nil {
-				ir.AllOf = append(ir.AllOf, childIR)
-			}
+			ir.AllOf = append(ir.AllOf, g.childIR(g.nestedTypeName(ir.Name, "AllOf"+intString(i+1)), child, path+".allOf"))
 		}
 		g.mergeAllOf(ir)
 		return ir
@@ -125,11 +134,12 @@ func (g *Generator) irFromSchema(name string, nameResolved bool, schema *highbas
 	}
 
 	if len(schema.Enum) > 0 {
-		if enumHasNull(schema.Enum) {
+		shape := enumShapeFor(schema.Enum)
+		if shape.nullable {
 			ir.Nullable = true
 			g.addDiagnostic(DiagnosticNullEnum, path, "enum contains null; generated model uses nullable Go shape for non-null enum values")
 		}
-		if enumIsMixed(schema.Enum) {
+		if shape.mixed {
 			g.addDiagnostic(DiagnosticMixedEnum, path, "mixed-type enum rendered as any because Go constants require one scalar base type")
 		}
 		ir.Kind = KindEnum
@@ -198,18 +208,12 @@ func (g *Generator) populateSchemaShape(ir *SchemaIR, schema *highbase.Schema, p
 	case "array":
 		ir.Kind = KindArray
 		if schema.Items != nil && schema.Items.IsA() {
-			item, err := g.irFromOpenAPIName(g.nestedTypeName(ir.Name, "Item"), true, schema.Items.A, path+".items")
-			if err == nil {
-				ir.Items = item
-			}
+			ir.Items = g.childIR(g.nestedTypeName(ir.Name, "Item"), schema.Items.A, path+".items")
 		} else if schema.Items != nil && schema.Items.IsB() && !schema.Items.B {
 			g.addDiagnostic(DiagnosticBooleanItems, path, "items: false constrains array length but generated Go model uses []any")
 		}
 		for i, prefixItem := range schema.PrefixItems {
-			child, err := g.irFromOpenAPIName(g.nestedTypeName(ir.Name, "Tuple"+intString(i+1)), true, prefixItem, path+".prefixItems")
-			if err == nil {
-				ir.PrefixItems = append(ir.PrefixItems, child)
-			}
+			ir.PrefixItems = append(ir.PrefixItems, g.childIR(g.nestedTypeName(ir.Name, "Tuple"+intString(i+1)), prefixItem, path+".prefixItems"))
 		}
 		if len(ir.PrefixItems) > 0 {
 			g.addDiagnostic(DiagnosticPrefixItems, path, "prefixItems tuple shape rendered as []any")
@@ -246,29 +250,20 @@ func (g *Generator) populateObject(ir *SchemaIR, schema *highbase.Schema, path s
 	ir.Properties = orderedProperties()
 	if schema.Properties != nil {
 		for propName, propSchema := range schema.Properties.FromOldest() {
-			childIR, err := g.irFromOpenAPIName(g.nestedTypeName(ir.Name, propName), true, propSchema, path+"."+propName)
-			if err == nil {
-				ir.Properties.Set(propName, childIR)
-			}
+			ir.Properties.Set(propName, g.childIR(g.nestedTypeName(ir.Name, propName), propSchema, path+"."+propName))
 		}
 	}
 	if schema.PatternProperties != nil && schema.PatternProperties.Len() > 0 {
 		ir.PatternProperties = orderedProperties()
 		for pattern, propSchema := range schema.PatternProperties.FromOldest() {
-			childIR, err := g.irFromOpenAPIName(g.nestedTypeName(ir.Name, "PatternProperty"), true, propSchema, path+".patternProperties")
-			if err == nil {
-				ir.PatternProperties.Set(pattern, childIR)
-			}
+			ir.PatternProperties.Set(pattern, g.childIR(g.nestedTypeName(ir.Name, "PatternProperty"), propSchema, path+".patternProperties"))
 		}
 		g.addDiagnostic(DiagnosticPatternProperties, path, "patternProperties cannot be represented directly as Go struct fields")
 	}
 	if schema.AdditionalProperties != nil {
 		switch {
 		case schema.AdditionalProperties.IsA():
-			childIR, err := g.irFromOpenAPIName(g.nestedTypeName(ir.Name, "AdditionalProperty"), true, schema.AdditionalProperties.A, path+".additionalProperties")
-			if err == nil {
-				ir.AdditionalProperties = childIR
-			}
+			ir.AdditionalProperties = g.childIR(g.nestedTypeName(ir.Name, "AdditionalProperty"), schema.AdditionalProperties.A, path+".additionalProperties")
 		case schema.AdditionalProperties.IsB():
 			allowed := schema.AdditionalProperties.B
 			ir.AdditionalAllowed = &allowed
@@ -337,10 +332,7 @@ func (g *Generator) populateUnion(ir *SchemaIR, schema *highbase.Schema, path st
 		if built, err := child.BuildSchema(); err == nil && built != nil && built.Title != "" {
 			variantName = g.nestedTypeName(ir.Name, built.Title)
 		}
-		childIR, err := g.irFromOpenAPIName(variantName, true, child, path+".union")
-		if err == nil {
-			variants = append(variants, childIR)
-		}
+		variants = append(variants, g.childIR(variantName, child, path+".union"))
 	}
 	nonNull := nonNullVariants(variants)
 	if len(nonNull) == 1 && len(nonNull) != len(variants) {
@@ -354,9 +346,11 @@ func (g *Generator) populateUnion(ir *SchemaIR, schema *highbase.Schema, path st
 		return
 	}
 	if schema.Discriminator != nil && schema.Discriminator.PropertyName != "" {
-		ir.Union.Discriminator = discriminatorFromSchema(schema)
-		ir.Union.Strategy = UnionDiscriminator
-		return
+		if disc := discriminatorFromSchema(schema, variants); len(disc.Mapping) > 0 {
+			ir.Union.Discriminator = disc
+			ir.Union.Strategy = UnionDiscriminator
+			return
+		}
 	}
 	if disc := inferConstDiscriminator(variants); disc != nil {
 		ir.Union.Discriminator = disc
@@ -370,7 +364,24 @@ func (g *Generator) populateUnion(ir *SchemaIR, schema *highbase.Schema, path st
 
 func (g *Generator) mergeAllOf(ir *SchemaIR) {
 	merged := newObjectIR(ir.Name)
+	merged.Format = ir.Format
 	merged.Description = ir.Description
+	merged.Title = ir.Title
+	merged.Nullable = ir.Nullable
+	merged.Enum = ir.Enum
+	merged.Const = ir.Const
+	merged.Extensions = ir.Extensions
+	merged.Source = ir.Source
+	merged.ReadOnly = ir.ReadOnly
+	merged.WriteOnly = ir.WriteOnly
+	merged.Deprecated = ir.Deprecated
+	merged.FieldMetadata = ir.FieldMetadata
+	merged.ExactSource = ir.ExactSource
+	merged.Comments = append([]string(nil), ir.Comments...)
+	merged.SourceSchema = ir.SourceSchema
+	for req := range ir.Required {
+		merged.Required[req] = struct{}{}
+	}
 	for _, child := range ir.AllOf {
 		if child == nil {
 			continue
@@ -582,7 +593,7 @@ func schemaOnlyAllowsNull(schema *highbase.Schema) bool {
 	return len(schema.Type) > 0 && len(nonNullTypes(schema.Type)) == 0
 }
 
-func discriminatorFromSchema(schema *highbase.Schema) *Discriminator {
+func discriminatorFromSchema(schema *highbase.Schema, variants []*SchemaIR) *Discriminator {
 	disc := &Discriminator{
 		PropertyName: schema.Discriminator.PropertyName,
 		Mapping:      make(map[string]string),
@@ -592,6 +603,17 @@ func discriminatorFromSchema(schema *highbase.Schema) *Discriminator {
 			disc.Mapping[k] = v
 		}
 	}
+	if len(disc.Mapping) > 0 {
+		return disc
+	}
+	implicit := make(map[string]string, len(variants))
+	for _, variant := range variants {
+		if variant == nil || variant.Name == "" || variant.Ref == "" {
+			return disc
+		}
+		implicit[refName(variant.Ref)] = variant.Ref
+	}
+	disc.Mapping = implicit
 	return disc
 }
 
