@@ -11,6 +11,10 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 )
 
+// Generator holds immutable configuration for code generation. Each public
+// entry point runs against a fresh copy of this configuration (see run), so a
+// configured Generator carries no per-invocation state and is safe to reuse for
+// many documents and to share across goroutines.
 type Generator struct {
 	packageName string
 
@@ -44,7 +48,6 @@ type Generator struct {
 	imports         map[string]struct{}
 	decls           []string
 	seenDecls       map[string]struct{}
-	usedNames       map[string]struct{}
 	metadataSchemas map[string]*highbase.Schema
 	metadataOrder   []string
 
@@ -88,11 +91,6 @@ type GeneratedFile struct {
 	Diagnostics    []Diagnostic
 }
 
-// File contains Go source generated from OpenAPI schemas.
-//
-// Deprecated: use GeneratedFile.
-type File = GeneratedFile
-
 // GeneratedSourceFile contains a named generated source file.
 type GeneratedSourceFile struct {
 	Name   string
@@ -104,16 +102,6 @@ type GeneratedType struct {
 	Name string
 	Kind Kind
 }
-
-// Type describes one top-level generated Go type.
-//
-// Deprecated: use GeneratedType.
-type Type = GeneratedType
-
-// RenderResult contains Go source generated from OpenAPI schemas.
-//
-// Deprecated: use GeneratedFile.
-type RenderResult = GeneratedFile
 
 // NewGenerator creates a Go model generator.
 func NewGenerator(opts ...Option) *Generator {
@@ -131,7 +119,6 @@ func NewGenerator(opts ...Option) *Generator {
 		jsonSchemas:                 make(map[fieldSchemaKey]*highbase.SchemaProxy),
 		imports:                     make(map[string]struct{}),
 		seenDecls:                   make(map[string]struct{}),
-		usedNames:                   make(map[string]struct{}),
 		metadataSchemas:             make(map[string]*highbase.Schema),
 		openapiCache:                make(map[*highbase.SchemaProxy]*SchemaIR),
 		reflectCache:                make(map[reflect.Type]*SchemaIR),
@@ -145,6 +132,25 @@ func NewGenerator(opts ...Option) *Generator {
 		}
 	}
 	return g
+}
+
+// run returns a generator carrying fresh per-invocation state. Configuration is
+// shared with the receiver and treated as read-only during generation, so a
+// configured Generator is safe to reuse across calls and across goroutines.
+// renderFile owns the rendering output buffers (imports, decls, metadata), so
+// they are reset there rather than duplicated here.
+func (g *Generator) run() *Generator {
+	r := *g
+	r.diagnostics = nil
+	r.openapiCache = make(map[*highbase.SchemaProxy]*SchemaIR)
+	r.reflectCache = make(map[reflect.Type]*SchemaIR)
+	r.reflectStack = make(map[reflect.Type]bool)
+	r.typeNames = nil
+	r.componentNames = nil
+	r.componentTypeNames = nil
+	r.componentKinds = nil
+	r.currentComponent = ""
+	return &r
 }
 
 // RenderSchema renders a single OpenAPI schema as Go source.
@@ -191,18 +197,13 @@ func (g *Generator) RenderSchema(name string, schema *highbase.SchemaProxy) ([]b
 	if schema == nil {
 		return nil, wrapPath(ErrNilSchema, name)
 	}
-	g.diagnostics = nil
-	g.openapiCache = make(map[*highbase.SchemaProxy]*SchemaIR)
-	previousTypeNames := g.typeNames
-	g.typeNames = newNameRegistry()
-	defer func() {
-		g.typeNames = previousTypeNames
-	}()
-	ir, err := g.irFromOpenAPI(name, schema, name)
+	r := g.run()
+	r.typeNames = newNameRegistry()
+	ir, err := r.irFromOpenAPI(name, schema, name)
 	if err != nil {
 		return nil, err
 	}
-	file, err := g.renderFile([]*SchemaIR{ir})
+	file, err := r.renderFile([]*SchemaIR{ir})
 	if err != nil {
 		return nil, err
 	}
@@ -215,38 +216,27 @@ func (g *Generator) RenderSchemas(schemas *orderedmap.Map[string, *highbase.Sche
 	if err := validatePackageName(g.packageName); err != nil {
 		return nil, err
 	}
-	g.diagnostics = nil
-	g.openapiCache = make(map[*highbase.SchemaProxy]*SchemaIR)
+	r := g.run()
 	if schemas == nil {
-		return g.renderFile(nil)
+		return r.renderFile(nil)
 	}
-	previousTypeNames := g.componentTypeNames
-	previousRegistry := g.typeNames
-	g.typeNames = newNameRegistry()
-	g.componentTypeNames = g.resolveComponentTypeNames(schemas)
-	defer func() {
-		g.componentTypeNames = previousTypeNames
-		g.typeNames = previousRegistry
-	}()
+	r.typeNames = newNameRegistry()
+	r.componentTypeNames = r.resolveComponentTypeNames(schemas)
 	irs := make([]*SchemaIR, 0, schemas.Len())
 	for name, schema := range schemas.FromOldest() {
-		ir, err := g.irFromOpenAPI(name, schema, name)
+		ir, err := r.irFromOpenAPI(name, schema, name)
 		if err != nil {
 			return nil, err
 		}
 		irs = append(irs, ir)
 	}
-	previousKinds := g.componentKinds
-	g.componentKinds = make(map[string]Kind, len(irs))
+	r.componentKinds = make(map[string]Kind, len(irs))
 	for _, ir := range irs {
 		if ir != nil && ir.Name != "" {
-			g.componentKinds[ir.Name] = ir.Kind
+			r.componentKinds[ir.Name] = ir.Kind
 		}
 	}
-	defer func() {
-		g.componentKinds = previousKinds
-	}()
-	return g.renderFile(irs)
+	return r.renderFile(irs)
 }
 
 func (g *Generator) resolveComponentTypeNames(schemas *orderedmap.Map[string, *highbase.SchemaProxy]) map[string]string {
@@ -294,11 +284,13 @@ func (g *Generator) SchemaFromType(t reflect.Type) (*highbase.SchemaProxy, error
 	if t == nil {
 		return nil, wrapPath(ErrNilType, "")
 	}
-	ir, err := g.irFromReflect(derefType(t), typeName(derefType(t)), typeName(derefType(t)))
+	r := g.run()
+	nameType := derefType(t)
+	ir, err := r.irFromReflect(t, typeName(nameType), typeName(nameType))
 	if err != nil {
 		return nil, err
 	}
-	return g.openapiFromIR(ir), nil
+	return r.openapiFromIR(ir), nil
 }
 
 // SchemasFromValues generates an OpenAPI component graph for runtime values
@@ -317,9 +309,7 @@ func (g *Generator) SchemasFromValues(values ...any) (*SchemaSet, error) {
 // SchemasFromTypes generates an OpenAPI component graph for Go reflection types
 // using this generator.
 func (g *Generator) SchemasFromTypes(types ...reflect.Type) (*SchemaSet, error) {
-	g.diagnostics = nil
-	g.reflectCache = make(map[reflect.Type]*SchemaIR)
-	g.reflectStack = make(map[reflect.Type]bool)
+	r := g.run()
 	roots := orderedmap.New[string, *highbase.SchemaProxy]()
 	components := orderedmap.New[string, *highbase.SchemaProxy]()
 	var root *highbase.SchemaProxy
@@ -327,24 +317,24 @@ func (g *Generator) SchemasFromTypes(types ...reflect.Type) (*SchemaSet, error) 
 		if t == nil {
 			return nil, wrapPath(ErrNilType, "")
 		}
-		t = derefType(t)
-		ir, err := g.irFromReflect(t, typeName(t), typeName(t))
+		nameType := derefType(t)
+		ir, err := r.irFromReflect(t, typeName(nameType), typeName(nameType))
 		if err != nil {
 			return nil, err
 		}
 		rootName := ir.Name
-		rootProxy := g.rootProxy(ir)
+		rootProxy := r.rootProxy(ir)
 		if i == 0 {
 			root = rootProxy
 		}
 		if _, exists := roots.Get(rootName); exists {
-			g.addDiagnostic(DiagnosticRootNameCollision, rootName, "root name collision resolved by keeping first schema")
+			r.addDiagnostic(DiagnosticRootNameCollision, rootName, "root name collision resolved by keeping first schema")
 			continue
 		}
 		roots.Set(rootName, rootProxy)
 	}
-	irs := make([]*SchemaIR, 0, len(g.reflectCache))
-	for _, ir := range g.reflectCache {
+	irs := make([]*SchemaIR, 0, len(r.reflectCache))
+	for _, ir := range r.reflectCache {
 		if ir != nil && ir.Name != "" && isComponentKind(ir.Kind) {
 			irs = append(irs, ir)
 		}
@@ -354,32 +344,30 @@ func (g *Generator) SchemasFromTypes(types ...reflect.Type) (*SchemaSet, error) 
 	for _, ir := range irs {
 		componentNames[ir.Name] = struct{}{}
 	}
-	previousNames := g.componentNames
-	previousComponent := g.currentComponent
-	g.componentNames = componentNames
-	defer func() {
-		g.componentNames = previousNames
-		g.currentComponent = previousComponent
-	}()
+	r.componentNames = componentNames
 	for _, ir := range irs {
 		if _, exists := components.Get(ir.Name); exists {
-			g.addDiagnostic(DiagnosticComponentNameCollision, ir.Name, "component name collision resolved by keeping first schema")
+			r.addDiagnostic(DiagnosticComponentNameCollision, ir.Name, "component name collision resolved by keeping first schema")
 			continue
 		}
-		g.currentComponent = ir.Name
-		components.Set(ir.Name, g.openapiFromIR(ir))
+		r.currentComponent = ir.Name
+		components.Set(ir.Name, r.openapiFromIR(ir))
 	}
 	return &SchemaSet{
 		Root:        root,
 		Roots:       roots,
 		Components:  components,
-		Diagnostics: append([]Diagnostic(nil), g.diagnostics...),
+		Diagnostics: append([]Diagnostic(nil), r.diagnostics...),
 	}, nil
 }
 
 func (g *Generator) rootProxy(ir *SchemaIR) *highbase.SchemaProxy {
 	if ir != nil && ir.Name != "" && isComponentKind(ir.Kind) {
-		return highbase.CreateSchemaProxyRef("#/components/schemas/" + ir.Name)
+		ref := "#/components/schemas/" + ir.Name
+		if ir.Nullable {
+			return nullableReferenceProxy(ref, false, ir)
+		}
+		return highbase.CreateSchemaProxyRef(ref)
 	}
 	return g.openapiFromIR(ir)
 }

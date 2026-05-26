@@ -3,7 +3,11 @@
 
 package golang
 
-import "go.yaml.in/yaml/v4"
+import (
+	"strconv"
+
+	"go.yaml.in/yaml/v4"
+)
 
 type enumShape struct {
 	goType        string
@@ -78,17 +82,13 @@ func enumHasNull(nodes []*yaml.Node) bool {
 	return enumShapeFor(nodes).nullable
 }
 
-func enumIsMixed(nodes []*yaml.Node) bool {
-	return enumShapeFor(nodes).mixed
-}
-
 func enumLiteral(node *yaml.Node, goType string) string {
 	if node == nil || nodeIsNull(node) {
 		return ""
 	}
 	switch goType {
 	case "string":
-		return strconvQuote(node.Value)
+		return strconv.Quote(node.Value)
 	case "int", "float64", "bool":
 		return node.Value
 	default:

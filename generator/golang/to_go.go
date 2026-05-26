@@ -4,9 +4,9 @@
 package golang
 
 import (
-	"bytes"
 	"go/format"
 	"sort"
+	"strconv"
 	"strings"
 
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
@@ -114,30 +114,17 @@ func (g *Generator) writeImports(b *strings.Builder) {
 	sort.Strings(imports)
 	if len(imports) == 1 {
 		b.WriteString("import ")
-		b.WriteString(strconvQuote(imports[0]))
+		b.WriteString(strconv.Quote(imports[0]))
 		b.WriteString("\n\n")
 		return
 	}
 	b.WriteString("import (\n")
 	for _, path := range imports {
 		b.WriteByte('\t')
-		b.WriteString(strconvQuote(path))
+		b.WriteString(strconv.Quote(path))
 		b.WriteByte('\n')
 	}
 	b.WriteString(")\n\n")
-}
-
-func strconvQuote(value string) string {
-	var b bytes.Buffer
-	b.WriteByte('"')
-	for _, r := range value {
-		if r == '\\' || r == '"' {
-			b.WriteByte('\\')
-		}
-		b.WriteRune(r)
-	}
-	b.WriteByte('"')
-	return b.String()
 }
 
 func (g *Generator) renderDecl(ir *SchemaIR) {
@@ -148,6 +135,10 @@ func (g *Generator) renderDecl(ir *SchemaIR) {
 	case KindUnion:
 		g.renderUnionDecl(ir)
 	case KindObject, KindAllOf:
+		if shouldRenderObjectAlias(ir) {
+			g.renderAliasDecl(ir)
+			return
+		}
 		g.renderObjectDecl(ir)
 	case KindEnum:
 		g.renderEnumDecl(ir)
@@ -208,7 +199,9 @@ func (g *Generator) renderObjectDecl(ir *SchemaIR) {
 			b.WriteByte('\n')
 		}
 	}
+	var additionalValueType string
 	if ir.AdditionalProperties != nil {
+		additionalValueType = g.goType(ir.AdditionalProperties, true, false)
 		var collision bool
 		additionalFieldName, collision = fields.resolve("$additionalProperties", "AdditionalProperties")
 		if collision {
@@ -217,13 +210,13 @@ func (g *Generator) renderObjectDecl(ir *SchemaIR) {
 		b.WriteByte('\t')
 		b.WriteString(additionalFieldName)
 		b.WriteString(" map[string]")
-		b.WriteString(g.goType(ir.AdditionalProperties, true, false))
+		b.WriteString(additionalValueType)
 		b.WriteString(" `json:\"-\"`\n")
 	}
 	b.WriteString("}\n")
 	if ir.AdditionalProperties != nil && g.additionalPropertiesMethods {
 		g.addImport("encoding/json")
-		writeAdditionalPropertiesMethods(&b, ir, additionalFieldName, g.goType(ir.AdditionalProperties, true, false))
+		writeAdditionalPropertiesMethods(&b, ir, additionalFieldName, additionalValueType)
 	}
 	g.decls = append(g.decls, b.String())
 	g.recordSchemaMetadata(ir.Name, ir.SourceSchema)
@@ -274,6 +267,7 @@ func (g *Generator) renderAliasDecl(ir *SchemaIR) {
 	if !g.rememberDecl(ir.Name) {
 		return
 	}
+	g.renderChildren(ir)
 	var b strings.Builder
 	writeIRComments(&b, ir)
 	b.WriteString("type ")
@@ -283,6 +277,16 @@ func (g *Generator) renderAliasDecl(ir *SchemaIR) {
 	b.WriteByte('\n')
 	g.decls = append(g.decls, b.String())
 	g.recordSchemaMetadata(ir.Name, ir.SourceSchema)
+}
+
+func shouldRenderObjectAlias(ir *SchemaIR) bool {
+	return ir != nil &&
+		ir.Kind == KindObject &&
+		(ir.Properties == nil || ir.Properties.Len() == 0) &&
+		(ir.PatternProperties == nil || ir.PatternProperties.Len() == 0) &&
+		len(ir.AllOf) == 0 &&
+		ir.AdditionalProperties == nil &&
+		(ir.AdditionalAllowed == nil || *ir.AdditionalAllowed)
 }
 
 func (g *Generator) renderEnumDecl(ir *SchemaIR) {
@@ -333,7 +337,7 @@ func writeAdditionalPropertiesMethods(b *strings.Builder, ir *SchemaIR, fieldNam
 	if ir.Properties != nil {
 		for propName := range ir.Properties.FromOldest() {
 			b.WriteString("\tdelete(raw, ")
-			b.WriteString(strconvQuote(propName))
+			b.WriteString(strconv.Quote(propName))
 			b.WriteString(")\n")
 		}
 	}

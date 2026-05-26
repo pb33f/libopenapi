@@ -122,9 +122,6 @@ func TestInternalBranchCoverage(t *testing.T) {
 	if tagLiteral("x", false, false, false, false, "") != "" {
 		t.Fatal("expected empty literal")
 	}
-	if quoted := strconvQuote(`a"b\c`); quoted != `"a\"b\\c"` {
-		t.Fatalf("bad quote: %s", quoted)
-	}
 	if _, err := NewGenerator().RenderSchemas(nil); err != nil {
 		t.Fatal(err)
 	}
@@ -326,6 +323,26 @@ func TestInternalBranchCoverage(t *testing.T) {
 	}
 }
 
+func TestChildIRPreservesFieldsOnBuildError(t *testing.T) {
+	gen := NewGenerator()
+	props := orderedmap.New[string, *highbase.SchemaProxy]()
+	props.Set("broken", nil)
+	ir, err := gen.irFromOpenAPI("Holder", highbase.CreateSchemaProxy(&highbase.Schema{
+		Type:       []string{"object"},
+		Properties: props,
+	}), "Holder")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	prop, ok := ir.Properties.Get("broken")
+	if !ok || prop == nil || prop.Kind != KindAny {
+		t.Fatalf("expected broken property preserved as any, got %#v", prop)
+	}
+	if !hasDiagnosticCode(gen.diagnostics, DiagnosticChildSchema) {
+		t.Fatalf("expected child schema diagnostic, got %#v", gen.diagnostics)
+	}
+}
+
 func TestOpenAPIBranchCoverage(t *testing.T) {
 	gen := NewGenerator()
 	ref := highbase.CreateSchemaProxyRef("#/components/schemas/Pet")
@@ -392,7 +409,8 @@ func TestOpenAPIBranchCoverage(t *testing.T) {
 	}
 
 	merged := &SchemaIR{
-		Name: "Merged",
+		Name:     "Merged",
+		Required: map[string]struct{}{"wrapper": {}},
 		AllOf: []*SchemaIR{
 			nil,
 			{Kind: KindRef, Ref: "#/components/schemas/Base", Name: "Base"},
@@ -402,7 +420,7 @@ func TestOpenAPIBranchCoverage(t *testing.T) {
 	}
 	merged.AllOf[3].Properties.Set("id", &SchemaIR{Kind: KindString})
 	gen.mergeAllOf(merged)
-	if merged.Properties.Len() != 1 || len(merged.AllOf) != 2 {
+	if merged.Properties.Len() != 1 || len(merged.AllOf) != 2 || !isRequired(merged, "wrapper") {
 		t.Fatalf("bad allOf merge: %#v", merged)
 	}
 
@@ -455,6 +473,22 @@ func TestOpenAPIBranchCoverage(t *testing.T) {
 		{Kind: KindObject, Name: "B", Properties: propsB},
 	}) != nil {
 		t.Fatal("missing discriminator on later variant should not infer")
+	}
+	discSchema := &highbase.Schema{Discriminator: &highbase.Discriminator{PropertyName: "kind"}}
+	if disc := discriminatorFromSchema(discSchema, []*SchemaIR{{Name: "RefVariant", Ref: "#/components/schemas/ref-variant"}}); disc.Mapping["ref-variant"] != "#/components/schemas/ref-variant" {
+		t.Fatalf("ref discriminator mapping not inferred: %#v", disc)
+	}
+	if disc := discriminatorFromSchema(discSchema, []*SchemaIR{{Name: "InlineVariant"}}); len(disc.Mapping) != 0 {
+		t.Fatalf("inline variant should not infer discriminator mapping: %#v", disc)
+	}
+	if disc := discriminatorFromSchema(discSchema, []*SchemaIR{
+		{Name: "RefVariant", Ref: "#/components/schemas/ref-variant"},
+		{Name: "InlineVariant"},
+	}); len(disc.Mapping) != 0 {
+		t.Fatalf("mixed ref and inline variants should not infer partial discriminator mapping: %#v", disc)
+	}
+	if disc := discriminatorFromSchema(discSchema, []*SchemaIR{nil}); len(disc.Mapping) != 0 {
+		t.Fatalf("nil variant should not infer discriminator mapping: %#v", disc)
 	}
 }
 

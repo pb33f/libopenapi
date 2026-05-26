@@ -136,7 +136,7 @@ func (g *Generator) irFromTypeSchema(t reflect.Type, name, path string, schema *
 }
 
 func (g *Generator) irFromSchemaProvider(t reflect.Type, name, path string, nullable bool) (*SchemaIR, error) {
-	provider := providerValue(t, schemaProviderType).(SchemaProvider)
+	provider := providerValue(t).(SchemaProvider)
 	schemaName := name
 	if t.Name() != "" {
 		schemaName = g.publicName(typeName(t))
@@ -157,7 +157,7 @@ func (g *Generator) irFromSchemaProvider(t reflect.Type, name, path string, null
 }
 
 func (g *Generator) irFromSchemaMetadataProvider(t reflect.Type, name, path string, nullable bool) (*SchemaIR, error) {
-	provider := providerValue(t, schemaMetadataProviderType).(SchemaMetadataProvider)
+	provider := providerValue(t).(SchemaMetadataProvider)
 	proxy, err := schemaProxyFromProviderMetadata(provider.OpenAPISchemaMetadata())
 	if err != nil {
 		return nil, wrapPath(err, path)
@@ -179,7 +179,7 @@ func (g *Generator) irFromSchemaMetadataProvider(t reflect.Type, name, path stri
 }
 
 func (g *Generator) irFromSchemaYAMLProvider(t reflect.Type, name, path string, nullable bool) (*SchemaIR, error) {
-	provider := providerValue(t, schemaYAMLProviderType).(SchemaYAMLProvider)
+	provider := providerValue(t).(SchemaYAMLProvider)
 	schemaName := name
 	if t.Name() != "" {
 		schemaName = g.publicName(typeName(t))
@@ -374,7 +374,7 @@ func implementsOrPointerImplements(t reflect.Type, iface reflect.Type) bool {
 	return t.Implements(iface) || reflect.PointerTo(t).Implements(iface)
 }
 
-func providerValue(t reflect.Type, iface reflect.Type) any {
+func providerValue(t reflect.Type) any {
 	return reflect.New(t).Interface()
 }
 

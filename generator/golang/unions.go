@@ -5,6 +5,7 @@ package golang
 
 import (
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -98,11 +99,11 @@ func (g *Generator) renderDiscriminatedUnion(ir *SchemaIR) {
 	for _, value := range values {
 		target := ir.Union.Discriminator.Mapping[value]
 		typeName := target
-		if strings.HasPrefix(target, "#") || strings.Contains(target, "/") {
+		if strings.HasPrefix(target, "#") || strings.Contains(target, "/") || strings.Contains(target, ".") {
 			typeName = g.refTypeName(target)
 		}
 		b.WriteString("\tcase ")
-		b.WriteString(strconvQuote(value))
+		b.WriteString(strconv.Quote(value))
 		b.WriteString(":\n\t\tvar v ")
 		b.WriteString(typeName)
 		b.WriteString("\n\t\tif err := json.Unmarshal(data, &v); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tu.Value = v\n")
