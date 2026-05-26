@@ -53,9 +53,23 @@ func assertGolden(t *testing.T, path string, got []byte) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != string(want) {
-		t.Fatalf("golden mismatch for %s at %s", path, firstDiff(string(want), string(got)))
+	wantText := normalizeGoldenLineEndings(want)
+	gotText := normalizeGoldenLineEndings(got)
+	if gotText != wantText {
+		t.Fatalf("golden mismatch for %s at %s", path, firstDiff(wantText, gotText))
 	}
+}
+
+func TestNormalizeGoldenLineEndings(t *testing.T) {
+	got := normalizeGoldenLineEndings([]byte("package models\r\n\r\nimport \"encoding/json\"\r\n"))
+	want := "package models\n\nimport \"encoding/json\"\n"
+	if got != want {
+		t.Fatalf("unexpected normalized text: %q", got)
+	}
+}
+
+func normalizeGoldenLineEndings(input []byte) string {
+	return strings.ReplaceAll(string(input), "\r\n", "\n")
 }
 
 func firstDiff(want, got string) string {
