@@ -706,15 +706,17 @@ func (sp *SchemaProxy) getInlineRenderKey() string {
 		node := sp.schema.ValueNode
 		idx := sp.schema.Value.GetIndex()
 		if node.Line > 0 && node.Column > 0 {
+			source := "inline"
 			if idx != nil {
-				return fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), node.Line, node.Column)
+				source = idx.GetSpecAbsolutePath()
 			}
-			return fmt.Sprintf("inline:%d:%d", node.Line, node.Column)
+			return fmt.Sprintf("%s:%d:%d", source, node.Line, node.Column)
 		}
+		source := "inline"
 		if idx != nil {
-			return fmt.Sprintf("%s:inline:%p", idx.GetSpecAbsolutePath(), node)
+			source = fmt.Sprintf("%s:inline", idx.GetSpecAbsolutePath())
 		}
-		return fmt.Sprintf("inline:%p", node)
+		return fmt.Sprintf("%s:%p", source, node)
 	}
 	// Use the reference string if available
 	if sp.IsReference() {
