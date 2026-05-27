@@ -1880,6 +1880,24 @@ func TestSchemaProxy_ParsedTransformedRefWithSiblingsJSONPreservesReference(t *t
 	assert.Contains(t, string(inlineBytes), `"type":"string"`)
 }
 
+func TestSchemaProxy_ParsedTransformedRefWithSiblingsJSONReturnsErrors(t *testing.T) {
+	sp := buildParsedSiblingRefProxy(t, 3.1)
+	semanticSchema, err := sp.BuildTransformedRefSemanticSchema(sp.Schema())
+	require.NoError(t, err)
+	require.NotNil(t, semanticSchema)
+	require.Len(t, semanticSchema.AllOf, 2)
+	semanticSchema.ParentProxy = sp
+	semanticSchema.AllOf[0] = &SchemaProxy{buildError: errors.New("boom")}
+
+	jsonBytes, err := semanticSchema.MarshalJSON()
+	require.Error(t, err)
+	assert.Nil(t, jsonBytes)
+
+	inlineBytes, err := semanticSchema.MarshalJSONInline()
+	require.Error(t, err)
+	assert.Nil(t, inlineBytes)
+}
+
 func TestSchemaProxy_ParsedTransformedRefWithSiblingsOpenAPI30KeepsAllOfContract(t *testing.T) {
 	sp := buildParsedSiblingRefProxy(t, 3.0)
 

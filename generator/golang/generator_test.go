@@ -5,6 +5,7 @@ package golang
 
 import (
 	"bytes"
+	"context"
 	"go/format"
 	"go/parser"
 	"go/token"
@@ -17,7 +18,11 @@ import (
 	"time"
 
 	"github.com/pb33f/libopenapi"
+	"github.com/pb33f/libopenapi/datamodel"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"go.yaml.in/yaml/v4"
 )
@@ -542,6 +547,48 @@ components:
 	assertContains(t, src, `"fast"`)
 	assertContains(t, src, `"slow"`)
 	assertParsesAndCompiles(t, file.Source)
+}
+
+func TestIRFromOpenAPITransformedSiblingRefBuildError(t *testing.T) {
+	proxy := malformedTransformedSiblingRefProxy(t)
+	if !proxy.IsTransformedRefWithSiblings() {
+		t.Fatal("expected transformed sibling ref")
+	}
+
+	_, err := NewGenerator().run().irFromOpenAPI("WithSibling", proxy, "WithSibling")
+	if err == nil {
+		t.Fatal("expected transformed sibling ref build error")
+	}
+	if !strings.Contains(err.Error(), "WithSibling") {
+		t.Fatalf("expected error path to include component name, got %v", err)
+	}
+}
+
+func malformedTransformedSiblingRefProxy(t *testing.T) *highbase.SchemaProxy {
+	t.Helper()
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(`$ref: '#/components/schemas/Base'
+dependentRequired:
+  bad: nope
+`), &node)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	cfg.SpecInfo = &datamodel.SpecInfo{VersionNumeric: 3.1}
+	cfg.TransformSiblingRefs = true
+	idx := index.NewSpecIndexWithConfig(node.Content[0], cfg)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	if err := lowProxy.Build(context.Background(), nil, node.Content[0], idx); err != nil {
+		t.Fatal(err)
+	}
+	return highbase.NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: node.Content[0],
+	})
 }
 
 func renderTrainTravel(t *testing.T, opts ...Option) *GeneratedFile {

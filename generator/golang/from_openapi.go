@@ -26,9 +26,6 @@ func (g *Generator) irFromOpenAPIName(name string, nameResolved bool, proxy *hig
 		if err != nil {
 			return nil, wrapPath(err, path)
 		}
-		if schema == nil {
-			return nil, wrapPath(ErrNilSchema, path)
-		}
 		ir := g.irFromSchema(name, nameResolved, schema, path)
 		g.openapiCache[proxy] = ir
 		return ir, nil
