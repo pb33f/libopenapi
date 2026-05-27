@@ -241,6 +241,11 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		structure[key] = example
 		return true
 	}
+	if semantic, err := semanticSchemaForTransformedRef(schema); err != nil {
+		return false
+	} else if semantic != nil {
+		return wr.DiveIntoSchema(semantic, key, structure, visited, depth)
+	}
 
 	// Prevent unbounded recursion on deeply nested schemas.
 	if depth > 100 {

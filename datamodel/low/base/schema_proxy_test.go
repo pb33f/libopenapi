@@ -16,6 +16,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -525,6 +526,18 @@ $ref: "#/components/schemas/Base"`), &node)
 	// verify TransformedRef was set (lines 87 in the if transformed != nil block)
 	assert.NotNil(t, sp.TransformedRef, "TransformedRef should be set when transformation occurs")
 	assert.Equal(t, node.Content[0], sp.TransformedRef, "TransformedRef should point to original node")
+	assert.True(t, sp.IsTransformedRefWithSiblings())
+	assert.Equal(t, "#/components/schemas/Base", sp.GetTransformedRefReference())
+	require.NotNil(t, sp.GetTransformedRefAllOfSchema())
+	assert.Equal(t, "allOf", sp.GetTransformedRefAllOfSchema().Content[0].Value)
+	require.NotNil(t, sp.GetTransformedRefSiblingSchema())
+	require.Len(t, sp.GetTransformedRefSiblingSchema().Content, 2)
+	assert.Equal(t, "title", sp.GetTransformedRefSiblingSchema().Content[0].Value)
+	assert.Equal(t, "Test", sp.GetTransformedRefSiblingSchema().Content[1].Value)
+
+	assert.Nil(t, (*SchemaProxy)(nil).GetTransformedRefSiblingSchema())
+	assert.Empty(t, (*SchemaProxy)(nil).GetTransformedRefReference())
+	assert.Nil(t, (*SchemaProxy)(nil).GetTransformedRefAllOfSchema())
 }
 
 func TestSchemaProxy_attemptPropertyMerging_SuccessfulMerge(t *testing.T) {

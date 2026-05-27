@@ -9,6 +9,7 @@ import (
 
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -187,6 +188,30 @@ $ref: "#/components/schemas/Base"`
 		assert.Equal(t, "allOf", result.Content[0].Value)
 		allOfArray := result.Content[1]
 		assert.Len(t, allOfArray.Content, 2)
+
+		transformed := transformer.transformSiblingRefWithMetadata(actualNode)
+		require.NotNil(t, transformed)
+		assert.Equal(t, result.Content[0].Value, transformed.allOfNode.Content[0].Value)
+		assert.Equal(t, actualNode, transformed.referenceNode)
+		assert.Equal(t, "#/components/schemas/Base", transformed.reference)
+		require.NotNil(t, transformed.siblingNode)
+		require.Len(t, transformed.siblingNode.Content, 4)
+		assert.Equal(t, "title", transformed.siblingNode.Content[0].Value)
+		assert.Equal(t, "description", transformed.siblingNode.Content[2].Value)
+
+		assert.Nil(t, transformer.createSiblingSchemaNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "nope"}))
+		partial := transformer.createSiblingSchemaNode(&yaml.Node{
+			Kind: yaml.MappingNode,
+			Content: []*yaml.Node{
+				nil,
+				{Kind: yaml.ScalarNode, Value: "ignored"},
+				{Kind: yaml.ScalarNode, Value: "title"},
+				{Kind: yaml.ScalarNode, Value: "kept"},
+			},
+		})
+		require.NotNil(t, partial)
+		require.Len(t, partial.Content, 2)
+		assert.Equal(t, "title", partial.Content[0].Value)
 	})
 
 	t.Run("no transformation for ref only", func(t *testing.T) {

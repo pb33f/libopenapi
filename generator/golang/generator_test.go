@@ -500,7 +500,48 @@ func TestImplicitDiscriminatorJSON(t *testing.T) {
 		t.Fatalf("unexpected pet value: %#v", pet.Value)
 	}
 }
+	`)
+}
+
+func TestRenderSchemasTransformedSiblingRefComponentIsNotPureReference(t *testing.T) {
+	spec := []byte(`openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Base:
+      type: string
+    WithSibling:
+      $ref: '#/components/schemas/Base'
+      description: constrained base value
+      enum: [fast, slow]
 `)
+	doc, err := libopenapi.NewDocument(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model, err := doc.BuildV3Model()
+	if err != nil {
+		t.Fatal(err)
+	}
+	withSibling := model.Model.Components.Schemas.GetOrZero("WithSibling")
+	if withSibling == nil || !withSibling.IsReference() || !withSibling.IsTransformedRefWithSiblings() {
+		t.Fatalf("expected transformed sibling ref component, got %#v", withSibling)
+	}
+
+	file, err := NewGenerator(WithEnumConstants(true)).RenderSchemas(model.Model.Components.Schemas)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(file.Source)
+	assertContains(t, src, "type Base string")
+	assertContains(t, src, "type WithSibling ")
+	assertContains(t, src, "constrained base value")
+	assertContains(t, src, `"fast"`)
+	assertContains(t, src, `"slow"`)
+	assertParsesAndCompiles(t, file.Source)
 }
 
 func renderTrainTravel(t *testing.T, opts ...Option) *GeneratedFile {

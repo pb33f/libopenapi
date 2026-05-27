@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pb33f/libopenapi"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -1398,6 +1399,36 @@ schemas:
 	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"address":"Baker Street","owner":{"name":"John Doe"}}`, string(rendered))
+}
+
+func TestRenderSchema_RefWithSiblingsUsesReferencedShape(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Ref Siblings
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Base:
+      type: string
+      example: from-base
+    WithSibling:
+      $ref: '#/components/schemas/Base'
+      description: Local description
+`
+
+	doc, err := libopenapi.NewDocument([]byte(spec))
+	assert.NoError(t, err)
+	model, err := doc.BuildV3Model()
+	assert.NoError(t, err)
+
+	proxy := model.Model.Components.Schemas.GetOrZero("WithSibling")
+	assert.True(t, proxy.IsReference())
+	assert.Equal(t, "#/components/schemas/Base", proxy.GetReference())
+
+	wr := createSchemaRenderer()
+	rendered := wr.RenderSchema(proxy.Schema())
+	assert.Equal(t, "from-base", rendered)
 }
 
 func TestRenderSchema_Ref_NoExample(t *testing.T) {

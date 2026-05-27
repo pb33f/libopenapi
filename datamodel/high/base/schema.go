@@ -588,6 +588,14 @@ func (s *Schema) MarshalYAML() (interface{}, error) {
 
 // MarshalJSON will create a ready to render JSON representation of the Schema object.
 func (s *Schema) MarshalJSON() ([]byte, error) {
+	if s.ParentProxy != nil && s.ParentProxy.isParsedRefWithSiblings() {
+		node, err := s.ParentProxy.referenceYAMLNodeForSchema(s)
+		if err != nil {
+			return nil, err
+		}
+		return marshalYAMLNodeJSON(node)
+	}
+
 	nb := high.NewNodeBuilder(s, s.low)
 
 	// determine index version
@@ -599,13 +607,7 @@ func (s *Schema) MarshalJSON() ([]byte, error) {
 	}
 	// render node
 	node := nb.Render()
-	var renderedJSON map[string]interface{}
-
-	// marshal into struct
-	_ = node.Decode(&renderedJSON)
-
-	// return JSON bytes
-	return json.Marshal(renderedJSON)
+	return marshalYAMLNodeJSON(node)
 }
 
 // MarshalYAMLInlineWithContext will render out the Schema pointer as YAML using the provided
@@ -620,6 +622,9 @@ func (s *Schema) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 	if !ok || renderCtx == nil {
 		renderCtx = NewInlineRenderContext()
 		ctx = renderCtx
+	}
+	if s.ParentProxy != nil && s.ParentProxy.isParsedRefWithSiblings() {
+		return s.ParentProxy.marshalParsedRefWithSiblingsInline(renderCtx, s)
 	}
 
 	// determine if we should preserve discriminator refs based on rendering mode.
@@ -662,6 +667,14 @@ func (s *Schema) MarshalYAMLInline() (interface{}, error) {
 
 // MarshalJSONInline will render out the Schema pointer as JSON, and all refs will be inlined fully
 func (s *Schema) MarshalJSONInline() ([]byte, error) {
+	if s.ParentProxy != nil && s.ParentProxy.isParsedRefWithSiblings() {
+		rendered, err := s.MarshalYAMLInline()
+		if err != nil {
+			return nil, err
+		}
+		return marshalYAMLRenderJSON(rendered)
+	}
+
 	nb := high.NewNodeBuilder(s, s.low)
 	nb.Resolve = true
 	// determine index version
@@ -673,11 +686,21 @@ func (s *Schema) MarshalJSONInline() ([]byte, error) {
 	}
 	// render node
 	node := nb.Render()
+	return marshalYAMLNodeJSON(node)
+}
+
+func marshalYAMLRenderJSON(rendered interface{}) ([]byte, error) {
+	node, ok := yamlNodeFromRender(rendered)
+	if !ok {
+		return nil, errors.New("unable to render schema as JSON: YAML render was not a node")
+	}
+	return marshalYAMLNodeJSON(node)
+}
+
+func marshalYAMLNodeJSON(node *yaml.Node) ([]byte, error) {
 	var renderedJSON map[string]interface{}
-
-	// marshal into struct
-	_ = node.Decode(&renderedJSON)
-
-	// return JSON bytes
+	if err := node.Decode(&renderedJSON); err != nil {
+		return nil, err
+	}
 	return json.Marshal(renderedJSON)
 }

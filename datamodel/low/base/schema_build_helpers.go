@@ -21,7 +21,7 @@ type resolvedSchemaBuildInput struct {
 	valueNode   *yaml.Node
 	scopeNode   *yaml.Node
 	refNode     *yaml.Node
-	transformed *yaml.Node
+	transformed *transformedSiblingRef
 	refLocation string
 }
 
@@ -102,7 +102,7 @@ func (s *Schema) extractExtensions(root *yaml.Node) {
 }
 
 // buildSchemaProxy builds out a SchemaProxy for a single node.
-func buildSchemaProxy(ctx context.Context, idx *index.SpecIndex, kn, vn, scopeNode, rf, transformed *yaml.Node, refLocation string) low.ValueReference[*SchemaProxy] {
+func buildSchemaProxy(ctx context.Context, idx *index.SpecIndex, kn, vn, scopeNode, rf *yaml.Node, transformed *transformedSiblingRef, refLocation string) low.ValueReference[*SchemaProxy] {
 	sp := new(SchemaProxy)
 	sp.prepareForResolvedBuild(ctx, kn, vn, scopeNode, idx, refLocation, rf, transformed)
 	return low.ValueReference[*SchemaProxy]{
@@ -195,9 +195,9 @@ func resolveSchemaBuildInput(ctx context.Context, valueNode *yaml.Node, idx *ind
 		return resolved, nil
 	}
 
-	if transformedValue, wasTransformed := transformSiblingRefNode(valueNode, idx); wasTransformed {
+	if transformedValue, transformedRef, wasTransformed := transformSiblingRefNode(valueNode, idx); wasTransformed {
 		resolved.valueNode = transformedValue
-		resolved.transformed = valueNode
+		resolved.transformed = transformedRef
 		return resolved, nil
 	}
 
