@@ -2371,6 +2371,46 @@ components:
 	assert.Contains(t, string(modelBytes), "- $ref: '#/components/schemas/Name'")
 }
 
+func TestDocument_Render_OpenAPI30TransformedSiblingRefStaysAllOf(t *testing.T) {
+	spec := `openapi: 3.0.3
+info:
+  title: OAS 3.0 sibling refs
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Name:
+      type: string
+    ConstrainedName:
+      $ref: '#/components/schemas/Name'
+      minLength: 2
+`
+
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	constrained := model.Model.Components.Schemas.GetOrZero("ConstrainedName")
+	require.NotNil(t, constrained)
+	require.NotNil(t, constrained.GoLow())
+	assert.NotNil(t, constrained.GoLow().TransformedRef)
+
+	constrainedSchema := constrained.Schema()
+	require.NotNil(t, constrainedSchema)
+	require.Len(t, constrainedSchema.AllOf, 2)
+	require.NotNil(t, constrainedSchema.AllOf[0].Schema().MinLength)
+	assert.Equal(t, int64(2), *constrainedSchema.AllOf[0].Schema().MinLength)
+
+	modelBytes, err := model.Model.Render()
+	require.NoError(t, err)
+	rendered := string(modelBytes)
+	assert.Contains(t, rendered, "ConstrainedName:\n            allOf:")
+	assert.Contains(t, rendered, "- minLength: 2")
+	assert.Contains(t, rendered, "- $ref: '#/components/schemas/Name'")
+}
+
 func assertSiblingRefAllOf(t *testing.T, proxy *base.SchemaProxy) {
 	t.Helper()
 

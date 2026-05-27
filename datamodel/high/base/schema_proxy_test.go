@@ -13,6 +13,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
@@ -1841,6 +1842,60 @@ func TestSchemaProxy_RenderTransformedRefWithSiblingsFallbacks(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, ok)
 	assert.Nil(t, node)
+}
+
+func TestSchemaProxy_RenderTransformedRefWithSiblings_OpenAPI30Fallback(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("$ref: '#/components/schemas/Thing'\nminLength: 2"), &root))
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	cfg.SpecInfo = &datamodel.SpecInfo{VersionNumeric: 3.0}
+	cfg.TransformSiblingRefs = true
+	idx := index.NewSpecIndexWithConfig(&root, cfg)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	require.NoError(t, lowProxy.Build(context.Background(), nil, root.Content[0], idx))
+	require.NotNil(t, lowProxy.TransformedRef)
+
+	minLength := int64(2)
+	sp := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: lowProxy})
+	schema := &Schema{
+		AllOf: []*SchemaProxy{
+			CreateSchemaProxy(&Schema{MinLength: &minLength}),
+			CreateSchemaProxyRef("#/components/schemas/Thing"),
+		},
+	}
+
+	node, ok, err := sp.renderTransformedRefWithSiblings(schema)
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.Nil(t, node)
+	assert.False(t, sp.shouldCollapseTransformedRefWithSiblings())
+}
+
+func TestSchemaProxy_ShouldCollapseTransformedRefWithSiblings(t *testing.T) {
+	require.False(t, (*SchemaProxy)(nil).shouldCollapseTransformedRefWithSiblings())
+
+	lowProxy := &lowbase.SchemaProxy{}
+	noIndex := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: lowProxy})
+	require.True(t, noIndex.shouldCollapseTransformedRefWithSiblings())
+
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("type: string"), &root))
+
+	cfg30 := index.CreateOpenAPIIndexConfig()
+	cfg30.SpecInfo = &datamodel.SpecInfo{VersionNumeric: 3.0}
+	idx30 := index.NewSpecIndexWithConfig(&root, cfg30)
+	low30 := new(lowbase.SchemaProxy)
+	require.NoError(t, low30.Build(context.Background(), nil, root.Content[0], idx30))
+	assert.False(t, NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: low30}).shouldCollapseTransformedRefWithSiblings())
+
+	cfg31 := index.CreateOpenAPIIndexConfig()
+	cfg31.SpecInfo = &datamodel.SpecInfo{VersionNumeric: 3.1}
+	idx31 := index.NewSpecIndexWithConfig(&root, cfg31)
+	low31 := new(lowbase.SchemaProxy)
+	require.NoError(t, low31.Build(context.Background(), nil, root.Content[0], idx31))
+	assert.True(t, NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: low31}).shouldCollapseTransformedRefWithSiblings())
 }
 
 func TestTransformedRefRenderHelpers(t *testing.T) {
