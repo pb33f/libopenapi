@@ -568,6 +568,12 @@ func (s *Schema) RenderInline() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Schema object.
 func (s *Schema) MarshalYAML() (interface{}, error) {
+	if s.ParentProxy != nil {
+		if node, ok, err := s.ParentProxy.renderTransformedRefWithSiblings(s); ok || err != nil {
+			return node, err
+		}
+	}
+
 	nb := high.NewNodeBuilder(s, s.low)
 
 	// determine index version

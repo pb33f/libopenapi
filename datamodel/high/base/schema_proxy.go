@@ -412,6 +412,120 @@ func (sp *SchemaProxy) renderRefWithSiblings() *yaml.Node {
 	return node
 }
 
+func (sp *SchemaProxy) renderTransformedRefWithSiblings(s *Schema) (*yaml.Node, bool, error) {
+	if sp == nil || sp.schema == nil || sp.schema.Value == nil || sp.schema.Value.TransformedRef == nil || s == nil {
+		return nil, false, nil
+	}
+	if len(s.AllOf) != 2 || s.AllOf[0] == nil || s.AllOf[1] == nil || !s.AllOf[1].IsReference() {
+		return nil, false, nil
+	}
+
+	// Only collapse the synthetic allOf created by the sibling-ref transformer.
+	// If callers add fields to the outer schema or change its composition, keep
+	// the explicit allOf so no mutations are hidden.
+	outerNode := high.NewNodeBuilder(s, s.low).Render()
+	if len(outerNode.Content) != 2 || outerNode.Content[0].Value != "allOf" {
+		return nil, false, nil
+	}
+
+	siblingRender, err := s.AllOf[0].MarshalYAML()
+	if err != nil {
+		return nil, true, err
+	}
+	siblingNode, ok := yamlNodeFromRender(siblingRender)
+	if !ok || !utils.IsNodeMap(siblingNode) {
+		return nil, false, nil
+	}
+
+	ref := s.AllOf[1].GetReference()
+	original := sp.schema.Value.TransformedRef
+	result := utils.CreateEmptyMapNode()
+	consumed := make(map[string]struct{}, len(siblingNode.Content)/2)
+
+	for i := 0; i+1 < len(original.Content); i += 2 {
+		keyNode := original.Content[i]
+		valueNode := original.Content[i+1]
+		if keyNode == nil {
+			continue
+		}
+		if keyNode.Value == "$ref" {
+			refKey := cloneYAMLNode(keyNode)
+			refValue := cloneYAMLNode(valueNode)
+			if refValue == nil {
+				refValue = utils.CreateStringNode(ref)
+			}
+			refValue.Value = ref
+			result.Content = append(result.Content, refKey, refValue)
+			continue
+		}
+		if _, siblingValue := findYAMLPair(siblingNode, keyNode.Value); siblingValue != nil {
+			renderKey := cloneYAMLNode(keyNode)
+			result.Content = append(result.Content, renderKey, cloneYAMLNode(siblingValue))
+			consumed[keyNode.Value] = struct{}{}
+		}
+	}
+
+	for i := 0; i+1 < len(siblingNode.Content); i += 2 {
+		keyNode := siblingNode.Content[i]
+		valueNode := siblingNode.Content[i+1]
+		if _, ok := consumed[keyNode.Value]; ok {
+			continue
+		}
+		result.Content = append(result.Content, cloneYAMLNode(keyNode), cloneYAMLNode(valueNode))
+	}
+
+	return result, true, nil
+}
+
+func yamlNodeFromRender(rendered interface{}) (*yaml.Node, bool) {
+	switch node := rendered.(type) {
+	case *yaml.Node:
+		return node, node != nil
+	case yaml.Node:
+		return &node, true
+	default:
+		return nil, false
+	}
+}
+
+func findYAMLPair(node *yaml.Node, key string) (*yaml.Node, *yaml.Node) {
+	if node == nil || !utils.IsNodeMap(node) {
+		return nil, nil
+	}
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		if node.Content[i] != nil && node.Content[i].Value == key {
+			return node.Content[i], node.Content[i+1]
+		}
+	}
+	return nil, nil
+}
+
+func cloneYAMLNode(node *yaml.Node) *yaml.Node {
+	if node == nil {
+		return nil
+	}
+	clone := &yaml.Node{
+		Kind:        node.Kind,
+		Style:       node.Style,
+		Tag:         node.Tag,
+		Value:       node.Value,
+		Anchor:      node.Anchor,
+		Alias:       node.Alias,
+		Line:        node.Line,
+		Column:      node.Column,
+		HeadComment: node.HeadComment,
+		LineComment: node.LineComment,
+		FootComment: node.FootComment,
+	}
+	if len(node.Content) > 0 {
+		clone.Content = make([]*yaml.Node, len(node.Content))
+		for i, child := range node.Content {
+			clone.Content[i] = cloneYAMLNode(child)
+		}
+	}
+	return clone
+}
+
 // Render will return a YAML representation of the Schema object as a byte slice.
 func (sp *SchemaProxy) Render() ([]byte, error) {
 	return yaml.Marshal(sp)
@@ -423,6 +537,9 @@ func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
 		s, err := sp.BuildSchema()
 		if err != nil {
 			return nil, err
+		}
+		if node, ok, renderErr := sp.renderTransformedRefWithSiblings(s); ok || renderErr != nil {
+			return node, renderErr
 		}
 		nb := high.NewNodeBuilder(s, s.low)
 		return nb.Render(), nil
