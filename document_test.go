@@ -1927,10 +1927,12 @@ components:
 
 	renderedStr := string(renderedBytes)
 
-	// verify the rendered spec contains the transformed structure
-	assert.Contains(t, renderedStr, "allOf:")
-	assert.Contains(t, renderedStr, "- title: destination-amazon-sqs")
-	assert.Contains(t, renderedStr, "- $ref: '#/components/schemas/destination-base'")
+	// Default rendering preserves the authored $ref+sibling syntax while the
+	// model still carries the transformed allOf semantics.
+	assert.Equal(t, spec+"\n", renderedStr)
+	assert.NotContains(t, renderedStr, "allOf:")
+	assert.Contains(t, renderedStr, "title: destination-amazon-sqs")
+	assert.Contains(t, renderedStr, "$ref: '#/components/schemas/destination-base'")
 
 	// verify the reloaded model has the correct structure
 	if reloadedV3Doc.Model.Components != nil && reloadedV3Doc.Model.Components.Schemas != nil {
@@ -1990,10 +1992,12 @@ components:
 
 	renderedStr := string(renderedBytes)
 
-	// verify the rendered spec contains the transformed structure
-	assert.Contains(t, renderedStr, "allOf:")
-	assert.Contains(t, renderedStr, "- description: destination-amazon-sqs")
-	assert.Contains(t, renderedStr, "- $ref: '#/components/schemas/destination-base'")
+	// Default rendering preserves the authored $ref+sibling syntax and order
+	// while the model still carries the transformed allOf semantics.
+	assert.Equal(t, spec+"\n", renderedStr)
+	assert.NotContains(t, renderedStr, "allOf:")
+	assert.Contains(t, renderedStr, "$ref: '#/components/schemas/destination-base'")
+	assert.Contains(t, renderedStr, "description: destination-amazon-sqs")
 
 	// verify the reloaded model has the correct structure
 	if reloadedV3Doc.Model.Components != nil && reloadedV3Doc.Model.Components.Schemas != nil {
@@ -2263,6 +2267,108 @@ components:
 	mediaType := requestBody.Content.GetOrZero("application/json")
 	require.NotNil(t, mediaType)
 	assertSiblingRefAllOf(t, mediaType.Schema)
+}
+
+func TestDocument_Render_Issue575_PreservesSiblingRefSyntax(t *testing.T) {
+	bs, err := os.ReadFile("test_specs/issue-575-sibling-ref-render.yaml")
+	require.NoError(t, err)
+
+	doc, err := NewDocument(bs)
+	require.NoError(t, err)
+
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	shipper := model.Model.Components.Schemas.GetOrZero("cmd.protoc_gen_go.testdata.proto.Shipper").Schema()
+	require.NotNil(t, shipper)
+
+	createTime := shipper.Properties.GetOrZero("createTime")
+	require.NotNil(t, createTime)
+	require.NotNil(t, createTime.GoLow())
+	assert.NotNil(t, createTime.GoLow().TransformedRef)
+
+	createTimeSchema := createTime.Schema()
+	require.NotNil(t, createTimeSchema)
+	require.Len(t, createTimeSchema.AllOf, 2)
+	assert.Equal(t, "The creation timestamp of the shipper.", createTimeSchema.AllOf[0].Schema().Description)
+	assert.Equal(t, "#/components/schemas/Timestamp", createTimeSchema.AllOf[1].GetReference())
+
+	schemaBytes, err := createTimeSchema.Render()
+	require.NoError(t, err)
+	assert.Equal(t, "$ref: '#/components/schemas/Timestamp'\ndescription: The creation timestamp of the shipper.\n", string(schemaBytes))
+
+	modelBytes, err := model.Model.Render()
+	require.NoError(t, err)
+	assert.Equal(t, string(bs), string(modelBytes))
+}
+
+func TestDocument_Render_Issue575_UsesMutatedSiblingValues(t *testing.T) {
+	bs, err := os.ReadFile("test_specs/issue-575-sibling-ref-render.yaml")
+	require.NoError(t, err)
+
+	doc, err := NewDocument(bs)
+	require.NoError(t, err)
+
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	shipper := model.Model.Components.Schemas.GetOrZero("cmd.protoc_gen_go.testdata.proto.Shipper").Schema()
+	require.NotNil(t, shipper)
+
+	createTime := shipper.Properties.GetOrZero("createTime")
+	require.NotNil(t, createTime)
+
+	createTimeSchema := createTime.Schema()
+	require.NotNil(t, createTimeSchema)
+	require.Len(t, createTimeSchema.AllOf, 2)
+
+	siblingSchema := createTimeSchema.AllOf[0].Schema()
+	require.NotNil(t, siblingSchema)
+	siblingSchema.Description = "The created timestamp from libopenapi."
+
+	modelBytes, err := model.Model.Render()
+	require.NoError(t, err)
+
+	expected := strings.Replace(
+		string(bs),
+		"The creation timestamp of the shipper.",
+		"The created timestamp from libopenapi.",
+		1,
+	)
+	assert.Equal(t, expected, string(modelBytes))
+}
+
+func TestDocument_Render_AuthoredAllOfWithRefSiblingShapeStaysAllOf(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Authored allOf
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Name:
+      type: string
+    Composed:
+      allOf:
+        - description: keep authored allOf
+        - $ref: '#/components/schemas/Name'
+`
+
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	composed := model.Model.Components.Schemas.GetOrZero("Composed")
+	require.NotNil(t, composed)
+	require.NotNil(t, composed.GoLow())
+	assert.Nil(t, composed.GoLow().TransformedRef)
+
+	modelBytes, err := model.Model.Render()
+	require.NoError(t, err)
+	assert.Contains(t, string(modelBytes), "allOf:")
+	assert.Contains(t, string(modelBytes), "- $ref: '#/components/schemas/Name'")
 }
 
 func assertSiblingRefAllOf(t *testing.T, proxy *base.SchemaProxy) {

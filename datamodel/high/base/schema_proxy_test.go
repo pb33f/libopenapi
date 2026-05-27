@@ -1697,6 +1697,199 @@ func TestCreateSchemaProxyRefWithSchema_BundlingMode(t *testing.T) {
 	assert.Contains(t, string(rendered), "description: bundled sibling")
 }
 
+func TestSchemaProxy_RenderTransformedRefWithSiblings(t *testing.T) {
+	deprecated := true
+	lowProxy := &lowbase.SchemaProxy{
+		TransformedRef: &yaml.Node{
+			Kind: yaml.MappingNode,
+			Tag:  "!!map",
+			Content: []*yaml.Node{
+				nil,
+				utils.CreateStringNode("ignored"),
+				utils.CreateStringNode("$ref"),
+				nil,
+				utils.CreateStringNode("description"),
+				utils.CreateStringNode("original description"),
+			},
+		},
+	}
+	sp := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: lowProxy})
+	schema := &Schema{
+		AllOf: []*SchemaProxy{
+			CreateSchemaProxy(&Schema{
+				Description: "updated description",
+				Title:       "added title",
+				Deprecated:  &deprecated,
+			}),
+			CreateSchemaProxyRef("#/components/schemas/Thing"),
+		},
+	}
+
+	node, ok, err := sp.renderTransformedRefWithSiblings(schema)
+	require.NoError(t, err)
+	require.True(t, ok)
+	require.NotNil(t, node)
+	require.Len(t, node.Content, 8)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Thing", node.Content[1].Value)
+	assert.Equal(t, "description", node.Content[2].Value)
+	assert.Equal(t, "updated description", node.Content[3].Value)
+	assert.Equal(t, "title", node.Content[4].Value)
+	assert.Equal(t, "added title", node.Content[5].Value)
+	assert.Equal(t, "deprecated", node.Content[6].Value)
+	assert.Equal(t, "true", node.Content[7].Value)
+}
+
+func TestSchemaProxy_MarshalYAML_TransformedRefWithSiblings(t *testing.T) {
+	lowProxy := &lowbase.SchemaProxy{
+		TransformedRef: &yaml.Node{
+			Kind: yaml.MappingNode,
+			Tag:  "!!map",
+			Content: []*yaml.Node{
+				utils.CreateStringNode("$ref"),
+				utils.CreateStringNode("#/components/schemas/Thing"),
+				utils.CreateStringNode("description"),
+				utils.CreateStringNode("original description"),
+			},
+		},
+	}
+	sp := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: lowProxy})
+	schema := &Schema{
+		ParentProxy: sp,
+		AllOf: []*SchemaProxy{
+			CreateSchemaProxy(&Schema{Description: "updated description"}),
+			CreateSchemaProxyRef("#/components/schemas/Thing"),
+		},
+	}
+	sp.rendered = schema
+
+	rendered, err := sp.MarshalYAML()
+	require.NoError(t, err)
+	node, ok := rendered.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Thing", node.Content[1].Value)
+	assert.Equal(t, "description", node.Content[2].Value)
+	assert.Equal(t, "updated description", node.Content[3].Value)
+
+	rendered, err = schema.MarshalYAML()
+	require.NoError(t, err)
+	node, ok = rendered.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Thing", node.Content[1].Value)
+	assert.Equal(t, "description", node.Content[2].Value)
+	assert.Equal(t, "updated description", node.Content[3].Value)
+}
+
+func TestSchemaProxy_RenderTransformedRefWithSiblingsFallbacks(t *testing.T) {
+	deprecated := true
+	lowProxy := &lowbase.SchemaProxy{
+		TransformedRef: &yaml.Node{
+			Kind: yaml.MappingNode,
+			Tag:  "!!map",
+			Content: []*yaml.Node{
+				utils.CreateStringNode("$ref"),
+				utils.CreateStringNode("#/components/schemas/Thing"),
+				utils.CreateStringNode("deprecated"),
+				utils.CreateBoolNode("true"),
+			},
+		},
+	}
+	sp := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: lowProxy})
+
+	node, ok, err := (*SchemaProxy)(nil).renderTransformedRefWithSiblings(&Schema{})
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.Nil(t, node)
+
+	node, ok, err = sp.renderTransformedRefWithSiblings(&Schema{})
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.Nil(t, node)
+
+	node, ok, err = sp.renderTransformedRefWithSiblings(&Schema{
+		Description: "outer mutation",
+		AllOf: []*SchemaProxy{
+			CreateSchemaProxy(&Schema{Deprecated: &deprecated}),
+			CreateSchemaProxyRef("#/components/schemas/Thing"),
+		},
+	})
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.Nil(t, node)
+
+	badSibling := &SchemaProxy{buildError: errors.New("boom")}
+	node, ok, err = sp.renderTransformedRefWithSiblings(&Schema{
+		AllOf: []*SchemaProxy{
+			badSibling,
+			CreateSchemaProxyRef("#/components/schemas/Thing"),
+		},
+	})
+	require.Error(t, err)
+	assert.True(t, ok)
+	assert.Nil(t, node)
+
+	scalarRefLowProxy := &lowbase.SchemaProxy{}
+	scalarRefLowProxy.SetReference("#/components/schemas/Scalar", utils.CreateStringNode("#/components/schemas/Scalar"))
+	node, ok, err = sp.renderTransformedRefWithSiblings(&Schema{
+		AllOf: []*SchemaProxy{
+			NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: scalarRefLowProxy}),
+			CreateSchemaProxyRef("#/components/schemas/Thing"),
+		},
+	})
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.Nil(t, node)
+}
+
+func TestTransformedRefRenderHelpers(t *testing.T) {
+	node := utils.CreateStringNode("value")
+	ptrNode, ok := yamlNodeFromRender(node)
+	require.True(t, ok)
+	assert.Equal(t, node, ptrNode)
+
+	valueNode, ok := yamlNodeFromRender(*node)
+	require.True(t, ok)
+	assert.Equal(t, "value", valueNode.Value)
+
+	noNode, ok := yamlNodeFromRender("nope")
+	assert.False(t, ok)
+	assert.Nil(t, noNode)
+
+	key, value := findYAMLPair(nil, "description")
+	assert.Nil(t, key)
+	assert.Nil(t, value)
+
+	key, value = findYAMLPair(utils.CreateStringNode("scalar"), "description")
+	assert.Nil(t, key)
+	assert.Nil(t, value)
+
+	mapping := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			utils.CreateStringNode("description"),
+			utils.CreateStringNode("hello"),
+		},
+	}
+	key, value = findYAMLPair(mapping, "description")
+	require.NotNil(t, key)
+	require.NotNil(t, value)
+	assert.Equal(t, "hello", value.Value)
+
+	key, value = findYAMLPair(mapping, "title")
+	assert.Nil(t, key)
+	assert.Nil(t, value)
+
+	assert.Nil(t, cloneYAMLNode(nil))
+	cloned := cloneYAMLNode(mapping)
+	require.NotNil(t, cloned)
+	assert.Equal(t, mapping.Content[0].Value, cloned.Content[0].Value)
+	cloned.Content[0].Value = "changed"
+	assert.Equal(t, "description", mapping.Content[0].Value)
+}
+
 func TestCreateSchemaProxyRefWithSchema_IsRefWithSiblings(t *testing.T) {
 	// Verify isRefWithSiblings() returns correct values for all factory types
 	refOnly := CreateSchemaProxyRef("#/components/schemas/Pet")
