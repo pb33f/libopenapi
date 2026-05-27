@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/pb33f/libopenapi"
+	"github.com/pb33f/libopenapi/datamodel"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -1429,6 +1430,48 @@ components:
 	wr := createSchemaRenderer()
 	rendered := wr.RenderSchema(proxy.Schema())
 	assert.Equal(t, "from-base", rendered)
+
+	structure := make(map[string]any)
+	assert.True(t, wr.DiveIntoSchema(proxy.Schema(), "value", structure, createVisitedMap(), 0))
+	assert.Equal(t, "from-base", structure["value"])
+}
+
+func TestRenderSchema_TransformedRefSemanticErrors(t *testing.T) {
+	schema := &highbase.Schema{ParentProxy: malformedRendererTransformedSiblingRefProxy(t)}
+
+	ctx := newMockRenderContext(createSchemaRenderer())
+	structure := make(map[string]any)
+	assert.False(t, ctx.diveIntoSchema(schema, rootType, structure, 0))
+	assert.Error(t, ctx.err)
+
+	assert.False(t, createSchemaRenderer().DiveIntoSchema(schema, rootType, structure, createVisitedMap(), 0))
+}
+
+func malformedRendererTransformedSiblingRefProxy(t *testing.T) *highbase.SchemaProxy {
+	t.Helper()
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(`$ref: '#/components/schemas/Base'
+dependentRequired:
+  bad: nope
+`), &node)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	cfg.SpecInfo = &datamodel.SpecInfo{VersionNumeric: 3.1}
+	cfg.TransformSiblingRefs = true
+	idx := index.NewSpecIndexWithConfig(node.Content[0], cfg)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	if err := lowProxy.Build(context.Background(), nil, node.Content[0], idx); err != nil {
+		t.Fatal(err)
+	}
+	return highbase.NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: node.Content[0],
+	})
 }
 
 func TestRenderSchema_Ref_NoExample(t *testing.T) {
