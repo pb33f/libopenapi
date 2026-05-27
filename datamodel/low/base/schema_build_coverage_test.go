@@ -86,8 +86,9 @@ func TestTransformSiblingRefNode(t *testing.T) {
 	var siblingRef yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte("$ref: '#/components/schemas/Name'\ndeprecated: true"), &siblingRef))
 
-	transformed, ok := transformSiblingRefNode(siblingRef.Content[0], nil)
+	transformed, metadata, ok := transformSiblingRefNode(siblingRef.Content[0], nil)
 	require.False(t, ok)
+	assert.Nil(t, metadata)
 	assert.Equal(t, siblingRef.Content[0], transformed)
 
 	cfg := index.CreateOpenAPIIndexConfig()
@@ -96,15 +97,18 @@ func TestTransformSiblingRefNode(t *testing.T) {
 
 	var refOnly yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte("$ref: '#/components/schemas/Name'"), &refOnly))
-	transformed, ok = transformSiblingRefNode(refOnly.Content[0], idx)
+	transformed, metadata, ok = transformSiblingRefNode(refOnly.Content[0], idx)
 	require.False(t, ok)
+	assert.Nil(t, metadata)
 	assert.Equal(t, refOnly.Content[0], transformed)
 
-	transformed, ok = transformSiblingRefNode(siblingRef.Content[0], idx)
+	transformed, metadata, ok = transformSiblingRefNode(siblingRef.Content[0], idx)
 	require.True(t, ok)
 	require.NotNil(t, transformed)
+	require.NotNil(t, metadata)
 	require.Len(t, transformed.Content, 2)
 	assert.Equal(t, "allOf", transformed.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Name", metadata.reference)
 }
 
 func TestResolveSchemaBuildInput_TransformsSiblingRefBeforeResolution(t *testing.T) {
@@ -138,12 +142,19 @@ components:
 	assert.Equal(t, "allOf", resolved.valueNode.Content[0].Value)
 	assert.Equal(t, fooNode, resolved.scopeNode)
 	assert.Nil(t, resolved.refNode)
-	assert.Equal(t, fooNode, resolved.transformed)
+	require.NotNil(t, resolved.transformed)
+	assert.Equal(t, fooNode, resolved.transformed.referenceNode)
 	assert.Empty(t, resolved.refLocation)
 	assert.Equal(t, idx, resolved.idx)
 
 	built := buildSchemaProxy(resolved.ctx, resolved.idx, fooNode, resolved.valueNode, resolved.scopeNode, resolved.refNode, resolved.transformed, resolved.refLocation)
 	assert.Equal(t, fooNode, built.Value.TransformedRef)
+	assert.True(t, built.Value.IsTransformedRefWithSiblings())
+	assert.Equal(t, "#/components/schemas/Name", built.Value.GetTransformedRefReference())
+	assert.Equal(t, "allOf", built.Value.GetTransformedRefAllOfSchema().Content[0].Value)
+	require.NotNil(t, built.Value.GetTransformedRefSiblingSchema())
+	require.Len(t, built.Value.GetTransformedRefSiblingSchema().Content, 2)
+	assert.Equal(t, "deprecated", built.Value.GetTransformedRefSiblingSchema().Content[0].Value)
 }
 
 func findNestedSchemaTestNode(t *testing.T, node *yaml.Node, path ...string) *yaml.Node {

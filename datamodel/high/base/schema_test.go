@@ -925,6 +925,20 @@ description: something object
 	assert.Equal(t, `{"description":"something object","type":"object"}`, string(schemaBytes))
 }
 
+func TestMarshalYAMLRenderJSONErrors(t *testing.T) {
+	_, err := marshalYAMLRenderJSON("not a YAML node")
+	require.ErrorContains(t, err, "YAML render was not a node")
+
+	_, err = marshalYAMLNodeJSON(&yaml.Node{
+		Kind: yaml.SequenceNode,
+		Tag:  "!!seq",
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "not a map"},
+		},
+	})
+	require.Error(t, err)
+}
+
 func TestNewSchemaProxy_RenderSchemaWithMultipleObjectTypes(t *testing.T) {
 	testSpec := `type: object
 description: something object

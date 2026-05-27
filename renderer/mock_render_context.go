@@ -64,6 +64,12 @@ func (ctx *mockRenderContext) diveIntoSchema(schema *base.Schema, key string, st
 		structure[key] = example
 		return ctx.noteValue(example)
 	}
+	if semantic, err := semanticSchemaForTransformedRef(schema); err != nil {
+		ctx.err = err
+		return false
+	} else if semantic != nil {
+		return ctx.diveIntoSchema(semantic, key, structure, depth)
+	}
 	if !ctx.noteNode() {
 		return false
 	}
@@ -112,6 +118,13 @@ func (ctx *mockRenderContext) diveIntoSchema(schema *base.Schema, key string, st
 	}
 
 	return true
+}
+
+func semanticSchemaForTransformedRef(schema *base.Schema) (*base.Schema, error) {
+	if schema == nil || schema.ParentProxy == nil || !schema.ParentProxy.IsTransformedRefWithSiblings() {
+		return nil, nil
+	}
+	return schema.ParentProxy.BuildTransformedRefSemanticSchema(schema)
 }
 
 func (ctx *mockRenderContext) renderString(schema *base.Schema, key string, structure map[string]any) bool {

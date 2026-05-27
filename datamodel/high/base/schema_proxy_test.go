@@ -1783,6 +1783,152 @@ func TestSchemaProxy_MarshalYAML_TransformedRefWithSiblings(t *testing.T) {
 	assert.Equal(t, "updated description", node.Content[3].Value)
 }
 
+func TestSchemaProxy_ParsedTransformedRefWithSiblingsRestoresReferenceContract(t *testing.T) {
+	sp := buildParsedSiblingRefProxy(t, 3.1)
+
+	assert.True(t, sp.isParsedRefWithSiblings())
+	assert.True(t, sp.IsReference())
+	assert.Equal(t, "#/components/schemas/Thing", sp.GetReference())
+	require.NotNil(t, sp.GetReferenceNode())
+	assert.Equal(t, "$ref", sp.GetReferenceNode().Content[0].Value)
+
+	schema := sp.Schema()
+	require.NotNil(t, schema)
+	assert.Equal(t, "original description", schema.Description)
+	assert.Equal(t, "Original title", schema.Title)
+	assert.Empty(t, schema.AllOf)
+	assert.Equal(t, sp, schema.ParentProxy)
+
+	schema.Description = "updated description"
+	rendered, err := sp.MarshalYAML()
+	require.NoError(t, err)
+	node, ok := rendered.(*yaml.Node)
+	require.True(t, ok)
+	require.Len(t, node.Content, 6)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Thing", node.Content[1].Value)
+	assert.Equal(t, "description", node.Content[2].Value)
+	assert.Equal(t, "updated description", node.Content[3].Value)
+	assert.Equal(t, "title", node.Content[4].Value)
+	assert.Equal(t, "Original title", node.Content[5].Value)
+
+	sp.schema.ValueNode = &yaml.Node{Kind: yaml.MappingNode}
+	assert.Contains(t, sp.getInlineRenderKey(), ":inline:")
+}
+
+func TestSchemaProxy_ParsedTransformedRefWithSiblingsInlinePreservesSemantics(t *testing.T) {
+	sp := buildParsedSiblingRefProxy(t, 3.1)
+
+	siblingSchema := sp.Schema()
+	require.NotNil(t, siblingSchema)
+	siblingSchema.Description = "mutated description"
+
+	semanticSchema, err := sp.BuildTransformedRefSemanticSchema(siblingSchema)
+	require.NoError(t, err)
+	require.NotNil(t, semanticSchema)
+	require.Len(t, semanticSchema.AllOf, 2)
+	assert.Equal(t, "mutated description", semanticSchema.AllOf[0].Schema().Description)
+	assert.Equal(t, "string", semanticSchema.AllOf[1].Schema().Type[0])
+
+	semanticSchema, err = sp.BuildTransformedRefSemanticSchema(nil)
+	require.NoError(t, err)
+	require.NotNil(t, semanticSchema)
+	require.Len(t, semanticSchema.AllOf, 2)
+	assert.Equal(t, "mutated description", semanticSchema.AllOf[0].Schema().Description)
+
+	rendered, err := sp.MarshalYAMLInline()
+	require.NoError(t, err)
+	node, ok := rendered.(*yaml.Node)
+	require.True(t, ok)
+
+	out, err := yaml.Marshal(node)
+	require.NoError(t, err)
+	assert.Contains(t, string(out), "allOf:")
+	assert.Contains(t, string(out), "description: mutated description")
+	assert.NotContains(t, string(out), "description: original description")
+	assert.Contains(t, string(out), "type: string")
+
+	inlineFromSchema, err := siblingSchema.MarshalYAMLInline()
+	require.NoError(t, err)
+	inlineNode, ok := inlineFromSchema.(*yaml.Node)
+	require.True(t, ok)
+	inlineOut, err := yaml.Marshal(inlineNode)
+	require.NoError(t, err)
+	assert.Contains(t, string(inlineOut), "allOf:")
+	assert.Contains(t, string(inlineOut), "description: mutated description")
+	assert.Contains(t, string(inlineOut), "type: string")
+}
+
+func TestSchemaProxy_ParsedTransformedRefWithSiblingsJSONPreservesReference(t *testing.T) {
+	sp := buildParsedSiblingRefProxy(t, 3.1)
+	schema := sp.Schema()
+	require.NotNil(t, schema)
+	schema.Description = "json description"
+
+	jsonBytes, err := schema.MarshalJSON()
+	require.NoError(t, err)
+	assert.JSONEq(t, `{
+		"$ref": "#/components/schemas/Thing",
+		"description": "json description",
+		"title": "Original title"
+	}`, string(jsonBytes))
+
+	inlineBytes, err := schema.MarshalJSONInline()
+	require.NoError(t, err)
+	assert.Contains(t, string(inlineBytes), `"allOf"`)
+	assert.Contains(t, string(inlineBytes), `"description":"json description"`)
+	assert.Contains(t, string(inlineBytes), `"type":"string"`)
+}
+
+func TestSchemaProxy_ParsedTransformedRefWithSiblingsOpenAPI30KeepsAllOfContract(t *testing.T) {
+	sp := buildParsedSiblingRefProxy(t, 3.0)
+
+	assert.False(t, sp.isParsedRefWithSiblings())
+	assert.False(t, sp.IsReference())
+	assert.Empty(t, sp.GetReference())
+
+	schema := sp.Schema()
+	require.NotNil(t, schema)
+	require.Len(t, schema.AllOf, 2)
+	assert.Equal(t, "original description", schema.AllOf[0].Schema().Description)
+	assert.True(t, schema.AllOf[1].IsReference())
+	assert.Equal(t, "#/components/schemas/Thing", schema.AllOf[1].GetReference())
+}
+
+func TestSchemaProxy_ParsedTransformedRefWithSiblingsFallbacks(t *testing.T) {
+	assert.False(t, (*SchemaProxy)(nil).isParsedRefWithSiblings())
+	assert.Nil(t, (*SchemaProxy)(nil).buildSiblingOnlySchemaView())
+	assert.False(t, (*SchemaProxy)(nil).schemaIsTransformedSiblingView(&Schema{}))
+	synthetic, err := (*SchemaProxy)(nil).buildSemanticAllOfSchemaView(nil)
+	require.NoError(t, err)
+	assert.Nil(t, synthetic)
+
+	empty := &SchemaProxy{}
+	assert.False(t, empty.isParsedRefWithSiblings())
+	assert.Nil(t, empty.GetReferenceNode())
+	assert.Empty(t, empty.GetReference())
+	_, err = empty.marshalParsedRefWithSiblingsInline(NewInlineRenderContext(), nil)
+	require.Error(t, err)
+
+	lowProxyWithoutSiblingNode := &lowbase.SchemaProxy{TransformedRef: utils.CreateRefNode("#/components/schemas/Thing")}
+	withoutSiblingNode := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: lowProxyWithoutSiblingNode})
+	assert.Nil(t, withoutSiblingNode.buildSiblingOnlySchemaView())
+
+	emptyLowProxy := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: &lowbase.SchemaProxy{}})
+	synthetic, err = emptyLowProxy.buildSemanticAllOfSchemaView(nil)
+	require.Error(t, err)
+	assert.Nil(t, synthetic)
+	_, err = emptyLowProxy.marshalParsedRefWithSiblingsInline(NewInlineRenderContext(), nil)
+	require.Error(t, err)
+
+	invalid := buildInvalidParsedSiblingRefProxy(t)
+	assert.Nil(t, invalid.Schema())
+	require.Error(t, invalid.GetBuildError())
+	node, err := invalid.referenceYAMLNode()
+	require.Error(t, err)
+	assert.Nil(t, node)
+}
+
 func TestSchemaProxy_RenderTransformedRefWithSiblingsFallbacks(t *testing.T) {
 	deprecated := true
 	lowProxy := &lowbase.SchemaProxy{
@@ -1842,6 +1988,101 @@ func TestSchemaProxy_RenderTransformedRefWithSiblingsFallbacks(t *testing.T) {
 	require.NoError(t, err)
 	assert.False(t, ok)
 	assert.Nil(t, node)
+}
+
+func buildParsedSiblingRefProxy(t *testing.T, version float32) *SchemaProxy {
+	t.Helper()
+
+	spec := `openapi: 3.1.0
+paths: {}
+components:
+  schemas:
+    Thing:
+      type: string
+    Holder:
+      type: object
+      properties:
+        thing:
+          $ref: '#/components/schemas/Thing'
+          description: original description
+          title: Original title
+`
+
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
+	rootNode := root.Content[0]
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	cfg.SpecInfo = &datamodel.SpecInfo{VersionNumeric: version}
+	cfg.TransformSiblingRefs = true
+	idx := index.NewSpecIndexWithConfig(rootNode, cfg)
+
+	refNode := findHighSchemaTestNode(t, rootNode, "components", "schemas", "Holder", "properties", "thing")
+	lowProxy := new(lowbase.SchemaProxy)
+	require.NoError(t, lowProxy.Build(context.Background(), nil, refNode, idx))
+	require.NotNil(t, lowProxy.TransformedRef)
+
+	return NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: refNode,
+	})
+}
+
+func buildInvalidParsedSiblingRefProxy(t *testing.T) *SchemaProxy {
+	t.Helper()
+
+	spec := `openapi: 3.1.0
+paths: {}
+components:
+  schemas:
+    Thing:
+      type: string
+    Holder:
+      type: object
+      properties:
+        thing:
+          $ref: '#/components/schemas/Thing'
+          dependentRequired:
+            bad: nope
+`
+
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
+	rootNode := root.Content[0]
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	cfg.SpecInfo = &datamodel.SpecInfo{VersionNumeric: 3.1}
+	cfg.TransformSiblingRefs = true
+	idx := index.NewSpecIndexWithConfig(rootNode, cfg)
+
+	refNode := findHighSchemaTestNode(t, rootNode, "components", "schemas", "Holder", "properties", "thing")
+	lowProxy := new(lowbase.SchemaProxy)
+	require.NoError(t, lowProxy.Build(context.Background(), nil, refNode, idx))
+
+	return NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: refNode,
+	})
+}
+
+func findHighSchemaTestNode(t *testing.T, node *yaml.Node, path ...string) *yaml.Node {
+	t.Helper()
+
+	current := node
+	for _, key := range path {
+		require.NotNil(t, current)
+		require.Equal(t, yaml.MappingNode, current.Kind)
+		var next *yaml.Node
+		for i := 0; i+1 < len(current.Content); i += 2 {
+			if current.Content[i].Value == key {
+				next = current.Content[i+1]
+				break
+			}
+		}
+		require.NotNilf(t, next, "missing path key %q", key)
+		current = next
+	}
+	return current
 }
 
 func TestSchemaProxy_RenderTransformedRefWithSiblings_OpenAPI30Fallback(t *testing.T) {

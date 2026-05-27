@@ -1927,8 +1927,7 @@ components:
 
 	renderedStr := string(renderedBytes)
 
-	// Default rendering preserves the authored $ref+sibling syntax while the
-	// model still carries the transformed allOf semantics.
+	// Default rendering preserves the authored $ref+sibling syntax.
 	assert.Equal(t, spec+"\n", renderedStr)
 	assert.NotContains(t, renderedStr, "allOf:")
 	assert.Contains(t, renderedStr, "title: destination-amazon-sqs")
@@ -1937,19 +1936,13 @@ components:
 	// verify the reloaded model has the correct structure
 	if reloadedV3Doc.Model.Components != nil && reloadedV3Doc.Model.Components.Schemas != nil {
 		if destinationSchema, found := reloadedV3Doc.Model.Components.Schemas.Get("destination-amazon-sqs"); found {
+			assert.True(t, destinationSchema.IsReference())
+			assert.Equal(t, "#/components/schemas/destination-base", destinationSchema.GetReference())
+
 			schema := destinationSchema.Schema()
 			assert.NotNil(t, schema, "destination-amazon-sqs schema should exist")
-			assert.Len(t, schema.AllOf, 2, "should have 2 allOf items")
-
-			// verify first allOf item has title
-			firstItem := schema.AllOf[0].Schema()
-			assert.NotNil(t, firstItem)
-			assert.Equal(t, "destination-amazon-sqs", firstItem.Title)
-
-			// verify second allOf item is reference
-			secondItem := schema.AllOf[1]
-			assert.True(t, secondItem.IsReference())
-			assert.Equal(t, "#/components/schemas/destination-base", secondItem.GetReference())
+			assert.Empty(t, schema.AllOf)
+			assert.Equal(t, "destination-amazon-sqs", schema.Title)
 		} else {
 			t.Fatal("destination-amazon-sqs schema not found in reloaded model")
 		}
@@ -1992,8 +1985,7 @@ components:
 
 	renderedStr := string(renderedBytes)
 
-	// Default rendering preserves the authored $ref+sibling syntax and order
-	// while the model still carries the transformed allOf semantics.
+	// Default rendering preserves the authored $ref+sibling syntax and order.
 	assert.Equal(t, spec+"\n", renderedStr)
 	assert.NotContains(t, renderedStr, "allOf:")
 	assert.Contains(t, renderedStr, "$ref: '#/components/schemas/destination-base'")
@@ -2002,19 +1994,13 @@ components:
 	// verify the reloaded model has the correct structure
 	if reloadedV3Doc.Model.Components != nil && reloadedV3Doc.Model.Components.Schemas != nil {
 		if destinationSchema, found := reloadedV3Doc.Model.Components.Schemas.Get("destination-amazon-sqs"); found {
+			assert.True(t, destinationSchema.IsReference())
+			assert.Equal(t, "#/components/schemas/destination-base", destinationSchema.GetReference())
+
 			schema := destinationSchema.Schema()
 			assert.NotNil(t, schema, "destination-amazon-sqs schema should exist")
-			assert.Len(t, schema.AllOf, 2, "should have 2 allOf items")
-
-			// verify first allOf item has title
-			firstItem := schema.AllOf[0].Schema()
-			assert.NotNil(t, firstItem)
-			assert.Equal(t, "destination-amazon-sqs", firstItem.Description)
-
-			// verify second allOf item is reference
-			secondItem := schema.AllOf[1]
-			assert.True(t, secondItem.IsReference())
-			assert.Equal(t, "#/components/schemas/destination-base", secondItem.GetReference())
+			assert.Empty(t, schema.AllOf)
+			assert.Equal(t, "destination-amazon-sqs", schema.Description)
 		} else {
 			t.Fatal("destination-amazon-sqs schema not found in reloaded model")
 		}
@@ -2166,24 +2152,18 @@ components:
 	assert.True(t, config.TransformSiblingRefs,
 		"TransformSiblingRefs should default to true even when using NewDocument()")
 
-	// Verify the sibling $ref was converted to allOf
+	// Verify the sibling $ref keeps the public ref contract while exposing
+	// sibling keywords directly on the local schema.
 	withSiblings := model.Model.Components.Schemas.GetOrZero("WithSiblings")
 	require.NotNil(t, withSiblings)
+	assert.True(t, withSiblings.IsReference())
+	assert.Equal(t, "#/components/schemas/Base", withSiblings.GetReference())
 
 	schema := withSiblings.Schema()
 	require.NotNil(t, schema)
-	require.NotNil(t, schema.AllOf, "sibling $ref should be transformed into allOf")
-	assert.Len(t, schema.AllOf, 2, "allOf should have 2 items: sibling props + $ref")
-
-	// First allOf item should contain the sibling properties
-	siblingSchema := schema.AllOf[0].Schema()
-	require.NotNil(t, siblingSchema)
-	assert.Equal(t, "A constrained version of Base", siblingSchema.Description)
-	assert.Len(t, siblingSchema.Enum, 2)
-
-	// Second allOf item should be the $ref
-	refItem := schema.AllOf[1]
-	assert.Equal(t, "#/components/schemas/Base", refItem.GetReference())
+	assert.Empty(t, schema.AllOf)
+	assert.Equal(t, "A constrained version of Base", schema.Description)
+	assert.Len(t, schema.Enum, 2)
 }
 
 func TestNewDocument_TransformSiblingRefs_NestedSchemas(t *testing.T) {
@@ -2240,33 +2220,33 @@ components:
 	require.NotNil(t, model)
 
 	topLevel := model.Model.Components.Schemas.GetOrZero("TopLevel")
-	assertSiblingRefAllOf(t, topLevel)
+	assertSiblingRefWithLocalKeyword(t, topLevel)
 
 	container := model.Model.Components.Schemas.GetOrZero("Container").Schema()
 	require.NotNil(t, container)
-	assertSiblingRefAllOf(t, container.Properties.GetOrZero("foo"))
+	assertSiblingRefWithLocalKeyword(t, container.Properties.GetOrZero("foo"))
 
 	arrayContainer := model.Model.Components.Schemas.GetOrZero("ArrayContainer").Schema()
 	require.NotNil(t, arrayContainer)
 	require.NotNil(t, arrayContainer.Items)
 	require.True(t, arrayContainer.Items.IsA())
-	assertSiblingRefAllOf(t, arrayContainer.Items.A)
+	assertSiblingRefWithLocalKeyword(t, arrayContainer.Items.A)
 
 	composed := model.Model.Components.Schemas.GetOrZero("Composed").Schema()
 	require.NotNil(t, composed)
 	require.Len(t, composed.AllOf, 1)
-	assertSiblingRefAllOf(t, composed.AllOf[0])
+	assertSiblingRefWithLocalKeyword(t, composed.AllOf[0])
 
 	operation := model.Model.Paths.PathItems.GetOrZero("/things").Post
 	require.NotNil(t, operation)
 	require.Len(t, operation.Parameters, 1)
-	assertSiblingRefAllOf(t, operation.Parameters[0].Schema)
+	assertSiblingRefWithLocalKeyword(t, operation.Parameters[0].Schema)
 
 	requestBody := operation.RequestBody
 	require.NotNil(t, requestBody)
 	mediaType := requestBody.Content.GetOrZero("application/json")
 	require.NotNil(t, mediaType)
-	assertSiblingRefAllOf(t, mediaType.Schema)
+	assertSiblingRefWithLocalKeyword(t, mediaType.Schema)
 }
 
 func TestDocument_Render_Issue575_PreservesSiblingRefSyntax(t *testing.T) {
@@ -2286,12 +2266,23 @@ func TestDocument_Render_Issue575_PreservesSiblingRefSyntax(t *testing.T) {
 	require.NotNil(t, createTime)
 	require.NotNil(t, createTime.GoLow())
 	assert.NotNil(t, createTime.GoLow().TransformedRef)
+	assert.True(t, createTime.IsReference())
+	assert.Equal(t, "#/components/schemas/Timestamp", createTime.GetReference())
 
 	createTimeSchema := createTime.Schema()
 	require.NotNil(t, createTimeSchema)
-	require.Len(t, createTimeSchema.AllOf, 2)
-	assert.Equal(t, "The creation timestamp of the shipper.", createTimeSchema.AllOf[0].Schema().Description)
-	assert.Equal(t, "#/components/schemas/Timestamp", createTimeSchema.AllOf[1].GetReference())
+	assert.Empty(t, createTimeSchema.AllOf)
+	assert.Equal(t, "The creation timestamp of the shipper.", createTimeSchema.Description)
+
+	updateTime := shipper.Properties.GetOrZero("updateTime")
+	require.NotNil(t, updateTime)
+	assert.True(t, updateTime.IsReference())
+	assert.Equal(t, "#/components/schemas/Timestamp", updateTime.GetReference())
+	updateTimeSchema := updateTime.Schema()
+	require.NotNil(t, updateTimeSchema)
+	assert.Equal(t, "The last update timestamp of the shipper.", updateTimeSchema.Title)
+	assert.Equal(t, "Updated when create/update/delete operation is performed.", updateTimeSchema.Description)
+	assert.Empty(t, updateTimeSchema.AllOf)
 
 	schemaBytes, err := createTimeSchema.Render()
 	require.NoError(t, err)
@@ -2320,11 +2311,7 @@ func TestDocument_Render_Issue575_UsesMutatedSiblingValues(t *testing.T) {
 
 	createTimeSchema := createTime.Schema()
 	require.NotNil(t, createTimeSchema)
-	require.Len(t, createTimeSchema.AllOf, 2)
-
-	siblingSchema := createTimeSchema.AllOf[0].Schema()
-	require.NotNil(t, siblingSchema)
-	siblingSchema.Description = "The created timestamp from libopenapi."
+	createTimeSchema.Description = "The created timestamp from libopenapi."
 
 	modelBytes, err := model.Model.Render()
 	require.NoError(t, err)
@@ -2411,27 +2398,20 @@ components:
 	assert.Contains(t, rendered, "- $ref: '#/components/schemas/Name'")
 }
 
-func assertSiblingRefAllOf(t *testing.T, proxy *base.SchemaProxy) {
+func assertSiblingRefWithLocalKeyword(t *testing.T, proxy *base.SchemaProxy) {
 	t.Helper()
 
 	require.NotNil(t, proxy)
-	assert.False(t, proxy.IsReference())
-	assert.Empty(t, proxy.GetReference())
+	assert.True(t, proxy.IsReference())
+	assert.Equal(t, "#/components/schemas/Name", proxy.GetReference())
 	require.NotNil(t, proxy.GoLow())
 	assert.NotNil(t, proxy.GoLow().TransformedRef)
 
 	schema := proxy.Schema()
 	require.NotNil(t, schema)
-	require.Len(t, schema.AllOf, 2)
-
-	siblingSchema := schema.AllOf[0].Schema()
-	require.NotNil(t, siblingSchema)
-	require.NotNil(t, siblingSchema.Deprecated)
-	assert.True(t, *siblingSchema.Deprecated)
-
-	refItem := schema.AllOf[1]
-	assert.True(t, refItem.IsReference())
-	assert.Equal(t, "#/components/schemas/Name", refItem.GetReference())
+	assert.Empty(t, schema.AllOf)
+	require.NotNil(t, schema.Deprecated)
+	assert.True(t, *schema.Deprecated)
 }
 
 func TestDocument_Release(t *testing.T) {
