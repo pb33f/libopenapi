@@ -416,6 +416,9 @@ func (sp *SchemaProxy) renderTransformedRefWithSiblings(s *Schema) (*yaml.Node, 
 	if sp == nil || sp.schema == nil || sp.schema.Value == nil || sp.schema.Value.TransformedRef == nil || s == nil {
 		return nil, false, nil
 	}
+	if !sp.shouldCollapseTransformedRefWithSiblings() {
+		return nil, false, nil
+	}
 	if len(s.AllOf) != 2 || s.AllOf[0] == nil || s.AllOf[1] == nil || !s.AllOf[1].IsReference() {
 		return nil, false, nil
 	}
@@ -475,6 +478,17 @@ func (sp *SchemaProxy) renderTransformedRefWithSiblings(s *Schema) (*yaml.Node, 
 	}
 
 	return result, true, nil
+}
+
+func (sp *SchemaProxy) shouldCollapseTransformedRefWithSiblings() bool {
+	if sp == nil || sp.schema == nil || sp.schema.Value == nil {
+		return false
+	}
+	idx := sp.schema.Value.GetIndex()
+	if idx == nil || idx.GetConfig() == nil || idx.GetConfig().SpecInfo == nil {
+		return true
+	}
+	return idx.GetConfig().SpecInfo.VersionNumeric >= 3.1
 }
 
 func yamlNodeFromRender(rendered interface{}) (*yaml.Node, bool) {
