@@ -2299,7 +2299,7 @@ func TestDocument_Render_Issue575_PreservesSiblingRefSyntax(t *testing.T) {
 
 	modelBytes, err := model.Model.Render()
 	require.NoError(t, err)
-	assert.Equal(t, string(bs), string(modelBytes))
+	assert.Equal(t, strings.ReplaceAll(string(bs), "\r\n", "\n"), string(modelBytes))
 }
 
 func TestDocument_Render_Issue575_UsesMutatedSiblingValues(t *testing.T) {
@@ -2330,7 +2330,7 @@ func TestDocument_Render_Issue575_UsesMutatedSiblingValues(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := strings.Replace(
-		string(bs),
+		strings.ReplaceAll(string(bs), "\r\n", "\n"),
 		"The creation timestamp of the shipper.",
 		"The created timestamp from libopenapi.",
 		1,
