@@ -6,14 +6,27 @@ package v3
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
+
+type componentRefCoverageBuildable struct {
+	reference low.Reference
+	*low.Reference
+}
+
+func (c *componentRefCoverageBuildable) Build(context.Context, *yaml.Node, *yaml.Node, *index.SpecIndex) error {
+	c.reference = low.Reference{}
+	c.Reference = &c.reference
+	return nil
+}
 
 var testComponentsYaml = `
   x-pizza: crispy
@@ -190,6 +203,85 @@ func TestComponents_Build_ParameterFail(t *testing.T) {
 
 	err = n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, err)
+}
+
+func TestComponents_Build_ComponentValueRefSkipExternal(t *testing.T) {
+	low.ClearHashCache()
+	yml := `
+  parameters:
+    ExternalParam:
+      $ref: './models/params.yaml#/ExternalParam'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	cfg := index.CreateOpenAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	var n Components
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	param := n.FindParameter("ExternalParam")
+	if assert.NotNil(t, param) {
+		assert.True(t, param.IsReference())
+		assert.Equal(t, "./models/params.yaml#/ExternalParam", param.GetReference())
+		assert.True(t, param.Value.IsReference())
+		assert.Equal(t, "./models/params.yaml#/ExternalParam", param.Value.GetReference())
+	}
+}
+
+func TestComponents_Build_ComponentValueRefCircular(t *testing.T) {
+	low.ClearHashCache()
+	yml := `openapi: 3.0.0
+components:
+  parameters:
+    First:
+      $ref: '#/components/parameters/First'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+	_, _, compNode := utils.FindKeyNodeFullTop(ComponentsLabel, idxNode.Content[0].Content)
+
+	var n Components
+	err := low.BuildModel(compNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), compNode, idx)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "circular reference")
+	}
+}
+
+func TestExtractComponentValues_ComponentValueRefCircularError(t *testing.T) {
+	low.ClearHashCache()
+	yml := `openapi: 3.0.0
+components:
+  parameters:
+    First:
+      $ref: '#/components/parameters/First'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+	_, _, compNode := utils.FindKeyNodeFullTop(ComponentsLabel, idxNode.Content[0].Content)
+
+	var nodeStore sync.Map
+	components := &Components{}
+	components.Nodes = &nodeStore
+
+	result, err := extractComponentValues[*componentRefCoverageBuildable](context.Background(), ParametersLabel, compNode, idx, components)
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "circular reference")
+	}
+	assert.NotNil(t, result.Value)
 }
 
 // Test parse failure among many parameters.

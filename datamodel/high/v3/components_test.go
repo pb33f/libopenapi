@@ -206,6 +206,146 @@ paths: {}
 	assert.Contains(t, logOutput, "\"section\":\"schemas\"")
 }
 
+func TestComponents_BuildComponentValueReferences(t *testing.T) {
+	low.ClearHashCache()
+	tmpDir := t.TempDir()
+
+	spec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  parameters:
+    ExternalParam:
+      $ref: "./params.yaml#/ExternalParam"
+    LocalTargetParam:
+      name: local
+      in: query
+      schema:
+        type: string
+    LocalParamRef:
+      $ref: "#/components/parameters/LocalTargetParam"
+  responses:
+    ExternalResponse:
+      $ref: "./responses.yaml#/ExternalResponse"
+  headers:
+    ExternalHeader:
+      $ref: "./headers.yaml#/ExternalHeader"
+  requestBodies:
+    ExternalBody:
+      $ref: "./request-bodies.yaml#/ExternalBody"
+paths: {}
+`
+
+	params := `ExternalParam:
+  name: tenant
+  in: header
+  required: true
+  schema:
+    type: string
+`
+
+	responses := `ExternalResponse:
+  description: external response
+  content:
+    application/json:
+      schema:
+        type: object
+`
+
+	headers := `ExternalHeader:
+  description: external header
+  schema:
+    type: string
+`
+
+	requestBodies := `ExternalBody:
+  description: external body
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "params.yaml"), []byte(params), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "responses.yaml"), []byte(responses), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "headers.yaml"), []byte(headers), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "request-bodies.yaml"), []byte(requestBodies), 0o644))
+
+	info, err := datamodel.ExtractSpecInfo([]byte(spec))
+	require.NoError(t, err)
+
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmpDir,
+		AllowFileReferences: true,
+	}
+	lowDoc, err := v3.CreateDocumentFromConfig(info, cfg)
+	require.NoError(t, err)
+
+	doc := NewDocument(lowDoc)
+	require.NotNil(t, doc.Components)
+
+	externalParam := doc.Components.Parameters.GetOrZero("ExternalParam")
+	require.NotNil(t, externalParam)
+	assert.Equal(t, "tenant", externalParam.Name)
+	assert.Equal(t, "header", externalParam.In)
+	require.NotNil(t, externalParam.Required)
+	assert.True(t, *externalParam.Required)
+	assert.True(t, externalParam.GoLow().IsReference())
+	assert.Equal(t, "./params.yaml#/ExternalParam", externalParam.GoLow().GetReference())
+	lowExternalParam := low.FindItemInOrderedMap[*v3.Parameter]("ExternalParam", doc.Components.GoLow().Parameters.Value)
+	require.NotNil(t, lowExternalParam)
+	assert.True(t, lowExternalParam.IsReference())
+	assert.Equal(t, "./params.yaml#/ExternalParam", lowExternalParam.GetReference())
+
+	localParam := doc.Components.Parameters.GetOrZero("LocalParamRef")
+	require.NotNil(t, localParam)
+	assert.Equal(t, "local", localParam.Name)
+	assert.Equal(t, "query", localParam.In)
+	assert.True(t, localParam.GoLow().IsReference())
+	assert.Equal(t, "#/components/parameters/LocalTargetParam", localParam.GoLow().GetReference())
+	lowLocalParam := low.FindItemInOrderedMap[*v3.Parameter]("LocalParamRef", doc.Components.GoLow().Parameters.Value)
+	require.NotNil(t, lowLocalParam)
+	assert.True(t, lowLocalParam.IsReference())
+	assert.Equal(t, "#/components/parameters/LocalTargetParam", lowLocalParam.GetReference())
+
+	externalResponse := doc.Components.Responses.GetOrZero("ExternalResponse")
+	require.NotNil(t, externalResponse)
+	assert.Equal(t, "external response", externalResponse.Description)
+	assert.NotNil(t, externalResponse.Content.GetOrZero("application/json"))
+	assert.True(t, externalResponse.GoLow().IsReference())
+	assert.Equal(t, "./responses.yaml#/ExternalResponse", externalResponse.GoLow().GetReference())
+	lowExternalResponse := low.FindItemInOrderedMap[*v3.Response]("ExternalResponse", doc.Components.GoLow().Responses.Value)
+	require.NotNil(t, lowExternalResponse)
+	assert.True(t, lowExternalResponse.IsReference())
+	assert.Equal(t, "./responses.yaml#/ExternalResponse", lowExternalResponse.GetReference())
+
+	externalHeader := doc.Components.Headers.GetOrZero("ExternalHeader")
+	require.NotNil(t, externalHeader)
+	assert.Equal(t, "external header", externalHeader.Description)
+	assert.NotNil(t, externalHeader.Schema)
+	assert.True(t, externalHeader.GoLow().IsReference())
+	assert.Equal(t, "./headers.yaml#/ExternalHeader", externalHeader.GoLow().GetReference())
+	lowExternalHeader := low.FindItemInOrderedMap[*v3.Header]("ExternalHeader", doc.Components.GoLow().Headers.Value)
+	require.NotNil(t, lowExternalHeader)
+	assert.True(t, lowExternalHeader.IsReference())
+	assert.Equal(t, "./headers.yaml#/ExternalHeader", lowExternalHeader.GetReference())
+
+	externalBody := doc.Components.RequestBodies.GetOrZero("ExternalBody")
+	require.NotNil(t, externalBody)
+	assert.Equal(t, "external body", externalBody.Description)
+	require.NotNil(t, externalBody.Required)
+	assert.True(t, *externalBody.Required)
+	assert.NotNil(t, externalBody.Content.GetOrZero("application/json"))
+	assert.True(t, externalBody.GoLow().IsReference())
+	assert.Equal(t, "./request-bodies.yaml#/ExternalBody", externalBody.GoLow().GetReference())
+	lowExternalBody := low.FindItemInOrderedMap[*v3.RequestBody]("ExternalBody", doc.Components.GoLow().RequestBodies.Value)
+	require.NotNil(t, lowExternalBody)
+	assert.True(t, lowExternalBody.IsReference())
+	assert.Equal(t, "./request-bodies.yaml#/ExternalBody", lowExternalBody.GetReference())
+}
+
 func TestComponents_warnPreservedComponentMapRefs_Guards(t *testing.T) {
 	var nilComp *Components
 	nilComp.warnPreservedComponentMapRefs()
