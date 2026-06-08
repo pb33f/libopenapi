@@ -8,7 +8,7 @@ require (
 	github.com/pb33f/ordered-map/v2 v2.3.1
 	github.com/stretchr/testify v1.11.1
 	go.yaml.in/yaml/v4 v4.0.0-rc.4
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.21.0
 )
 
 require (
