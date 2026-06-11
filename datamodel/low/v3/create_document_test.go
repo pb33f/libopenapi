@@ -496,6 +496,28 @@ webhooks:
 	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
+// a "webhooks" scalar value (here in an extension) must not create a webhooks map.
+func TestCreateDocument_WebHooks_NoFalsePositive(t *testing.T) {
+	yml := `openapi: 3.0.3
+info:
+  title: t
+  version: "1.0.0"
+x-foo:
+  service: webhooks
+paths:
+  /a:
+    get:
+      responses:
+        '200':
+          description: OK`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	d, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
+	require.NoError(t, err)
+	assert.Nil(t, d.Webhooks.Value)
+	assert.Nil(t, d.Webhooks.KeyNode)
+}
+
 func TestCreateDocument_Servers(t *testing.T) {
 	initTest()
 	assert.Len(t, doc.Servers.Value, 2)
