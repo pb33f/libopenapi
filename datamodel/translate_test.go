@@ -176,6 +176,97 @@ func TestTranslateSliceParallel(t *testing.T) {
 	}
 }
 
+// TestTranslateSliceParallel_SequentialNilResult covers the inline fast path when no
+// result callback is provided (collections at or below the parallel threshold).
+func TestTranslateSliceParallel_SequentialNilResult(t *testing.T) {
+	sl := []int{1, 2, 3}
+	var translateCounter int64
+	translateFunc := func(_, value int) (string, error) {
+		atomic.AddInt64(&translateCounter, 1)
+		return "foobar", nil
+	}
+	err := datamodel.TranslateSliceParallel[int, string](sl, translateFunc, nil)
+	require.NoError(t, err)
+	assert.Equal(t, int64(3), translateCounter)
+}
+
+// TestTranslateMapParallel_Sequential covers every branch of the inline fast path
+// taken for maps at or below the parallel threshold.
+func TestTranslateMapParallel_Sequential(t *testing.T) {
+	buildMap := func(n int) *orderedmap.Map[string, int] {
+		m := orderedmap.New[string, int]()
+		for i := 0; i < n; i++ {
+			m.Set(fmt.Sprintf("key%d", i), i)
+		}
+		return m
+	}
+
+	t.Run("Happy path preserves order", func(t *testing.T) {
+		m := buildMap(5)
+		var results []string
+		err := datamodel.TranslateMapParallel[string, int, string](m,
+			func(pair orderedmap.Pair[string, int]) (string, error) {
+				return fmt.Sprintf("foobar %d", pair.Value()), nil
+			},
+			func(value string) error {
+				results = append(results, value)
+				return nil
+			})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"foobar 0", "foobar 1", "foobar 2", "foobar 3", "foobar 4"}, results)
+	})
+
+	t.Run("Error in translate", func(t *testing.T) {
+		m := buildMap(3)
+		err := datamodel.TranslateMapParallel[string, int, string](m,
+			func(orderedmap.Pair[string, int]) (string, error) {
+				return "", errors.New("Foobar")
+			},
+			func(string) error { return nil })
+		require.ErrorContains(t, err, "Foobar")
+	})
+
+	t.Run("EOF in translate", func(t *testing.T) {
+		m := buildMap(3)
+		var resultCounter int
+		err := datamodel.TranslateMapParallel[string, int, string](m,
+			func(orderedmap.Pair[string, int]) (string, error) {
+				return "", io.EOF
+			},
+			func(string) error {
+				resultCounter++
+				return nil
+			})
+		require.NoError(t, err)
+		assert.Zero(t, resultCounter)
+	})
+
+	t.Run("Error in result", func(t *testing.T) {
+		m := buildMap(3)
+		err := datamodel.TranslateMapParallel[string, int, string](m,
+			func(pair orderedmap.Pair[string, int]) (string, error) {
+				return "foobar", nil
+			},
+			func(string) error { return errors.New("Foobar") })
+		require.ErrorContains(t, err, "Foobar")
+	})
+
+	t.Run("EOF in result", func(t *testing.T) {
+		m := buildMap(3)
+		var resultCounter int
+		err := datamodel.TranslateMapParallel[string, int, string](m,
+			func(pair orderedmap.Pair[string, int]) (string, error) {
+				return "foobar", nil
+			},
+			func(string) error {
+				resultCounter++
+				return io.EOF
+			})
+		require.NoError(t, err)
+		assert.Equal(t, 1, resultCounter)
+	})
+}
+
 func TestTranslateMapParallel(t *testing.T) {
 	const mapSize = 1000
 

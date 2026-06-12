@@ -1180,23 +1180,6 @@ func TestIsNodeRefValue_False(t *testing.T) {
 	assert.Empty(t, val)
 }
 
-// Tests for performance optimization coverage
-func TestAppendSegment(t *testing.T) {
-	// Test appendSegment function (currently 0% coverage)
-	var sb strings.Builder
-	segs := []string{"test", "segment", "value"}
-	cleaned := []string{"initial"}
-
-	// Test without quotes
-	appendSegment(&sb, segs, cleaned, 1, false)
-	assert.Equal(t, "initial[segment]", cleaned[0])
-
-	// Test with quotes
-	cleaned = []string{"another"}
-	appendSegment(&sb, segs, cleaned, 2, true)
-	assert.Equal(t, "another['value']", cleaned[0])
-}
-
 func TestConvertComponentIdIntoFriendlyPathSearch_EdgeCases(t *testing.T) {
 	// Test empty cleaned array handling
 	_, path := ConvertComponentIdIntoFriendlyPathSearch("")

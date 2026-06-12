@@ -386,9 +386,11 @@ func BenchmarkCreateDocument_Stripe(b *testing.B) {
 	info, _ := datamodel.ExtractSpecInfo(data)
 
 	for i := 0; i < b.N; i++ {
-		_, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
-		if err != nil {
-			panic("this should not error")
+		// stripe.yaml contains circular references, so an error is expected
+		// with the default configuration; only a nil document is a failure.
+		doc, _ := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
+		if doc == nil {
+			panic("document should not be nil")
 		}
 	}
 }
@@ -422,6 +424,31 @@ func TestCreateDocument(t *testing.T) {
 	assert.NotEmpty(t, doc.Info.Value.Title.Value)
 	assert.Equal(t, "https://pb33f.io/schema", doc.JsonSchemaDialect.Value)
 	assert.Equal(t, 1, orderedmap.Len(doc.GetExtensions()))
+}
+
+func TestCreateDocument_SkipMetadataCollection_Propagates(t *testing.T) {
+	spec := []byte(`openapi: 3.1.0
+info:
+  title: skip metadata
+  description: a description that would normally be collected
+  version: 1.0.0
+paths: {}`)
+
+	info, err := datamodel.ExtractSpecInfo(spec)
+	assert.NoError(t, err)
+
+	skipDoc, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		SkipMetadataCollection: true,
+	})
+	assert.NoError(t, err)
+	assert.True(t, skipDoc.Index.GetConfig().SkipMetadataCollection)
+	assert.Empty(t, skipDoc.Index.GetAllDescriptions())
+
+	info, _ = datamodel.ExtractSpecInfo(spec)
+	fullDoc, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
+	assert.NoError(t, err)
+	assert.False(t, fullDoc.Index.GetConfig().SkipMetadataCollection)
+	assert.NotEmpty(t, fullDoc.Index.GetAllDescriptions())
 }
 
 func TestCreateDocument_DeprecatedWrapper(t *testing.T) {
