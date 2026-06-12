@@ -76,6 +76,11 @@ func TestSchemaProxy_Schema_NoLowLevel(t *testing.T) {
 	assert.Nil(t, proxy.Schema())
 }
 
+func TestSchemaProxy_Schema_NilProxy(t *testing.T) {
+	var proxy *SchemaProxy
+	assert.Nil(t, proxy.Schema())
+}
+
 func TestSchemaProxy_BuildSchema_NoLock(t *testing.T) {
 	buildErr := errors.New("build failed")
 	proxy := &SchemaProxy{

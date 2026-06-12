@@ -466,15 +466,13 @@ func (index *SpecIndex) GetConfig() *SpecIndexConfig {
 // compatibility and allocates a full legacy map on first use.
 func (index *SpecIndex) GetNodeMap() map[int]map[int]*yaml.Node {
 	index.awaitNodeMap()
-	index.nodeMapLock.RLock()
-	legacy := index.legacyNodeMap
-	lines := index.nodeLines
-	index.nodeMapLock.RUnlock()
-	if legacy != nil || lines == nil {
-		return legacy
+	index.nodeMapLock.Lock()
+	defer index.nodeMapLock.Unlock()
+	if index.legacyNodeMap != nil || index.nodeLines == nil {
+		return index.legacyNodeMap
 	}
-	legacy = make(map[int]map[int]*yaml.Node)
-	for line, entries := range lines {
+	legacy := make(map[int]map[int]*yaml.Node)
+	for line, entries := range index.nodeLines {
 		if len(entries) == 0 {
 			continue
 		}
@@ -484,15 +482,7 @@ func (index *SpecIndex) GetNodeMap() map[int]map[int]*yaml.Node {
 		}
 		legacy[line] = cols
 	}
-	index.nodeMapLock.Lock()
-	// another caller may have built and cached the map while this one was
-	// building; keep the first instance so callers share one map.
-	if cached := index.legacyNodeMap; cached != nil {
-		index.nodeMapLock.Unlock()
-		return cached
-	}
 	index.legacyNodeMap = legacy
-	index.nodeMapLock.Unlock()
 	return legacy
 }
 
