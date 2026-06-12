@@ -90,6 +90,7 @@ func TestSpecIndexConfig_ToDocumentConfiguration_AllFields(t *testing.T) {
 		AllowUnknownExtensionContentDetection: true,
 		TransformSiblingRefs:                  true,
 		ResolveNestedRefsWithDocumentContext:  true,
+		SkipMetadataCollection:                true,
 	}
 
 	result := config.ToDocumentConfiguration()
@@ -107,6 +108,7 @@ func TestSpecIndexConfig_ToDocumentConfiguration_AllFields(t *testing.T) {
 	assert.True(t, result.AllowUnknownExtensionContentDetection)
 	assert.True(t, result.TransformSiblingRefs)
 	assert.True(t, result.ResolveNestedRefsWithDocumentContext)
+	assert.True(t, result.SkipMetadataCollection)
 	assert.False(t, result.MergeReferencedProperties) // default disabled for index configs
 }
 
@@ -144,7 +146,8 @@ func TestSpecIndex_Release(t *testing.T) {
 		rawSequencedRefs:        []*Reference{{}},
 		allMappedRefs:           map[string]*Reference{"mapped": {}},
 		allMappedRefsSequenced:  []*ReferenceMapped{{}},
-		nodeMap:                 map[int]map[int]*yaml.Node{1: {1: &yaml.Node{}}},
+		nodeLines:               [][]nodeLineEntry{nil, {{column: 1, node: &yaml.Node{}}}},
+		legacyNodeMap:           map[int]map[int]*yaml.Node{1: {1: &yaml.Node{}}},
 		allDescriptions:         []*DescriptionReference{{}},
 		allEnums:                []*EnumReference{{}},
 		circularReferences:      []*CircularReferenceResult{{}},
@@ -181,8 +184,9 @@ func TestSpecIndex_Release(t *testing.T) {
 	assert.Nil(t, idx.allMappedRefs)
 	assert.Nil(t, idx.allMappedRefsSequenced)
 
-	// node map
-	assert.Nil(t, idx.nodeMap)
+	// node line index and legacy map
+	assert.Nil(t, idx.nodeLines)
+	assert.Nil(t, idx.legacyNodeMap)
 
 	// descriptions, enums
 	assert.Nil(t, idx.allDescriptions)
@@ -209,7 +213,10 @@ func TestSpecIndex_Release(t *testing.T) {
 	assert.False(t, idx.allowCircularReferences)
 	assert.Nil(t, idx.componentIndexChan)
 	assert.Nil(t, idx.polyComponentIndexChan)
-	assert.Nil(t, idx.nodeMapCompleted)
+	// nodeMapCompleted survives release on purpose: it is a closed channel
+	// (retains nothing) and awaitNodeMap reads it without a lock, so nilling
+	// it would race concurrent GetNode callers.
+	assert.NotNil(t, idx.nodeMapCompleted)
 
 	// resolver released and niled
 	assert.Nil(t, idx.resolver)

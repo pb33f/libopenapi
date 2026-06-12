@@ -72,9 +72,7 @@ func TestCreateSchemaProxy_Fail(t *testing.T) {
 }
 
 func TestSchemaProxy_Schema_NoLowLevel(t *testing.T) {
-	proxy := &SchemaProxy{
-		lock: &sync.Mutex{},
-	}
+	proxy := &SchemaProxy{}
 	assert.Nil(t, proxy.Schema())
 }
 
@@ -868,7 +866,6 @@ func TestMarshalYAMLInline_CircularReferenceDetection_WithReference(t *testing.T
 	ref := "#/components/schemas/CircularTest"
 	proxy := &SchemaProxy{
 		refStr: ref,
-		lock:   &sync.Mutex{},
 	}
 
 	// Pre-load the render key to simulate being mid-render (cycle detected)
@@ -959,7 +956,6 @@ func TestGetInlineRenderKey_ReferenceWithoutIndex(t *testing.T) {
 
 	proxy := &SchemaProxy{
 		schema: &lowRef,
-		lock:   &sync.Mutex{},
 	}
 
 	renderKey := proxy.getInlineRenderKey()
@@ -974,7 +970,6 @@ func TestGetInlineRenderKey_NilSchemaReturnsRefStr(t *testing.T) {
 
 	proxy := &SchemaProxy{
 		refStr: "#/components/schemas/EarlyReturn",
-		lock:   &sync.Mutex{},
 	}
 
 	renderKey := proxy.getInlineRenderKey()
@@ -994,7 +989,6 @@ func TestGetInlineRenderKey_NilSchemaValueReturnsRefStr(t *testing.T) {
 	proxy := &SchemaProxy{
 		refStr: "#/components/schemas/AnotherEarlyReturn",
 		schema: &lowRef,
-		lock:   &sync.Mutex{},
 	}
 
 	renderKey := proxy.getInlineRenderKey()
@@ -1076,7 +1070,6 @@ func TestMarshalYAMLInlineWithContext_PreserveReference_ViaLowLevel(t *testing.T
 
 	proxy := &SchemaProxy{
 		schema: &lowRef,
-		lock:   &sync.Mutex{},
 	}
 
 	// create context and mark the ref as preserved
@@ -1137,7 +1130,6 @@ func TestMarshalYAMLInline_BundlingMode_ViaLowLevelRef(t *testing.T) {
 
 	proxy := &SchemaProxy{
 		schema: &lowRef,
-		lock:   &sync.Mutex{},
 	}
 
 	// Enable bundling mode

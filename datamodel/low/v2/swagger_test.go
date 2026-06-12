@@ -69,6 +69,24 @@ func TestCreateDocument(t *testing.T) {
 	assert.Equal(t, 1, orderedmap.Len(doc.GetExtensions()))
 }
 
+func TestCreateDocument_SkipMetadataCollection_Propagates(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/petstorev2-complete.yaml")
+
+	info, _ := datamodel.ExtractSpecInfo(data)
+	cfg := datamodel.NewDocumentConfiguration()
+	cfg.SkipMetadataCollection = true
+	skipDoc, err := CreateDocumentFromConfig(info, cfg)
+	assert.NoError(t, err)
+	assert.True(t, skipDoc.Index.GetConfig().SkipMetadataCollection)
+	assert.Empty(t, skipDoc.Index.GetAllDescriptions())
+
+	info, _ = datamodel.ExtractSpecInfo(data)
+	fullDoc, err := CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
+	assert.NoError(t, err)
+	assert.False(t, fullDoc.Index.GetConfig().SkipMetadataCollection)
+	assert.NotEmpty(t, fullDoc.Index.GetAllDescriptions())
+}
+
 func TestCreateDocument_Info(t *testing.T) {
 	initTest()
 	assert.Equal(t, "Swagger Petstore", doc.Info.Value.Title.Value)
