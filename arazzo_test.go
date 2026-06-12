@@ -4,11 +4,20 @@
 package libopenapi
 
 import (
+	"reflect"
+	"sync"
 	"testing"
+	"unsafe"
 
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowArazzo "github.com/pb33f/libopenapi/datamodel/low/arazzo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v4"
 )
+
+//go:linkname arazzoLowBuildModelFieldCache github.com/pb33f/libopenapi/datamodel/low.buildModelFieldCache
+var arazzoLowBuildModelFieldCache sync.Map
 
 func TestNewArazzoDocument_ValidFull(t *testing.T) {
 	yml := []byte(`arazzo: 1.0.1
@@ -175,6 +184,67 @@ func TestNewArazzoDocument_ArrayYAML(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, doc)
 	assert.Contains(t, err.Error(), "expected YAML mapping")
+}
+
+func TestNewArazzoDocument_BuildModelError(t *testing.T) {
+	yml := []byte(`arazzo: 1.0.1
+`)
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal(yml, &root))
+
+	var seed lowArazzo.Arazzo
+	require.NoError(t, low.BuildModel(root.Content[0], &seed))
+
+	arazzoType := reflect.TypeOf(lowArazzo.Arazzo{})
+	original, ok := arazzoLowBuildModelFieldCache.Load(arazzoType)
+	require.True(t, ok)
+
+	origType := reflect.TypeOf(original)
+	elemType := origType.Elem()
+	replacement := reflect.MakeSlice(origType, 1, 1)
+	elem := reflect.New(elemType).Elem()
+	setArazzoUnexportedField(elem.FieldByName("lookupKey"), "arazzo")
+	setArazzoUnexportedField(elem.FieldByName("index"), 0)
+	setArazzoUnexportedField(elem.FieldByName("kind"), reflect.Bool)
+	replacement.Index(0).Set(elem)
+
+	arazzoLowBuildModelFieldCache.Store(arazzoType, replacement.Interface())
+	t.Cleanup(func() {
+		arazzoLowBuildModelFieldCache.Store(arazzoType, original)
+	})
+
+	doc, err := NewArazzoDocument(yml)
+	assert.Error(t, err)
+	assert.Nil(t, doc)
+	assert.Contains(t, err.Error(), "failed to build low-level model")
+	assert.Contains(t, err.Error(), "unsupported type")
+}
+
+func TestNewArazzoDocument_BuildError(t *testing.T) {
+	yml := []byte(`arazzo: 1.0.1
+info:
+  title: Build Error
+  version: 1.0.0
+sourceDescriptions:
+  - name: api
+    url: https://example.com/openapi.yaml
+workflows:
+  - workflowId: wf1
+    steps:
+      - stepId: s1
+        operationId: op1
+components:
+  failureActions:
+    badRetry:
+      name: retry
+      type: retry
+      retryAfter: nope
+`)
+	doc, err := NewArazzoDocument(yml)
+	assert.Error(t, err)
+	assert.Nil(t, doc)
+	assert.Contains(t, err.Error(), "failed to build arazzo document")
+	assert.Contains(t, err.Error(), "invalid retryAfter")
 }
 
 func TestNewArazzoDocument_MultipleWorkflows(t *testing.T) {
@@ -466,4 +536,8 @@ workflows:
 	assert.Len(t, doc2.SourceDescriptions, len(doc1.SourceDescriptions))
 	assert.Len(t, doc2.Workflows, len(doc1.Workflows))
 	assert.Equal(t, doc1.Workflows[0].WorkflowId, doc2.Workflows[0].WorkflowId)
+}
+
+func setArazzoUnexportedField(field reflect.Value, value any) {
+	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().Set(reflect.ValueOf(value))
 }
