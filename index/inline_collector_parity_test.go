@@ -85,6 +85,7 @@ func TestInlineCollectorParity(t *testing.T) {
 
 	expected, err := os.ReadFile(inlineCollectorParityPath)
 	require.NoError(t, err, "parity fixture missing - regenerate with GOLDEN_REGENERATE=true")
-	assert.Equal(t, strings.TrimRight(string(expected), "\n"), strings.Join(rows, "\n"),
+	expectedText := strings.ReplaceAll(string(expected), "\r\n", "\n")
+	assert.Equal(t, strings.TrimRight(expectedText, "\n"), strings.Join(rows, "\n"),
 		"inline collector output changed - Definition/FullDefinition/Path must stay byte-identical")
 }
