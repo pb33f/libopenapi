@@ -57,6 +57,18 @@ func TestNewOverlayDocument_InvalidOverlay(t *testing.T) {
 	assert.NotNil(t, ov)
 }
 
+func TestNewOverlayDocument_InvalidInfoObject(t *testing.T) {
+	overlayYAML := `overlay: 1.0.0
+info:
+  $ref: ""
+actions: []`
+
+	ov, err := NewOverlayDocument([]byte(overlayYAML))
+
+	assert.Error(t, err)
+	assert.Nil(t, ov)
+}
+
 func TestNewOverlayDocument_SequenceRoot(t *testing.T) {
 	// Sequence at root - BuildModel is lenient and returns empty overlay
 	overlayYAML := `- item1

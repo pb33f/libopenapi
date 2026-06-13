@@ -1050,6 +1050,42 @@ func TestMetadataHelpersCoverage(t *testing.T) {
 	if got := metadataYAMLNodeLiteral(&yaml.Node{Kind: yaml.MappingNode}, 0); !strings.Contains(got, `Tag: "!!map"`) {
 		t.Fatalf("empty mapping tag should normalize to default in metadata literal: %s", got)
 	}
+	if got := metadataYAMLNodeLiteral(&yaml.Node{Kind: yaml.SequenceNode}, 0); !strings.Contains(got, `Tag: "!!seq"`) {
+		t.Fatalf("empty sequence tag should normalize to default in metadata literal: %s", got)
+	}
+	if got := metadataYAMLNodeLiteralTag(nil); got != "" {
+		t.Fatalf("nil yaml node tag should be empty: %q", got)
+	}
+	if got := inferMetadataYAMLScalarTag(&yaml.Node{Kind: yaml.ScalarNode, Value: "["}); got != "!!str" {
+		t.Fatalf("invalid scalar should fall back to string tag: %q", got)
+	}
+	if got := inferMetadataYAMLScalarTag(&yaml.Node{Kind: yaml.ScalarNode, Value: "[]"}); got != "!!str" {
+		t.Fatalf("non-scalar parsed value should fall back to string tag: %q", got)
+	}
+	if equivalentMetadataYAMLNodeSlices([]*yaml.Node{stringNode("a")}, nil) {
+		t.Fatal("metadata yaml node slices with different lengths should not match")
+	}
+	if equivalentMetadataYAMLNodes(
+		&yaml.Node{Kind: yaml.AliasNode, Alias: stringNode("a")},
+		&yaml.Node{Kind: yaml.AliasNode, Alias: stringNode("b")},
+	) {
+		t.Fatal("metadata yaml alias nodes with different targets should not match")
+	}
+	if equivalentMetadataYAMLNodes(
+		&yaml.Node{Kind: yaml.SequenceNode, Content: []*yaml.Node{stringNode("a")}},
+		&yaml.Node{Kind: yaml.SequenceNode, Content: []*yaml.Node{stringNode("b")}},
+	) {
+		t.Fatal("metadata yaml nodes with different children should not match")
+	}
+	if got := normalizeMetadataYAMLTag(yaml.SequenceNode, ""); got != "!!seq" {
+		t.Fatalf("empty sequence tag should normalize to !!seq: %q", got)
+	}
+	if got := normalizeMetadataYAMLTag(yaml.MappingNode, ""); got != "!!map" {
+		t.Fatalf("empty mapping tag should normalize to !!map: %q", got)
+	}
+	if got := normalizeMetadataYAMLTag(yaml.DocumentNode, ""); got != "" {
+		t.Fatalf("unknown empty yaml tag should stay empty: %q", got)
+	}
 }
 
 func schemaProxyFromRefDocumentYAML(t *testing.T, sampleYAML string) *highbase.SchemaProxy {

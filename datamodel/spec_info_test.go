@@ -228,6 +228,14 @@ func TestExtractSpecInfo_InvalidYAML(t *testing.T) {
 	assert.Error(t, e)
 }
 
+func TestExtractSpecInfo_BareMergeRootReturnsDecodeError(t *testing.T) {
+	_, err := ExtractSpecInfo([]byte("<<\n"))
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to decode YAML to JSON")
+	assert.Contains(t, err.Error(), "YAML document root is")
+}
+
 // TestExtractSpecInfo_InvalidYAML_DuplicateKey tests issue #355
 // Malformed YAML with duplicate keys should return an error when bypass=false
 func TestExtractSpecInfo_InvalidYAML_DuplicateKey(t *testing.T) {

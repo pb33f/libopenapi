@@ -696,6 +696,16 @@ func TestCheckForModificationWithEncoding_IgnoresAnchorOnlyDifference(t *testing
 	assert.Empty(t, changes)
 }
 
+func TestCloneYAMLNodeWithoutAnchors_ReusesSeenNode(t *testing.T) {
+	target := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "same", Anchor: "target"}
+	node := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq", Content: []*yaml.Node{target, target}}
+
+	clone := cloneYAMLNodeWithoutAnchors(node, nil)
+
+	assert.Empty(t, clone.Content[0].Anchor)
+	assert.Same(t, clone.Content[0], clone.Content[1])
+}
+
 // TestCheckMapForChangesWithComp tests the deprecated CheckMapForChangesWithComp function
 func TestCheckMapForChangesWithComp(t *testing.T) {
 	t.Run("detects removal", func(t *testing.T) {
