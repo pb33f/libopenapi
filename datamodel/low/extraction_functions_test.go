@@ -2379,13 +2379,10 @@ func TestLocateRefEnd_Empty(t *testing.T) {
 }
 
 func TestArray_NotRefNotArray(t *testing.T) {
-	yml := ``
-	var idxNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
-	assert.NoError(t, mErr)
+	idxNode := yaml.Node{Kind: yaml.DocumentNode}
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	yml = `limes:
+	yml := `limes:
   not: array`
 
 	var cNode yaml.Node

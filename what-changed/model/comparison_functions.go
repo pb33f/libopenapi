@@ -4,6 +4,7 @@
 package model
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"strings"
@@ -412,10 +413,9 @@ func checkForAdditionInternal[T any](l, r *yaml.Node, label string, changes *[]*
 	if withEncoding {
 		createFn = CreateChangeWithEncoding
 	}
-	// left doesn't exist if: nil OR (empty scalar AND not a map/array) OR (empty map/array)
+	// left doesn't exist if: nil OR an empty scalar. Empty maps and arrays are real values.
 	leftDoesNotExist := l == nil ||
-		(l.Value == EMPTY_STR && !utils.IsNodeMap(l) && !utils.IsNodeArray(l)) ||
-		((utils.IsNodeMap(l) || utils.IsNodeArray(l)) && len(l.Content) == 0)
+		(l.Value == EMPTY_STR && !utils.IsNodeMap(l) && !utils.IsNodeArray(l))
 	// right exists if: not nil AND (has value OR is array OR is map)
 	rightExists := r != nil && (r.Value != EMPTY_STR || utils.IsNodeArray(r) || utils.IsNodeMap(r))
 
@@ -441,7 +441,7 @@ func checkForModificationInternal[T any](l, r *yaml.Node, label string, changes 
 		createFn = CreateChangeWithEncoding
 	}
 	if l != nil && l.Value != EMPTY_STR && r != nil && r.Value != EMPTY_STR {
-		if !low.CompareYAMLNodes(l, r) {
+		if !compareYAMLNodesForChanges(l, r) {
 			createFn(changes, Modified, label, l, r, breaking, orig, new)
 		}
 		return
@@ -469,18 +469,58 @@ func checkForModificationInternal[T any](l, r *yaml.Node, label string, changes 
 		}
 
 		// Compare the YAML node trees directly without marshaling
-		if !low.CompareYAMLNodes(l, r) {
+		if !compareYAMLNodesForChanges(l, r) {
 			createFn(changes, Modified, label, l, r, breaking, orig, new)
 		}
 		return
 	}
 	if l != nil && utils.IsNodeMap(l) && r != nil && utils.IsNodeMap(r) {
 		// Compare the YAML node trees directly without marshaling
-		if !low.CompareYAMLNodes(l, r) {
+		if !compareYAMLNodesForChanges(l, r) {
 			createFn(changes, Modified, label, l, r, breaking, orig, new)
 		}
 		return
 	}
+}
+
+func compareYAMLNodesForChanges(left, right *yaml.Node) bool {
+	if low.CompareYAMLNodes(left, right) {
+		return true
+	}
+	leftClone := cloneYAMLNodeWithoutAnchors(left, nil)
+	rightClone := cloneYAMLNodeWithoutAnchors(right, nil)
+	if low.CompareYAMLNodes(leftClone, rightClone) {
+		return true
+	}
+
+	leftBytes, leftErr := yaml.Marshal(leftClone)
+	rightBytes, rightErr := yaml.Marshal(rightClone)
+	return leftErr == nil && rightErr == nil && bytes.Equal(leftBytes, rightBytes)
+}
+
+func cloneYAMLNodeWithoutAnchors(node *yaml.Node, seen map[*yaml.Node]*yaml.Node) *yaml.Node {
+	if node == nil {
+		return nil
+	}
+	if seen == nil {
+		seen = make(map[*yaml.Node]*yaml.Node)
+	}
+	if clone, ok := seen[node]; ok {
+		return clone
+	}
+
+	clone := *node
+	clone.Anchor = ""
+	seen[node] = &clone
+
+	if len(node.Content) > 0 {
+		clone.Content = make([]*yaml.Node, len(node.Content))
+		for i, child := range node.Content {
+			clone.Content[i] = cloneYAMLNodeWithoutAnchors(child, seen)
+		}
+	}
+	clone.Alias = cloneYAMLNodeWithoutAnchors(node.Alias, seen)
+	return &clone
 }
 
 // CheckForModification will check left and right yaml.Node instances for changes. Anything that is found in both

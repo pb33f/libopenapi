@@ -26,14 +26,14 @@ const (
 // SpecInfo represents a 'ready-to-process' OpenAPI Document. The RootNode is the most important property
 // used by the library, this contains the top of the document tree that every single low model is based off.
 type SpecInfo struct {
-	SpecType            string                  `json:"type"`
-	NumLines            int                     `json:"numLines"`
-	Version             string                  `json:"version"`
-	VersionNumeric      float32                 `json:"versionNumeric"`
-	SpecFormat          string                  `json:"format"`
-	SpecFileType        string                  `json:"fileType"`
-	SpecBytes *[]byte    `json:"bytes"` // the original byte array
-	RootNode  *yaml.Node `json:"-"`     // reference to the root node of the spec.
+	SpecType       string     `json:"type"`
+	NumLines       int        `json:"numLines"`
+	Version        string     `json:"version"`
+	VersionNumeric float32    `json:"versionNumeric"`
+	SpecFormat     string     `json:"format"`
+	SpecFileType   string     `json:"fileType"`
+	SpecBytes      *[]byte    `json:"bytes"` // the original byte array
+	RootNode       *yaml.Node `json:"-"`     // reference to the root node of the spec.
 
 	// SpecJSONBytes is the original document converted to JSON. It is populated lazily.
 	//
@@ -231,6 +231,9 @@ func extractSpecInfoInternal(spec []byte, bypass bool, skipJSON bool) (*SpecInfo
 				if err := parsedNode.Decode(&jsonSpec); err != nil {
 					return fmt.Errorf("failed to decode YAML to JSON: %w", err)
 				}
+				if jsonSpec == nil {
+					return fmt.Errorf("failed to decode YAML to JSON: YAML document root is %v, not a mapping", root.Kind)
+				}
 			}
 			if err := checkDuplicateMappingKeys(parsedNode); err != nil {
 				return fmt.Errorf("failed to decode YAML to JSON: %w", err)
@@ -411,9 +414,9 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 // checkDuplicateMappingKeys walks a parsed node tree and reports duplicate mapping
 // keys using the exact equality semantics of the go.yaml.in/yaml/v4 decoder: two keys
 // in the same mapping collide when their node Kind and raw Value match (no tag or
-// alias resolution). Error text matches the decoder's construct errors byte for byte,
-// and children of an offending mapping are not descended into, mirroring the decoder
-// halting construction of that mapping.
+// alias resolution). The collected construct errors are normalized onto the
+// public one-line error shape, and children of an offending mapping are not
+// descended into, mirroring the decoder halting construction of that mapping.
 //
 // Known divergence: an anchored mapping with duplicate keys that is aliased
 // elsewhere is reported ONCE here, while the decoder re-reports it on every
@@ -428,13 +431,7 @@ func checkDuplicateMappingKeys(node *yaml.Node) error {
 	if len(errs) == 0 {
 		return nil
 	}
-	var b strings.Builder
-	b.WriteString("yaml: construct errors:")
-	for _, e := range errs {
-		b.WriteString("\n  ")
-		b.WriteString(e)
-	}
-	return errors.New(b.String())
+	return errors.New("yaml: construct errors: " + strings.Join(errs, "; "))
 }
 
 func walkDuplicateMappingKeys(node *yaml.Node, errs *[]string) {

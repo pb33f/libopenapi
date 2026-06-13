@@ -159,7 +159,7 @@ func Test_CheckMapsAddition(t *testing.T) {
 		{"Same map", mapA, mapB, false, false},
 		{"Different map", mapA, mapB, false, false},
 		{"Add map", nil, mapA, true, false},
-		{"Add map value", nil, mapB, true, true},
+		{"Empty map exists", nil, mapB, false, true},
 		{"Remove map", mapA, nil, false, false},
 	}
 
@@ -611,6 +611,28 @@ func TestCheckForAdditionWithEncoding(t *testing.T) {
 		assert.Equal(t, PropertyAdded, changes[0].ChangeType)
 		assert.NotEmpty(t, changes[0].NewEncoded)
 	})
+
+	t.Run("does not add empty array already present", func(t *testing.T) {
+		var lNode, rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`[]`), &lNode)
+		_ = yaml.Unmarshal([]byte(`[]`), &rNode)
+
+		changes := []*Change{}
+		CheckForAdditionWithEncoding[string](lNode.Content[0], rNode.Content[0], "test", &changes, false, "", "new")
+
+		assert.Empty(t, changes)
+	})
+
+	t.Run("does not add empty map already present", func(t *testing.T) {
+		var lNode, rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`{}`), &lNode)
+		_ = yaml.Unmarshal([]byte(`{}`), &rNode)
+
+		changes := []*Change{}
+		CheckForAdditionWithEncoding[string](lNode.Content[0], rNode.Content[0], "test", &changes, false, "", "new")
+
+		assert.Empty(t, changes)
+	})
 }
 
 // TestCheckForModificationWithEncoding tests the modification check with encoding
@@ -660,6 +682,16 @@ func TestCheckForModificationWithEncoding_NumericScalarEquivalence(t *testing.T)
 
 	changes := []*Change{}
 	CheckForModificationWithEncoding(lNode.Content[0], rNode.Content[0], "numeric", &changes, false, "old", "new")
+
+	assert.Empty(t, changes)
+}
+
+func TestCheckForModificationWithEncoding_IgnoresAnchorOnlyDifference(t *testing.T) {
+	left := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "same", Anchor: "leftAnchor"}
+	right := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "same", Anchor: "rightAnchor"}
+
+	changes := []*Change{}
+	CheckForModificationWithEncoding(left, right, "anchored", &changes, false, "old", "new")
 
 	assert.Empty(t, changes)
 }

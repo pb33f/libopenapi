@@ -480,7 +480,7 @@ func metadataYAMLNodeLiteral(node *yaml.Node, depth int) string {
 	b.WriteString("&openAPIYAMLNode{\n")
 	writeMetadataField(&b, depth+1, "Kind", strconv.Quote(metadataYAMLKind(node.Kind)))
 	writeMetadataField(&b, depth+1, "Style", metadataPlainIntLiteral(int64(node.Style)))
-	writeMetadataField(&b, depth+1, "Tag", metadataStringLiteral(node.Tag))
+	writeMetadataField(&b, depth+1, "Tag", metadataStringLiteral(metadataYAMLNodeLiteralTag(node)))
 	writeMetadataField(&b, depth+1, "Value", metadataStringLiteral(node.Value))
 	writeMetadataField(&b, depth+1, "Anchor", metadataStringLiteral(node.Anchor))
 	writeMetadataField(&b, depth+1, "Content", metadataYAMLNodeContentLiteral(node.Content, depth+1))
@@ -488,6 +488,40 @@ func metadataYAMLNodeLiteral(node *yaml.Node, depth int) string {
 	b.WriteString(metadataIndent(depth))
 	b.WriteByte('}')
 	return b.String()
+}
+
+func metadataYAMLNodeLiteralTag(node *yaml.Node) string {
+	if node == nil {
+		return ""
+	}
+	if node.Tag != "" {
+		return node.Tag
+	}
+	switch node.Kind {
+	case yaml.SequenceNode:
+		return "!!seq"
+	case yaml.MappingNode:
+		return "!!map"
+	case yaml.ScalarNode:
+		return inferMetadataYAMLScalarTag(node)
+	default:
+		return node.Tag
+	}
+}
+
+func inferMetadataYAMLScalarTag(node *yaml.Node) string {
+	if node.Style&(yaml.SingleQuotedStyle|yaml.DoubleQuotedStyle|yaml.LiteralStyle|yaml.FoldedStyle) != 0 {
+		return "!!str"
+	}
+	var parsed yaml.Node
+	if err := yaml.Unmarshal([]byte(node.Value+"\n"), &parsed); err != nil || len(parsed.Content) == 0 {
+		return "!!str"
+	}
+	scalar := parsed.Content[0]
+	if scalar.Kind != yaml.ScalarNode || scalar.Tag == "" {
+		return "!!str"
+	}
+	return scalar.Tag
 }
 
 func optionalMetadataYAMLNodeLiteral(node *yaml.Node, depth int) string {
