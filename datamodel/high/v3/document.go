@@ -173,9 +173,15 @@ func (d *Document) Render() ([]byte, error) {
 // the rendering will use the original indention of the document.
 func (d *Document) RenderWithIndention(indent int) []byte {
 	var buf bytes.Buffer
-	yamlEncoder := yaml.NewEncoder(&buf)
-	yamlEncoder.SetIndent(indent)
-	_ = yamlEncoder.Encode(d)
+	yamlDumper, err := yaml.NewDumper(&buf, yaml.WithV3Defaults(), yaml.WithLineWidth(-1))
+	if err != nil {
+		return nil
+	}
+	yamlDumper.SetIndent(indent)
+	if err := yamlDumper.Dump(d); err != nil {
+		return nil
+	}
+	_ = yamlDumper.Close()
 	return buf.Bytes()
 }
 

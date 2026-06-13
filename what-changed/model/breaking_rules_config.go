@@ -246,6 +246,10 @@ func buildValidComponentSet() map[string]bool {
 // just "discriminator" at the top level) and returns all validation errors found.
 // Returns nil if the configuration is valid.
 func ValidateBreakingRulesConfigYAML(yamlBytes []byte) *ConfigValidationResult {
+	if len(strings.TrimSpace(string(yamlBytes))) == 0 {
+		return nil
+	}
+
 	var rootNode yaml.Node
 	if err := yaml.Unmarshal(yamlBytes, &rootNode); err != nil {
 		return &ConfigValidationResult{

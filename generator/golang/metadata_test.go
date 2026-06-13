@@ -263,6 +263,39 @@ func TestGeneratedQuotedOpenAPITag(t *testing.T) {
 	}
 }
 
+func TestApplyOpenAPIMetadataKeepsEquivalentSourceYAMLNodes(t *testing.T) {
+	enum := []*yaml.Node{{Kind: yaml.ScalarNode, Tag: "!!str", Value: "bam"}}
+	constValue := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "card"}
+	schema := &highbase.Schema{Enum: enum, Const: constValue}
+	ir := &SchemaIR{Enum: enum, Const: constValue, SourceSchema: schema}
+
+	NewGenerator().applyOpenAPIMetadata(ir, openAPIMetadata{
+		Present: true,
+		Enum:    []*yaml.Node{{Kind: yaml.ScalarNode, Value: "bam"}},
+		Const:   &yaml.Node{Kind: yaml.ScalarNode, Value: "card"},
+	})
+
+	if ir.Enum[0].Tag != "!!str" || schema.Enum[0].Tag != "!!str" {
+		t.Fatalf("equivalent enum metadata stripped source tag: %#v", ir.Enum[0])
+	}
+	if ir.Const.Tag != "!!str" || schema.Const.Tag != "!!str" {
+		t.Fatalf("equivalent const metadata stripped source tag: %#v", ir.Const)
+	}
+
+	NewGenerator().applyOpenAPIMetadata(ir, openAPIMetadata{
+		Present: true,
+		Enum:    []*yaml.Node{{Kind: yaml.ScalarNode, Tag: "!!str", Value: "bgn"}},
+		Const:   &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "bank_account"},
+	})
+
+	if ir.Enum[0].Value != "bgn" || schema.Enum[0].Value != "bgn" {
+		t.Fatalf("changed enum metadata was not applied: %#v", ir.Enum[0])
+	}
+	if ir.Const.Value != "bank_account" || schema.Const.Value != "bank_account" {
+		t.Fatalf("changed const metadata was not applied: %#v", ir.Const)
+	}
+}
+
 func TestFieldSchemaOverridesAndSchemaYAMLProvider(t *testing.T) {
 	sourceSchema := schemaProxyFromYAML(t, `
 oneOf:
@@ -1004,6 +1037,18 @@ func TestMetadataHelpersCoverage(t *testing.T) {
 	}
 	if got := metadataYAMLNodeLiteral(nil, 0); got != "nil" {
 		t.Fatalf("nil yaml node literal mismatch: %q", got)
+	}
+	if got := metadataYAMLNodeLiteral(&yaml.Node{Kind: yaml.ScalarNode, Value: "1"}, 0); !strings.Contains(got, `Tag: "!!int"`) {
+		t.Fatalf("empty integer scalar tag should infer numeric metadata literal: %s", got)
+	}
+	if got := metadataYAMLNodeLiteral(&yaml.Node{Kind: yaml.ScalarNode, Value: "true"}, 0); !strings.Contains(got, `Tag: "!!bool"`) {
+		t.Fatalf("empty boolean scalar tag should infer boolean metadata literal: %s", got)
+	}
+	if got := metadataYAMLNodeLiteral(&yaml.Node{Kind: yaml.ScalarNode, Style: yaml.SingleQuotedStyle, Value: "1"}, 0); !strings.Contains(got, `Tag: "!!str"`) {
+		t.Fatalf("styled scalar tag should stay string in metadata literal: %s", got)
+	}
+	if got := metadataYAMLNodeLiteral(&yaml.Node{Kind: yaml.MappingNode}, 0); !strings.Contains(got, `Tag: "!!map"`) {
+		t.Fatalf("empty mapping tag should normalize to default in metadata literal: %s", got)
 	}
 }
 

@@ -4,6 +4,7 @@
 package libopenapi
 
 import (
+	"bytes"
 	gocontext "context"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -32,6 +33,10 @@ type OverlayResult struct {
 // NewOverlayDocument creates a new overlay document from the provided bytes.
 // The overlay document can then be applied to a target OpenAPI document using ApplyOverlay.
 func NewOverlayDocument(overlayBytes []byte) (*highoverlay.Overlay, error) {
+	if len(bytes.TrimSpace(overlayBytes)) == 0 {
+		return nil, overlay.ErrInvalidOverlay
+	}
+
 	var node yaml.Node
 	if err := yaml.Unmarshal(overlayBytes, &node); err != nil {
 		return nil, err

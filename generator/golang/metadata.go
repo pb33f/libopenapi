@@ -226,12 +226,70 @@ func (g *Generator) applyOpenAPIMetadata(ir *SchemaIR, meta openAPIMetadata) {
 		schema.MaxProperties = &meta.MaxProperties
 	}
 	if len(meta.Enum) > 0 {
-		ir.Enum = meta.Enum
-		schema.Enum = meta.Enum
+		if len(schema.Enum) > 0 && equivalentMetadataYAMLNodeSlices(schema.Enum, meta.Enum) {
+			ir.Enum = schema.Enum
+		} else {
+			ir.Enum = meta.Enum
+			schema.Enum = meta.Enum
+		}
 	}
 	if meta.Const != nil {
-		ir.Const = meta.Const
-		schema.Const = meta.Const
+		if schema.Const != nil && equivalentMetadataYAMLNodes(schema.Const, meta.Const) {
+			ir.Const = schema.Const
+		} else {
+			ir.Const = meta.Const
+			schema.Const = meta.Const
+		}
+	}
+}
+
+func equivalentMetadataYAMLNodeSlices(left, right []*yaml.Node) bool {
+	if len(left) != len(right) {
+		return false
+	}
+	for i := range left {
+		if !equivalentMetadataYAMLNodes(left[i], right[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func equivalentMetadataYAMLNodes(left, right *yaml.Node) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+	if left.Kind != right.Kind ||
+		normalizeMetadataYAMLTag(left.Kind, left.Tag) != normalizeMetadataYAMLTag(right.Kind, right.Tag) ||
+		left.Value != right.Value ||
+		left.Anchor != right.Anchor ||
+		len(left.Content) != len(right.Content) {
+		return false
+	}
+	if !equivalentMetadataYAMLNodes(left.Alias, right.Alias) {
+		return false
+	}
+	for i := range left.Content {
+		if !equivalentMetadataYAMLNodes(left.Content[i], right.Content[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func normalizeMetadataYAMLTag(kind yaml.Kind, tag string) string {
+	if tag != "" {
+		return tag
+	}
+	switch kind {
+	case yaml.SequenceNode:
+		return "!!seq"
+	case yaml.MappingNode:
+		return "!!map"
+	case yaml.ScalarNode:
+		return "!!str"
+	default:
+		return tag
 	}
 }
 
