@@ -188,6 +188,12 @@ func TestValidateBreakingRulesConfigYAML_EmptyConfig(t *testing.T) {
 	assert.Nil(t, result, "Empty config should be valid")
 }
 
+func TestValidateBreakingRulesConfigYAML_NonMappingRoot(t *testing.T) {
+	yaml := `- schema`
+	result := ValidateBreakingRulesConfigYAML([]byte(yaml))
+	assert.Nil(t, result, "Non-mapping config roots should be ignored")
+}
+
 func TestValidateBreakingRulesConfigYAML_OnlyValidTopLevel(t *testing.T) {
 	yaml := `
 openapi:

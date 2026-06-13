@@ -390,10 +390,8 @@ func extractSpecInfoInternal(spec []byte, bypass bool, skipJSON bool) (*SpecInfo
 	//	parseJSON(spec, specInfo, &parsedSpec)
 	//}
 
-	if !parsed && !skipJSON {
-		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil && !bypass {
-			return nil, err
-		}
+	if !parsed && !skipJSON && bypass {
+		_ = parseJSON(spec, specInfo, &parsedSpec)
 	}
 
 	// detect the original whitespace indentation
