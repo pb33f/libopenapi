@@ -19,8 +19,8 @@ import (
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -2067,8 +2067,8 @@ func TestFetchSourceBytes_WindowsDriveInHost(t *testing.T) {
 	driveAndPath := filepath.ToSlash(testFile)
 	fakeURL := &url.URL{
 		Scheme: "file",
-		Host:   driveAndPath[:2],         // e.g. "/p" on Unix, "C:" on Windows
-		Path:   driveAndPath[2:],          // rest of path
+		Host:   driveAndPath[:2], // e.g. "/p" on Unix, "C:" on Windows
+		Path:   driveAndPath[2:], // rest of path
 	}
 
 	// This only works as a Windows drive when Host is like "X:" (letter + colon).

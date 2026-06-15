@@ -6,7 +6,7 @@ package utils
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 )
 
 func TestAreValuesCorrectlyTyped(t *testing.T) {

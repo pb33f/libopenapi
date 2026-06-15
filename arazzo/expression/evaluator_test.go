@@ -6,7 +6,7 @@ package expression
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -56,8 +56,8 @@ nested:
   a~c: tilde
 `),
 		ResponseHeaders: map[string]string{
-			"Content-Type":  "application/json",
-			"X-Request-Id":  "req-999",
+			"Content-Type": "application/json",
+			"X-Request-Id": "req-999",
 		},
 		ResponseBody: buildYAMLNode(t, `results:
   - id: 1

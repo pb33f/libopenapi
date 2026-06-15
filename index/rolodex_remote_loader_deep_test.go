@@ -15,7 +15,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 )
 
 // failingReader is a reader that fails after reading a certain number of bytes

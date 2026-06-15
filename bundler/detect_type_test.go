@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -712,7 +712,8 @@ func TestDetectOpenAPIComponentType_JSONSourced(t *testing.T) {
 
 // TestGetNodeKeys_UniformQuoting guards the detector's key-filter against JSON. When every
 // key in a mapping shares the same quote style, the style carries no intent to escape
-//  keywords, the filter only kicks in when styles are mixed within one mapping.
+//
+//	keywords, the filter only kicks in when styles are mixed within one mapping.
 func TestGetNodeKeys_UniformQuoting(t *testing.T) {
 	cases := []struct {
 		name string

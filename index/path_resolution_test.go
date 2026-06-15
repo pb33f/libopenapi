@@ -10,8 +10,8 @@ import (
 	"testing/fstest"
 
 	"github.com/pb33f/libopenapi/utils"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 func TestResolveRelativeFilePath_PrefersBasePath(t *testing.T) {

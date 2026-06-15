@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/pb33f/libopenapi/utils"
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
 
