@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 )
 
 func TestBuildSlice_EmptyReturnsNil(t *testing.T) {

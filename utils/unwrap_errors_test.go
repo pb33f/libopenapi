@@ -7,7 +7,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 )
 
 func TestUnwrapErrors(t *testing.T) {

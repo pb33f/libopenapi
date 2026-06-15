@@ -7,7 +7,7 @@ import (
 	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 	"go.yaml.in/yaml/v4"
 	"testing"
 )

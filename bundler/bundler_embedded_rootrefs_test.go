@@ -6,8 +6,8 @@ import (
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/bundler/test/specs/rootrefs"
 	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 func TestBundleDocument_Embedded_RootRelativeRefs(t *testing.T) {

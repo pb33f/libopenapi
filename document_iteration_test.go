@@ -10,7 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/require"
 )
 
 type loopFrame struct {

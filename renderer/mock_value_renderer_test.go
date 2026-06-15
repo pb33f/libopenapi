@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 )
 
 func TestMockValueRendererHandlesNilSchemas(t *testing.T) {

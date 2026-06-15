@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 // TestIssue438_UnknownExtensionContentDetection tests the fix for issue #438

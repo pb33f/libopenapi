@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 // TestEnhancedCoverage provides essential coverage for the newly implemented functionality

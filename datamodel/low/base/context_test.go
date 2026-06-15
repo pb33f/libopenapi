@@ -7,7 +7,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 )
 
 func TestGetModelContext(t *testing.T) {

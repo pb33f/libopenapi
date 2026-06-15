@@ -5,7 +5,7 @@ package index
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/require"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -15,7 +15,7 @@ import (
 	"context"
 	"github.com/pb33f/jsonpath/pkg/jsonpath"
 	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
 

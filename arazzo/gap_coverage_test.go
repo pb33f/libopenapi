@@ -18,12 +18,12 @@ import (
 
 	"github.com/pb33f/libopenapi/arazzo/expression"
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
+	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowarazzo "github.com/pb33f/libopenapi/datamodel/low/arazzo"
-	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 

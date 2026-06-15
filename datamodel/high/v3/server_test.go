@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 )
 
 func TestServer_MarshalYAML(t *testing.T) {

@@ -6,7 +6,7 @@ package datamodel
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 )
 
 func TestNewClosedDocumentConfiguration(t *testing.T) {

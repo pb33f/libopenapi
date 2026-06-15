@@ -11,8 +11,8 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -110,7 +110,7 @@ workflows:
       - stepId: s1
         operationId: op1`)
 
-var a Arazzo
+	var a Arazzo
 	require.NoError(t, low.BuildModel(root, &a))
 	err := a.Build(context.Background(), nil, root, index.NewSpecIndex(docNode))
 	require.Error(t, err)
@@ -132,7 +132,7 @@ workflows:
         requestBody:
           $ref: '#/missing'`)
 
-var a Arazzo
+	var a Arazzo
 	require.NoError(t, low.BuildModel(root, &a))
 	err := a.Build(context.Background(), nil, root, index.NewSpecIndex(docNode))
 	require.Error(t, err)

@@ -21,7 +21,7 @@ import (
 	"testing/fstest"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/pb33f/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
 

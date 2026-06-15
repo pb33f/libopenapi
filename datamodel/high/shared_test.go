@@ -10,8 +10,8 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -227,6 +227,66 @@ func (m *mockExternalRefResolver) GetIndex() *index.SpecIndex {
 	return m.indexVal
 }
 
+type mockRootedExternalRefResolver struct {
+	*mockExternalRefResolver
+	root *yaml.Node
+}
+
+func (m *mockRootedExternalRefResolver) GetRootNode() *yaml.Node {
+	return m.root
+}
+
+func TestIsResolvedExternalRefModel(t *testing.T) {
+	refRoot := utils.CreateRefNode("#/components/schemas/TestSchema")
+	concreteRoot := utils.CreateStringNode("resolved")
+
+	tests := []struct {
+		name string
+		obj  ExternalRefResolver
+		want bool
+	}{
+		{
+			name: "local reference",
+			obj:  &mockExternalRefResolver{isRef: true, ref: "#/components/schemas/TestSchema"},
+			want: false,
+		},
+		{
+			name: "no root provider",
+			obj:  &mockExternalRefResolver{isRef: true, ref: "./schemas.yaml#/TestSchema"},
+			want: false,
+		},
+		{
+			name: "nil root",
+			obj: &mockRootedExternalRefResolver{
+				mockExternalRefResolver: &mockExternalRefResolver{isRef: true, ref: "./schemas.yaml#/TestSchema"},
+			},
+			want: false,
+		},
+		{
+			name: "reference root",
+			obj: &mockRootedExternalRefResolver{
+				mockExternalRefResolver: &mockExternalRefResolver{isRef: true, ref: "./schemas.yaml#/TestSchema"},
+				root:                    refRoot,
+			},
+			want: false,
+		},
+		{
+			name: "concrete root",
+			obj: &mockRootedExternalRefResolver{
+				mockExternalRefResolver: &mockExternalRefResolver{isRef: true, ref: "./schemas.yaml#/TestSchema"},
+				root:                    concreteRoot,
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, isResolvedExternalRefModel(tt.obj))
+		})
+	}
+}
+
 func TestResolveExternalRef_NilLowObj(t *testing.T) {
 	result, err := ResolveExternalRef[string, string](nil, nil, nil)
 
@@ -410,6 +470,31 @@ components:
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to build resolved external reference")
 	assert.False(t, result.Resolved)
+}
+
+func TestResolveExternalRef_AlreadyResolvedModelDoesNotReResolve(t *testing.T) {
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(nil, config)
+	mock := &mockRootedExternalRefResolver{
+		mockExternalRefResolver: &mockExternalRefResolver{
+			isRef:    true,
+			ref:      "./schemas.yaml#/TestSchema",
+			indexVal: idx,
+		},
+		root: utils.CreateStringNode("resolved"),
+	}
+	buildCalled := false
+
+	result, err := ResolveExternalRef(mock, func(_ *yaml.Node, _ *index.SpecIndex) (*testLow, error) {
+		buildCalled = true
+		return &testLow{}, nil
+	}, func(l *testLow) *testHigh {
+		return &testHigh{Name: l.Name}
+	})
+
+	assert.NoError(t, err)
+	assert.False(t, result.Resolved)
+	assert.False(t, buildCalled)
 }
 
 func TestRenderExternalRef_Success(t *testing.T) {
