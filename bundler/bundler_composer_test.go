@@ -16,6 +16,7 @@ import (
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
+	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -85,6 +86,57 @@ func TestProcessReference_ContextualSingleSegmentRejectsUnsafeNode(t *testing.T)
 	require.NoError(t, processReference(model, pr, cf))
 	require.Len(t, cf.inlineRequired, 1)
 	assert.Same(t, pr, cf.inlineRequired[0])
+}
+
+func TestProcessReference_JSONSchemaDefsReturnsComposeError(t *testing.T) {
+	model := &v3.Document{
+		Components: &v3.Components{
+			Schemas: orderedmap.New[string, *highbase.SchemaProxy](),
+		},
+	}
+	idx := newVersionedIndex(3.2)
+	cf := &handleIndexConfig{
+		idx:               idx,
+		rootIdx:           idx,
+		compositionConfig: &BundleCompositionConfig{Delimiter: "__"},
+	}
+	pr := &processRef{
+		idx: idx,
+		ref: &index.Reference{
+			FullDefinition: "/tmp/widget.json#/$defs/company",
+		},
+		seqRef: &index.Reference{},
+	}
+
+	err := processReference(model, pr, cf)
+	require.Error(t, err)
+	assert.Equal(t, "node is nil", err.Error())
+}
+
+func TestProcessReference_JSONSchemaDefsFallsBackWhenSchemasMissing(t *testing.T) {
+	model := &v3.Document{
+		Components: &v3.Components{},
+	}
+	idx := newVersionedIndex(3.2)
+	cf := &handleIndexConfig{
+		idx:               idx,
+		rootIdx:           idx,
+		compositionConfig: &BundleCompositionConfig{Delimiter: "__"},
+	}
+	pr := &processRef{
+		idx: idx,
+		ref: &index.Reference{
+			FullDefinition: "/tmp/widget.json#/$defs/company",
+		},
+		seqRef: &index.Reference{},
+	}
+
+	require.NoError(t, processReference(model, pr, cf))
+	require.Len(t, cf.inlineRequired, 1)
+	assert.Same(t, pr, cf.inlineRequired[0])
+	assert.Equal(t, "company", pr.originalName)
+	assert.Equal(t, "widget__company", pr.name)
+	assert.Equal(t, []string{"components", "schemas", "widget__company"}, pr.location)
 }
 
 func TestCheckFileIteration(t *testing.T) {

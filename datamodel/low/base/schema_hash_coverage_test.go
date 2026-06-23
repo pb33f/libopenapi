@@ -4,12 +4,15 @@
 package base
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestWriteSchemaBoolMap(t *testing.T) {
@@ -56,4 +59,27 @@ func TestWriteSortedSchemaStrings(t *testing.T) {
 
 	writeSortedSchemaStrings(&sb, []string{"zeta", "alpha"}, false)
 	assert.Equal(t, "alphazeta|", sb.String())
+}
+
+func TestSchemaHashIncludesDefs(t *testing.T) {
+	build := func(source string) *Schema {
+		t.Helper()
+		var root yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(source), &root))
+
+		var schema Schema
+		require.NoError(t, schema.Build(context.Background(), root.Content[0], nil))
+		return &schema
+	}
+
+	a := build(`type: object
+$defs:
+  shared:
+    type: string`)
+	b := build(`type: object
+$defs:
+  shared:
+    type: integer`)
+
+	assert.NotEqual(t, a.Hash(), b.Hash())
 }

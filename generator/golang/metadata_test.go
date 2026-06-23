@@ -543,6 +543,8 @@ func TestSchemaMetadataSidecarTypedDataCoversJSONSchemaKeywords(t *testing.T) {
 	properties.Set("id", highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{"string"}, Format: "uuid"}))
 	patternProperties := orderedmap.New[string, *highbase.SchemaProxy]()
 	patternProperties.Set("^x-", highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{"string"}}))
+	defs := orderedmap.New[string, *highbase.SchemaProxy]()
+	defs.Set("shared", highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{"object"}}))
 	dependentSchemas := orderedmap.New[string, *highbase.SchemaProxy]()
 	dependentSchemas.Set("id", highbase.CreateSchemaProxy(&highbase.Schema{Required: []string{"kind"}}))
 	dependentRequired := orderedmap.New[string, []string]()
@@ -582,6 +584,7 @@ func TestSchemaMetadataSidecarTypedDataCoversJSONSchemaKeywords(t *testing.T) {
 		DependentSchemas:      dependentSchemas,
 		DependentRequired:     dependentRequired,
 		PatternProperties:     patternProperties,
+		Defs:                  defs,
 		PropertyNames:         highbase.CreateSchemaProxy(&highbase.Schema{Pattern: "^[a-z]+$"}),
 		UnevaluatedItems:      highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{"boolean"}}),
 		UnevaluatedProperties: &highbase.DynamicValue[*highbase.SchemaProxy, bool]{N: 1, B: false},
@@ -630,7 +633,7 @@ func TestSchemaMetadataSidecarTypedDataCoversJSONSchemaKeywords(t *testing.T) {
 	if sidecar == "" {
 		t.Fatal("expected metadata sidecar declaration")
 	}
-	for _, want := range []string{"SchemaTypeRef", "ExclusiveMaximum", "DependentRequired", "UnevaluatedProperties", "ContentMediaType", "Extensions"} {
+	for _, want := range []string{"SchemaTypeRef", "ExclusiveMaximum", "DependentRequired", "Defs", "UnevaluatedProperties", "ContentMediaType", "Extensions"} {
 		assertContains(t, sidecar, want)
 	}
 
@@ -655,6 +658,7 @@ func TestSchemaMetadataSidecarTypedDataCoversJSONSchemaKeywords(t *testing.T) {
 			Values: []string{"kind"},
 		}},
 		PatternProperties: []providerNamedSchemaMetadata{{Name: "^x-", Schema: &providerSchemaMetadata{Type: []string{"string"}}}},
+		Defs:              []providerNamedSchemaMetadata{{Name: "shared", Schema: &providerSchemaMetadata{Type: []string{"object"}}}},
 		PropertyNames:     &providerSchemaMetadata{Pattern: "^[a-z]+$"},
 		UnevaluatedItems:  &providerSchemaMetadata{Type: []string{"boolean"}},
 		Properties: []providerNamedSchemaMetadata{{
@@ -717,7 +721,10 @@ func TestSchemaMetadataSidecarTypedDataCoversJSONSchemaKeywords(t *testing.T) {
 		t.Fatal(err)
 	}
 	roundTrip := proxy.Schema()
-	if roundTrip.Properties.GetOrZero("id").Schema().Format != "uuid" || roundTrip.AdditionalProperties == nil || !roundTrip.AdditionalProperties.IsB() || roundTrip.MinLength == nil || *roundTrip.MinLength != 0 {
+	if roundTrip.Properties.GetOrZero("id").Schema().Format != "uuid" ||
+		roundTrip.Defs.GetOrZero("shared").Schema().Type[0] != "object" ||
+		roundTrip.AdditionalProperties == nil || !roundTrip.AdditionalProperties.IsB() ||
+		roundTrip.MinLength == nil || *roundTrip.MinLength != 0 {
 		t.Fatalf("typed provider metadata did not convert: %#v", roundTrip)
 	}
 	refProxy := schemaProxyFromMetadata(&providerSchemaMetadata{

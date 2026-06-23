@@ -36,6 +36,7 @@ type providerSchemaMetadata struct {
 	DependentSchemas      []providerNamedSchemaMetadata
 	DependentRequired     []providerStringList
 	PatternProperties     []providerNamedSchemaMetadata
+	Defs                  []providerNamedSchemaMetadata
 	PropertyNames         *providerSchemaMetadata
 	UnevaluatedItems      *providerSchemaMetadata
 	UnevaluatedProperties *providerDynamicSchemaBool
@@ -193,6 +194,7 @@ func schemaFromMetadata(metadata *providerSchemaMetadata) *highbase.Schema {
 		DependentSchemas:      schemaMapFromMetadata(metadata.DependentSchemas),
 		DependentRequired:     stringListMapFromMetadata(metadata.DependentRequired),
 		PatternProperties:     schemaMapFromMetadata(metadata.PatternProperties),
+		Defs:                  schemaMapFromMetadata(metadata.Defs),
 		PropertyNames:         schemaProxyFromMetadata(metadata.PropertyNames),
 		UnevaluatedItems:      schemaProxyFromMetadata(metadata.UnevaluatedItems),
 		UnevaluatedProperties: dynamicSchemaBoolFromMetadata(metadata.UnevaluatedProperties),
@@ -252,8 +254,8 @@ func schemaMetadataEmpty(metadata *providerSchemaMetadata) bool {
 			metadata.Discriminator == nil && len(metadata.Examples) == 0 && len(metadata.PrefixItems) == 0 &&
 			metadata.Contains == nil && metadata.MinContains == nil && metadata.MaxContains == nil && metadata.If == nil &&
 			metadata.Else == nil && metadata.Then == nil && len(metadata.DependentSchemas) == 0 &&
-			len(metadata.DependentRequired) == 0 && len(metadata.PatternProperties) == 0 && metadata.PropertyNames == nil &&
-			metadata.UnevaluatedItems == nil && metadata.UnevaluatedProperties == nil && metadata.Items == nil &&
+			len(metadata.DependentRequired) == 0 && len(metadata.PatternProperties) == 0 && len(metadata.Defs) == 0 &&
+			metadata.PropertyNames == nil && metadata.UnevaluatedItems == nil && metadata.UnevaluatedProperties == nil && metadata.Items == nil &&
 			metadata.ID == "" && metadata.Anchor == "" && metadata.DynamicAnchor == "" && metadata.DynamicRef == "" &&
 			metadata.Comment == "" && metadata.ContentSchema == nil && len(metadata.Vocabulary) == 0 && metadata.Not == nil &&
 			len(metadata.Properties) == 0 && metadata.Title == "" && metadata.MultipleOf == nil && metadata.Maximum == nil &&
