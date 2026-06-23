@@ -547,8 +547,121 @@ func newProcessRefForTest(t *testing.T, name, source string) *processRef {
 
 func TestWalkAndRewriteRefs_NilNode(t *testing.T) {
 	require.NotPanics(t, func() {
-		walkAndRewriteRefs(nil, nil, nil, nil, false)
+		walkAndRewriteRefs(nil, nil, nil, nil, false, nil)
 	})
+}
+
+func TestWalkAndRewriteRefs_SkipsCycles(t *testing.T) {
+	root := &yaml.Node{Kind: yaml.MappingNode}
+	root.Content = []*yaml.Node{
+		{Kind: yaml.ScalarNode, Value: "child"},
+		root,
+	}
+
+	require.NotPanics(t, func() {
+		walkAndRewriteRefs(root, nil, nil, nil, false, nil)
+	})
+}
+
+func TestWalkAndRewriteRefs_RevisitsSharedNodesOnDifferentPaths(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+paths: {}`), &root))
+
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "/tmp/root.yaml"
+	idx := index.NewSpecIndexWithConfig(&root, cfg)
+
+	sharedRefNode := testYAMLContentNode(t, `$ref: "#/components/schemas/Old"`)
+	doc := &yaml.Node{Kind: yaml.MappingNode}
+	doc.Content = []*yaml.Node{
+		{Kind: yaml.ScalarNode, Value: "x-extension"},
+		sharedRefNode,
+		{Kind: yaml.ScalarNode, Value: "schema"},
+		sharedRefNode,
+	}
+	processedNodes := orderedmap.New[string, *processRef]()
+	processedNodes.Set("/tmp/root.yaml#/components/schemas/Old", &processRef{
+		location: []string{"components", "schemas", "New"},
+	})
+
+	walkAndRewriteRefs(doc, idx, processedNodes, nil, false, nil)
+	assert.Equal(t, "#/components/schemas/New", sharedRefNode.Content[1].Value)
+}
+
+func TestWalkAndRewriteRefs_ScalarNode(t *testing.T) {
+	require.NotPanics(t, func() {
+		walkAndRewriteRefs(&yaml.Node{Kind: yaml.ScalarNode, Value: "plain"}, nil, nil, nil, false, nil)
+	})
+}
+
+func TestWalkAndRewriteRefs_RewritesProcessedLocalRef(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+paths: {}`), &root))
+
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "/tmp/root.yaml"
+	idx := index.NewSpecIndexWithConfig(&root, cfg)
+
+	refNode := testYAMLContentNode(t, `$ref: "#/components/schemas/Old"`)
+	processedNodes := orderedmap.New[string, *processRef]()
+	processedNodes.Set("/tmp/root.yaml#/components/schemas/Old", &processRef{
+		location: []string{"components", "schemas", "New"},
+	})
+
+	walkAndRewriteRefs(refNode, idx, processedNodes, nil, false, nil)
+	assert.Equal(t, "#/components/schemas/New", refNode.Content[1].Value)
+}
+
+func TestJSONSchemaDefsComponentName(t *testing.T) {
+	location := []string{"$defs", "company"}
+	assert.False(t, isJSONSchemaDefsLocation(nil))
+	assert.False(t, isJSONSchemaDefsLocation([]string{"components", "schemas", "company"}))
+	assert.True(t, isJSONSchemaDefsLocation(location))
+
+	assert.Equal(t, "widget__company", jsonSchemaDefsComponentName(&processRef{
+		ref: &index.Reference{FullDefinition: "/tmp/schemas/widget.json#/$defs/company"},
+	}, "company", "__"))
+	assert.Equal(t, "company", jsonSchemaDefsComponentName(nil, "company", "__"))
+	assert.Equal(t, "company", jsonSchemaDefsComponentName(&processRef{
+		ref: &index.Reference{FullDefinition: "#/$defs/company"},
+	}, "company", "__"))
+	assert.Equal(t, "company", jsonSchemaDefsComponentName(&processRef{
+		ref: &index.Reference{FullDefinition: "/tmp/schemas/company.json#/$defs/company"},
+	}, "company", "__"))
+	assert.Equal(t, "widget__company_profile", jsonSchemaDefsComponentName(&processRef{
+		ref: &index.Reference{FullDefinition: "/tmp/schemas/widget.json#/$defs/company~1profile"},
+	}, "company/profile", "__"))
+	assert.Equal(t, "widget__company_profile", jsonSchemaDefsComponentName(&processRef{
+		ref: &index.Reference{FullDefinition: "/tmp/schemas/widget.json#/$defs/company%20profile"},
+	}, "company profile", "__"))
+	assert.Equal(t, "schema", sanitizeComponentName(""))
+	assert.Equal(t, "_", sanitizeComponentName("///"))
+	assert.Equal(t, "company_profile", sanitizeComponentName("company/profile"))
+	assert.Equal(t, "company profile", decodeJSONSchemaDefsSegment("company%20profile"))
+	assert.Equal(t, "company/profile", decodeJSONSchemaDefsSegment("company%7E1profile"))
+	assert.Equal(t, defaultCompositionDelimiter, compositionDelimiter(nil))
+	assert.Equal(t, defaultCompositionDelimiter, compositionDelimiter(&handleIndexConfig{}))
+	assert.Equal(t, defaultCompositionDelimiter, compositionDelimiter(&handleIndexConfig{compositionConfig: &BundleCompositionConfig{}}))
+	assert.Equal(t, "@@", compositionDelimiter(&handleIndexConfig{compositionConfig: &BundleCompositionConfig{Delimiter: "@@"}}))
+}
+
+func TestRenameRefWithSourceUsesComposedLocation(t *testing.T) {
+	fullDefinition := "/tmp/widget.json#/$defs/company"
+	processedNodes := orderedmap.New[string, *processRef]()
+	processedNodes.Set(fullDefinition, &processRef{
+		name:     "ignored",
+		location: []string{"components", "schemas", "widget__company"},
+	})
+
+	assert.Equal(t, "#/components/schemas/widget__company", renameRef(nil, fullDefinition, processedNodes))
 }
 
 func TestRemapIndexSkipsMappedExtensionRefs(t *testing.T) {

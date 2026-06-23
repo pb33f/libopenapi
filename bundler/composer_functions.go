@@ -23,7 +23,16 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-const contextualRefKeySeparator = "\x00"
+const (
+	contextualRefKeySeparator   = "\x00"
+	defaultCompositionDelimiter = "__"
+	fallbackSchemaComponentName = "schema"
+)
+
+type rewriteVisitKey struct {
+	node        *yaml.Node
+	inExtension bool
+}
 
 // extractFragment returns the JSON pointer fragment from a full definition.
 // e.g., "file.yaml#/components/schemas/Pet" -> "#/components/schemas/Pet"
@@ -221,7 +230,7 @@ func composeReferenceAs(
 	idx *index.SpecIndex,
 	cf *handleIndexConfig,
 ) (bool, error) {
-	delimiter := cf.compositionConfig.Delimiter
+	delimiter := compositionDelimiter(cf)
 
 	switch componentType {
 	case v3low.SchemasLabel:
@@ -294,7 +303,7 @@ func fileImportLocationForType(
 	pr *processRef,
 	cf *handleIndexConfig,
 ) (bool, []string) {
-	delimiter := cf.compositionConfig.Delimiter
+	delimiter := compositionDelimiter(cf)
 
 	switch componentType {
 	case v3low.SchemasLabel:
@@ -492,6 +501,10 @@ func renameRefWithSource(
 	processedNodes *orderedmap.Map[string, *processRef],
 ) string {
 	if strings.Contains(def, "#/") {
+		if pr := processedRefFor(processedNodes, def, source); pr != nil && len(pr.location) > 0 && pr.location[0] == v3low.ComponentsLabel {
+			return "#/" + joinLocationAsJSONPointer(pr.location)
+		}
+
 		defSplit := strings.Split(def, "#/")
 		if len(defSplit) != 2 {
 			return def
@@ -699,7 +712,7 @@ func rewriteAllRefs(
 	processedNodes *orderedmap.Map[string, *processRef],
 	rolodex *index.Rolodex,
 ) {
-	walkAndRewriteRefs(idx.GetRootNode(), idx, processedNodes, rolodex, false)
+	walkAndRewriteRefs(idx.GetRootNode(), idx, processedNodes, rolodex, false, make(map[rewriteVisitKey]struct{}))
 }
 
 func walkAndRewriteRefs(
@@ -708,44 +721,61 @@ func walkAndRewriteRefs(
 	processedNodes *orderedmap.Map[string, *processRef],
 	rolodex *index.Rolodex,
 	inExtension bool, // Tracks if we're under an x-* key
+	visited map[rewriteVisitKey]struct{},
 ) {
 	if node == nil {
 		return
 	}
+	// Filter leaves before touching the active-path map; scalar and alias nodes
+	// cannot recurse, and they dominate large documents.
+	switch node.Kind {
+	case yaml.DocumentNode, yaml.SequenceNode, yaml.MappingNode:
+	default:
+		return
+	}
+	if visited == nil {
+		visited = make(map[rewriteVisitKey]struct{})
+	}
+	key := rewriteVisitKey{node: node, inExtension: inExtension}
+	if _, ok := visited[key]; ok {
+		return
+	}
+	visited[key] = struct{}{}
 
 	switch node.Kind {
 	case yaml.DocumentNode:
 		if len(node.Content) > 0 {
-			walkAndRewriteRefs(node.Content[0], sourceIdx, processedNodes, rolodex, inExtension)
+			walkAndRewriteRefs(node.Content[0], sourceIdx, processedNodes, rolodex, inExtension, visited)
 		}
-		return
 	case yaml.SequenceNode:
 		for _, child := range node.Content {
-			walkAndRewriteRefs(child, sourceIdx, processedNodes, rolodex, inExtension)
+			walkAndRewriteRefs(child, sourceIdx, processedNodes, rolodex, inExtension, visited)
 		}
-		return
 	case yaml.MappingNode:
-		// Continue below
-	default:
-		return
-	}
+		for i := 0; i < len(node.Content); i += 2 {
+			keyNode := node.Content[i]
+			valueNode := node.Content[i+1]
 
-	for i := 0; i < len(node.Content); i += 2 {
-		keyNode := node.Content[i]
-		valueNode := node.Content[i+1]
+			// Track extension scope
+			childInExtension := inExtension || strings.HasPrefix(keyNode.Value, "x-")
 
-		// Track extension scope
-		childInExtension := inExtension || strings.HasPrefix(keyNode.Value, "x-")
-
-		if keyNode.Value == "$ref" && valueNode.Kind == yaml.ScalarNode && !inExtension {
-			newRef := resolveRefToComposed(valueNode.Value, sourceIdx, processedNodes, rolodex)
-			if newRef != valueNode.Value {
-				valueNode.Value = newRef
+			if keyNode.Value == "$ref" && valueNode.Kind == yaml.ScalarNode && !inExtension {
+				newRef := resolveRefToComposed(valueNode.Value, sourceIdx, processedNodes, rolodex)
+				if newRef != valueNode.Value {
+					valueNode.Value = newRef
+				}
+			} else {
+				walkAndRewriteRefs(valueNode, sourceIdx, processedNodes, rolodex, childInExtension, visited)
 			}
-		} else {
-			walkAndRewriteRefs(valueNode, sourceIdx, processedNodes, rolodex, childInExtension)
 		}
 	}
+}
+
+func compositionDelimiter(cf *handleIndexConfig) string {
+	if cf == nil || cf.compositionConfig == nil || cf.compositionConfig.Delimiter == "" {
+		return defaultCompositionDelimiter
+	}
+	return cf.compositionConfig.Delimiter
 }
 
 func resolveRefToComposed(

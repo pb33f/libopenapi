@@ -562,6 +562,46 @@ components:
 	assert.Equal(t, []string{"paths", "~1test", "get", "responses", "200"}, responseRef.SourcePath)
 }
 
+func TestSpecIndex_ExtractRefs_CollectsJSONSchemaDefs(t *testing.T) {
+	yml := `openapi: 3.2.0
+info:
+  title: Defs
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    Widget:
+      type: object
+      properties:
+        manufacturer:
+          $ref: "#/components/schemas/Widget/$defs/company"
+      $defs:
+        company:
+          type: object
+          properties:
+            name:
+              type: string`
+
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &rootNode))
+
+	cfg := CreateOpenAPIIndexConfig()
+	cfg.AvoidCircularReferenceCheck = true
+	idx := NewSpecIndexWithConfig(&rootNode, cfg)
+
+	var found *Reference
+	for _, ref := range idx.GetAllInlineSchemas() {
+		if ref.FullDefinition == "#/components/schemas/Widget/$defs/company" ||
+			strings.HasSuffix(ref.FullDefinition, "#/components/schemas/Widget/$defs/company") {
+			found = ref
+			break
+		}
+	}
+	require.NotNil(t, found)
+	assert.Equal(t, "#/components/schemas/Widget/$defs/company", found.Definition)
+	assert.Equal(t, "object", found.Node.Content[1].Value)
+}
+
 func TestSpecIndex_GetExtensionRefsSequenced(t *testing.T) {
 	yml := `openapi: 3.1.0
 info:

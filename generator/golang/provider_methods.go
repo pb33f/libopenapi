@@ -70,6 +70,7 @@ func writeSchemaMetadataTypes(b *strings.Builder) {
 	DependentSchemas      []openAPINamedSchemaMetadata
 	DependentRequired     []openAPIStringList
 	PatternProperties     []openAPINamedSchemaMetadata
+	Defs                  []openAPINamedSchemaMetadata
 	PropertyNames         *openAPISchemaMetadata
 	UnevaluatedItems      *openAPISchemaMetadata
 	UnevaluatedProperties *openAPIDynamicSchemaBool
@@ -207,6 +208,7 @@ func (g *Generator) schemaMetadataLiteralWithRef(ref string, schema *highbase.Sc
 	writeMetadataField(&b, depth+1, "DependentSchemas", g.schemaMapMetadataLiteral(schema.DependentSchemas, depth+1))
 	writeMetadataField(&b, depth+1, "DependentRequired", metadataStringListMapLiteral(schema.DependentRequired, depth+1))
 	writeMetadataField(&b, depth+1, "PatternProperties", g.schemaMapMetadataLiteral(schema.PatternProperties, depth+1))
+	writeMetadataField(&b, depth+1, "Defs", g.schemaMapMetadataLiteral(schema.Defs, depth+1))
 	writeMetadataField(&b, depth+1, "PropertyNames", g.optionalSchemaProxyMetadataLiteral(schema.PropertyNames, depth+1))
 	writeMetadataField(&b, depth+1, "UnevaluatedItems", g.optionalSchemaProxyMetadataLiteral(schema.UnevaluatedItems, depth+1))
 	writeMetadataField(&b, depth+1, "UnevaluatedProperties", g.metadataDynamicSchemaBoolLiteral(schema.UnevaluatedProperties, depth+1))

@@ -26,6 +26,37 @@ func TestDynamicValue_IsA(t *testing.T) {
 	assert.False(t, dv.IsB())
 }
 
+func TestNewSchemaProxy_PreservesDefs(t *testing.T) {
+	yml := `type: object
+$defs:
+  company:
+    type: object
+    properties:
+      name:
+        type: string`
+
+	var compNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &compNode))
+
+	sp := new(lowbase.SchemaProxy)
+	require.NoError(t, sp.Build(context.Background(), nil, compNode.Content[0], nil))
+
+	schemaProxy := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	})
+	compiled := schemaProxy.Schema()
+	require.NotNil(t, compiled)
+	require.NotNil(t, compiled.Defs)
+	assert.Equal(t, "object", compiled.Defs.GetOrZero("company").Schema().Type[0])
+
+	rendered, err := compiled.Render()
+	require.NoError(t, err)
+	renderedText := string(rendered)
+	assert.Contains(t, renderedText, "$defs:")
+	assert.Contains(t, renderedText, "company:")
+}
+
 func TestNewSchemaProxy(t *testing.T) {
 	// check proxy
 	yml := `components:

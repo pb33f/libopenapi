@@ -354,6 +354,27 @@ func Test_Schema(t *testing.T) {
 	assert.Equal(t, "#dynamicRefTarget", sch.DynamicRef.Value)
 }
 
+func TestSchema_BuildDefs(t *testing.T) {
+	yml := `type: object
+$defs:
+  company:
+    type: object
+    properties:
+      name:
+        type: string
+  tag:
+    type: string`
+
+	var rootNode yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte(yml), &rootNode))
+
+	var sch Schema
+	assert.NoError(t, sch.Build(context.Background(), rootNode.Content[0], nil))
+	assert.Equal(t, 2, orderedmap.Len(sch.Defs.Value))
+	assert.Equal(t, "object", low.FindItemInOrderedMap("company", sch.Defs.Value).Value.Schema().Type.Value.A)
+	assert.Equal(t, "string", low.FindItemInOrderedMap("tag", sch.Defs.Value).Value.Schema().Type.Value.A)
+}
+
 func TestSchemaAllOfSequenceOrder(t *testing.T) {
 	testSpec := test_get_allOf_schema_blob()
 
@@ -3253,6 +3274,23 @@ func TestBuildSchemaList_RefNotFound(t *testing.T) {
 	err := schema.Build(context.Background(), schemaNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "reference cannot be found")
+}
+
+func TestBuildSchema_DefsRefNotFound(t *testing.T) {
+	yml := `$defs:
+  missing:
+    $ref: '#/components/schemas/Missing'`
+
+	var schemaNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &schemaNode)
+	cfg := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&schemaNode, cfg)
+
+	var schema Schema
+	_ = low.BuildModel(schemaNode.Content[0], &schema)
+	err := schema.Build(context.Background(), schemaNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "schema properties build failed")
 }
 
 func TestBuildSchema_SkipExternalRef(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -217,6 +218,23 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 	}
 
 	if len(location) > 0 {
+		if isJSONSchemaDefsLocation(location) {
+			defName := decodeJSONSchemaDefsSegment(location[len(location)-1])
+			componentName := jsonSchemaDefsComponentName(pr, defName, compositionDelimiter(cf))
+			pr.originalName = defName
+			pr.name = componentName
+			pr.location = []string{v3low.ComponentsLabel, v3low.SchemasLabel, componentName}
+			handled, err := composeReferenceAs(v3low.SchemasLabel, componentName, components, pr, idx, cf)
+			if err != nil {
+				return err
+			}
+			if handled {
+				return nil
+			}
+			unknown(pr, cf)
+			return nil
+		}
+
 		pr.location = location
 		if location[0] == v3low.ComponentsLabel {
 			if len(location) > 2 {
@@ -267,6 +285,56 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 		unknown(pr, cf)
 	}
 	return nil
+}
+
+func isJSONSchemaDefsLocation(location []string) bool {
+	return len(location) >= 2 && location[0] == lowbase.DefsLabel
+}
+
+func jsonSchemaDefsComponentName(pr *processRef, defName, delimiter string) string {
+	sourceName := ""
+	if pr != nil && pr.ref != nil {
+		sourceName = deriveNameFromFullDefinition(pr.ref.FullDefinition)
+	}
+	if sourceName == "." || sourceName == "" || sourceName == defName {
+		return sanitizeComponentName(defName)
+	}
+	return sanitizeComponentName(sourceName + delimiter + defName)
+}
+
+func decodeJSONSchemaDefsSegment(segment string) string {
+	if decoded, err := url.PathUnescape(segment); err == nil {
+		segment = decoded
+	}
+	return decodeSingleSegmentPointer(segment)
+}
+
+func sanitizeComponentName(name string) string {
+	if name == "" {
+		return fallbackSchemaComponentName
+	}
+	var b strings.Builder
+	b.Grow(len(name))
+	lastReplacement := false
+	for _, r := range name {
+		if isOpenAPIComponentNameChar(r) {
+			b.WriteRune(r)
+			lastReplacement = false
+			continue
+		}
+		if !lastReplacement {
+			b.WriteByte('_')
+			lastReplacement = true
+		}
+	}
+	return b.String()
+}
+
+func isOpenAPIComponentNameChar(r rune) bool {
+	return r >= 'a' && r <= 'z' ||
+		r >= 'A' && r <= 'Z' ||
+		r >= '0' && r <= '9' ||
+		r == '.' || r == '_' || r == '-'
 }
 
 // enqueueDiscriminatorMappingTargets ensures mapping targets are composed into components.

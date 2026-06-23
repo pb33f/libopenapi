@@ -247,6 +247,7 @@ func applySchemaFidelity(schema *highbase.Schema, ir *SchemaIR) {
 	schema.Then = src.Then
 	schema.DependentSchemas = src.DependentSchemas
 	schema.DependentRequired = src.DependentRequired
+	schema.Defs = src.Defs
 	schema.PropertyNames = src.PropertyNames
 	schema.UnevaluatedItems = src.UnevaluatedItems
 	schema.UnevaluatedProperties = src.UnevaluatedProperties
