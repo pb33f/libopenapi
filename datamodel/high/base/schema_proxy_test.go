@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -2214,4 +2215,108 @@ func TestCreateSchemaProxyRefWithSchema_IsRefWithSiblings(t *testing.T) {
 
 	refWithNilSchema := CreateSchemaProxyRefWithSchema("#/components/schemas/Pet", nil)
 	assert.False(t, refWithNilSchema.isRefWithSiblings())
+}
+
+// findScalarNode returns the first scalar node in the tree whose value matches.
+func findScalarNode(n *yaml.Node, value string) *yaml.Node {
+	if n == nil {
+		return nil
+	}
+	if n.Kind == yaml.ScalarNode && n.Value == value {
+		return n
+	}
+	for _, c := range n.Content {
+		if found := findScalarNode(c, value); found != nil {
+			return found
+		}
+	}
+	return nil
+}
+
+// TestSchemaProxy_ConcurrentRender_DoesNotMutateSharedNodes is a regression test
+// for a data race in inline rendering. Rendering a schema runs the underlying
+// *yaml.Node through (*yaml.Node).Encode, whose desolve stage rewrites Tag/Style
+// in place. Because the representer aliases input nodes, rendering mutated the
+// model's shared scalar nodes: while one goroutine rendered a schema, another
+// reading the same node (e.g. a const type check) could observe the tag briefly
+// cleared to "" and report a bogus "const value type does not match" error.
+//
+// The renders below must never mutate the captured `const` scalar's tag.
+// Run under `-race` to also catch the underlying data race directly.
+func TestSchemaProxy_ConcurrentRender_DoesNotMutateSharedNodes(t *testing.T) {
+	const ymlComponents = `components:
+    schemas:
+     Status:
+       type: object
+       properties:
+         state:
+           type: string
+           const: ok`
+
+	idx := func() *index.SpecIndex {
+		var idxNode yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(ymlComponents), &idxNode))
+		return index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+	}()
+
+	const ymlSchema = `type: object
+properties:
+  state:
+    type: string
+    const: ok`
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(ymlSchema), &node))
+
+	// The `const: ok` scalar is a string; rendering must leave its tag intact.
+	constNode := findScalarNode(node.Content[0], "ok")
+	require.NotNil(t, constNode)
+	require.Equal(t, "!!str", constNode.Tag)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	require.NoError(t, lowProxy.Build(context.Background(), nil, node.Content[0], idx))
+	highProxy := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: node.Content[0],
+	})
+
+	var corrupted atomic.Int64
+	stop := make(chan struct{})
+
+	var readers sync.WaitGroup
+	for i := 0; i < 4; i++ {
+		readers.Add(1)
+		go func() {
+			defer readers.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					if constNode.Tag != "!!str" {
+						corrupted.Add(1)
+					}
+				}
+			}
+		}()
+	}
+
+	var writers sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		writers.Add(1)
+		go func() {
+			defer writers.Done()
+			for j := 0; j < 20; j++ {
+				_, err := highProxy.MarshalYAMLInlineWithContext(NewInlineRenderContext())
+				assert.NoError(t, err)
+			}
+		}()
+	}
+
+	writers.Wait()
+	close(stop)
+	readers.Wait()
+
+	assert.Equal(t, int64(0), corrupted.Load(),
+		"rendering mutated the shared const scalar's tag (was cleared by desolve)")
+	assert.Equal(t, "!!str", constNode.Tag, "shared const scalar tag must survive rendering")
 }
