@@ -1700,3 +1700,43 @@ func TestOriginalFloatLexeme(t *testing.T) {
 		})
 	}
 }
+
+func TestEncodeSafeValue_DeepCopiesYAMLNodes(t *testing.T) {
+	// non-*yaml.Node values pass through unchanged.
+	assert.Equal(t, 42, encodeSafeValue(42))
+	assert.Equal(t, "hello", encodeSafeValue("hello"))
+
+	// nil nodes return nil rather than panicking.
+	assert.Nil(t, deepCopyYAMLNode(nil))
+	assert.Nil(t, encodeSafeValue((*yaml.Node)(nil)))
+
+	// a *yaml.Node is deep-copied: every node is a distinct pointer, including
+	// content children and aliases, so mutating the copy can't affect the model.
+	anchor := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "anchored"}
+	orig := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "key"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "val", Style: yaml.DoubleQuotedStyle},
+			{Kind: yaml.AliasNode, Value: "ref", Alias: anchor},
+		},
+	}
+
+	copied, ok := encodeSafeValue(orig).(*yaml.Node)
+	assert.True(t, ok)
+	assert.NotSame(t, orig, copied)
+	assert.Equal(t, len(orig.Content), len(copied.Content))
+	for i := range orig.Content {
+		assert.NotSame(t, orig.Content[i], copied.Content[i])
+		assert.Equal(t, orig.Content[i].Value, copied.Content[i].Value)
+	}
+
+	// the alias child is deep-copied too.
+	assert.NotNil(t, copied.Content[2].Alias)
+	assert.NotSame(t, anchor, copied.Content[2].Alias)
+	assert.Equal(t, "anchored", copied.Content[2].Alias.Value)
+
+	// mutating the copy must not touch the original (this is the whole point).
+	copied.Content[1].Tag = ""
+	assert.Equal(t, "!!str", orig.Content[1].Tag)
+}
