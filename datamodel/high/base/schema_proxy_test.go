@@ -2194,8 +2194,8 @@ func TestTransformedRefRenderHelpers(t *testing.T) {
 	assert.Nil(t, key)
 	assert.Nil(t, value)
 
-	assert.Nil(t, cloneYAMLNode(nil))
-	cloned := cloneYAMLNode(mapping)
+	assert.Nil(t, utils.CloneYAMLNode(nil))
+	cloned := utils.CloneYAMLNode(mapping)
 	require.NotNil(t, cloned)
 	assert.Equal(t, mapping.Content[0].Value, cloned.Content[0].Value)
 	cloned.Content[0].Value = "changed"

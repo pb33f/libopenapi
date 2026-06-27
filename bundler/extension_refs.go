@@ -67,47 +67,10 @@ func resolveExtensionRefContent(ctx context.Context, ref *index.Reference, _ *in
 		foundRef := ref.Index.FindComponent(ctx, ref.FullDefinition)
 		if foundRef != nil && foundRef.Node != nil {
 			// Deep copy to avoid mutating original component
-			return deepCopyNode(foundRef.Node)
+			return utils.CloneYAMLNodeWithFlags(foundRef.Node, utils.YAMLNodeCloneUnwrapDocument)
 		}
 	}
 	return nil
-}
-
-// deepCopyNode creates a deep copy of a yaml.Node tree.
-func deepCopyNode(node *yaml.Node) *yaml.Node {
-	if node == nil {
-		return nil
-	}
-
-	// unwrap document nodes
-	if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
-		node = node.Content[0]
-	}
-
-	// create copy
-	nodeCopy := &yaml.Node{
-		Kind:        node.Kind,
-		Style:       node.Style,
-		Tag:         node.Tag,
-		Value:       node.Value,
-		Anchor:      node.Anchor,
-		Alias:       node.Alias,
-		HeadComment: node.HeadComment,
-		LineComment: node.LineComment,
-		FootComment: node.FootComment,
-		Line:        node.Line,
-		Column:      node.Column,
-	}
-
-	// deep copy children
-	if len(node.Content) > 0 {
-		nodeCopy.Content = make([]*yaml.Node, len(node.Content))
-		for i, child := range node.Content {
-			nodeCopy.Content[i] = deepCopyNode(child)
-		}
-	}
-
-	return nodeCopy
 }
 
 func replaceRefNodeWithContent(refNode, content *yaml.Node) {

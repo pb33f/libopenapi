@@ -1707,7 +1707,6 @@ func TestEncodeSafeValue_DeepCopiesYAMLNodes(t *testing.T) {
 	assert.Equal(t, "hello", encodeSafeValue("hello"))
 
 	// nil nodes return nil rather than panicking.
-	assert.Nil(t, deepCopyYAMLNode(nil))
 	assert.Nil(t, encodeSafeValue((*yaml.Node)(nil)))
 
 	// a *yaml.Node is deep-copied: every node is a distinct pointer, including

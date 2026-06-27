@@ -356,26 +356,9 @@ func (n *NodeBuilder) Render() *yaml.Node {
 // the same node. Encoding a copy keeps shared nodes immutable.
 func encodeSafeValue(value any) any {
 	if vn, ok := value.(*yaml.Node); ok {
-		return deepCopyYAMLNode(vn)
+		return utils.CloneYAMLNode(vn)
 	}
 	return value
-}
-
-func deepCopyYAMLNode(n *yaml.Node) *yaml.Node {
-	if n == nil {
-		return nil
-	}
-	c := *n
-	if n.Alias != nil {
-		c.Alias = deepCopyYAMLNode(n.Alias)
-	}
-	if n.Content != nil {
-		c.Content = make([]*yaml.Node, len(n.Content))
-		for i, child := range n.Content {
-			c.Content[i] = deepCopyYAMLNode(child)
-		}
-	}
-	return &c
 }
 
 // AddYAMLNode will add a new *yaml.Node to the parent node, using the tag, key and value provided.

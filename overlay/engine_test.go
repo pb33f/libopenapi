@@ -558,25 +558,6 @@ info:
 	assert.NotNil(t, result)
 }
 
-func TestCloneNode_WithAlias(t *testing.T) {
-	// Create a node with an alias
-	alias := &yaml.Node{Kind: yaml.ScalarNode, Value: "aliased"}
-	node := &yaml.Node{
-		Kind:  yaml.ScalarNode,
-		Alias: alias,
-	}
-
-	cloned := cloneNode(node)
-	assert.NotNil(t, cloned.Alias)
-	assert.Equal(t, "aliased", cloned.Alias.Value)
-}
-
-func TestCloneNode_Nil(t *testing.T) {
-	// cloneNode should handle nil input gracefully
-	cloned := cloneNode(nil)
-	assert.Nil(t, cloned)
-}
-
 func TestApply_InvalidJSONPath(t *testing.T) {
 	targetYAML := `openapi: 3.0.0
 info:
