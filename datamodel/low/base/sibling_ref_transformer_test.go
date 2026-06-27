@@ -449,59 +449,6 @@ $ref: "#/components/schemas/Base"`
 	})
 }
 
-func TestSiblingRefTransformer_copyNode(t *testing.T) {
-	config := index.CreateOpenAPIIndexConfig()
-	var rootNode yaml.Node
-	idx := index.NewSpecIndexWithConfig(&rootNode, config)
-	transformer := NewSiblingRefTransformer(idx)
-
-	t.Run("copy simple scalar node", func(t *testing.T) {
-		original := &yaml.Node{
-			Kind:   yaml.ScalarNode,
-			Value:  "test value",
-			Line:   10,
-			Column: 5,
-		}
-
-		copied := transformer.copyNode(original)
-
-		assert.NotSame(t, original, copied)
-		assert.Equal(t, original.Kind, copied.Kind)
-		assert.Equal(t, original.Value, copied.Value)
-		assert.Equal(t, original.Line, copied.Line)
-		assert.Equal(t, original.Column, copied.Column)
-	})
-
-	t.Run("copy mapping node with content", func(t *testing.T) {
-		original := &yaml.Node{
-			Kind: yaml.MappingNode,
-			Content: []*yaml.Node{
-				{Kind: yaml.ScalarNode, Value: "key1"},
-				{Kind: yaml.ScalarNode, Value: "value1"},
-				{Kind: yaml.ScalarNode, Value: "key2"},
-				{Kind: yaml.ScalarNode, Value: "value2"},
-			},
-		}
-
-		copied := transformer.copyNode(original)
-
-		assert.NotSame(t, original, copied)
-		assert.Equal(t, original.Kind, copied.Kind)
-		assert.Len(t, copied.Content, 4)
-
-		// verify content is copied but not same references
-		for i, child := range copied.Content {
-			assert.NotSame(t, original.Content[i], child)
-			assert.Equal(t, original.Content[i].Value, child.Value)
-		}
-	})
-
-	t.Run("copy nil node", func(t *testing.T) {
-		copied := transformer.copyNode(nil)
-		assert.Nil(t, copied)
-	})
-}
-
 func TestSiblingRefTransformer_ChecBreak(t *testing.T) {
 	transformer := NewSiblingRefTransformer(nil)
 	result, str := transformer.ExtractSiblingProperties(&yaml.Node{

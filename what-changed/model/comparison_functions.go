@@ -487,8 +487,8 @@ func compareYAMLNodesForChanges(left, right *yaml.Node) bool {
 	if low.CompareYAMLNodes(left, right) {
 		return true
 	}
-	leftClone := cloneYAMLNodeWithoutAnchors(left, nil)
-	rightClone := cloneYAMLNodeWithoutAnchors(right, nil)
+	leftClone := utils.CloneYAMLNodeWithFlags(left, utils.YAMLNodeCloneStripAnchors)
+	rightClone := utils.CloneYAMLNodeWithFlags(right, utils.YAMLNodeCloneStripAnchors)
 	if low.CompareYAMLNodes(leftClone, rightClone) {
 		return true
 	}
@@ -496,31 +496,6 @@ func compareYAMLNodesForChanges(left, right *yaml.Node) bool {
 	leftBytes, leftErr := yaml.Marshal(leftClone)
 	rightBytes, rightErr := yaml.Marshal(rightClone)
 	return leftErr == nil && rightErr == nil && bytes.Equal(leftBytes, rightBytes)
-}
-
-func cloneYAMLNodeWithoutAnchors(node *yaml.Node, seen map[*yaml.Node]*yaml.Node) *yaml.Node {
-	if node == nil {
-		return nil
-	}
-	if seen == nil {
-		seen = make(map[*yaml.Node]*yaml.Node)
-	}
-	if clone, ok := seen[node]; ok {
-		return clone
-	}
-
-	clone := *node
-	clone.Anchor = ""
-	seen[node] = &clone
-
-	if len(node.Content) > 0 {
-		clone.Content = make([]*yaml.Node, len(node.Content))
-		for i, child := range node.Content {
-			clone.Content[i] = cloneYAMLNodeWithoutAnchors(child, seen)
-		}
-	}
-	clone.Alias = cloneYAMLNodeWithoutAnchors(node.Alias, seen)
-	return &clone
 }
 
 // CheckForModification will check left and right yaml.Node instances for changes. Anything that is found in both

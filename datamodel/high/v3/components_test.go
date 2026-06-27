@@ -478,25 +478,6 @@ func TestFindMapValueNodeAndUpsertMapNodeEntry(t *testing.T) {
 	assert.Equal(t, "./updated.yaml", rendered.Content[1].Value)
 }
 
-func TestCloneYAMLNode_ClonesRecursively(t *testing.T) {
-	assert.Nil(t, cloneYAMLNode(nil))
-
-	original := utils.CreateEmptyMapNode()
-	original.Content = append(
-		original.Content,
-		utils.CreateStringNode("child"),
-		utils.CreateStringNode("value"),
-	)
-
-	cloned := cloneYAMLNode(original)
-	require.NotNil(t, cloned)
-	require.NotSame(t, original, cloned)
-	require.Len(t, cloned.Content, 2)
-	assert.NotSame(t, original.Content[0], cloned.Content[0])
-	assert.Equal(t, "child", cloned.Content[0].Value)
-	assert.Equal(t, "value", cloned.Content[1].Value)
-}
-
 func setLowComponentsIndex(comp *v3.Components, idx *index.SpecIndex) {
 	field := reflect.ValueOf(comp).Elem().FieldByName("index")
 	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().Set(reflect.ValueOf(idx))

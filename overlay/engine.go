@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/jsonpath/pkg/jsonpath"
 	"github.com/pb33f/jsonpath/pkg/jsonpath/config"
 	highoverlay "github.com/pb33f/libopenapi/datamodel/high/overlay"
+	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -210,7 +211,7 @@ func removeNode(idx parentIndex, node *yaml.Node) {
 
 func mergeNode(node *yaml.Node, merge *yaml.Node) {
 	if node.Kind != merge.Kind {
-		*node = *cloneNode(merge)
+		*node = *utils.CloneYAMLNode(merge)
 		return
 	}
 	switch node.Kind {
@@ -237,39 +238,13 @@ NextKey:
 			}
 		}
 
-		node.Content = append(node.Content, merge.Content[i], cloneNode(mergeValue))
+		node.Content = append(node.Content, merge.Content[i], utils.CloneYAMLNode(mergeValue))
 	}
 }
 
 func mergeSequenceNode(node *yaml.Node, merge *yaml.Node) {
 	// clone each child individually to avoid wasteful intermediate allocation
 	for _, child := range merge.Content {
-		node.Content = append(node.Content, cloneNode(child))
+		node.Content = append(node.Content, utils.CloneYAMLNode(child))
 	}
-}
-
-func cloneNode(node *yaml.Node) *yaml.Node {
-	if node == nil {
-		return nil
-	}
-	newNode := &yaml.Node{
-		Kind:        node.Kind,
-		Style:       node.Style,
-		Tag:         node.Tag,
-		Value:       node.Value,
-		Anchor:      node.Anchor,
-		HeadComment: node.HeadComment,
-		LineComment: node.LineComment,
-		FootComment: node.FootComment,
-	}
-	if node.Alias != nil {
-		newNode.Alias = cloneNode(node.Alias)
-	}
-	if node.Content != nil {
-		newNode.Content = make([]*yaml.Node, len(node.Content))
-		for i, child := range node.Content {
-			newNode.Content[i] = cloneNode(child)
-		}
-	}
-	return newNode
 }
