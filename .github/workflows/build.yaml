@@ -16,18 +16,17 @@ jobs:
     name: Build Windows
     runs-on: blacksmith-4vcpu-windows-2025
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Go 1.x
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.25.0
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
         id: go
 
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Get dependencies
-        run: |
-          go get -v -t -d ./...
       - name: Test
         run: go test ./...
   build:
@@ -35,26 +34,19 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up Go 1.x
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v6
         with:
-          go-version: 1.25.0
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
         id: go
 
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Get dependencies
-        run: |
-          go get -v -t -d ./...
-          if [ -f Gopkg.toml ]; then
-              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-              dep ensure
-          fi
-      - name: Test
-        run: go test ./...
-      - name: Coverage
-        run: go test -v -coverprofile=coverage.out ./...
+      - name: Test with coverage
+        run: go test -coverprofile=coverage.out ./...
       - uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
