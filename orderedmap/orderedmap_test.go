@@ -10,10 +10,26 @@ import (
 	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
+	"go.yaml.in/yaml/v4"
 )
+
+type yamlErrorMarshaler struct{}
+
+func (yamlErrorMarshaler) MarshalYAML() (interface{}, error) {
+	return nil, errors.New("yaml marshal failed")
+}
+
+type yamlNodeMarshaler struct {
+	node *yaml.Node
+}
+
+func (y yamlNodeMarshaler) MarshalYAML() (interface{}, error) {
+	return y.node, nil
+}
 
 func TestOrderedMap(t *testing.T) {
 	t.Run("Empty", func(t *testing.T) {
@@ -262,6 +278,159 @@ func TestMap(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, 1, resultCounter)
 		})
+	})
+}
+
+func TestMapMarshalYAMLDoesNotMutateYAMLNodeValues(t *testing.T) {
+	t.Run("nil map marshals as null", func(t *testing.T) {
+		var m *orderedmap.Map[string, *yaml.Node]
+
+		node, err := m.MarshalYAML()
+		require.NoError(t, err)
+		require.Nil(t, node)
+
+		rendered, err := yaml.Marshal(m)
+		require.NoError(t, err)
+		require.Equal(t, "null\n", string(rendered))
+	})
+
+	t.Run("nil value marshals as null", func(t *testing.T) {
+		m := orderedmap.New[string, any]()
+		m.Set("x-null", nil)
+
+		rendered, err := yaml.Marshal(m)
+		require.NoError(t, err)
+		require.Equal(t, "x-null: null\n", string(rendered))
+	})
+
+	t.Run("nil pointer value marshals as null", func(t *testing.T) {
+		var value *yamlErrorMarshaler
+		m := orderedmap.New[string, *yamlErrorMarshaler]()
+		m.Set("x-null", value)
+
+		rendered, err := yaml.Marshal(m)
+		require.NoError(t, err)
+		require.Equal(t, "x-null: null\n", string(rendered))
+	})
+
+	t.Run("key marshaler error", func(t *testing.T) {
+		m := orderedmap.New[yamlErrorMarshaler, string]()
+		m.Set(yamlErrorMarshaler{}, "value")
+
+		_, err := m.MarshalYAML()
+		require.ErrorContains(t, err, "yaml marshal failed")
+	})
+
+	t.Run("value marshaler error", func(t *testing.T) {
+		m := orderedmap.New[string, yamlErrorMarshaler]()
+		m.Set("x-error", yamlErrorMarshaler{})
+
+		_, err := m.MarshalYAML()
+		require.ErrorContains(t, err, "yaml marshal failed")
+	})
+
+	t.Run("key encode error", func(t *testing.T) {
+		m := orderedmap.New[chan int, string]()
+		m.Set(make(chan int), "value")
+
+		_, err := m.MarshalYAML()
+		require.Error(t, err)
+	})
+
+	t.Run("value encode error", func(t *testing.T) {
+		m := orderedmap.New[string, chan int]()
+		m.Set("x-error", make(chan int))
+
+		_, err := m.MarshalYAML()
+		require.Error(t, err)
+	})
+
+	t.Run("direct scalar node", func(t *testing.T) {
+		valueNode := &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Tag:   "!!bool",
+			Value: "true",
+		}
+
+		m := orderedmap.New[string, *yaml.Node]()
+		m.Set("x-custom", valueNode)
+
+		_, err := m.MarshalYAML()
+		require.NoError(t, err)
+
+		require.Equal(t, yaml.ScalarNode, valueNode.Kind)
+		require.Equal(t, "!!bool", valueNode.Tag)
+		require.Equal(t, "true", valueNode.Value)
+		require.Equal(t, yaml.Style(0), valueNode.Style)
+	})
+
+	t.Run("nested node tree", func(t *testing.T) {
+		valueNode := &yaml.Node{
+			Kind: yaml.MappingNode,
+			Tag:  "!!map",
+			Content: []*yaml.Node{
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "enabled"},
+				{Kind: yaml.ScalarNode, Tag: "!!bool", Value: "true"},
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "levels"},
+				{
+					Kind: yaml.SequenceNode,
+					Tag:  "!!seq",
+					Content: []*yaml.Node{
+						{Kind: yaml.ScalarNode, Tag: "!!int", Value: "1"},
+						{Kind: yaml.ScalarNode, Tag: "!!int", Value: "2"},
+					},
+				},
+			},
+		}
+
+		m := orderedmap.New[string, *yaml.Node]()
+		m.Set("x-nested", valueNode)
+
+		_, err := yaml.Marshal(m)
+		require.NoError(t, err)
+
+		require.Equal(t, "!!map", valueNode.Tag)
+		require.Equal(t, "!!str", valueNode.Content[0].Tag)
+		require.Equal(t, "!!bool", valueNode.Content[1].Tag)
+		require.Equal(t, "!!str", valueNode.Content[2].Tag)
+		require.Equal(t, "!!seq", valueNode.Content[3].Tag)
+		require.Equal(t, "!!int", valueNode.Content[3].Content[0].Tag)
+		require.Equal(t, "!!int", valueNode.Content[3].Content[1].Tag)
+	})
+
+	t.Run("marshaler key returning node", func(t *testing.T) {
+		keyNode := &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Tag:   "!!str",
+			Value: "x-custom",
+		}
+		m := orderedmap.New[low.KeyReference[string], string]()
+		m.Set(low.KeyReference[string]{
+			Value:   "x-custom",
+			KeyNode: keyNode,
+		}, "true")
+
+		_, err := yaml.Marshal(m)
+		require.NoError(t, err)
+
+		require.Equal(t, "!!str", keyNode.Tag)
+		require.Equal(t, "x-custom", keyNode.Value)
+	})
+
+	t.Run("recursive marshaler returning node", func(t *testing.T) {
+		valueNode := &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Tag:   "!!bool",
+			Value: "true",
+		}
+		m := orderedmap.New[string, yamlNodeMarshaler]()
+		m.Set("x-custom", yamlNodeMarshaler{node: valueNode})
+
+		_, err := yaml.Marshal(m)
+		require.NoError(t, err)
+
+		require.Equal(t, "!!bool", valueNode.Tag)
+		require.Equal(t, "true", valueNode.Value)
 	})
 }
 
