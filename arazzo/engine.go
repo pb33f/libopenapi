@@ -44,6 +44,19 @@ type ExecutionResponse struct {
 // EngineConfig configures engine behavior.
 type EngineConfig struct {
 	RetainResponseBodies bool // If false, nil out response bodies after extracting outputs
+
+	// SleepFunc, when non-nil, replaces the engine's default wait between
+	// retry attempts (a failure action's retryAfter). The engine calls it
+	// with the workflow context and the retryAfter duration; returning an
+	// error aborts the workflow, exactly as a cancelled context does with
+	// the default sleeper.
+	//
+	// Injecting it lets a host substitute its own timer: a durable workflow
+	// runtime (Temporal, DBOS, Restate) passes its replay-safe durable
+	// sleep — a real time.Timer inside a replayed workflow body would block
+	// the scheduler or break determinism — and tests pass a recording fake
+	// to avoid real waits. Nil uses the default context-aware timer.
+	SleepFunc func(ctx context.Context, d time.Duration) error
 }
 
 // Engine orchestrates the execution of Arazzo workflows.
@@ -292,7 +305,7 @@ func (e *Engine) runWorkflow(ctx context.Context, workflowId string, inputs map[
 		}
 		if actionResult.retryCurrent {
 			retryCounts[step.StepId]++
-			if err := sleepWithContext(ctx, actionResult.retryAfter); err != nil {
+			if err := e.sleep(ctx, actionResult.retryAfter); err != nil {
 				result.Success = false
 				result.Error = err
 				break
@@ -426,6 +439,16 @@ func stepFailureOrDefault(stepID string, stepErr error) error {
 		return stepErr
 	}
 	return &StepFailureError{StepId: stepID, CriterionIndex: -1}
+}
+
+// sleep waits between retry attempts, through the configured SleepFunc when
+// one is set (see EngineConfig.SleepFunc) and the default context-aware
+// timer otherwise.
+func (e *Engine) sleep(ctx context.Context, d time.Duration) error {
+	if e.config != nil && e.config.SleepFunc != nil {
+		return e.config.SleepFunc(ctx, d)
+	}
+	return sleepWithContext(ctx, d)
 }
 
 // parseExpression parses and caches an expression.

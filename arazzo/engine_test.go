@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/pb33f/libopenapi/arazzo/expression"
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
@@ -672,5 +673,64 @@ func TestEngine_RunWorkflow_RetainResponseBodiesHonorsConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, result.Success)
 		assert.NotNil(t, exec.response.Body)
+	})
+}
+
+func TestEngine_RunWorkflow_CustomSleepFunc(t *testing.T) {
+	retryAfter := 0.05
+	retryLimit := int64(3)
+	doc := &high.Arazzo{
+		Workflows: []*high.Workflow{
+			{
+				WorkflowId: "wf1",
+				Steps: []*high.Step{
+					{
+						StepId:      "s1",
+						OperationId: "op1",
+						SuccessCriteria: []*high.Criterion{
+							{Condition: "$statusCode == 200"},
+						},
+						OnFailure: []*high.FailureAction{
+							{Name: "retry", Type: "retry", RetryAfter: &retryAfter, RetryLimit: &retryLimit},
+						},
+					},
+				},
+			},
+		},
+	}
+	executor := &sequenceExecutor{
+		statuses: map[string][]int{
+			"op1": {500, 200},
+		},
+	}
+
+	t.Run("custom sleeper replaces the default wait", func(t *testing.T) {
+		var slept []time.Duration
+		engine := NewEngineWithConfig(doc, executor, nil, &EngineConfig{
+			SleepFunc: func(_ context.Context, d time.Duration) error {
+				slept = append(slept, d)
+				return nil
+			},
+		})
+		result, err := engine.RunWorkflow(context.Background(), "wf1", nil)
+		require.NoError(t, err)
+		require.True(t, result.Success)
+		require.Len(t, slept, 1)
+		assert.Equal(t, 50*time.Millisecond, slept[0])
+		assert.Equal(t, []string{"op1", "op1"}, executor.operationIDs)
+	})
+
+	t.Run("sleeper error aborts the workflow", func(t *testing.T) {
+		executor := &sequenceExecutor{
+			statuses: map[string][]int{"op1": {500, 200}},
+		}
+		sleepErr := errors.New("timer torn down")
+		engine := NewEngineWithConfig(doc, executor, nil, &EngineConfig{
+			SleepFunc: func(context.Context, time.Duration) error { return sleepErr },
+		})
+		result, err := engine.RunWorkflow(context.Background(), "wf1", nil)
+		require.NoError(t, err)
+		require.False(t, result.Success)
+		assert.ErrorIs(t, result.Error, sleepErr)
 	})
 }
