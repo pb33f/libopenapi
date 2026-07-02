@@ -121,6 +121,81 @@ func TestLoadDocument_Simple_V3(t *testing.T) {
 	assert.NotNil(t, v3Doc)
 }
 
+func TestLoadDocument_XquikOpenAPI31(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Xquik API
+  version: "1.0"
+servers:
+  - url: https://xquik.com
+paths:
+  /api/v1/x/tweets/search:
+    get:
+      operationId: searchTweets
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search results.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchTweetsResponse"
+      security:
+        - apiKey: []
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    SearchTweetsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tweet"
+    Tweet:
+      type: object
+      required:
+        - id
+        - text
+        - authorUsername
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        authorUsername:
+          type: string
+`
+	doc, err := NewDocument([]byte(yml))
+	assert.NoError(t, err)
+	assert.Equal(t, "3.1.0", doc.GetVersion())
+
+	v3Doc, docErr := doc.BuildV3Model()
+	assert.Len(t, utils.UnwrapErrors(docErr), 0)
+	assert.Equal(t, "Xquik API", v3Doc.Model.Info.Title)
+
+	operation := v3Doc.Model.Paths.PathItems.GetOrZero("/api/v1/x/tweets/search").Get
+	assert.Equal(t, "searchTweets", operation.OperationId)
+	assert.Equal(t, "Search results.", operation.Responses.Codes.GetOrZero("200").Description)
+
+	scheme := v3Doc.Model.Components.SecuritySchemes.GetOrZero("apiKey")
+	assert.Equal(t, "apiKey", scheme.Type)
+	assert.Equal(t, "header", scheme.In)
+	assert.Equal(t, "X-API-Key", scheme.Name)
+	assert.Equal(t, 2, orderedmap.Len(v3Doc.Model.Components.Schemas))
+}
+
 func TestLoadDocument_Simple_V3_Error_BadSpec_BuildModel(t *testing.T) {
 	yml := `openapi: 3.0
 paths:
