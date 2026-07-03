@@ -45,3 +45,24 @@ cake:
 	highBytes, _ := highExt.Render()
 	assert.Equal(t, yml, strings.TrimSpace(string(highBytes)))
 }
+
+func TestNewSecurityRequirement_EmptyRequirement(t *testing.T) {
+	var cNode yaml.Node
+
+	yml := `{}`
+
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	var lowExt lowbase.SecurityRequirement
+	_ = lowmodel.BuildModel(cNode.Content[0], &lowExt)
+
+	_ = lowExt.Build(context.Background(), nil, cNode.Content[0], nil)
+
+	highExt := NewSecurityRequirement(&lowExt)
+
+	assert.True(t, highExt.ContainsEmptyRequirement)
+	assert.Equal(t, 0, orderedmap.Len(highExt.Requirements))
+
+	highBytes, _ := highExt.Render()
+	assert.Equal(t, yml, strings.TrimSpace(string(highBytes)))
+}
