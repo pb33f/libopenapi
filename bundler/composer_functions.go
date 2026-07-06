@@ -759,7 +759,7 @@ func walkAndRewriteRefs(
 			// Track extension scope
 			childInExtension := inExtension || strings.HasPrefix(keyNode.Value, "x-")
 
-			if keyNode.Value == "$ref" && valueNode.Kind == yaml.ScalarNode && !inExtension {
+			if keyNode.Value == "$ref" && valueNode.Kind == yaml.ScalarNode {
 				newRef := resolveRefToComposed(valueNode.Value, sourceIdx, processedNodes, rolodex)
 				if newRef != valueNode.Value {
 					valueNode.Value = newRef
