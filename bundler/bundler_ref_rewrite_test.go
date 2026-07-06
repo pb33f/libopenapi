@@ -122,6 +122,57 @@ paths:
 	assertNoFilePathRefs(t, bundled)
 }
 
+func TestBundlerComposed_RewritesRootVendorExtensionRefsToComposedComponents(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mainSpec := `openapi: 3.1.0
+info:
+  title: Root Vendor Extension Ref Test
+  version: 1.0.0
+tags:
+  - name: things
+    x-related-schemas:
+      - $ref: './models.yaml#/components/schemas/Thing'
+paths:
+  /things:
+    get:
+      tags:
+        - things
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: './models.yaml#/components/schemas/Thing'`
+
+	modelsSpec := `components:
+  schemas:
+    Thing:
+      type: object
+      properties:
+        id:
+          type: string`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "openapi.yaml"), []byte(mainSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "models.yaml"), []byte(modelsSpec), 0644))
+
+	mainBytes, err := os.ReadFile(filepath.Join(tmpDir, "openapi.yaml"))
+	require.NoError(t, err)
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+
+	bundled, err := BundleBytesComposed(mainBytes, config, nil)
+	require.NoError(t, err)
+
+	bundledStr := string(bundled)
+	assert.Contains(t, bundledStr, "x-related-schemas:")
+	assert.Contains(t, bundledStr, `$ref: '#/components/schemas/Thing'`)
+	assert.NotContains(t, bundledStr, "./models.yaml#/components/schemas/Thing")
+	assertNoFilePathRefs(t, bundled)
+}
+
 // TestBundlerComposedWithOrigins_TransitiveExternalRefs verifies transitive refs with origin tracking.
 // When schemas use non-standard paths like #/definitions/..., they get inlined rather than composed.
 func TestBundlerComposedWithOrigins_TransitiveExternalRefs(t *testing.T) {
