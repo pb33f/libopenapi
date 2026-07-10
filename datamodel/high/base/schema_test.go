@@ -2141,6 +2141,25 @@ oneOf:
 	assert.NotContains(t, output, "meow:")
 }
 
+func TestSchema_MarshalYAMLInlineWithContext_PreservesProgrammaticDiscriminatorRefs(t *testing.T) {
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("discriminator:\n  propertyName: type\n"), &node))
+	idx := index.NewSpecIndexWithConfig(&node, index.CreateOpenAPIIndexConfig())
+	var lowSchema lowbase.Schema
+	require.NoError(t, lowSchema.Build(context.Background(), node.Content[0], idx))
+	schema := NewSchema(&lowSchema)
+	schema.OneOf = []*SchemaProxy{CreateSchemaProxyRef("#/components/schemas/ProgrammaticOne")}
+	schema.AnyOf = []*SchemaProxy{CreateSchemaProxyRef("#/components/schemas/ProgrammaticAny")}
+
+	result, err := schema.MarshalYAMLInlineWithContext(NewInlineRenderContext())
+	require.NoError(t, err)
+	yamlBytes, err := yaml.Marshal(result)
+	require.NoError(t, err)
+	output := string(yamlBytes)
+	assert.Contains(t, output, "$ref: '#/components/schemas/ProgrammaticOne'")
+	assert.Contains(t, output, "$ref: '#/components/schemas/ProgrammaticAny'")
+}
+
 func TestSchema_MarshalYAMLInlineWithContext_NilContext_PreservesDiscriminatorRefs(t *testing.T) {
 	// Test that with nil context (backward compatibility), discriminator refs are preserved
 
