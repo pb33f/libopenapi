@@ -1,0 +1,28 @@
+openapi: 3.1.0
+info:
+  title: vacuum bundle bug reproducer
+  version: 1.0.0
+paths:
+  /bug-0-29-9:
+    post:
+      requestBody:
+        description: Тело запроса
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BugDto'
+      responses:
+        '200':
+          description: Ответ не предусмотрен
+components:
+  schemas:
+    BugDto:
+      type: object
+      propertyNames:
+        type: string
+        minLength: 3
+        maxLength: 3
+      maxProperties: 500
+      additionalProperties:
+        $ref: './components/schemas/CodeXMap.yaml#/CodeStringOrMapDto'

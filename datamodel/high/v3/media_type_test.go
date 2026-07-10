@@ -17,6 +17,7 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -106,6 +107,15 @@ example: testing a nice mutation`
 	yml, _ = mt.RenderInline()
 
 	assert.Equal(t, op, strings.TrimSpace(string(yml)))
+}
+
+func TestMediaType_MarshalYAMLInlineWithContext_PropagatesSchemaError(t *testing.T) {
+	proxy := base.CreateSchemaProxyRefWithSchema("#/Cycle", &base.Schema{Description: "cycle"})
+	ctx := base.NewInlineRenderContext()
+	require.False(t, ctx.StartRendering("#/Cycle"))
+
+	_, err := (&MediaType{Schema: proxy}).MarshalYAMLInlineWithContext(ctx)
+	require.ErrorContains(t, err, "circular reference")
 }
 
 func TestMediaType_MarshalYAML(t *testing.T) {

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
+	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	v2 "github.com/pb33f/libopenapi/datamodel/high/v2"
 	lowv2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
@@ -57,6 +58,31 @@ func TestNewDocument_Extensions(t *testing.T) {
 	_ = h.Extensions.GetOrZero("x-something-something").Decode(&xSomethingSomething)
 
 	assert.Equal(t, "darkside", xSomethingSomething)
+}
+
+func TestDocument_RenderInlineWithContext(t *testing.T) {
+	initTest()
+	document := NewDocument(lowDoc)
+	ctx := highbase.NewInlineRenderContext()
+	rendered, err := document.RenderInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.Contains(t, string(rendered), "openapi:")
+
+	node, err := document.MarshalYAMLInlineWithContext("wrong context")
+	assert.NoError(t, err)
+	assert.NotNil(t, node)
+
+	broken := &Document{
+		Version: "3.1.0",
+		Components: &Components{
+			Schemas: orderedmap.ToOrderedMap(map[string]*highbase.SchemaProxy{
+				"Broken": highbase.CreateSchemaProxyRef("#/Missing"),
+			}),
+		},
+	}
+	_, err = broken.RenderInlineWithContext(highbase.NewInlineRenderContext())
+	assert.Error(t, err)
+
 }
 
 func TestNewDocument_ExternalDocs(t *testing.T) {

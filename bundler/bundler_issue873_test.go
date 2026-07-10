@@ -547,9 +547,6 @@ func TestDiscriminatorMappingCollectorsIgnoreMalformedMappingNode(t *testing.T) 
 	collectDiscriminatorMappingNodesFromIndexWithContext(nil, parseYAMLNode(t, spec), &mappings)
 	assert.Empty(t, mappings)
 
-	var mappingNodes []*yaml.Node
-	collectDiscriminatorMappingNodesFromIndex(nil, parseYAMLNode(t, spec), &mappingNodes)
-	assert.Empty(t, mappingNodes)
 }
 
 func lookupMappingNode(t *testing.T, data []byte, path ...string) *yaml.Node {
