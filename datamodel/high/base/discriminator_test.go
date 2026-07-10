@@ -10,7 +10,9 @@ import (
 
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -139,4 +141,34 @@ defaultMapping: '#/components/schemas/UnknownReptile'`
 	marshaled, err := highDiscriminator.MarshalYAML()
 	assert.NoError(t, err)
 	assert.NotNil(t, marshaled)
+}
+
+func TestDiscriminator_MarshalYAMLInlineWithContext(t *testing.T) {
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`propertyName: kind
+mapping:
+  cat: './cat.yaml#/Cat'
+  dog: '#/Dog'
+`), &node))
+	var lowDiscriminator lowbase.Discriminator
+	lowmodel.BuildModel(node.Content[0], &lowDiscriminator)
+	highDiscriminator := NewDiscriminator(&lowDiscriminator)
+	highDiscriminator.Mapping.Set("bird", "#/Bird")
+	ctx := NewInlineRenderContext()
+	ctx.SetMappingRewrite(lowDiscriminator.FindMappingValue("cat").ValueNode, "#/components/schemas/Cat")
+
+	rendered, err := highDiscriminator.MarshalYAMLInlineWithContext(ctx)
+	require.NoError(t, err)
+	data, err := yaml.Marshal(rendered)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "cat: '#/components/schemas/Cat'")
+	assert.Contains(t, string(data), "dog: '#/Dog'")
+	assert.Equal(t, "./cat.yaml#/Cat", lowDiscriminator.FindMappingValue("cat").ValueNode.Value)
+
+	plain, err := highDiscriminator.MarshalYAMLInlineWithContext("wrong context")
+	require.NoError(t, err)
+	assert.NotNil(t, plain)
+	assert.Nil(t, discriminatorMappingNode(nil))
+	assert.Nil(t, discriminatorMappingNode(&yaml.Node{Kind: yaml.SequenceNode}))
+	assert.Nil(t, discriminatorMappingNode(utils.CreateRefNode("#/Thing")))
 }

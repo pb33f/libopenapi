@@ -1,0 +1,74 @@
+CodeStringOrMapDto:
+  description: Значение элемента данных, строка или вложенная структура
+  oneOf:
+    - type: string
+      minLength: 1
+      maxLength: 255
+      pattern: '^[\s\S]+$'
+      example: '5502039191'
+    - $ref: '#/Code2Map'
+    - $ref: '#/Code3Map'
+    - $ref: '#/CodeUp4Map'
+Code2Map:
+  description: Мапа с двузначными атрибутами
+  type: object
+  minProperties: 1
+  propertyNames:
+    description: Двузначный атрибут
+    type: string
+    minLength: 2
+    maxLength: 2
+    pattern: '^[0-9a-zA-Z]+$'
+    example: SB
+  maxProperties: 500
+  additionalProperties:
+    description: Значение элемента данных, строка или вложенная структура
+    oneOf:
+      - type: string
+        minLength: 1
+        maxLength: 255
+      - $ref: '#/Code2Map'
+      - $ref: '#/Code3Map'
+      - $ref: '#/CodeUp4Map'
+Code3Map:
+  description: Мапа с трехзначными атрибутами
+  type: object
+  minProperties: 1
+  propertyNames:
+    description: Трехзначный атрибут
+    type: string
+    minLength: 3
+    maxLength: 3
+    pattern: '^[0-9a-zA-Z]+$'
+    example: '048'
+  maxProperties: 500
+  additionalProperties:
+    description: Значение элемента данных, строка или вложенная структура
+    oneOf:
+      - type: string
+        minLength: 1
+        maxLength: 255
+      - $ref: '#/Code2Map'
+      - $ref: '#/Code3Map'
+      - $ref: '#/CodeUp4Map'
+CodeUp4Map:
+  description: Мапа с двух-трех-четырех значными атрибутами
+  type: object
+  minProperties: 1
+  propertyNames:
+    description: Двух-трех-четырех значными атрибуты
+    type: string
+    minLength: 2
+    maxLength: 4
+    pattern: '^[0-9a-zA-Z]+$'
+    example: 5F2A
+  maxProperties: 500
+  additionalProperties:
+    description: Значение элемента данных, строка или вложенная структура
+    oneOf:
+      - type: string
+        minLength: 1
+        maxLength: 255
+      - $ref: '#/Code2Map'
+      - $ref: '#/Code3Map'
+      - $ref: '#/CodeUp4Map'

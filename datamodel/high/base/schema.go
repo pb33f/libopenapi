@@ -597,12 +597,12 @@ func (s *Schema) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 		// this avoids mutating shared state and prevents race conditions.
 		for _, sp := range s.OneOf {
 			if sp != nil && sp.IsReference() {
-				renderCtx.MarkRefAsPreserved(sp.GetReference())
+				renderCtx.MarkReferenceNodeAsPreserved(sp.GetReferenceNode())
 			}
 		}
 		for _, sp := range s.AnyOf {
 			if sp != nil && sp.IsReference() {
-				renderCtx.MarkRefAsPreserved(sp.GetReference())
+				renderCtx.MarkReferenceNodeAsPreserved(sp.GetReferenceNode())
 			}
 		}
 	}

@@ -847,19 +847,17 @@ func bundleWithConfig(model *v3.Document, config *BundleInlineConfig, docConfig 
 	}
 
 	inlineLocalRefs := resolveBundleInlineConfig(config, docConfig)
-
-	// enable bundling mode to preserve local component refs during marshalling
-	// when inlineLocalRefs is true, skip bundling mode to inline everything
-	if !inlineLocalRefs {
-		highbase.SetBundlingMode(true)
-		defer highbase.SetBundlingMode(false)
+	renderCtx := highbase.NewInlineRenderContext()
+	renderCtx.PreserveLocalComponentRefs = !inlineLocalRefs
+	renderCtx.StrictCircularReferenceIdentity = true
+	if model.Rolodex != nil {
+		renderCtx.RootIndex = model.Rolodex.GetRootIndex()
 	}
 
 	if model.Rolodex != nil {
-		// copy external schemas referenced by discriminator mappings to root components
-		// ensures bundled output is valid and self-contained
-		if config != nil && config.ResolveDiscriminatorExternalRefs {
-			resolveDiscriminatorExternalRefs(model)
+		resolveDiscriminatorTargets := config != nil && config.ResolveDiscriminatorExternalRefs
+		if err := prepareInlineReferences(model, renderCtx, resolveDiscriminatorTargets); err != nil {
+			return nil, err
 		}
 
 		// resolve extension refs before rendering (mutates model's extension nodes in-place)
@@ -868,7 +866,7 @@ func bundleWithConfig(model *v3.Document, config *BundleInlineConfig, docConfig 
 	}
 
 	// render inline - discriminator mappings and circular refs are preserved via SchemaProxy.MarshalYAMLInline()
-	return model.RenderInline()
+	return model.RenderInlineWithContext(renderCtx)
 }
 
 // externalSchemaRef represents an external schema that needs to be copied to the root document's components.
@@ -878,75 +876,6 @@ type externalSchemaRef struct {
 	schemaName  string           // The target name in components
 	fullDef     string           // The full definition path (e.g., "/path/to/file.yaml#/components/schemas/Cat")
 	originalRef string           // The original reference string (e.g., "#/components/schemas/Cat")
-}
-
-// resolveDiscriminatorExternalRefs handles copying external schemas referenced by discriminators
-// to the root document's components section and rewrites the references.
-func resolveDiscriminatorExternalRefs(model *v3.Document) {
-	if model == nil || model.Rolodex == nil {
-		return
-	}
-
-	rolodex := model.Rolodex
-	rootIdx := rolodex.GetRootIndex()
-
-	// Collect all external schemas referenced by discriminators
-	externalSchemas := collectExternalDiscriminatorSchemas(rolodex, rootIdx)
-	if len(externalSchemas) == 0 {
-		return
-	}
-
-	// Ensure model has Components (buildComponents always succeeds with valid rootIdx,
-	// and rootIdx must be valid since collectExternalDiscriminatorSchemas would panic otherwise)
-	if model.Components == nil {
-		model.Components, _ = buildComponents(rootIdx)
-	}
-
-	// Build existing names map from current components for collision detection
-	existingNames := make(map[string]bool)
-	for pair := model.Components.Schemas.First(); pair != nil; pair = pair.Next() {
-		existingNames[pair.Key()] = true
-	}
-
-	// Copy schemas to components and build ref mapping
-	// We need to map both local refs (like #/components/schemas/Cat) and
-	// external refs (like ./external.yaml#/components/schemas/Cat) to the new location
-	refMapping := make(map[string]string)
-	for _, extSchema := range externalSchemas {
-		// externalSchemas has unique fullDef values (from map iteration in collectExternalDiscriminatorSchemas)
-		newRef := copySchemaToComponents(model, extSchema, existingNames)
-
-		// Map the local ref format (used in external files)
-		refMapping[extSchema.originalRef] = newRef
-
-		// Also map external ref formats that might be used in the root document
-		// e.g., "./vehicles/car.yaml#/components/schemas/Car"
-		// The external ref format is: relative path from root + JSON pointer
-		if extSchema.idx != nil {
-			rootPath := rootIdx.GetSpecAbsolutePath()
-			extPath := extSchema.idx.GetSpecAbsolutePath()
-			if rootPath != "" && extPath != "" {
-				// Calculate relative path from root to external file
-				relPath, err := filepath.Rel(filepath.Dir(rootPath), extPath)
-				if err == nil {
-					// Normalize path separators to forward slashes for cross-platform compatibility
-					// OpenAPI refs always use forward slashes regardless of OS
-					relPath = filepath.ToSlash(relPath)
-
-					// Build external ref format: ./relpath#/components/schemas/Name
-					externalRefFormat := relPath + extSchema.originalRef
-					refMapping[externalRefFormat] = newRef
-					// Also try with "./" prefix
-					if !strings.HasPrefix(relPath, ".") && !strings.HasPrefix(relPath, "/") {
-						refMapping["./"+externalRefFormat] = newRef
-					}
-				}
-			}
-		}
-	}
-
-	// Rewrite discriminator mapping refs and oneOf/anyOf refs
-	rewriteInlineDiscriminatorRefs(rolodex, refMapping)
 }
 
 // collectExternalDiscriminatorSchemas identifies external schemas referenced by discriminators
@@ -1011,29 +940,6 @@ func collectExternalDiscriminatorSchemas(rolodex *index.Rolodex, rootIdx *index.
 	return result
 }
 
-// copySchemaToComponents copies an external schema to the root document's components section.
-// Returns the new reference string (e.g., "#/components/schemas/Cat").
-// existingNames is updated with the new name to track collisions across multiple calls.
-func copySchemaToComponents(model *v3.Document, extSchema *externalSchemaRef, existingNames map[string]bool) string {
-	// Build the schema from the YAML node
-	// extSchema.ref.Node is always valid (validated when collecting external schemas)
-	schema, _ := buildSchema(extSchema.ref.Node, extSchema.idx)
-
-	// Check for naming collisions and get unique name
-	finalName := extSchema.schemaName
-	if existingNames[finalName] {
-		finalName = calculateCollisionNameInline(finalName, extSchema.fullDef, "__", existingNames)
-	}
-
-	// Track this name to prevent future collisions
-	existingNames[finalName] = true
-
-	// Add to components
-	model.Components.Schemas.Set(finalName, schema)
-
-	return fmt.Sprintf("#/components/schemas/%s", finalName)
-}
-
 // calculateCollisionNameInline generates a unique name for a schema to avoid collisions.
 // It first tries appending the source filename, then falls back to numeric suffixes.
 func calculateCollisionNameInline(name, fullDef, delimiter string, existingNames map[string]bool) string {
@@ -1055,100 +961,6 @@ func calculateCollisionNameInline(name, fullDef, delimiter string, existingNames
 		candidate = fmt.Sprintf("%s%s%s%s%d", name, delimiter, baseName, delimiter, i)
 		if !existingNames[candidate] {
 			return candidate
-		}
-	}
-}
-
-// rewriteInlineDiscriminatorRefs updates discriminator mapping refs and oneOf/anyOf refs
-// to point to the newly copied component locations.
-func rewriteInlineDiscriminatorRefs(rolodex *index.Rolodex, refMapping map[string]string) {
-	if len(refMapping) == 0 {
-		return
-	}
-
-	// Collect all discriminator mapping nodes
-	mappingNodes := collectDiscriminatorMappingNodes(rolodex)
-
-	// Update discriminator mapping values
-	for _, mappingNode := range mappingNodes {
-		originalValue := mappingNode.Value
-		if newRef, ok := refMapping[originalValue]; ok {
-			mappingNode.Value = newRef
-		}
-	}
-
-	// Also update oneOf/anyOf $ref values in all indexes
-	allIndexes := append(rolodex.GetIndexes(), rolodex.GetRootIndex())
-	for _, idx := range allIndexes {
-		updateOneOfAnyOfRefs(idx.GetRootNode(), refMapping)
-	}
-}
-
-// updateOneOfAnyOfRefs recursively walks a YAML node tree to update oneOf/anyOf $ref values.
-func updateOneOfAnyOfRefs(n *yaml.Node, refMapping map[string]string) {
-	if n == nil {
-		return
-	}
-
-	if n.Kind == yaml.DocumentNode && len(n.Content) > 0 {
-		n = n.Content[0]
-	}
-
-	switch n.Kind {
-	case yaml.SequenceNode:
-		for _, c := range n.Content {
-			updateOneOfAnyOfRefs(c, refMapping)
-		}
-		return
-	case yaml.MappingNode:
-	default:
-		return
-	}
-
-	var hasDiscriminator bool
-	var oneOfNode, anyOfNode *yaml.Node
-
-	// First pass: check for discriminator and find oneOf/anyOf
-	for i := 0; i < len(n.Content); i += 2 {
-		k, v := n.Content[i], n.Content[i+1]
-		switch k.Value {
-		case "discriminator":
-			hasDiscriminator = true
-		case "oneOf":
-			oneOfNode = v
-		case "anyOf":
-			anyOfNode = v
-		}
-	}
-
-	// Update refs in oneOf/anyOf if this schema has a discriminator
-	if hasDiscriminator {
-		updateUnionRefs(oneOfNode, refMapping)
-		updateUnionRefs(anyOfNode, refMapping)
-	}
-
-	// Recursively process all children
-	for i := 0; i < len(n.Content); i += 2 {
-		updateOneOfAnyOfRefs(n.Content[i+1], refMapping)
-	}
-}
-
-// updateUnionRefs updates $ref values in a oneOf or anyOf sequence.
-func updateUnionRefs(seq *yaml.Node, refMapping map[string]string) {
-	if seq == nil || seq.Kind != yaml.SequenceNode {
-		return
-	}
-	for _, item := range seq.Content {
-		if item.Kind != yaml.MappingNode {
-			continue
-		}
-		for i := 0; i < len(item.Content); i += 2 {
-			k, v := item.Content[i], item.Content[i+1]
-			if k.Value == "$ref" && v.Kind == yaml.ScalarNode {
-				if newRef, ok := refMapping[v.Value]; ok {
-					v.Value = newRef
-				}
-			}
 		}
 	}
 }
@@ -1236,18 +1048,6 @@ func walkUnionRefs(idx *index.SpecIndex, seq *yaml.Node, pinned map[string]struc
 	}
 }
 
-// collectDiscriminatorMappingNodes gathers all discriminator mapping value nodes from the document tree.
-func collectDiscriminatorMappingNodes(rolodex *index.Rolodex) []*yaml.Node {
-	var mappingNodes []*yaml.Node
-
-	collectDiscriminatorMappingNodesFromIndex(rolodex.GetRootIndex(), rolodex.GetRootIndex().GetRootNode(), &mappingNodes)
-	for _, idx := range rolodex.GetIndexes() {
-		collectDiscriminatorMappingNodesFromIndex(idx, idx.GetRootNode(), &mappingNodes)
-	}
-
-	return mappingNodes
-}
-
 // collectDiscriminatorMappingNodesWithContext gathers all discriminator mapping value nodes
 // along with their source index context for proper relative path resolution.
 func collectDiscriminatorMappingNodesWithContext(rolodex *index.Rolodex) []*discriminatorMappingWithContext {
@@ -1302,49 +1102,6 @@ func collectDiscriminatorMappingNodesFromIndexWithContext(idx *index.SpecIndex, 
 						node:      mappingNode.Content[j+1],
 						sourceIdx: idx,
 					})
-				}
-			}
-		}
-	}
-}
-
-// collectDiscriminatorMappingNodesFromIndex recursively walks a YAML node tree to find discriminator mapping nodes.
-func collectDiscriminatorMappingNodesFromIndex(idx *index.SpecIndex, n *yaml.Node, mappingNodes *[]*yaml.Node) {
-	if n.Kind == yaml.DocumentNode && len(n.Content) > 0 {
-		n = n.Content[0]
-	}
-
-	switch n.Kind {
-	case yaml.SequenceNode:
-		for _, c := range n.Content {
-			collectDiscriminatorMappingNodesFromIndex(idx, c, mappingNodes)
-		}
-		return
-	case yaml.MappingNode:
-	default:
-		return
-	}
-
-	var discriminator *yaml.Node
-
-	for i := 0; i < len(n.Content); i += 2 {
-		k, v := n.Content[i], n.Content[i+1]
-		switch k.Value {
-		case "discriminator":
-			discriminator = v
-		}
-		collectDiscriminatorMappingNodesFromIndex(idx, v, mappingNodes)
-	}
-
-	if discriminator != nil && discriminator.Kind == yaml.MappingNode {
-		for i := 0; i < len(discriminator.Content); i += 2 {
-			if discriminator.Content[i].Value == "mapping" {
-				mappingNode := discriminator.Content[i+1]
-				if mappingNode.Kind != yaml.MappingNode {
-					continue
-				}
-				for j := 0; j < len(mappingNode.Content); j += 2 {
-					*mappingNodes = append(*mappingNodes, mappingNode.Content[j+1])
 				}
 			}
 		}

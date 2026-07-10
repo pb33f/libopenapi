@@ -25,7 +25,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
@@ -2262,11 +2261,6 @@ func TestErrorHandlingOnBundleDocument(t *testing.T) {
 	assert.Nil(t, b)
 	assert.Error(t, err)
 
-	// resolveDiscriminatorExternalRefs handles nil gracefully (no return value)
-	resolveDiscriminatorExternalRefs(nil)
-
-	rewriteInlineDiscriminatorRefs(nil, nil)
-	updateOneOfAnyOfRefs(nil, nil)
 	walkDiscriminatorMapping(nil, &yaml.Node{Kind: yaml.ScalarNode}, nil)
 
 	// walkUnionRefs: hit first continue (item.Kind != yaml.MappingNode)
@@ -2291,27 +2285,6 @@ func TestErrorHandlingOnBundleDocument(t *testing.T) {
 		},
 	}, nil)
 
-	// updateUnionRefs: hit continue (item.Kind != yaml.MappingNode)
-	updateUnionRefs(&yaml.Node{
-		Kind: yaml.SequenceNode,
-		Content: []*yaml.Node{
-			{Kind: yaml.ScalarNode, Value: "not-a-mapping"},
-		},
-	}, nil)
-
-	// updateUnionRefs: MappingNode but key != "$ref" (skips inner if)
-	updateUnionRefs(&yaml.Node{
-		Kind: yaml.SequenceNode,
-		Content: []*yaml.Node{
-			{
-				Kind: yaml.MappingNode,
-				Content: []*yaml.Node{
-					{Kind: yaml.ScalarNode, Value: "notRef"},
-					{Kind: yaml.ScalarNode, Value: "someValue"},
-				},
-			},
-		},
-	}, nil)
 }
 
 func TestResolveDiscriminatorExternalRefs_NoExternalSchemas(t *testing.T) {
@@ -2513,42 +2486,6 @@ paths: {}`
 	assert.LessOrEqual(t, len(result2), len(result), "Should handle missing index gracefully")
 	assert.GreaterOrEqual(t, len(result2), 0, "Function should not panic with missing index")
 	assert.Len(t, result2, 1, "Should have one schema remaining after removing one index")
-}
-
-func TestCopySchemaToComponents_NameCollision(t *testing.T) {
-	// Test: existingNames[finalName] collision path
-	existingNames := map[string]bool{
-		"Cat": true, // Simulate existing schema named "Cat"
-	}
-
-	// Create a mock external schema ref
-	extSchema := &externalSchemaRef{
-		schemaName: "Cat",
-		fullDef:    "/some/path/external.yaml#/components/schemas/Cat",
-		ref: &index.Reference{
-			Node: &yaml.Node{
-				Kind: yaml.MappingNode,
-				Content: []*yaml.Node{
-					{Kind: yaml.ScalarNode, Value: "type"},
-					{Kind: yaml.ScalarNode, Value: "object"},
-				},
-			},
-		},
-	}
-
-	// Create a minimal document with components
-	doc := &v3high.Document{
-		Components: &v3high.Components{
-			Schemas: orderedmap.New[string, *base.SchemaProxy](),
-		},
-	}
-
-	// Copy should handle collision by appending filename
-	newRef := copySchemaToComponents(doc, extSchema, existingNames)
-
-	// Should have created a collision-avoidance name
-	assert.Equal(t, "#/components/schemas/Cat__external", newRef)
-	assert.True(t, existingNames["Cat__external"], "Should track the new name")
 }
 
 func TestCalculateCollisionNameInline_NumericSuffix(t *testing.T) {
@@ -3264,7 +3201,9 @@ paths:
 	require.NoError(t, err)
 
 	bundledStr := string(bundledBytes)
-	assert.Contains(t, bundledStr, "external.yaml#/components/schemas/Tree")
+	assert.NotContains(t, bundledStr, "external.yaml")
+	assert.Contains(t, bundledStr, "$ref: '#/components/schemas/Tree'")
+	assert.Contains(t, bundledStr, "Tree:")
 
 	composedBytes, err := BundleBytesComposed(bundledBytes, cfg, nil)
 	require.NoError(t, err)
@@ -3308,11 +3247,63 @@ paths:
 	require.NoError(t, err)
 
 	bundledStr := string(bundledBytes)
-	assert.Contains(t, bundledStr, "node.yaml")
+	assert.NotContains(t, bundledStr, "node.yaml")
+	assert.Contains(t, bundledStr, "$ref: '#/components/schemas/node'")
+	assert.Equal(t, 1, strings.Count(bundledStr, "        node:"))
 
 	composedBytes, err := BundleBytesComposed(bundledBytes, cfg, nil)
 	require.NoError(t, err)
 	require.NotNil(t, composedBytes)
+}
+
+func TestIssue928_ExternalSchemaMapCircularRefsAreSelfContained(t *testing.T) {
+	fixtureDir := filepath.Join("test", "specs", "issue-928")
+	spec, err := os.ReadFile(filepath.Join(fixtureDir, "api.yaml"))
+	require.NoError(t, err)
+
+	config := &datamodel.DocumentConfiguration{
+		BasePath:            fixtureDir,
+		AllowFileReferences: true,
+	}
+	bundled, err := BundleBytes(spec, config)
+	require.NoError(t, err)
+
+	output := string(bundled)
+	for _, dangling := range []string{"\"#/Code2Map\"", "'#/Code2Map'", "\"#/Code3Map\"", "'#/Code3Map'", "\"#/CodeUp4Map\"", "'#/CodeUp4Map'"} {
+		assert.NotContains(t, output, dangling)
+	}
+	assert.NotContains(t, output, "CodeXMap.yaml")
+
+	freshConfig := datamodel.NewDocumentConfiguration()
+	freshConfig.AllowFileReferences = false
+	fresh, err := libopenapi.NewDocumentWithConfiguration(bundled, freshConfig)
+	require.NoError(t, err)
+	freshModel, buildErr := fresh.BuildV3Model()
+	require.NoError(t, buildErr)
+	require.NotNil(t, freshModel.Model.Components)
+
+	for _, name := range []string{"Code2Map", "Code3Map", "CodeUp4Map"} {
+		require.NotNil(t, freshModel.Model.Components.Schemas.GetOrZero(name), "missing lifted schema %s", name)
+		assert.Equal(t, 1, strings.Count(output, "        "+name+":"), "schema %s was lifted more than once", name)
+	}
+
+	rootIndex := freshModel.Model.Rolodex.GetRootIndex()
+	for _, ref := range rootIndex.GetRawReferencesSequenced() {
+		authored := ref.RawRef
+		if authored == "" {
+			authored = ref.Definition
+		}
+		assert.True(t, strings.HasPrefix(authored, "#/"), "bundle contains non-local ref %q", authored)
+		resolved, _ := rootIndex.SearchIndexForReference(authored)
+		require.NotNil(t, resolved, "bundle contains unresolved ref %q", authored)
+	}
+
+	// Preparation is deterministic across independent parses.
+	for i := 0; i < 5; i++ {
+		again, bundleErr := BundleBytes(spec, config)
+		require.NoError(t, bundleErr)
+		assert.Equal(t, bundled, again)
+	}
 }
 
 func TestBundleBytes_ExternalPathItemRef_WithLocalComponents(t *testing.T) {

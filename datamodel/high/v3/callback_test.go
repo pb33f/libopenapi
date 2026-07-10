@@ -15,6 +15,7 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -84,6 +85,23 @@ func TestCallback_MarshalYAML(t *testing.T) {
 
 	rend, _ = r.Render()
 	assert.Equal(t, k, strings.TrimSpace(string(rend)))
+}
+
+func TestCallback_MarshalYAMLInlineWithContext_PropagatesPathItemError(t *testing.T) {
+	proxy := base.CreateSchemaProxyRefWithSchema("#/Cycle", &base.Schema{Description: "cycle"})
+	ctx := base.NewInlineRenderContext()
+	require.False(t, ctx.StartRendering("#/Cycle"))
+	content := orderedmap.New[string, *MediaType]()
+	content.Set("application/json", &MediaType{Schema: proxy})
+	responses := orderedmap.New[string, *Response]()
+	responses.Set("200", &Response{Description: "ok", Content: content})
+	callback := &Callback{Expression: orderedmap.ToOrderedMap(map[string]*PathItem{
+		"{$request.body#/callbackUrl}": {Get: &Operation{Responses: &Responses{Codes: responses}}},
+	})}
+
+	_, err := callback.MarshalYAMLInlineWithContext(ctx)
+	require.ErrorContains(t, err, "failed to render callback path")
+	require.ErrorContains(t, err, "circular reference")
 }
 
 func TestCallback_RenderInline(t *testing.T) {

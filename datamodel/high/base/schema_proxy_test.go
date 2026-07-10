@@ -684,6 +684,167 @@ func TestInlineRenderContext_ShouldPreserveRef_EmptyString(t *testing.T) {
 	assert.False(t, ctx.ShouldPreserveRef(""))
 }
 
+func TestInlineRenderContext_SourceQualifiedRewrites(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("type: object"), &root))
+	left := index.NewSpecIndexWithConfig(&root, index.CreateOpenAPIIndexConfig())
+	right := index.NewSpecIndexWithConfig(&root, index.CreateOpenAPIIndexConfig())
+	left.SetAbsolutePath(filepath.Join(t.TempDir(), "left.yaml"))
+	right.SetAbsolutePath(filepath.Join(t.TempDir(), "right.yaml"))
+
+	ctx := NewInlineRenderContext()
+	ctx.SetReferenceRewrite(left, "#/Thing", "#/components/schemas/LeftThing")
+	ctx.SetReferenceRewrite(right, "#/Thing", "#/components/schemas/RightThing")
+	ctx.MarkScopedRefAsPreserved(left, "#/Thing")
+	ctx.MarkScopedRefAsPreserved(right, "#/Thing")
+
+	leftRewrite, ok := ctx.ReferenceRewrite(left, "#/Thing")
+	require.True(t, ok)
+	assert.Equal(t, "#/components/schemas/LeftThing", leftRewrite)
+	rightRewrite, ok := ctx.ReferenceRewrite(right, "#/Thing")
+	require.True(t, ok)
+	assert.Equal(t, "#/components/schemas/RightThing", rightRewrite)
+	assert.NotEqual(t, ScopedReferenceKey(left, "#/Thing"), ScopedReferenceKey(right, "#/Thing"))
+	assert.Equal(t, "\x00#/Thing", ScopedReferenceKey(nil, "#/Thing"))
+	assert.True(t, ctx.ShouldPreserveScopedRef(left, "#/Thing"))
+	assert.False(t, ctx.ShouldPreserveScopedRef(left, ""))
+	_, ok = ctx.ReferenceRewrite(left, "#/Missing")
+	assert.False(t, ok)
+	_, ok = ctx.ReferenceRewrite(nil, "")
+	assert.False(t, ok)
+}
+
+func TestInlineRenderContext_RewriteClonesRefWithSiblings(t *testing.T) {
+	proxy := CreateSchemaProxyRefWithSchema("#/Thing", &Schema{Description: "keep me"})
+	original := proxy.GetReferenceNode()
+	ctx := NewInlineRenderContext()
+	ctx.SetReferenceRewrite(nil, "#/Thing", "#/components/schemas/Thing")
+	ctx.MarkRefAsPreserved("#/Thing")
+
+	rendered, err := proxy.MarshalYAMLInlineWithContext(ctx)
+	require.NoError(t, err)
+	node := rendered.(*yaml.Node)
+	assert.NotSame(t, original, node)
+	assert.Equal(t, "#/components/schemas/Thing", utils.GetRefValueNode(node).Value)
+	assert.Equal(t, "#/Thing", utils.GetRefValueNode(original).Value)
+	assert.Contains(t, string(mustMarshalYAML(t, node)), "description: keep me")
+}
+
+func TestSchemaProxy_RewrittenReferenceNodeErrors(t *testing.T) {
+	ctx := NewInlineRenderContext()
+	node, rewritten, err := (&SchemaProxy{}).rewrittenReferenceNode(ctx)
+	assert.Nil(t, node)
+	assert.False(t, rewritten)
+	assert.NoError(t, err)
+
+	invalid := utils.CreateEmptyMapNode()
+	lowProxy := &lowbase.SchemaProxy{}
+	lowProxy.SetReference("#/Thing", invalid)
+	proxy := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: lowProxy, ValueNode: invalid})
+	ctx.SetReferenceRewrite(nil, "#/Thing", "#/components/schemas/Thing")
+	node, rewritten, err = proxy.rewrittenReferenceNode(ctx)
+	assert.Nil(t, node)
+	assert.False(t, rewritten)
+	assert.ErrorContains(t, err, "$ref value node is missing")
+}
+
+func TestSchemaProxy_RewrittenReferenceNodeClonesOnlyForRewrite(t *testing.T) {
+	original := utils.CreateRefNode("#/Thing")
+	lowProxy := &lowbase.SchemaProxy{}
+	lowProxy.SetReference("#/Thing", original)
+	proxy := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: lowProxy, ValueNode: original})
+	ctx := NewInlineRenderContext()
+
+	node, rewritten, err := proxy.rewrittenReferenceNode(ctx)
+	require.NoError(t, err)
+	assert.False(t, rewritten)
+	assert.Same(t, original, node)
+
+	ctx.SetReferenceRewrite(nil, "#/Thing", "#/components/schemas/Thing")
+	node, rewritten, err = proxy.rewrittenReferenceNode(ctx)
+	require.NoError(t, err)
+	assert.True(t, rewritten)
+	assert.NotSame(t, original, node)
+	assert.Equal(t, "#/Thing", utils.GetRefValueNode(original).Value)
+	assert.Equal(t, "#/components/schemas/Thing", utils.GetRefValueNode(node).Value)
+}
+
+func TestSchemaProxy_CycleTrackerUsesPreparedRewrite(t *testing.T) {
+	proxy := CreateSchemaProxyRefWithSchema("#/Thing", &Schema{Description: "cycle"})
+	ctx := NewInlineRenderContext()
+	ctx.SetReferenceRewrite(nil, "#/Thing", "#/components/schemas/Thing")
+	ctx.StartRendering("#/Thing")
+
+	rendered, err := proxy.MarshalYAMLInlineWithContext(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, "#/components/schemas/Thing", utils.GetRefValueNode(rendered.(*yaml.Node)).Value)
+}
+
+func TestInlineRenderContext_MappingRewrites(t *testing.T) {
+	ctx := NewInlineRenderContext()
+	node := utils.CreateStringNode("./cat.yaml#/Cat")
+	ctx.SetMappingRewrite(node, "#/components/schemas/Cat")
+	rewrite, ok := ctx.MappingRewrite(node)
+	require.True(t, ok)
+	assert.Equal(t, "#/components/schemas/Cat", rewrite)
+	_, ok = ctx.MappingRewrite(nil)
+	assert.False(t, ok)
+	_, ok = ctx.MappingRewrite(utils.CreateStringNode("missing"))
+	assert.False(t, ok)
+	ctx.SetMappingRewrite(nil, "ignored")
+	ctx.SetMappingRewrite(node, "")
+}
+
+func TestInlineRenderContext_ReferenceNodePolicy(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("type: object"), &root))
+	source := index.NewSpecIndexWithConfig(&root, index.CreateOpenAPIIndexConfig())
+	node := utils.CreateRefNode("#/Thing")
+	ctx := NewInlineRenderContext()
+
+	ctx.SetReferenceNodeIdentity(node, source, "/schemas/thing.yaml#/Thing")
+	actualSource, ok := ctx.ReferenceNodeSource(node)
+	require.True(t, ok)
+	assert.Same(t, source, actualSource)
+	target, ok := ctx.ReferenceNodeTarget(node)
+	require.True(t, ok)
+	assert.Equal(t, "/schemas/thing.yaml#/Thing", target)
+
+	ctx.MarkReferenceNodeAsPreserved(node)
+	assert.True(t, ctx.ShouldPreserveReferenceNode(node))
+	ctx.SetReferenceNodeRewrite(node, "#/components/schemas/Thing")
+	rewrite, ok := ctx.ReferenceNodeRewrite(node)
+	require.True(t, ok)
+	assert.Equal(t, "#/components/schemas/Thing", rewrite)
+
+	ctx.SetReferenceNodeIdentity(nil, source, "ignored")
+	ctx.SetReferenceNodeIdentity(utils.CreateEmptyMapNode(), nil, "")
+	ctx.MarkReferenceNodeAsPreserved(nil)
+	ctx.SetReferenceNodeRewrite(nil, "ignored")
+	ctx.SetReferenceNodeRewrite(node, "")
+	_, ok = ctx.ReferenceNodeSource(nil)
+	assert.False(t, ok)
+	_, ok = ctx.ReferenceNodeSource(utils.CreateEmptyMapNode())
+	assert.False(t, ok)
+	_, ok = ctx.ReferenceNodeTarget(nil)
+	assert.False(t, ok)
+	_, ok = ctx.ReferenceNodeTarget(utils.CreateEmptyMapNode())
+	assert.False(t, ok)
+	assert.False(t, ctx.ShouldPreserveReferenceNode(nil))
+	assert.False(t, ctx.ShouldPreserveReferenceNode(utils.CreateEmptyMapNode()))
+	_, ok = ctx.ReferenceNodeRewrite(nil)
+	assert.False(t, ok)
+	_, ok = ctx.ReferenceNodeRewrite(utils.CreateEmptyMapNode())
+	assert.False(t, ok)
+}
+
+func mustMarshalYAML(t *testing.T, value any) []byte {
+	t.Helper()
+	data, err := yaml.Marshal(value)
+	require.NoError(t, err)
+	return data
+}
+
 func TestInlineRenderContext_PreservedRefs_Concurrent(t *testing.T) {
 	ctx := NewInlineRenderContext()
 
@@ -785,7 +946,7 @@ func TestMarkRefAsPreserved_RefNotMarked(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-func TestMarshalYAMLInline_BundlingMode_PreservesLocalComponentRefs(t *testing.T) {
+func TestMarshalYAMLInline_ContextPreservesLocalComponentRefs(t *testing.T) {
 	// Test that in bundling mode, local #/components/ refs pointing to schemas
 	// in the same root document are preserved (not inlined).
 	// This covers lines 356-373 in schema_proxy.go
@@ -840,12 +1001,42 @@ func TestMarshalYAMLInline_BundlingMode_PreservesLocalComponentRefs(t *testing.T
 
 	sp := NewSchemaProxy(&lowRef)
 
-	// Enable bundling mode
-	SetBundlingMode(true)
-	defer SetBundlingMode(false)
+	ctx := NewInlineRenderContext()
+	ctx.PreserveLocalComponentRefs = true
+	ctx.RootIndex = idx
+	assert.True(t, sp.isRootLocalReference(ctx))
+	ctx.SetReferenceNodeIdentity(sp.GetReferenceNode(), idx, idx.GetSpecAbsolutePath()+ref)
+	assert.Same(t, idx, sp.referenceSourceIndex(ctx))
+	assert.Equal(t, idx.GetSpecAbsolutePath(), sp.referenceSourcePath(ctx))
+	assert.Equal(t, index.CanonicalReferenceIdentity(idx.GetSpecAbsolutePath()+ref), sp.referenceTargetIdentity(ctx))
 
-	// MarshalYAMLInline should preserve the ref since the schema is in the root index
-	result, err := sp.MarshalYAMLInline()
+	fallbackCtx := NewInlineRenderContext()
+	fallbackCtx.RootIndex = idx
+	fallbackCtx.StrictCircularReferenceIdentity = true
+	assert.Same(t, idx, sp.referenceSourceIndex(fallbackCtx))
+	assert.True(t, sp.isRootLocalReference(fallbackCtx))
+	assert.Equal(t, index.CanonicalReferenceIdentity(idx.GetSpecAbsolutePath()+ref), sp.referenceTargetIdentity(fallbackCtx))
+	assert.False(t, (&SchemaProxy{}).isRootLocalReference(fallbackCtx))
+	programmatic := CreateSchemaProxyRef("external.yaml#/Thing")
+	assert.Empty(t, programmatic.referenceTargetIdentity(fallbackCtx))
+	assert.Empty(t, programmatic.referenceSourcePath(NewInlineRenderContext()))
+	assert.Empty(t, programmatic.referenceSourcePath(fallbackCtx))
+	idx.SetCircularReferences([]*index.CircularReferenceResult{
+		nil,
+		{},
+		{LoopPoint: &index.Reference{Definition: "#/Other", FullDefinition: idx.GetSpecAbsolutePath() + "#/Other"}},
+		{LoopPoint: &index.Reference{Definition: ref, FullDefinition: idx.GetSpecAbsolutePath() + ref}},
+	})
+	strictCtx := NewInlineRenderContext()
+	strictCtx.StrictCircularReferenceIdentity = true
+	strictCtx.RootIndex = idx
+	strictCtx.SetReferenceNodeIdentity(sp.GetReferenceNode(), idx, idx.GetSpecAbsolutePath()+ref)
+	strictRendered, strictErr := sp.MarshalYAMLInlineWithContext(strictCtx)
+	require.NoError(t, strictErr)
+	assert.Equal(t, ref, utils.GetRefValueNode(strictRendered.(*yaml.Node)).Value)
+
+	// Context-aware rendering preserves the ref because its schema is in the root index.
+	result, err := sp.MarshalYAMLInlineWithContext(ctx)
 	require.NoError(t, err)
 
 	resultNode, ok := result.(*yaml.Node)
@@ -1092,7 +1283,7 @@ func TestMarshalYAMLInlineWithContext_PreserveReference_ViaLowLevel(t *testing.T
 	assert.Equal(t, "#/components/schemas/TestRef", node.Content[1].Value)
 }
 
-func TestMarshalYAMLInline_BundlingMode_ViaLowLevelRef(t *testing.T) {
+func TestMarshalYAMLInline_ContextPreservesLocalComponentRefViaLowLevelRef(t *testing.T) {
 	// Test bundling mode preserves refs when schema is in root index
 	// Reference is set via low-level proxy (not refStr)
 
@@ -1138,11 +1329,9 @@ func TestMarshalYAMLInline_BundlingMode_ViaLowLevelRef(t *testing.T) {
 		schema: &lowRef,
 	}
 
-	// Enable bundling mode
-	SetBundlingMode(true)
-	defer SetBundlingMode(false)
-
-	result, err := proxy.MarshalYAMLInline()
+	ctx := NewInlineRenderContext()
+	ctx.PreserveLocalComponentRefs = true
+	result, err := proxy.MarshalYAMLInlineWithContext(ctx)
 	require.NoError(t, err)
 
 	node, ok := result.(*yaml.Node)

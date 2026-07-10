@@ -8,12 +8,27 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 	"go.yaml.in/yaml/v4"
 )
+
+func TestResponses_MarshalYAMLInlineWithContext_PropagatesDefaultError(t *testing.T) {
+	proxy := base.CreateSchemaProxyRefWithSchema("#/Cycle", &base.Schema{Description: "cycle"})
+	ctx := base.NewInlineRenderContext()
+	require.False(t, ctx.StartRendering("#/Cycle"))
+	content := orderedmap.New[string, *MediaType]()
+	content.Set("application/json", &MediaType{Schema: proxy})
+	responses := &Responses{Codes: orderedmap.New[string, *Response](), Default: &Response{Description: "default", Content: content}}
+
+	_, err := responses.MarshalYAMLInlineWithContext(ctx)
+	require.ErrorContains(t, err, "circular reference")
+}
 
 // this test exists because the sample contract doesn't contain a
 // responses with *everything* populated, I had already written a ton of tests
