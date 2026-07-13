@@ -292,6 +292,11 @@ func composeReferenceAs(
 			return false, nil
 		}
 		return true, checkReferenceAndCapture(name, delimiter, v3low.MediaTypesLabel, pr, idx, components.MediaTypes, buildMediaType, cf.origins)
+	case v3low.SecuritySchemesLabel:
+		if components.SecuritySchemes == nil {
+			return false, nil
+		}
+		return true, checkReferenceAndCapture(name, delimiter, v3low.SecuritySchemesLabel, pr, idx, components.SecuritySchemes, buildSecurityScheme, cf.origins)
 	default:
 		return false, nil
 	}
@@ -365,6 +370,11 @@ func fileImportLocationForType(
 			return false, nil
 		}
 		return true, handleFileImport(pr, v3low.MediaTypesLabel, delimiter, components.MediaTypes)
+	case v3low.SecuritySchemesLabel:
+		if components.SecuritySchemes == nil {
+			return false, nil
+		}
+		return true, handleFileImport(pr, v3low.SecuritySchemesLabel, delimiter, components.SecuritySchemes)
 	default:
 		return false, nil
 	}
@@ -608,6 +618,13 @@ func buildResponse(node *yaml.Node, idx *index.SpecIndex) (*v3.Response, error) 
 	ctx := context.Background()
 	err := resp.Build(ctx, &yaml.Node{}, node, idx)
 	return v3.NewResponse(&resp), err
+}
+
+func buildSecurityScheme(node *yaml.Node, idx *index.SpecIndex) (*v3.SecurityScheme, error) {
+	securityScheme := v3low.SecurityScheme{}
+	_ = low.BuildModel(node, &securityScheme)
+	err := securityScheme.Build(context.Background(), &yaml.Node{}, node, idx)
+	return v3.NewSecurityScheme(&securityScheme), err
 }
 
 func buildParameter(node *yaml.Node, idx *index.SpecIndex) (*v3.Parameter, error) {

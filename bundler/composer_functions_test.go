@@ -95,6 +95,7 @@ func TestComposeReferenceAs_MissingComponentMap(t *testing.T) {
 		v3low.CallbacksLabel,
 		v3low.PathItemsLabel,
 		v3low.MediaTypesLabel,
+		v3low.SecuritySchemesLabel,
 		"unknown",
 	} {
 		t.Run(componentType, func(t *testing.T) {
@@ -148,6 +149,7 @@ func TestFileImportLocationForType_MissingComponentMap(t *testing.T) {
 		v3low.CallbacksLabel,
 		v3low.PathItemsLabel,
 		v3low.MediaTypesLabel,
+		v3low.SecuritySchemesLabel,
 		"unknown",
 	} {
 		t.Run(componentType, func(t *testing.T) {
