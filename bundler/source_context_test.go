@@ -133,6 +133,12 @@ func TestInferComponentTypeFromSourcePath(t *testing.T) {
 			wantOK:     true,
 		},
 		{
+			name:       "security scheme component",
+			sourcePath: []string{"components", "securitySchemes", "bearerAuth"},
+			wantType:   v3.SecuritySchemesLabel,
+			wantOK:     true,
+		},
+		{
 			name:       "unknown path",
 			sourcePath: []string{"x-private", "thing"},
 			wantOK:     false,
@@ -249,9 +255,16 @@ func TestCanComposeContextualReference(t *testing.T) {
 			want:          false,
 		},
 		{
-			name:          "unknown component type is not composed",
-			componentType: "securitySchemes",
-			source:        "description: Sparse security",
+			name:          "bare file security scheme accepts HTTP scheme",
+			componentType: v3.SecuritySchemesLabel,
+			source:        "type: http\nscheme: bearer\n",
+			bareFile:      true,
+			want:          true,
+		},
+		{
+			name:          "bare file security scheme rejects schema type",
+			componentType: v3.SecuritySchemesLabel,
+			source:        "type: string\n",
 			bareFile:      true,
 			want:          false,
 		},
@@ -270,4 +283,30 @@ func TestCanComposeContextualReference(t *testing.T) {
 
 func TestCanComposeContextualReference_NilNode(t *testing.T) {
 	assert.False(t, canComposeContextualReference(v3.ResponsesLabel, nil, true))
+}
+
+func TestIsSecuritySchemeNode(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		want   bool
+	}{
+		{name: "api key", source: "type: apiKey\nname: X-API-Key\nin: header\n", want: true},
+		{name: "http", source: "type: http\nscheme: bearer\n", want: true},
+		{name: "oauth flows", source: "type: oauth2\nflows: {}\n", want: true},
+		{name: "oauth metadata", source: "type: oauth2\noauth2MetadataUrl: https://example.com/oauth\n", want: true},
+		{name: "openid connect", source: "type: openIdConnect\nopenIdConnectUrl: https://example.com/openid\n", want: true},
+		{name: "mutual TLS", source: "type: mutualTLS\n", want: true},
+		{name: "incomplete api key", source: "type: apiKey\nname: X-API-Key\n", want: false},
+		{name: "incomplete HTTP", source: "type: http\n", want: false},
+		{name: "schema", source: "type: string\n", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var document yaml.Node
+			require.NoError(t, yaml.Unmarshal([]byte(tt.source), &document))
+			assert.Equal(t, tt.want, isSecuritySchemeNode(unwrapDocumentNode(&document)))
+		})
+	}
 }

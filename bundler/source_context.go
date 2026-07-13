@@ -55,6 +55,8 @@ func inferComponentTypeFromSourcePath(sourcePath []string) (string, bool) {
 			return v3.MediaTypesLabel, true
 		case v3.ContentLabel:
 			return v3.MediaTypesLabel, true
+		case v3.SecuritySchemesLabel:
+			return v3.SecuritySchemesLabel, true
 		}
 
 		if segment == v3.RequestBodyLabel {
@@ -85,6 +87,9 @@ func canComposeContextualReference(componentType string, node *yaml.Node, bareFi
 	}
 	if !bareFile {
 		return true
+	}
+	if componentType == v3.SecuritySchemesLabel {
+		return isSecuritySchemeNode(node)
 	}
 
 	if detectedType, ok := DetectOpenAPIComponentType(node); ok {
@@ -120,6 +125,25 @@ func canComposeContextualReference(componentType string, node *yaml.Node, bareFi
 			containsKey(keys, v3.ExampleLabel) ||
 			containsKey(keys, v3.ExamplesLabel) ||
 			containsKey(keys, v3.EncodingLabel)
+	default:
+		return false
+	}
+}
+
+func isSecuritySchemeNode(node *yaml.Node) bool {
+	keys := getNodeKeys(node)
+	typeValue := getNodeValueForKey(node, v3.TypeLabel)
+	switch typeValue {
+	case "apiKey":
+		return containsKey(keys, v3.NameLabel) && containsKey(keys, v3.InLabel)
+	case "http":
+		return containsKey(keys, v3.SchemeLabel)
+	case "oauth2":
+		return containsKey(keys, v3.FlowsLabel) || containsKey(keys, v3.OAuth2MetadataUrlLabel)
+	case "openIdConnect":
+		return containsKey(keys, v3.OpenIdConnectUrlLabel)
+	case "mutualTLS":
+		return true
 	default:
 		return false
 	}
