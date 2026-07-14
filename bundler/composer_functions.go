@@ -109,6 +109,41 @@ func processedRefFor(
 	return processedNodes.GetOrZero(fullDefinition)
 }
 
+func composedRefFor(
+	processedNodes *orderedmap.Map[string, *processRef],
+	absoluteKey string,
+) (string, bool) {
+	if processedNodes == nil {
+		return "", false
+	}
+
+	longestKey := ""
+	var longestRef *processRef
+	for key, pr := range processedNodes.FromOldest() {
+		if pr == nil || len(pr.location) == 0 {
+			continue
+		}
+		if key == absoluteKey {
+			continue
+		}
+		if !strings.HasPrefix(absoluteKey, key) {
+			continue
+		}
+		suffix := strings.TrimPrefix(absoluteKey, key)
+		if suffix == "" || !strings.HasPrefix(suffix, "/") {
+			continue
+		}
+		if len(key) > len(longestKey) {
+			longestKey = key
+			longestRef = pr
+		}
+	}
+	if longestRef == nil {
+		return "", false
+	}
+	return "#/" + joinLocationAsJSONPointer(longestRef.location) + strings.TrimPrefix(absoluteKey, longestKey), true
+}
+
 func calculateCollisionName(name, pointer, delimiter string, iteration int) string {
 	jsonPointer := strings.Split(pointer, "#/")
 	if len(jsonPointer) == 2 {
@@ -852,6 +887,10 @@ func resolveRefToComposed(
 	// Only rewrite if the target was actually composed into the bundled output.
 	// This prevents dangling refs when SearchIndexForReference resolves something
 	// that never made it into processedNodes.
+	if composedRef, ok := composedRefFor(processedNodes, absoluteKey); ok {
+		return composedRef
+	}
+
 	if processedNodes.GetOrZero(absoluteKey) == nil {
 		return refValue
 	}
