@@ -255,6 +255,13 @@ func TestCanComposeContextualReference(t *testing.T) {
 			want:          false,
 		},
 		{
+			name:          "unknown component type is not composed",
+			componentType: "unknown",
+			source:        "description: Unknown component",
+			bareFile:      true,
+			want:          false,
+		},
+		{
 			name:          "bare file security scheme accepts HTTP scheme",
 			componentType: v3.SecuritySchemesLabel,
 			source:        "type: http\nscheme: bearer\n",
