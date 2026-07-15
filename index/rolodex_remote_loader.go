@@ -587,7 +587,7 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 
 	if remoteParsedURL.Scheme == "" {
 		i.releaseRemoteProcessingWaiter(processingWaiter, cacheKey, nil, nil)
-		return nil, nil // not a remote file — scheme is empty, skip processing.
+		return nil, fmt.Errorf("remote URL '%s' has no scheme after normalization (base URL may be malformed)", remoteURL)
 	}
 
 	i.logger.Debug("[rolodex remote loader] loading remote file", "file", remoteURL, "remoteURL", remoteParsedURL.String())
@@ -648,6 +648,12 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 
 func (i *RemoteFS) normalizeRemoteURL(remoteParsedURL *url.URL) {
 	if i.rootURLParsed == nil || remoteParsedURL == nil {
+		return
+	}
+	// Only normalize when the base URL is meaningful (has both host and scheme).
+	// A base URL with an empty scheme would overwrite the remote URL's scheme
+	// with empty, causing a nil,nil return downstream and panics in callers.
+	if i.rootURLParsed.Host == "" || i.rootURLParsed.Scheme == "" {
 		return
 	}
 	remoteParsedURL.Host = i.rootURLParsed.Host
