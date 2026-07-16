@@ -432,10 +432,7 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 		}
 		return nil, nil
 	}
-	err := datamodel.TranslateSliceParallel[low.NodeReference[*Operation], any](ops, translateFunc, nil)
-	if err != nil {
-		return err
-	}
+	_ = datamodel.TranslateSliceParallel[low.NodeReference[*Operation], any](ops, translateFunc, nil)
 
 	// assign additionalOperations if any were found
 	if additionalOps != nil && additionalOps.Len() > 0 {
@@ -445,7 +442,7 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			extrOps = append(extrOps, appVal)
 		}
 
-		err = datamodel.TranslateSliceParallel[low.NodeReference[*Operation], any](extrOps, translateFunc, nil)
+		_ = datamodel.TranslateSliceParallel[low.NodeReference[*Operation], any](extrOps, translateFunc, nil)
 
 		p.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.NodeReference[*Operation]]]{
 			Value: additionalOps,
