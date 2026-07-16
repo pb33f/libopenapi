@@ -5,6 +5,7 @@ package v3
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"hash/maphash"
 	"sort"
@@ -408,6 +409,10 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 
 	// all operations have been superficially built,
 	// now we need to build out the operation, we will do this asynchronously for speed.
+	// build errors are collected rather than returned early, so every operation is fully
+	// constructed even when a sibling operation fails to build.
+	var opBuildErrors []error
+	var opBuildErrorsLock sync.Mutex
 	translateFunc := func(_ int, op low.NodeReference[*Operation]) (any, error) {
 		ref := ""
 		var refNode *yaml.Node
@@ -421,14 +426,13 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			op.Value.Reference.SetReference(ref, refNode)
 		}
 		if err != nil {
-			return nil, err
+			opBuildErrorsLock.Lock()
+			opBuildErrors = append(opBuildErrors, err)
+			opBuildErrorsLock.Unlock()
 		}
 		return nil, nil
 	}
-	err := datamodel.TranslateSliceParallel[low.NodeReference[*Operation], any](ops, translateFunc, nil)
-	if err != nil {
-		return err
-	}
+	_ = datamodel.TranslateSliceParallel[low.NodeReference[*Operation], any](ops, translateFunc, nil)
 
 	// assign additionalOperations if any were found
 	if additionalOps != nil && additionalOps.Len() > 0 {
@@ -438,11 +442,14 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			extrOps = append(extrOps, appVal)
 		}
 
-		err = datamodel.TranslateSliceParallel[low.NodeReference[*Operation], any](extrOps, translateFunc, nil)
+		_ = datamodel.TranslateSliceParallel[low.NodeReference[*Operation], any](extrOps, translateFunc, nil)
 
 		p.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.NodeReference[*Operation]]]{
 			Value: additionalOps,
 		}
+	}
+	if len(opBuildErrors) > 0 {
+		return errors.Join(opBuildErrors...)
 	}
 	return nil
 }
