@@ -276,6 +276,41 @@ func TestProcessedRefFor(t *testing.T) {
 	assert.Nil(t, processedRefFor(processedNodes, "/tmp/missing.yaml#/Thing", nil))
 }
 
+func TestComposedRefFor(t *testing.T) {
+	got, ok := composedRefFor(nil, "/tmp/common.yaml#/components/schemas/Thing/properties/id")
+	assert.False(t, ok)
+	assert.Empty(t, got)
+
+	processedNodes := orderedmap.New[string, *processRef]()
+	processedNodes.Set("/tmp/common.yaml#/components/schemas/Nil", nil)
+	processedNodes.Set("/tmp/common.yaml#/components/schemas/Empty", &processRef{})
+	processedNodes.Set("/tmp/common.yaml#/components/schemas/Thing", &processRef{
+		location: []string{"components", "schemas", "Thing"},
+	})
+	processedNodes.Set("/tmp/common.yaml#/components/schemas/Thing/properties", &processRef{
+		location: []string{"components", "schemas", "ThingProperties"},
+	})
+	processedNodes.Set("/tmp/common.yaml#/components/schemas/Thing/properties/id", &processRef{
+		location: []string{"components", "schemas", "ExactMatch"},
+	})
+
+	got, ok = composedRefFor(processedNodes, "/tmp/common.yaml#/components/schemas/Thing/properties/id/type")
+	require.True(t, ok)
+	assert.Equal(t, "#/components/schemas/ExactMatch/type", got)
+
+	got, ok = composedRefFor(processedNodes, "/tmp/common.yaml#/components/schemas/ThingExtra")
+	assert.False(t, ok)
+	assert.Empty(t, got)
+
+	got, ok = composedRefFor(processedNodes, "/tmp/common.yaml#/components/schemas/Thing/properties/id")
+	assert.True(t, ok)
+	assert.Equal(t, "#/components/schemas/ThingProperties/id", got)
+
+	got, ok = composedRefFor(orderedmap.New[string, *processRef](), "/tmp/common.yaml#/components/schemas/Missing")
+	assert.False(t, ok)
+	assert.Empty(t, got)
+}
+
 func TestInlineProcessRef(t *testing.T) {
 	assert.Nil(t, inlineProcessRef(nil))
 
