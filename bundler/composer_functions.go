@@ -771,6 +771,17 @@ func walkAndRewriteRefs(
 	case yaml.MappingNode:
 		for i := 0; i < len(node.Content); i += 2 {
 			keyNode := node.Content[i]
+
+			// A well-formed mapping always has an even number of content nodes
+			// (key/value pairs). A node whose Kind is MappingNode but whose
+			// content length is odd is malformed (for example a sequence node
+			// that arrived here mis-tagged as a map during ref composition), so
+			// the final key has no value to pair with. Recurse into the dangling
+			// node instead of reading past the end of the slice and panicking.
+			if i+1 >= len(node.Content) {
+				walkAndRewriteRefs(keyNode, sourceIdx, processedNodes, rolodex, inExtension, visited)
+				break
+			}
 			valueNode := node.Content[i+1]
 
 			// Track extension scope
