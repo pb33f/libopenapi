@@ -1624,6 +1624,8 @@ func TestDocument_TestNestedFiles(t *testing.T) {
 }
 
 func TestDocument_MinimalRemoteRefs(t *testing.T) {
+	requireNetworkTests(t)
+
 	newRemoteHandlerFunc := func() utils.RemoteURLHandler {
 		c := &http.Client{
 			Timeout: time.Second * 120,
@@ -1673,6 +1675,8 @@ func TestDocument_Issue264(t *testing.T) {
 }
 
 func TestDocument_Issue269(t *testing.T) {
+	requireNetworkTests(t)
+
 	spec := `openapi: "3.0.0"
 info:
   title: test

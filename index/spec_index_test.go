@@ -157,6 +157,8 @@ func TestSpecIndex_Asana(t *testing.T) {
 }
 
 func TestSpecIndex_DigitalOcean(t *testing.T) {
+	requireNetworkTests(t)
+
 	do, _ := os.ReadFile("../test_specs/digitalocean.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(do, &rootNode)
@@ -241,6 +243,8 @@ func hasRateLimitedRemoteErrors(errs []error) bool {
 }
 
 func TestSpecIndex_Redocly(t *testing.T) {
+	requireNetworkTests(t)
+
 	do, _ := os.ReadFile("../test_specs/redocly-starter.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(do, &rootNode)
@@ -303,6 +307,8 @@ func TestSpecIndex_Redocly(t *testing.T) {
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
+	requireNetworkTests(t)
+
 	// this is a full checkout of the digitalocean API repo.
 	tmp := t.TempDir()
 	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
@@ -385,6 +391,8 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *testing.T) {
+	requireNetworkTests(t)
+
 	// this is a full checkout of the digitalocean API repo.
 	tmp := t.TempDir()
 	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)

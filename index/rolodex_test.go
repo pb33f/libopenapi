@@ -1387,6 +1387,8 @@ components:
 }
 
 func TestRolodex_IndexCircularLookup_LookupHttpNoBaseURL(t *testing.T) {
+	requireNetworkTests(t)
+
 	first := `openapi: 3.1.0
 components:
   schemas:
