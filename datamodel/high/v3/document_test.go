@@ -493,6 +493,8 @@ func TestAsanaAsDoc(t *testing.T) {
 }
 
 func TestDigitalOceanAsDocViaCheckout(t *testing.T) {
+	requireNetworkTests(t)
+
 	// this is a full checkout of the digitalocean API repo.
 	tmp := t.TempDir()
 	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
@@ -539,6 +541,8 @@ func TestDigitalOceanAsDocViaCheckout(t *testing.T) {
 }
 
 func TestDigitalOceanAsDocFromSHA(t *testing.T) {
+	requireNetworkTests(t)
+
 	data, _ := os.ReadFile("../../../test_specs/digitalocean.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
@@ -569,6 +573,8 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 }
 
 func TestDigitalOceanAsDocFromMain(t *testing.T) {
+	requireNetworkTests(t)
+
 	data, _ := os.ReadFile("../../../test_specs/digitalocean.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
