@@ -26,6 +26,7 @@ func TestTrainTravelFullCircleCanonicalRoundTrip(t *testing.T) {
 	cmd := exec.Command("go", "run", "./cmd/roundtrip")
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(),
+		"GO111MODULE=on",
 		"GOWORK=off",
 		"GOFLAGS=-mod=mod",
 		"TRAIN_TRAVEL_SPEC="+filepath.Join(repoRoot, "generator", "golang", "testdata", "train-travel.yaml"),

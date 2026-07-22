@@ -106,7 +106,7 @@ func reflectComponentsRoundTrip(t *testing.T, file *GeneratedFile) []byte {
 	out := filepath.Join(dir, "reconstructed.yaml")
 	cmd := exec.Command("go", "run", "./cmd/roundtrip")
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=-mod=mod", "ROUNDTRIP_OUT="+out)
+	cmd.Env = append(os.Environ(), "GO111MODULE=on", "GOWORK=off", "GOFLAGS=-mod=mod", "ROUNDTRIP_OUT="+out)
 	if combined, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("reflect round-trip command failed: %v\n%s", err, combined)
 	}
