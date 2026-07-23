@@ -498,6 +498,17 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		comparisonLSchema := schemaComparisonViewForSimpleAllOfObject(l, lSchema)
 		comparisonRSchema := schemaComparisonViewForSimpleAllOfObject(r, rSchema)
 
+		// A plain object refactored into a oneOf/anyOf that still contains that object as a branch
+		// (often behind a local $ref, or an "object OR <alternative>" widening) is not a breaking
+		// change — everything valid before is still valid. Compare the old object against the
+		// preserved branch directly so genuine changes are still detected, and suppress the spurious
+		// top-level properties/required/type removal that the wrapper would otherwise produce.
+		skipPreservedCompositionDiff := false
+		if preservedBranch, ok := preservedCompositionBranchView(l, r); ok {
+			comparisonRSchema = preservedBranch
+			skipPreservedCompositionDiff = true
+		}
+
 		if low.AreEqual(lSchema, rSchema) {
 			// there is no point going on, we know nothing changed!
 			return nil
@@ -512,7 +523,8 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		skipSimpleScalarUnionDiff := schemasUseEquivalentSimpleScalarUnion(l, r)
 
 		// check schema core properties for changes.
-		checkSchemaPropertyChanges(comparisonLSchema, comparisonRSchema, l, r, &changes, sc, skipSimpleScalarUnionDiff)
+		checkSchemaPropertyChanges(comparisonLSchema, comparisonRSchema, l, r, &changes, sc,
+			skipSimpleScalarUnionDiff || skipPreservedCompositionDiff)
 
 		// now for the confusing part, there is also a schema's 'properties' property to parse.
 		// inception, eat your heart out.
@@ -542,6 +554,12 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		}
 		if skipSimpleScalarUnionDiff {
 			lanyOf = nil
+			ranyOf = nil
+		}
+		if skipPreservedCompositionDiff {
+			// The preserved branch is now folded into comparisonRSchema; don't also diff the wrapper
+			// composition itself (it would resurface as an added oneOf/anyOf).
+			roneOf = nil
 			ranyOf = nil
 		}
 
@@ -2106,6 +2124,164 @@ func extractScalarTypeName(node *yaml.Node) (string, bool) {
 		return "", false
 	}
 	return node.Value, true
+}
+
+// preservedCompositionBranchView detects the "wrapping" refactor where an OLD plain object schema is
+// reshaped into a NEW oneOf/anyOf composition that still contains that object as one of its branches
+// (commonly behind a local $ref when a schema is hoisted into a reusable component, or an
+// "object OR <alternative>" widening). Because the original object is still one of the accepted
+// shapes, every previously-valid value remains valid, so nothing was removed — but a naive
+// node-level diff sees the top-level `properties`/`required`/`type` vanish and reports them as
+// breaking removals.
+//
+// When the wrap is detected, the resolved "preserved" branch schema is returned so the caller can
+// compare the OLD object against that branch directly. That keeps genuine, e.g. property-level,
+// changes visible while dropping the spurious top-level removal signals. Only the wrapping direction
+// (l = old, r = new) is handled: the reverse (a composition collapsing to a single schema) can drop
+// alternatives and must remain breaking, so it is intentionally not matched here.
+func preservedCompositionBranchView(l, r *base.SchemaProxy) (*base.Schema, bool) {
+	if l == nil || r == nil || l.IsReference() || r.IsReference() {
+		return nil, false
+	}
+	// OLD must be a plain object carrying properties and no composition of its own.
+	// (nil schemas are handled by the predicate helpers, which treat nil as "no".)
+	lSchema := l.Schema()
+	rSchema := r.Schema()
+	if !schemaIsPlainObjectWithProperties(lSchema) {
+		return nil, false
+	}
+
+	// NEW must be a pure oneOf/anyOf wrapper (exactly one of the two, no competing top-level keys).
+	branches, ok := schemaWrappingCompositionBranches(rSchema)
+	if !ok {
+		return nil, false
+	}
+
+	// Find exactly one branch that preserves all of OLD's property names (the object, possibly
+	// evolved), resolving local $refs. Any additional branches are treated as added alternatives.
+	var primary *base.Schema
+	primaryCount := 0
+	compositionAcceptsNull := false
+	for _, branch := range branches {
+		if branch.Value == nil || base.CheckSchemaProxyForCircularRefs(branch.Value) {
+			return nil, false
+		}
+		// A nil resolved branch schema is handled by the predicate helpers below (treated as "no").
+		branchSchema := branch.Value.Schema()
+		if schemaTypeAcceptsNull(branchSchema) {
+			compositionAcceptsNull = true
+		}
+		if schemaPreservesObjectProperties(lSchema, branchSchema) {
+			primary = branchSchema
+			primaryCount++
+		}
+	}
+	if primaryCount != 1 || primary == nil {
+		return nil, false
+	}
+
+	// Nullability must be preserved: if OLD accepted null, NEW must still accept it (via a null
+	// branch or the preserved branch itself), otherwise dropping null is a real narrowing.
+	if schemaTypeAcceptsNull(lSchema) && !compositionAcceptsNull && !schemaTypeAcceptsNull(primary) {
+		return nil, false
+	}
+
+	return primary, true
+}
+
+// schemaWrappingCompositionBranches returns the branches of a schema that is a pure oneOf/anyOf
+// wrapper (exactly one of oneOf/anyOf, and no top-level properties/allOf/prefixItems/not that would
+// make it more than a wrapper). allOf is intentionally excluded — it is handled by
+// schemaComparisonViewForSimpleAllOfObject.
+func schemaWrappingCompositionBranches(schema *base.Schema) ([]low.ValueReference[*base.SchemaProxy], bool) {
+	if schema == nil {
+		return nil, false
+	}
+	if schemaHasProperties(schema) || len(schema.AllOf.Value) > 0 ||
+		len(schema.PrefixItems.Value) > 0 || schema.Not.Value != nil {
+		return nil, false
+	}
+	oneOf := schema.OneOf.Value
+	anyOf := schema.AnyOf.Value
+	switch {
+	case len(oneOf) > 0 && len(anyOf) == 0:
+		return oneOf, true
+	case len(anyOf) > 0 && len(oneOf) == 0:
+		return anyOf, true
+	default:
+		return nil, false
+	}
+}
+
+// schemaPreservesObjectProperties reports whether branch is an object that keeps every property name
+// declared on l (branch may add or widen properties — those are surfaced by the normal recursive
+// diff — but it must not drop any, which is what distinguishes the preserved object from an
+// unrelated alternative branch).
+func schemaPreservesObjectProperties(l, branch *base.Schema) bool {
+	if !schemaHasProperties(branch) || !schemaTypeIncludesObject(branch) {
+		return false
+	}
+	branchNames := make(map[string]struct{}, branch.Properties.Value.Len())
+	for k := range branch.Properties.Value.FromOldest() {
+		branchNames[k.Value] = struct{}{}
+	}
+	for k := range l.Properties.Value.FromOldest() {
+		if _, ok := branchNames[k.Value]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func schemaIsPlainObjectWithProperties(schema *base.Schema) bool {
+	return schemaHasProperties(schema) && schemaTypeIncludesObject(schema) && !schemaHasComposition(schema)
+}
+
+func schemaHasProperties(schema *base.Schema) bool {
+	return schema != nil && schema.Properties.Value != nil && schema.Properties.Value.Len() > 0
+}
+
+func schemaHasComposition(schema *base.Schema) bool {
+	if schema == nil {
+		return false
+	}
+	return len(schema.OneOf.Value) > 0 || len(schema.AnyOf.Value) > 0 || len(schema.AllOf.Value) > 0 ||
+		len(schema.PrefixItems.Value) > 0 || schema.Not.Value != nil
+}
+
+// schemaTypeIncludesObject reports whether the schema's declared type admits objects. A schema with
+// no explicit type but with properties is treated as an object.
+func schemaTypeIncludesObject(schema *base.Schema) bool {
+	if schema == nil {
+		return false
+	}
+	if schema.Type.IsEmpty() {
+		return schemaHasProperties(schema)
+	}
+	if schema.Type.Value.IsB() {
+		for _, t := range schema.Type.Value.B {
+			if t.Value == "object" {
+				return true
+			}
+		}
+		return false
+	}
+	return schema.Type.Value.A == "object"
+}
+
+func schemaTypeAcceptsNull(schema *base.Schema) bool {
+	if schema == nil || schema.Type.IsEmpty() {
+		return false
+	}
+	if schema.Type.Value.IsB() {
+		for _, t := range schema.Type.Value.B {
+			if t.Value == "null" {
+				return true
+			}
+		}
+		return false
+	}
+	return schema.Type.Value.A == "null"
 }
 
 func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change) {

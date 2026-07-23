@@ -7422,3 +7422,398 @@ components:
 	// TotalBreakingChanges should count the vocabulary change
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 }
+
+// An inline object hoisted into a reusable component and referenced via `oneOf: [$ref, null]` is an
+// identical, non-breaking restructure: the referenced schema is byte-identical to the old inline
+// object and the null branch preserves nullability. The naive diff used to report the object's
+// properties/required as removed (breaking) because it never resolved the $ref.
+func TestCompareSchemas_InlineObjectWrappedInOneOfRefIsNotBreaking(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Widget:
+      type: object
+      properties:
+        config:
+          type:
+          - object
+          - 'null'
+          required:
+          - mode
+          - items
+          properties:
+            mode:
+              type: integer
+              enum: [1, 2]
+            items:
+              type: array
+              items:
+                type: object
+                required: [kind]
+                properties:
+                  kind:
+                    type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Widget:
+      type: object
+      properties:
+        config:
+          oneOf:
+          - $ref: '#/components/schemas/Config'
+          - type: 'null'
+    Config:
+      type: object
+      required:
+      - mode
+      - items
+      properties:
+        mode:
+          type: integer
+          enum: [1, 2]
+        items:
+          type: array
+          items:
+            type: object
+            required: [kind]
+            properties:
+              kind:
+                type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Widget").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Widget").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	// The restructure is equivalent, so there are no changes at all — and definitely no breaking ones.
+	assert.Nil(t, changes)
+	assert.Equal(t, 0, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+}
+
+// Widening an object into `anyOf: [<same object>, <new alternative>]` still accepts every value the
+// object accepted before, so it is not breaking. The naive diff used to report the object's
+// properties/required as removed because the top-level node changed from an object to an anyOf.
+func TestCompareSchemas_ObjectWidenedIntoAnyOfIsNotBreaking(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Entry:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [alpha, beta]`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Entry:
+      anyOf:
+      - type: object
+        required: [kind]
+        properties:
+          kind:
+            type: string
+            enum: [alpha, beta]
+      - type: array
+        items:
+          type: object
+          required: [kind]
+          properties:
+            kind:
+              type: string
+              enum: [alpha, beta]`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Entry").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Entry").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+}
+
+// The combined case: hoisted into a $ref AND the referenced schema was widened (an enum gained a
+// member). The wrapper itself is non-breaking, and the genuine inner change must still be surfaced
+// (as a non-breaking enum addition) rather than hidden.
+func TestCompareSchemas_WrappedRefWithInnerWideningSurfacesNonBreakingChange(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Widget:
+      type: object
+      properties:
+        config:
+          type:
+          - object
+          - 'null'
+          required:
+          - mode
+          properties:
+            mode:
+              type: integer
+              enum: [1, 2]`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Widget:
+      type: object
+      properties:
+        config:
+          oneOf:
+          - $ref: '#/components/schemas/Config'
+          - type: 'null'
+    Config:
+      type: object
+      required:
+      - mode
+      properties:
+        mode:
+          type: integer
+          enum: [1, 2, 3]`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Widget").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Widget").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	// The enum gaining a member is surfaced as a change, but it is not breaking.
+	assert.Greater(t, changes.TotalChanges(), 0)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+}
+
+// Guard: the reverse direction (a composition collapsing to a single object, dropping an
+// alternative) is a real narrowing and must stay breaking — the fix must not fire here.
+func TestCompareSchemas_AnyOfUnwrappedToObjectStaysBreaking(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Entry:
+      anyOf:
+      - type: object
+        required: [kind]
+        properties:
+          kind:
+            type: string
+      - type: array
+        items:
+          type: object`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Entry:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Entry").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Entry").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Greater(t, changes.TotalBreakingChanges(), 0)
+}
+
+// Guard: an object replaced by an anyOf whose branches do NOT preserve the original object's
+// properties is a genuine change (the original property is gone) and must stay breaking.
+func TestCompareSchemas_ObjectReplacedByNonPreservingAnyOfStaysBreaking(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Entry:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Entry:
+      anyOf:
+      - type: object
+        required: [label]
+        properties:
+          label:
+            type: string
+      - type: array
+        items:
+          type: object`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Entry").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Entry").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Greater(t, changes.TotalBreakingChanges(), 0)
+}
+
+// Guard: dropping nullability while hoisting into a ref is a real narrowing (null was accepted, now
+// it isn't). The fix must not fire because the composition has no null-accepting branch.
+func TestCompareSchemas_WrapDroppingNullabilityStaysBreaking(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Widget:
+      type: object
+      properties:
+        config:
+          type:
+          - object
+          - 'null'
+          required:
+          - mode
+          properties:
+            mode:
+              type: integer`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Widget:
+      type: object
+      properties:
+        config:
+          oneOf:
+          - $ref: '#/components/schemas/Config'
+    Config:
+      type: object
+      required:
+      - mode
+      properties:
+        mode:
+          type: integer`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Widget").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Widget").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Greater(t, changes.TotalBreakingChanges(), 0)
+}
+
+// Guard: a composition branch that is a circular $ref must not be followed (it would recurse). The
+// preservation shortcut bails out, so the comparison falls back to the normal diff without panicking.
+func TestCompareSchemas_WrapWithCircularRefBranchIsHandled(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Widget:
+      type: object
+      properties:
+        config:
+          type: object
+          required: [mode]
+          properties:
+            mode:
+              type: integer`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Widget:
+      type: object
+      properties:
+        config:
+          oneOf:
+          - $ref: '#/components/schemas/Node'
+          - type: 'null'
+    Node:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          type: integer
+        child:
+          $ref: '#/components/schemas/Node'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Widget").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Widget").Value
+
+	assert.NotPanics(t, func() {
+		CompareSchemas(lSchemaProxy, rSchemaProxy)
+	})
+}
+
+// Directly exercises the small predicate helpers behind preservedCompositionBranchView, including
+// nil and edge-typed inputs that the normal comparison path never produces.
+func TestPreservedCompositionWrapHelpers(t *testing.T) {
+	low.ClearHashCache()
+	spec := `openapi: 3.1.0
+components:
+  schemas:
+    BothComposition:
+      oneOf:
+      - type: string
+      anyOf:
+      - type: integer
+    EmptyWrapper:
+      description: no type, no properties, no composition
+    ScalarUnionNoNull:
+      type:
+      - string
+      - number
+    ScalarUnionWithNull:
+      type:
+      - string
+      - 'null'
+    UntypedWithProps:
+      properties:
+        a:
+          type: string
+    OneOfWrapper:
+      oneOf:
+      - type: string
+      - type: 'null'`
+
+	doc, _ := test_BuildDoc(spec, spec)
+	get := func(name string) *base.Schema {
+		return doc.Components.Value.FindSchema(name).Value.Schema()
+	}
+
+	// schemaWrappingCompositionBranches
+	_, ok := schemaWrappingCompositionBranches(nil)
+	assert.False(t, ok)
+	_, ok = schemaWrappingCompositionBranches(get("BothComposition"))
+	assert.False(t, ok) // both oneOf and anyOf -> not a pure wrapper
+	_, ok = schemaWrappingCompositionBranches(get("EmptyWrapper"))
+	assert.False(t, ok) // neither oneOf nor anyOf
+	branches, ok := schemaWrappingCompositionBranches(get("OneOfWrapper"))
+	assert.True(t, ok)
+	assert.Len(t, branches, 2)
+
+	// schemaHasComposition
+	assert.False(t, schemaHasComposition(nil))
+	assert.True(t, schemaHasComposition(get("BothComposition")))
+
+	// schemaTypeIncludesObject
+	assert.False(t, schemaTypeIncludesObject(nil))
+	assert.False(t, schemaTypeIncludesObject(get("ScalarUnionNoNull"))) // type array without object
+	assert.True(t, schemaTypeIncludesObject(get("UntypedWithProps")))   // no type but has properties
+
+	// schemaTypeAcceptsNull
+	assert.False(t, schemaTypeAcceptsNull(nil))
+	assert.False(t, schemaTypeAcceptsNull(get("EmptyWrapper")))      // no type
+	assert.False(t, schemaTypeAcceptsNull(get("ScalarUnionNoNull"))) // type array without null
+	assert.True(t, schemaTypeAcceptsNull(get("ScalarUnionWithNull")))
+}
