@@ -19,6 +19,7 @@ import (
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/datamodel/low/arazzo"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"go.yaml.in/yaml/v4"
 )
 
 var resolveFilepathAbs = filepath.Abs
@@ -31,14 +32,22 @@ type OpenAPIDocumentFactory func(sourceURL string, bytes []byte) (*v3high.Docume
 // The sourceURL provides location context for relative reference resolution.
 type ArazzoDocumentFactory func(sourceURL string, bytes []byte) (*high.Arazzo, error)
 
+// HTTPSourceHandler retrieves source bytes while honoring caller cancellation and deadlines.
+type HTTPSourceHandler func(context.Context, string) ([]byte, error)
+
 // ResolveConfig configures how source descriptions are resolved.
 type ResolveConfig struct {
 	OpenAPIFactory OpenAPIDocumentFactory // Creates *v3high.Document from bytes
 	ArazzoFactory  ArazzoDocumentFactory  // Creates *high.Arazzo from bytes
 	BaseURL        string
-	HTTPHandler    func(url string) ([]byte, error)
-	HTTPClient     *http.Client
-	FSRoots        []string
+	// HTTPHandlerWithContext is preferred for custom retrieval because it can
+	// stop work when ResolveSourcesWithContext is cancelled or times out.
+	HTTPHandlerWithContext HTTPSourceHandler
+	// HTTPHandler is retained for compatibility. It is checked for cancellation
+	// before invocation, but its legacy signature cannot stop in-flight work.
+	HTTPHandler func(url string) ([]byte, error)
+	HTTPClient  *http.Client
+	FSRoots     []string
 
 	Timeout        time.Duration // Per-source fetch timeout (default: 30s)
 	MaxBodySize    int64         // Max response body in bytes (default: 10MB)
@@ -51,20 +60,51 @@ type ResolveConfig struct {
 type ResolvedSource struct {
 	Name            string           // SourceDescription name
 	URL             string           // Resolved URL
+	Identity        string           // Portable resolved identity, usually resolved $self
+	RetrievalURI    string           // Location from which the document was retrieved
 	Type            string           // "openapi" or "arazzo"
+	SourceBytes     []byte           // Original source bytes when supplied or retrieved
+	RootNode        *yaml.Node       // Original root node when supplied
 	OpenAPIDocument *v3high.Document // Non-nil when Type == "openapi"
 	ArazzoDocument  *high.Arazzo     // Non-nil when Type == "arazzo"
+	Adapter         SourceDocumentAdapter
 }
 
 // ResolveSources resolves all source descriptions in an Arazzo document.
+//
+// Retrieval is not cancellable through this entry point; it applies only the
+// per-source timeout from ResolveConfig. Use ResolveSourcesWithContext to make
+// in-flight retrieval respond to caller cancellation.
 func ResolveSources(doc *high.Arazzo, config *ResolveConfig) ([]*ResolvedSource, error) {
+	return ResolveSourcesWithContext(context.Background(), doc, config)
+}
+
+// ResolveSourcesWithContext resolves all source descriptions in an Arazzo document.
+// Built-in HTTP retrieval and HTTPHandlerWithContext honor caller cancellation and
+// the per-source timeout, whichever elapses first. The legacy HTTPHandler can only
+// observe cancellation before it is invoked because its signature has no context.
+func ResolveSourcesWithContext(
+	ctx context.Context,
+	doc *high.Arazzo,
+	config *ResolveConfig,
+) ([]*ResolvedSource, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if doc == nil {
 		return nil, fmt.Errorf("nil arazzo document")
 	}
 
-	if config == nil {
-		config = &ResolveConfig{}
+	// Work on a copy. Defaults and the derived base URI are resolution state, not
+	// caller state: writing them back would publish one document's settings into a
+	// config the caller may reuse for another document, and would race if the same
+	// config were shared across concurrent resolves. AllowedSchemes is only ever read,
+	// so a shallow copy is sufficient.
+	local := ResolveConfig{}
+	if config != nil {
+		local = *config
 	}
+	config = &local
 
 	// Apply defaults
 	if config.Timeout == 0 {
@@ -79,8 +119,17 @@ func ResolveSources(doc *high.Arazzo, config *ResolveConfig) ([]*ResolvedSource,
 	if len(config.AllowedSchemes) == 0 {
 		config.AllowedSchemes = []string{"https", "http", "file"}
 	}
-	if config.HTTPClient == nil && config.HTTPHandler == nil {
+	if config.HTTPClient == nil && config.HTTPHandler == nil && config.HTTPHandlerWithContext == nil {
 		config.HTTPClient = &http.Client{Timeout: config.Timeout}
+	}
+
+	// Fall back to the document's effective base URI (derived from $self, the retrieval
+	// URI, or the application base) when the caller did not supply one. An explicit
+	// BaseURL always wins, so existing callers are unaffected.
+	if config.BaseURL == "" {
+		if origin := doc.GetDocumentOrigin(); origin != nil {
+			config.BaseURL = origin.EffectiveBaseURI
+		}
 	}
 
 	if len(doc.SourceDescriptions) > config.MaxSources {
@@ -89,6 +138,9 @@ func ResolveSources(doc *high.Arazzo, config *ResolveConfig) ([]*ResolvedSource,
 
 	resolved := make([]*ResolvedSource, 0, len(doc.SourceDescriptions))
 	for _, sd := range doc.SourceDescriptions {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if sd == nil {
 			return nil, fmt.Errorf("%w: source description is nil", ErrSourceDescLoadFailed)
 		}
@@ -104,12 +156,15 @@ func ResolveSources(doc *high.Arazzo, config *ResolveConfig) ([]*ResolvedSource,
 			return nil, fmt.Errorf("%w (%q): %v", ErrSourceDescLoadFailed, sd.Name, err)
 		}
 
-		docBytes, resolvedURL, err := fetchSourceBytes(parsedURL, config)
+		docBytes, resolvedURL, err := fetchSourceBytes(ctx, parsedURL, config)
 		if err != nil {
 			return nil, fmt.Errorf("%w (%q): %v", ErrSourceDescLoadFailed, sd.Name, err)
 		}
 
 		rs.URL = resolvedURL
+		rs.RetrievalURI = resolvedURL
+		rs.Identity = resolvedURL
+		rs.SourceBytes = docBytes
 		rs.Type = strings.ToLower(sd.Type)
 		if rs.Type == "" {
 			rs.Type = "openapi" // Default per spec
@@ -134,6 +189,13 @@ func ResolveSources(doc *high.Arazzo, config *ResolveConfig) ([]*ResolvedSource,
 				return nil, fmt.Errorf("%w (%q): %v", ErrSourceDescLoadFailed, sd.Name, factoryErr)
 			}
 			rs.ArazzoDocument = arazzoDoc
+			if arazzoDoc != nil {
+				if origin := arazzoDoc.GetDocumentOrigin(); origin != nil && origin.ResolvedIdentity != "" {
+					rs.Identity = origin.ResolvedIdentity
+				} else if arazzoDoc.Self != "" {
+					rs.Identity = arazzoDoc.Self
+				}
+			}
 		default:
 			return nil, fmt.Errorf("%w (%q): unknown source type %q", ErrSourceDescLoadFailed, sd.Name, rs.Type)
 		}
@@ -203,10 +265,10 @@ func validateSourceURL(sourceURL *url.URL, config *ResolveConfig) error {
 	return nil
 }
 
-func fetchSourceBytes(sourceURL *url.URL, config *ResolveConfig) ([]byte, string, error) {
+func fetchSourceBytes(ctx context.Context, sourceURL *url.URL, config *ResolveConfig) ([]byte, string, error) {
 	switch sourceURL.Scheme {
 	case "http", "https":
-		b, err := fetchHTTPSourceBytes(sourceURL.String(), config)
+		b, err := fetchHTTPSourceBytes(ctx, sourceURL.String(), config)
 		if err != nil {
 			return nil, "", err
 		}
@@ -235,8 +297,11 @@ func fetchSourceBytes(sourceURL *url.URL, config *ResolveConfig) ([]byte, string
 	}
 }
 
-func fetchHTTPSourceBytes(sourceURL string, config *ResolveConfig) ([]byte, error) {
-	if config.HTTPHandler != nil {
+func fetchHTTPSourceBytes(ctx context.Context, sourceURL string, config *ResolveConfig) ([]byte, error) {
+	if config.HTTPHandlerWithContext == nil && config.HTTPHandler != nil {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		b, err := config.HTTPHandler(sourceURL)
 		if err != nil {
 			return nil, err
@@ -247,8 +312,22 @@ func fetchHTTPSourceBytes(sourceURL string, config *ResolveConfig) ([]byte, erro
 		return b, nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
-	defer cancel()
+	if config.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, config.Timeout)
+		defer cancel()
+	}
+
+	if config.HTTPHandlerWithContext != nil {
+		b, err := config.HTTPHandlerWithContext(ctx, sourceURL)
+		if err != nil {
+			return nil, err
+		}
+		if int64(len(b)) > config.MaxBodySize {
+			return nil, fmt.Errorf("response body exceeds max size of %d bytes", config.MaxBodySize)
+		}
+		return b, nil
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, nil)
 	if err != nil {
@@ -414,7 +493,6 @@ func ensureResolvedPathWithinRoots(path string, roots []string) error {
 	}
 	return nil
 }
-
 
 func containsFold(values []string, value string) bool {
 	for _, v := range values {

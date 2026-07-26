@@ -4,6 +4,8 @@
 package arazzo
 
 import (
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/arazzo"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -12,7 +14,7 @@ import (
 
 // Parameter represents a high-level Arazzo Parameter Object.
 // A parameter can be a full parameter definition or a Reusable Object with a $components reference.
-// https://spec.openapis.org/arazzo/v1.0.1#parameter-object
+// https://spec.openapis.org/arazzo/v1.1.0#parameter-object
 type Parameter struct {
 	Name       string                              `json:"name,omitempty" yaml:"name,omitempty"`
 	In         string                              `json:"in,omitempty" yaml:"in,omitempty"`
@@ -45,6 +47,36 @@ func NewParameter(param *low.Parameter) *Parameter {
 	}
 	p.Extensions = high.ExtractExtensions(param.Extensions)
 	return p
+}
+
+// IsRuntimeExpression reports whether the parameter value is a runtime-expression scalar.
+func (p *Parameter) IsRuntimeExpression() bool {
+	if p == nil || p.Value == nil || p.Value.Kind != yaml.ScalarNode {
+		return false
+	}
+	return strings.HasPrefix(p.Value.Value, "$") || strings.Contains(p.Value.Value, "{$")
+}
+
+// IsSelector reports whether the parameter value is a Selector Object.
+func (p *Parameter) IsSelector() bool {
+	return p != nil && selectorFromNode(p.Value) != nil
+}
+
+// GetSelector returns the typed Selector Object when active.
+func (p *Parameter) GetSelector() (*Selector, bool) {
+	if p == nil {
+		return nil, false
+	}
+	selector := selectorFromNode(p.Value)
+	return selector, selector != nil
+}
+
+// GetValueNode returns the original parameter value node.
+func (p *Parameter) GetValueNode() *yaml.Node {
+	if p == nil {
+		return nil
+	}
+	return p.Value
 }
 
 // GoLow returns the low-level Parameter instance used to create the high-level one.

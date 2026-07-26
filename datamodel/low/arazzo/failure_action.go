@@ -17,26 +17,28 @@ import (
 
 // FailureAction represents a low-level Arazzo Failure Action Object.
 // A failure action can be a full definition or a Reusable Object with a $components reference.
-// https://spec.openapis.org/arazzo/v1.0.1#failure-action-object
+// https://spec.openapis.org/arazzo/v1.1.0#failure-action-object
 type FailureAction struct {
-	Name       low.NodeReference[string]
-	Type       low.NodeReference[string]
-	WorkflowId low.NodeReference[string]
-	StepId     low.NodeReference[string]
-	RetryAfter low.NodeReference[float64]
-	RetryLimit low.NodeReference[int64]
-	Criteria   low.NodeReference[[]low.ValueReference[*Criterion]]
+	Name         low.NodeReference[string]
+	Type         low.NodeReference[string]
+	WorkflowId   low.NodeReference[string]
+	StepId       low.NodeReference[string]
+	RetryAfter   low.NodeReference[float64]
+	RetryLimit   low.NodeReference[int64]
+	Criteria     low.NodeReference[[]low.ValueReference[*Criterion]]
+	Parameters   low.NodeReference[[]low.ValueReference[*Parameter]]
 	ComponentRef low.NodeReference[string]
-	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
-	KeyNode    *yaml.Node
-	RootNode   *yaml.Node
-	index      *index.SpecIndex
-	context    context.Context
+	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode      *yaml.Node
+	RootNode     *yaml.Node
+	index        *index.SpecIndex
+	context      context.Context
 	*low.Reference
 	low.NodeMap
 }
 
 var extractFailureActionCriteria = extractArray[Criterion]
+var extractFailureActionParameters = extractArray[Parameter]
 
 // IsReusable returns true if this failure action is a Reusable Object (has a reference field).
 func (f *FailureAction) IsReusable() bool {
@@ -121,6 +123,15 @@ func (f *FailureAction) Build(ctx context.Context, keyNode, root *yaml.Node, idx
 		return err
 	}
 	f.Criteria = criteria
+
+	if err := requireSequence(ParametersLabel, "a sequence of Parameter Objects", root); err != nil {
+		return err
+	}
+	parameters, err := extractFailureActionParameters(ctx, ParametersLabel, root, idx)
+	if err != nil {
+		return err
+	}
+	f.Parameters = parameters
 	return nil
 }
 
@@ -163,6 +174,11 @@ func (f *FailureAction) Hash() uint64 {
 		if !f.Criteria.IsEmpty() {
 			for _, c := range f.Criteria.Value {
 				low.HashUint64(h, c.Value.Hash())
+			}
+		}
+		if !f.Parameters.IsEmpty() {
+			for _, parameter := range f.Parameters.Value {
+				low.HashUint64(h, parameter.Value.Hash())
 			}
 		}
 		hashExtensionsInto(h, f.Extensions)

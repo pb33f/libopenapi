@@ -520,7 +520,14 @@ func writeSchemaExtensions(sb *strings.Builder, ext *orderedmap.Map[low.KeyRefer
 }
 
 func (s *Schema) quickHashKey() string {
-	idx := s.GetIndex()
+	// The key identifies a node by file plus position, so the path must come from the file
+	// RootNode is in. GetIndex() may have been re-attributed to the file a $ref resolves to,
+	// which would pair a resolved-file path with a referring-file line and column: two
+	// different $refs at the same position in different files pointing into one shared file
+	// would then collide and return each other's hash.
+	// refIndex is assigned unconditionally in Build alongside Index, so it is nil only when
+	// the schema was never built, in which case Index is nil too and there is no path either way.
+	idx := s.refIndex
 	path := ""
 	if idx != nil {
 		path = idx.GetSpecAbsolutePath()

@@ -24,7 +24,7 @@ func TestResolveComponents_WithDeepTail(t *testing.T) {
 		},
 	}
 
-	v, err := EvaluateString("$components.inputs.i1.inner.value", ctx)
+	v, err := Evaluate(Expression{Type: Components, Name: "inputs", Tail: "i1.inner.value"}, ctx)
 	require.NoError(t, err)
 	assert.Equal(t, "ok", v)
 }

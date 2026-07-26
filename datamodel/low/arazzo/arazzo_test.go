@@ -1198,7 +1198,7 @@ outputs:
 	pair := step.Outputs.Value.First()
 	require.NotNil(t, pair)
 	assert.Equal(t, "petName", pair.Key().Value)
-	assert.Equal(t, "$response.body#/name", pair.Value().Value)
+	assert.Equal(t, "$response.body#/name", pair.Value().Value.Expression.Value)
 }
 
 func TestStep_Build_WithOperationPath(t *testing.T) {
@@ -1408,7 +1408,7 @@ parameters:
 	pair := wf.Outputs.Value.First()
 	require.NotNil(t, pair)
 	assert.Equal(t, "result", pair.Key().Value)
-	assert.Equal(t, "$steps.getPet.outputs.petName", pair.Value().Value)
+	assert.Equal(t, "$steps.getPet.outputs.petName", pair.Value().Value.Expression.Value)
 
 	// Parameters
 	require.False(t, wf.Parameters.IsEmpty())
@@ -1851,14 +1851,14 @@ components:
 	outPair := step.Outputs.Value.First()
 	require.NotNil(t, outPair)
 	assert.Equal(t, "petName", outPair.Key().Value)
-	assert.Equal(t, "$response.body#/name", outPair.Value().Value)
+	assert.Equal(t, "$response.body#/name", outPair.Value().Value.Expression.Value)
 
 	// First workflow outputs
 	require.False(t, wf1.Outputs.IsEmpty())
 	wfOutPair := wf1.Outputs.Value.First()
 	require.NotNil(t, wfOutPair)
 	assert.Equal(t, "result", wfOutPair.Key().Value)
-	assert.Equal(t, "$steps.getPet.outputs.petName", wfOutPair.Value().Value)
+	assert.Equal(t, "$steps.getPet.outputs.petName", wfOutPair.Value().Value.Expression.Value)
 
 	// Second workflow
 	wf2 := arazzo.Workflows.Value[1].Value
@@ -2135,8 +2135,7 @@ func TestExtractArray_NotSequence(t *testing.T) {
 	require.NoError(t, err)
 
 	result, err := extractArray[Parameter](context.Background(), ParametersLabel, node.Content[0], nil)
-	require.NoError(t, err)
-	// Has key/value nodes set but no items since it is not a sequence
+	require.Error(t, err)
 	assert.NotNil(t, result.KeyNode)
 	assert.Nil(t, result.Value)
 }
@@ -2172,7 +2171,8 @@ func TestExtractStringArray_NotSequence(t *testing.T) {
 	err := yaml.Unmarshal([]byte(yml), &node)
 	require.NoError(t, err)
 
-	result := extractStringArray(DependsOnLabel, node.Content[0])
+	result, err := extractStringArray(DependsOnLabel, node.Content[0])
+	require.Error(t, err)
 	assert.NotNil(t, result.KeyNode)
 	assert.Nil(t, result.Value)
 }
@@ -2184,7 +2184,8 @@ func TestExtractStringArray_Empty(t *testing.T) {
 	err := yaml.Unmarshal([]byte(yml), &node)
 	require.NoError(t, err)
 
-	result := extractStringArray(DependsOnLabel, node.Content[0])
+	result, err := extractStringArray(DependsOnLabel, node.Content[0])
+	require.NoError(t, err)
 	assert.Len(t, result.Value, 0)
 }
 
@@ -2198,7 +2199,8 @@ func TestExtractStringArray_Multiple(t *testing.T) {
 	err := yaml.Unmarshal([]byte(yml), &node)
 	require.NoError(t, err)
 
-	result := extractStringArray(DependsOnLabel, node.Content[0])
+	result, err := extractStringArray(DependsOnLabel, node.Content[0])
+	require.NoError(t, err)
 	require.Len(t, result.Value, 3)
 	assert.Equal(t, "alpha", result.Value[0].Value)
 	assert.Equal(t, "beta", result.Value[1].Value)
@@ -2279,7 +2281,8 @@ func TestExtractRawNodeMap_Found(t *testing.T) {
 	err := yaml.Unmarshal([]byte(yml), &node)
 	require.NoError(t, err)
 
-	result := extractRawNodeMap(InputsLabel, node.Content[0])
+	result, err := extractRawNodeMap(InputsLabel, node.Content[0])
+	require.NoError(t, err)
 	require.False(t, result.IsEmpty())
 	require.NotNil(t, result.Value)
 	assert.Equal(t, 1, result.Value.Len())
@@ -2295,7 +2298,8 @@ func TestExtractRawNodeMap_NotMapping(t *testing.T) {
 	err := yaml.Unmarshal([]byte(yml), &node)
 	require.NoError(t, err)
 
-	result := extractRawNodeMap(InputsLabel, node.Content[0])
+	result, err := extractRawNodeMap(InputsLabel, node.Content[0])
+	require.Error(t, err)
 	assert.NotNil(t, result.KeyNode)
 	assert.Nil(t, result.Value)
 }
@@ -2307,7 +2311,8 @@ func TestExtractRawNodeMap_Missing(t *testing.T) {
 	err := yaml.Unmarshal([]byte(yml), &node)
 	require.NoError(t, err)
 
-	result := extractRawNodeMap(InputsLabel, node.Content[0])
+	result, err := extractRawNodeMap(InputsLabel, node.Content[0])
+	require.NoError(t, err)
 	assert.True(t, result.IsEmpty())
 }
 
@@ -2351,7 +2356,7 @@ func TestExtractObjectMap_NotMapping(t *testing.T) {
 	require.NoError(t, err)
 
 	result, err := extractObjectMap[Parameter](context.Background(), ParametersLabel, node.Content[0], nil)
-	require.NoError(t, err)
+	require.Error(t, err)
 	assert.Nil(t, result.Value)
 }
 
@@ -2403,7 +2408,8 @@ func TestExtractStringArray_OddContentLength(t *testing.T) {
 		Value: "orphan",
 	})
 
-	result := extractStringArray(DependsOnLabel, root)
+	result, err := extractStringArray(DependsOnLabel, root)
+	require.NoError(t, err)
 	assert.Nil(t, result.Value)
 }
 
@@ -2472,7 +2478,8 @@ func TestExtractRawNodeMap_OddContentLength(t *testing.T) {
 		Value: "orphan",
 	})
 
-	result := extractRawNodeMap(InputsLabel, root)
+	result, err := extractRawNodeMap(InputsLabel, root)
+	require.NoError(t, err)
 	assert.True(t, result.IsEmpty())
 }
 
@@ -2974,7 +2981,8 @@ func TestExtractRawNodeMap_OddInnerContentLength(t *testing.T) {
 		}
 	}
 
-	result := extractRawNodeMap(InputsLabel, root)
+	result, err := extractRawNodeMap(InputsLabel, root)
+	require.NoError(t, err)
 	require.NotNil(t, result.Value)
 	assert.Equal(t, 1, result.Value.Len())
 }

@@ -1,0 +1,3 @@
+description: refs B
+schema:
+  $ref: './shared_two.yaml#/components/schemas/B'

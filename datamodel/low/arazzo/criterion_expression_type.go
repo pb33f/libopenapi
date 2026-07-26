@@ -13,9 +13,9 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// CriterionExpressionType represents a low-level Arazzo Criterion Expression Type Object.
-// https://spec.openapis.org/arazzo/v1.0.1#criterion-expression-type-object
-type CriterionExpressionType struct {
+// ExpressionType represents a low-level Arazzo Expression Type Object.
+// https://spec.openapis.org/arazzo/v1.1.0#expression-type-object
+type ExpressionType struct {
 	Type       low.NodeReference[string]
 	Version    low.NodeReference[string]
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
@@ -30,32 +30,32 @@ type CriterionExpressionType struct {
 // GetIndex returns the index.SpecIndex instance attached to the CriterionExpressionType object.
 // For Arazzo low models this is typically nil, because Arazzo parsing does not build a SpecIndex.
 // The index parameter is still required to satisfy the shared low.Buildable interface and generic extractors.
-func (c *CriterionExpressionType) GetIndex() *index.SpecIndex {
+func (c *ExpressionType) GetIndex() *index.SpecIndex {
 	return c.index
 }
 
 // GetContext returns the context.Context instance used when building the CriterionExpressionType object.
-func (c *CriterionExpressionType) GetContext() context.Context {
+func (c *ExpressionType) GetContext() context.Context {
 	return c.context
 }
 
 // FindExtension returns a ValueReference containing the extension value, if found.
-func (c *CriterionExpressionType) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+func (c *ExpressionType) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 	return low.FindItemInOrderedMap(ext, c.Extensions)
 }
 
 // GetRootNode returns the root yaml node of the CriterionExpressionType object.
-func (c *CriterionExpressionType) GetRootNode() *yaml.Node {
+func (c *ExpressionType) GetRootNode() *yaml.Node {
 	return c.RootNode
 }
 
 // GetKeyNode returns the key yaml node of the CriterionExpressionType object.
-func (c *CriterionExpressionType) GetKeyNode() *yaml.Node {
+func (c *ExpressionType) GetKeyNode() *yaml.Node {
 	return c.KeyNode
 }
 
 // Build will extract all properties of the CriterionExpressionType object.
-func (c *CriterionExpressionType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+func (c *ExpressionType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	root = initBuild(&arazzoBase{
 		KeyNode:    &c.KeyNode,
 		RootNode:   &c.RootNode,
@@ -69,12 +69,12 @@ func (c *CriterionExpressionType) Build(ctx context.Context, keyNode, root *yaml
 }
 
 // GetExtensions returns all CriterionExpressionType extensions and satisfies the low.HasExtensions interface.
-func (c *CriterionExpressionType) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
+func (c *ExpressionType) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return c.Extensions
 }
 
 // Hash will return a consistent hash of the CriterionExpressionType object.
-func (c *CriterionExpressionType) Hash() uint64 {
+func (c *ExpressionType) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if !c.Type.IsEmpty() {
 			h.WriteString(c.Type.Value)
@@ -88,3 +88,6 @@ func (c *CriterionExpressionType) Hash() uint64 {
 		return h.Sum64()
 	})
 }
+
+// CriterionExpressionType is retained as an alias for source compatibility with Arazzo 1.0 callers.
+type CriterionExpressionType = ExpressionType

@@ -4,6 +4,11 @@
 package libopenapi
 
 import (
+	"bytes"
+	gocontext "context"
+	"encoding/json"
+	"log/slog"
+	"os"
 	"reflect"
 	"sync"
 	"testing"
@@ -16,8 +21,47 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+type arazzoContextKey string
+
+type officialArazzoSchemaMetadata struct {
+	Specification string `json:"specification"`
+	Schema        string `json:"schema"`
+	Iteration     string `json:"iteration"`
+	SHA256        string `json:"sha256"`
+	Bytes         int    `json:"bytes"`
+}
+
 //go:linkname arazzoLowBuildModelFieldCache github.com/pb33f/libopenapi/datamodel/low.buildModelFieldCache
 var arazzoLowBuildModelFieldCache sync.Map
+
+// TestArazzoOfficialSchemaMetadataIsPinned records which official schema iterations
+// this package was built against. It pins the identifiers only — no schema bytes are
+// stored here and nothing is hashed, so this asserts a documented claim rather than a
+// verified contract. The authoritative check belongs in libopenapi-validator, which
+// embeds and compiles these schemas; the checksums below exist so that a mismatch
+// there can be traced back to the iteration this model targeted.
+func TestArazzoOfficialSchemaMetadataIsPinned(t *testing.T) {
+	metadataBytes, err := os.ReadFile("arazzo/testdata/official-schema-metadata.json")
+	require.NoError(t, err)
+	var metadata map[string]officialArazzoSchemaMetadata
+	require.NoError(t, json.Unmarshal(metadataBytes, &metadata))
+
+	assert.Equal(t, officialArazzoSchemaMetadata{
+		Specification: "https://spec.openapis.org/arazzo/v1.0.1.html",
+		Schema:        "https://spec.openapis.org/arazzo/1.0/schema/2025-10-15",
+		Iteration:     "2025-10-15",
+		SHA256:        "b8715bd824fffcb2accf5077977d37c9e7a15be60d785e7a3a51cf600fd46ad4",
+		Bytes:         23972,
+	}, metadata["arazzo-1.0"])
+	assert.Equal(t, officialArazzoSchemaMetadata{
+		Specification: "https://spec.openapis.org/arazzo/v1.1.0.html",
+		Schema:        "https://spec.openapis.org/arazzo/1.1/schema/2026-04-15",
+		Iteration:     "2026-04-15",
+		SHA256:        "37be908409bdb2f7bffe61fa23685c7e84cbeebfafac475a1d01dbc50ff7ab9e",
+		Bytes:         32347,
+	}, metadata["arazzo-1.1"])
+	assert.Len(t, metadata, 2)
+}
 
 func TestNewArazzoDocument_ValidFull(t *testing.T) {
 	yml := []byte(`arazzo: 1.0.1
@@ -150,6 +194,156 @@ workflows:
 	assert.Len(t, doc.SourceDescriptions, 1)
 	assert.Len(t, doc.Workflows, 1)
 	assert.Nil(t, doc.Components)
+}
+
+func TestNewArazzoDocumentWithConfiguration_OriginAndContext(t *testing.T) {
+	yml := []byte(`arazzo: 1.1.0
+$self: ../portable/root.yaml
+info:
+  title: Configured
+  version: 1.0.0
+sourceDescriptions:
+  - name: api
+    url: api.yaml
+    type: openapi
+workflows:
+  - workflowId: configured
+    steps:
+      - stepId: step
+        operationId: get
+`)
+	key := arazzoContextKey("configured")
+	ctx := gocontext.WithValue(gocontext.Background(), key, "value")
+	config := &ArazzoDocumentConfiguration{
+		Context:            ctx,
+		RetrievalURI:       "https://retrieval.example/workflows/source.yaml",
+		ApplicationBaseURI: "https://application.example/default/",
+	}
+	document, err := NewArazzoDocumentWithConfiguration(yml, config)
+	require.NoError(t, err)
+	require.NotNil(t, document)
+	assert.Equal(t, "value", document.GoLow().GetContext().Value(key))
+	origin := document.GetDocumentOrigin()
+	require.NotNil(t, origin)
+	assert.Equal(t, "https://retrieval.example/portable/root.yaml", origin.ResolvedIdentity)
+	assert.Equal(t, "https://retrieval.example/workflows/source.yaml", origin.RetrievalURI)
+
+	config.RetrievalURI = "https://mutated.example/root.yaml"
+	assert.Equal(t, "https://retrieval.example/workflows/source.yaml", document.GetDocumentOrigin().RetrievalURI)
+}
+
+func TestNewArazzoDocumentWithConfiguration_InvalidOrigin(t *testing.T) {
+	yml := []byte(`arazzo: 1.1.0
+info:
+  title: Configured
+  version: 1.0.0
+sourceDescriptions: []
+workflows: []
+`)
+	document, err := NewArazzoDocumentWithConfiguration(yml, &ArazzoDocumentConfiguration{
+		RetrievalURI: "https://example.com/%zz",
+	})
+	assert.Nil(t, document)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to resolve arazzo document origin")
+}
+
+func TestNewArazzoDocumentWithConfiguration_MalformedAuthoredSelfStillBuilds(t *testing.T) {
+	yml := []byte(`arazzo: 1.1.0
+info:
+  title: Malformed authored identity
+  version: 1.0.0
+$self: https://identity.example/%zz
+sourceDescriptions: []
+workflows: []
+`)
+	document, err := NewArazzoDocumentWithConfiguration(yml, &ArazzoDocumentConfiguration{
+		RetrievalURI: "https://retrieval.example/workflows/root.yaml",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, document)
+	assert.Equal(t, "https://identity.example/%zz", document.Self)
+	origin := document.GetDocumentOrigin()
+	require.NotNil(t, origin)
+	assert.Equal(t, "https://identity.example/%zz", origin.AuthoredSelf)
+	assert.Equal(t, "https://retrieval.example/workflows/root.yaml", origin.ResolvedIdentity)
+}
+
+func TestNewArazzoDocument_Arazzo11OfficialFixtureYAMLJSONEquivalent(t *testing.T) {
+	yamlBytes, err := os.ReadFile("arazzo/testdata/arazzo-1.1-official.yaml")
+	require.NoError(t, err)
+	yamlDocument, err := NewArazzoDocument(yamlBytes)
+	require.NoError(t, err)
+
+	var value any
+	require.NoError(t, yaml.Unmarshal(yamlBytes, &value))
+	jsonBytes, err := json.Marshal(value)
+	require.NoError(t, err)
+	jsonDocument, err := NewArazzoDocument(jsonBytes)
+	require.NoError(t, err)
+
+	assert.Equal(t, yamlDocument.Arazzo, jsonDocument.Arazzo)
+	assert.Equal(t, yamlDocument.Self, jsonDocument.Self)
+	require.Len(t, yamlDocument.Workflows, 1)
+	require.Len(t, jsonDocument.Workflows, 1)
+	assert.Equal(t, yamlDocument.Workflows[0].WorkflowId, jsonDocument.Workflows[0].WorkflowId)
+	require.Len(t, yamlDocument.Workflows[0].Steps, 3)
+	require.Len(t, jsonDocument.Workflows[0].Steps, 3)
+	for index := range yamlDocument.Workflows[0].Steps {
+		yamlStep := yamlDocument.Workflows[0].Steps[index]
+		jsonStep := jsonDocument.Workflows[0].Steps[index]
+		assert.Equal(t, yamlStep.StepId, jsonStep.StepId)
+		assert.Equal(t, yamlStep.Action, jsonStep.Action)
+		assert.Equal(t, yamlStep.DependsOn, jsonStep.DependsOn)
+		assert.Equal(t, yamlStep.Timeout, jsonStep.Timeout)
+	}
+
+	rendered, err := yamlDocument.Render()
+	require.NoError(t, err)
+	reloaded, err := NewArazzoDocument(rendered)
+	require.NoError(t, err)
+	assert.Equal(t, yamlDocument.Self, reloaded.Self)
+	assert.True(t, reloaded.Workflows[0].Steps[0].Outputs.First().Value().IsSelector())
+}
+
+func TestNewArazzoDocument_Arazzo10GoldenRenderCompatibility(t *testing.T) {
+	fixture, err := os.ReadFile("arazzo/testdata/arazzo-1.0-render.yaml")
+	require.NoError(t, err)
+	document, err := NewArazzoDocument(fixture)
+	require.NoError(t, err)
+	rendered, err := document.Render()
+	require.NoError(t, err)
+	assert.Equal(t, string(fixture), string(rendered))
+	assert.NotContains(t, string(rendered), "$self")
+	assert.NotContains(t, string(rendered), "channelPath")
+	assert.NotContains(t, string(rendered), "targetSelectorType")
+}
+
+func TestNewArazzoDocument_ConcurrentParseAndRender(t *testing.T) {
+	fixture, err := os.ReadFile("arazzo/testdata/arazzo-1.1-official.yaml")
+	require.NoError(t, err)
+	const workers = 32
+	var waitGroup sync.WaitGroup
+	errorsChannel := make(chan error, workers)
+	for range workers {
+		waitGroup.Add(1)
+		go func() {
+			defer waitGroup.Done()
+			document, buildErr := NewArazzoDocument(fixture)
+			if buildErr != nil {
+				errorsChannel <- buildErr
+				return
+			}
+			if _, renderErr := document.Render(); renderErr != nil {
+				errorsChannel <- renderErr
+			}
+		}()
+	}
+	waitGroup.Wait()
+	close(errorsChannel)
+	for concurrentErr := range errorsChannel {
+		assert.NoError(t, concurrentErr)
+	}
 }
 
 func TestNewArazzoDocument_InvalidYAML(t *testing.T) {
@@ -540,4 +734,62 @@ workflows:
 
 func setArazzoUnexportedField(field reflect.Value, value any) {
 	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().Set(reflect.ValueOf(value))
+}
+
+// The configured logger receives the resolved origin at debug level. Origin resolution weighs
+// $self, the retrieval URI and the application base against each other, so the outcome is the
+// detail worth tracing when a relative source URL resolves somewhere unexpected.
+func TestNewArazzoDocumentWithConfiguration_LogsResolvedOrigin(t *testing.T) {
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	spec := []byte(`arazzo: 1.1.0
+$self: ./workflows/main.arazzo.yaml
+info:
+  title: origin logging
+  version: 1.0.0
+workflows:
+  - workflowId: wf
+    steps:
+      - stepId: s1
+        operationId: op
+`)
+
+	doc, err := NewArazzoDocumentWithConfiguration(spec, &ArazzoDocumentConfiguration{
+		RetrievalURI:       "https://specs.example.com/root.arazzo.yaml",
+		ApplicationBaseURI: "https://fallback.example.com/",
+		Logger:             logger,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+
+	logged := buf.String()
+	assert.Contains(t, logged, "resolved arazzo document origin")
+	assert.Contains(t, logged, "authoredSelf=./workflows/main.arazzo.yaml")
+	assert.Contains(t, logged, "retrievalURI=https://specs.example.com/root.arazzo.yaml")
+	assert.Contains(t, logged, "applicationBaseURI=https://fallback.example.com/")
+	// $self is relative, so it resolves against the retrieval URI.
+	assert.Contains(t, logged, "resolvedIdentity=https://specs.example.com/workflows/main.arazzo.yaml")
+	assert.Contains(t, logged, "effectiveBaseURI=https://specs.example.com/workflows/main.arazzo.yaml")
+}
+
+// A nil logger must not be called, and must not stop the document building.
+func TestNewArazzoDocumentWithConfiguration_NilLoggerIsSkipped(t *testing.T) {
+	spec := []byte(`arazzo: 1.1.0
+info:
+  title: no logger
+  version: 1.0.0
+workflows:
+  - workflowId: wf
+    steps:
+      - stepId: s1
+        operationId: op
+`)
+
+	doc, err := NewArazzoDocumentWithConfiguration(spec, &ArazzoDocumentConfiguration{
+		RetrievalURI: "https://specs.example.com/root.arazzo.yaml",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, doc)
+	assert.Equal(t, "https://specs.example.com/root.arazzo.yaml", doc.GetDocumentOrigin().ResolvedIdentity)
 }

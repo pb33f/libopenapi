@@ -14,7 +14,7 @@ import (
 )
 
 // Workflow represents a low-level Arazzo Workflow Object.
-// https://spec.openapis.org/arazzo/v1.0.1#workflow-object
+// https://spec.openapis.org/arazzo/v1.1.0#workflow-object
 type Workflow struct {
 	WorkflowId     low.NodeReference[string]
 	Summary        low.NodeReference[string]
@@ -24,7 +24,7 @@ type Workflow struct {
 	Steps          low.NodeReference[[]low.ValueReference[*Step]]
 	SuccessActions low.NodeReference[[]low.ValueReference[*SuccessAction]]
 	FailureActions low.NodeReference[[]low.ValueReference[*FailureAction]]
-	Outputs        low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
+	Outputs        low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*OutputValue]]]
 	Parameters     low.NodeReference[[]low.ValueReference[*Parameter]]
 	Extensions     *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode        *yaml.Node
@@ -78,7 +78,11 @@ func (w *Workflow) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 	}, ctx, keyNode, root, idx)
 
 	w.Inputs = extractRawNode(InputsLabel, root) // raw node: JSON Schema
-	w.DependsOn = extractStringArray(DependsOnLabel, root)
+	dependsOn, err := extractStringArray(DependsOnLabel, root)
+	if err != nil {
+		return err
+	}
+	w.DependsOn = dependsOn
 
 	steps, err := extractArray[Step](ctx, StepsLabel, root, idx)
 	if err != nil {
@@ -98,7 +102,11 @@ func (w *Workflow) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 	}
 	w.FailureActions = failureActions
 
-	w.Outputs = extractExpressionsMap(OutputsLabel, root)
+	outputs, err := extractOutputValuesMap(ctx, OutputsLabel, root, idx)
+	if err != nil {
+		return err
+	}
+	w.Outputs = outputs
 
 	params, err := extractWorkflowParameters(ctx, ParametersLabel, root, idx)
 	if err != nil {
@@ -157,8 +165,7 @@ func (w *Workflow) Hash() uint64 {
 			for pair := w.Outputs.Value.First(); pair != nil; pair = pair.Next() {
 				h.WriteString(pair.Key().Value)
 				h.WriteByte(low.HASH_PIPE)
-				h.WriteString(pair.Value().Value)
-				h.WriteByte(low.HASH_PIPE)
+				low.HashUint64(h, pair.Value().Value.Hash())
 			}
 		}
 		if !w.Parameters.IsEmpty() {

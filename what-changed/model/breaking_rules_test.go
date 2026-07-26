@@ -659,12 +659,15 @@ func BenchmarkMerge(b *testing.B) {
 	override := &BreakingRulesConfig{
 		Schema: &SchemaRules{Type: rule(false, false, false)},
 	}
+	config := GenerateDefaultBreakingRules()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		config := GenerateDefaultBreakingRules()
-		// create a copy since we can't mutate the singleton
-		configCopy := *config
+		// Build an independent config without copying the singleton's sync.Once.
+		b.StopTimer()
+		configCopy := &BreakingRulesConfig{}
+		configCopy.Merge(config)
+		b.StartTimer()
 		configCopy.Merge(override)
 	}
 }

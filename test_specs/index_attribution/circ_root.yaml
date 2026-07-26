@@ -1,0 +1,9 @@
+openapi: 3.1.0
+info:
+  title: circular
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Start:
+      $ref: './circ_a.yaml#/A'

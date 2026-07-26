@@ -1,0 +1,21 @@
+arazzo: 1.0.1
+info:
+    title: Compatibility workflow
+    version: 1.0.0
+sourceDescriptions:
+    - name: petstore
+      url: https://api.example.com/petstore.yaml
+      type: openapi
+workflows:
+    - workflowId: fetchPet
+      steps:
+        - stepId: fetch
+          operationId: getPet
+          parameters:
+            - name: petId
+              in: path
+              value: $inputs.petId
+          outputs:
+            petId: $response.body#/id
+      outputs:
+        petId: $steps.fetch.outputs.petId

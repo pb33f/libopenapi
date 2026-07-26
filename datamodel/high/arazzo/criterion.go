@@ -48,15 +48,17 @@ func NewCriterion(criterion *low.Criterion) *Criterion {
 	}
 	// Type is a union: scalar string or CriterionExpressionType mapping
 	if !criterion.Type.IsEmpty() && criterion.Type.Value != nil {
-		node := criterion.Type.Value
-		switch node.Kind {
-		case yaml.ScalarNode:
-			c.Type = node.Value
-		case yaml.MappingNode:
-			cet := &low.CriterionExpressionType{}
-			if err := lowmodel.BuildModel(node, cet); err == nil {
-				if err = cet.Build(context.Background(), nil, node, nil); err == nil {
-					c.ExpressionType = NewCriterionExpressionType(cet)
+		node := dereferenceAliasNode(criterion.Type.Value)
+		if node != nil {
+			switch node.Kind {
+			case yaml.ScalarNode:
+				c.Type = node.Value
+			case yaml.MappingNode:
+				cet := &low.CriterionExpressionType{}
+				if err := lowmodel.BuildModel(node, cet); err == nil {
+					if err = cet.Build(context.Background(), nil, node, nil); err == nil {
+						c.ExpressionType = NewCriterionExpressionType(cet)
+					}
 				}
 			}
 		}
