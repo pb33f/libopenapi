@@ -1550,9 +1550,12 @@ func TestEnsureResolvedPathWithinRoots_PathOutsideRoots(t *testing.T) {
 	assert.Contains(t, err.Error(), "outside configured roots")
 }
 
-func TestEnsureResolvedPathWithinRoots_EvalSymlinksNotExist(t *testing.T) {
-	// If the path doesn't exist, EvalSymlinks returns ErrNotExist => return nil
-	err := ensureResolvedPathWithinRoots("/nonexistent/path/file.yaml", []string{"/some/root"})
+func TestEnsureResolvedPathWithinRoots_MissingPathInsideRoot(t *testing.T) {
+	root := t.TempDir()
+	canonicalRoot, err := filepath.EvalSymlinks(root)
+	require.NoError(t, err)
+	path := filepath.Join(root, "missing", "file.yaml")
+	err = ensureResolvedPathWithinRoots(path, []string{canonicalRoot})
 	assert.NoError(t, err)
 }
 
