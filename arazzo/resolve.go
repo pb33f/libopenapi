@@ -481,17 +481,52 @@ func canonicalizeRoots(roots []string) []string {
 }
 
 func ensureResolvedPathWithinRoots(path string, roots []string) error {
-	resolvedPath, err := filepath.EvalSymlinks(path)
+	resolvedPath, err := resolvePathForContainment(path)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil
-		}
 		return err
 	}
 	if !isPathWithinRoots(resolvedPath, roots) {
 		return fmt.Errorf("file path %q is outside configured roots", path)
 	}
 	return nil
+}
+
+// resolvePathForContainment resolves every existing path component, preserving any
+// missing tail for the final containment check. filepath.EvalSymlinks returns
+// os.ErrNotExist for the whole path when its final component is missing, which would
+// otherwise hide a symlinked parent that escapes the configured roots.
+func resolvePathForContainment(path string) (string, error) {
+	candidate := filepath.Clean(path)
+	var missing []string
+
+	for {
+		resolved, err := filepath.EvalSymlinks(candidate)
+		if err == nil {
+			if len(missing) > 0 {
+				info, statErr := os.Stat(resolved)
+				if statErr != nil {
+					return "", statErr
+				}
+				if !info.IsDir() {
+					return "", fmt.Errorf("path component %q is not a directory", candidate)
+				}
+			}
+			for i := len(missing) - 1; i >= 0; i-- {
+				resolved = filepath.Join(resolved, missing[i])
+			}
+			return resolved, nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return "", err
+		}
+
+		parent := filepath.Dir(candidate)
+		if parent == candidate {
+			return "", err
+		}
+		missing = append(missing, filepath.Base(candidate))
+		candidate = parent
+	}
 }
 
 func containsFold(values []string, value string) bool {

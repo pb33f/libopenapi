@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"unsafe"
@@ -313,7 +314,9 @@ func TestNewArazzoDocument_Arazzo10GoldenRenderCompatibility(t *testing.T) {
 	require.NoError(t, err)
 	rendered, err := document.Render()
 	require.NoError(t, err)
-	assert.Equal(t, string(fixture), string(rendered))
+	// Git may check the fixture out with CRLF on Windows, while yaml.Marshal
+	// deliberately emits LF. Compare the serialized content, not checkout policy.
+	assert.Equal(t, strings.ReplaceAll(string(fixture), "\r\n", "\n"), string(rendered))
 	assert.NotContains(t, string(rendered), "$self")
 	assert.NotContains(t, string(rendered), "channelPath")
 	assert.NotContains(t, string(rendered), "targetSelectorType")
