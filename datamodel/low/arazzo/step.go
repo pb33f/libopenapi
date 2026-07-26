@@ -14,19 +14,24 @@ import (
 )
 
 // Step represents a low-level Arazzo Step Object.
-// https://spec.openapis.org/arazzo/v1.0.1#step-object
+// https://spec.openapis.org/arazzo/v1.1.0#step-object
 type Step struct {
 	StepId          low.NodeReference[string]
 	Description     low.NodeReference[string]
 	OperationId     low.NodeReference[string]
 	OperationPath   low.NodeReference[string]
+	ChannelPath     low.NodeReference[string]
+	Action          low.NodeReference[string]
 	WorkflowId      low.NodeReference[string]
+	CorrelationId   low.NodeReference[string]
+	Timeout         low.NodeReference[int64]
+	DependsOn       low.NodeReference[[]low.ValueReference[string]]
 	Parameters      low.NodeReference[[]low.ValueReference[*Parameter]]
 	RequestBody     low.NodeReference[*RequestBody]
 	SuccessCriteria low.NodeReference[[]low.ValueReference[*Criterion]]
 	OnSuccess       low.NodeReference[[]low.ValueReference[*SuccessAction]]
 	OnFailure       low.NodeReference[[]low.ValueReference[*FailureAction]]
-	Outputs         low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
+	Outputs         low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*OutputValue]]]
 	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode         *yaml.Node
 	RootNode        *yaml.Node
@@ -79,6 +84,30 @@ func (s *Step) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 		Context:    &s.context,
 	}, ctx, keyNode, root, idx)
 
+	// Reject a wrong node kind on the Arazzo 1.1 additions rather than silently
+	// dropping the value; see requireNodeKind.
+	if err := requireScalar(ChannelPathLabel, "a scalar channel reference", root); err != nil {
+		return err
+	}
+	if err := requireScalar(ActionLabel, "a scalar action name", root); err != nil {
+		return err
+	}
+	if err := requireScalar(CorrelationIdLabel, "a scalar string", root); err != nil {
+		return err
+	}
+	if err := requireInteger(TimeoutLabel, "an integer number of milliseconds", root); err != nil {
+		return err
+	}
+	if err := requireSequence(DependsOnLabel, "a sequence of step identifiers", root); err != nil {
+		return err
+	}
+
+	dependsOn, err := extractStringArray(DependsOnLabel, root)
+	if err != nil {
+		return err
+	}
+	s.DependsOn = dependsOn
+
 	params, err := extractStepParameters(ctx, ParametersLabel, root, idx)
 	if err != nil {
 		return err
@@ -109,7 +138,11 @@ func (s *Step) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 	}
 	s.OnFailure = onFailure
 
-	s.Outputs = extractExpressionsMap(OutputsLabel, root)
+	outputs, err := extractOutputValuesMap(ctx, OutputsLabel, root, idx)
+	if err != nil {
+		return err
+	}
+	s.Outputs = outputs
 
 	return nil
 }
@@ -138,9 +171,30 @@ func (s *Step) Hash() uint64 {
 			h.WriteString(s.OperationPath.Value)
 			h.WriteByte(low.HASH_PIPE)
 		}
+		if !s.ChannelPath.IsEmpty() {
+			h.WriteString(s.ChannelPath.Value)
+			h.WriteByte(low.HASH_PIPE)
+		}
+		if !s.Action.IsEmpty() {
+			h.WriteString(s.Action.Value)
+			h.WriteByte(low.HASH_PIPE)
+		}
 		if !s.WorkflowId.IsEmpty() {
 			h.WriteString(s.WorkflowId.Value)
 			h.WriteByte(low.HASH_PIPE)
+		}
+		if !s.CorrelationId.IsEmpty() {
+			h.WriteString(s.CorrelationId.Value)
+			h.WriteByte(low.HASH_PIPE)
+		}
+		if !s.Timeout.IsEmpty() {
+			low.HashInt64(h, s.Timeout.Value)
+		}
+		if !s.DependsOn.IsEmpty() {
+			for _, dependency := range s.DependsOn.Value {
+				h.WriteString(dependency.Value)
+				h.WriteByte(low.HASH_PIPE)
+			}
 		}
 		if !s.Parameters.IsEmpty() {
 			for _, p := range s.Parameters.Value {
@@ -169,8 +223,7 @@ func (s *Step) Hash() uint64 {
 			for pair := s.Outputs.Value.First(); pair != nil; pair = pair.Next() {
 				h.WriteString(pair.Key().Value)
 				h.WriteByte(low.HASH_PIPE)
-				h.WriteString(pair.Value().Value)
-				h.WriteByte(low.HASH_PIPE)
+				low.HashUint64(h, pair.Value().Value.Hash())
 			}
 		}
 		hashExtensionsInto(h, s.Extensions)

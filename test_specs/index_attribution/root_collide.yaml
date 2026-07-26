@@ -1,0 +1,21 @@
+openapi: 3.1.0
+info:
+  title: same-position refs into one shared file
+  version: 1.0.0
+paths:
+  /a:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: './refs_a.yaml#/schema'
+  /b:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: './refs_b.yaml#/schema'

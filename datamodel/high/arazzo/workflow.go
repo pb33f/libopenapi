@@ -5,26 +5,25 @@ package arazzo
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/arazzo"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"go.yaml.in/yaml/v4"
 )
 
 // Workflow represents a high-level Arazzo Workflow Object.
-// https://spec.openapis.org/arazzo/v1.0.1#workflow-object
+// https://spec.openapis.org/arazzo/v1.1.0#workflow-object
 type Workflow struct {
-	WorkflowId     string                              `json:"workflowId,omitempty" yaml:"workflowId,omitempty"`
-	Summary        string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
-	Description    string                              `json:"description,omitempty" yaml:"description,omitempty"`
-	Inputs         *yaml.Node                          `json:"inputs,omitempty" yaml:"inputs,omitempty"`
-	DependsOn      []string                            `json:"dependsOn,omitempty" yaml:"dependsOn,omitempty"`
-	Steps          []*Step                             `json:"steps,omitempty" yaml:"steps,omitempty"`
-	SuccessActions []*SuccessAction                    `json:"successActions,omitempty" yaml:"successActions,omitempty"`
-	FailureActions []*FailureAction                    `json:"failureActions,omitempty" yaml:"failureActions,omitempty"`
-	Outputs        *orderedmap.Map[string, string]     `json:"outputs,omitempty" yaml:"outputs,omitempty"`
-	Parameters     []*Parameter                        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	Extensions     *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
+	WorkflowId     string                                `json:"workflowId,omitempty" yaml:"workflowId,omitempty"`
+	Summary        string                                `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Description    string                                `json:"description,omitempty" yaml:"description,omitempty"`
+	Inputs         *yaml.Node                            `json:"inputs,omitempty" yaml:"inputs,omitempty"`
+	DependsOn      []string                              `json:"dependsOn,omitempty" yaml:"dependsOn,omitempty"`
+	Steps          []*Step                               `json:"steps,omitempty" yaml:"steps,omitempty"`
+	SuccessActions []*SuccessAction                      `json:"successActions,omitempty" yaml:"successActions,omitempty"`
+	FailureActions []*FailureAction                      `json:"failureActions,omitempty" yaml:"failureActions,omitempty"`
+	Outputs        *orderedmap.Map[string, *OutputValue] `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Parameters     []*Parameter                          `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Extensions     *orderedmap.Map[string, *yaml.Node]   `json:"-" yaml:"-"`
 	low            *low.Workflow
 }
 
@@ -57,7 +56,7 @@ func NewWorkflow(wf *low.Workflow) *Workflow {
 		w.FailureActions = buildSlice(wf.FailureActions.Value, NewFailureAction)
 	}
 	if !wf.Outputs.IsEmpty() {
-		w.Outputs = lowmodel.FromReferenceMap[string, string](wf.Outputs.Value)
+		w.Outputs = buildOutputValueMap(wf.Outputs.Value)
 	}
 	if !wf.Parameters.IsEmpty() {
 		w.Parameters = buildSlice(wf.Parameters.Value, NewParameter)

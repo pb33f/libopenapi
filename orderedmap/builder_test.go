@@ -138,3 +138,43 @@ func TestOrderedMap_FindValueUntyped(t *testing.T) {
 		})
 	}
 }
+
+// lowWithValueNode supplies the original YAML node that ToYamlNode consults to recover the
+// authored quoting style of each key.
+type lowWithValueNode struct{ node *yaml.Node }
+
+func (l lowWithValueNode) GetValueNode() *yaml.Node { return l.node }
+
+// ToYamlNode looks each key up in the original node to carry its style across. A key that is
+// not present there (one added to the high model after parsing) simply has no authored style,
+// and must render with the default rather than fail the lookup.
+func TestOrderedMap_ToYamlNode_KeyAbsentFromOriginalNode(t *testing.T) {
+	// The original document quoted "kept" but knows nothing about "added".
+	var original yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`"kept": one`), &original))
+	require.NotNil(t, original.Content)
+
+	om := orderedmap.New[string, string]()
+	om.Set("kept", "one")
+	om.Set("added", "two")
+
+	node := om.ToYamlNode(new(high.NodeBuilder), lowWithValueNode{node: original.Content[0]})
+	rendered, err := yaml.Marshal(node)
+	require.NoError(t, err)
+
+	// The quoted key keeps its style; the one with no counterpart renders plainly.
+	require.Equal(t, `"kept": one
+added: two
+`, string(rendered))
+}
+
+// A low model that carries no value node at all leaves every key without an authored style.
+func TestOrderedMap_ToYamlNode_NilValueNode(t *testing.T) {
+	om := orderedmap.New[string, string]()
+	om.Set("one", "two")
+
+	node := om.ToYamlNode(new(high.NodeBuilder), lowWithValueNode{node: nil})
+	rendered, err := yaml.Marshal(node)
+	require.NoError(t, err)
+	require.Equal(t, "one: two\n", string(rendered))
+}

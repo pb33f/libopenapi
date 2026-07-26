@@ -14,9 +14,10 @@ import (
 )
 
 // Arazzo represents a low-level Arazzo document.
-// https://spec.openapis.org/arazzo/v1.0.1
+// https://spec.openapis.org/arazzo/v1.1.0
 type Arazzo struct {
 	Arazzo             low.NodeReference[string]
+	Self               low.NodeReference[string]
 	Info               low.NodeReference[*Info]
 	SourceDescriptions low.NodeReference[[]low.ValueReference[*SourceDescription]]
 	Workflows          low.NodeReference[[]low.ValueReference[*Workflow]]
@@ -71,6 +72,11 @@ func (a *Arazzo) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index
 		Context:    &a.context,
 	}, ctx, keyNode, root, idx)
 
+	if err := requireScalar(SelfLabel, "a scalar URI", root); err != nil {
+		return err
+	}
+	a.Self = extractComponentRef(SelfLabel, root)
+
 	info, err := low.ExtractObject[*Info](ctx, InfoLabel, root, idx)
 	if err != nil {
 		return err
@@ -108,6 +114,10 @@ func (a *Arazzo) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if !a.Arazzo.IsEmpty() {
 			h.WriteString(a.Arazzo.Value)
+			h.WriteByte(low.HASH_PIPE)
+		}
+		if !a.Self.IsEmpty() {
+			h.WriteString(a.Self.Value)
 			h.WriteByte(low.HASH_PIPE)
 		}
 		if !a.Info.IsEmpty() {

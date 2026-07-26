@@ -169,7 +169,7 @@ func (c *Change) MarshalJSON() ([]byte, error) {
 // PropertyChanges holds a slice of Change pointers
 type PropertyChanges struct {
 	RenderPropertiesOnly bool      `json:"-" yaml:"-"`
-	ChangeReference      string    `json:"changeReference,omitempty""`
+	ChangeReference      string    `json:"changeReference,omitempty"`
 	Changes              []*Change `json:"changes,omitempty" yaml:"changes,omitempty"`
 }
 

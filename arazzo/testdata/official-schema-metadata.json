@@ -1,0 +1,16 @@
+{
+  "arazzo-1.0": {
+    "specification": "https://spec.openapis.org/arazzo/v1.0.1.html",
+    "schema": "https://spec.openapis.org/arazzo/1.0/schema/2025-10-15",
+    "iteration": "2025-10-15",
+    "sha256": "b8715bd824fffcb2accf5077977d37c9e7a15be60d785e7a3a51cf600fd46ad4",
+    "bytes": 23972
+  },
+  "arazzo-1.1": {
+    "specification": "https://spec.openapis.org/arazzo/v1.1.0.html",
+    "schema": "https://spec.openapis.org/arazzo/1.1/schema/2026-04-15",
+    "iteration": "2026-04-15",
+    "sha256": "37be908409bdb2f7bffe61fa23685c7e84cbeebfafac475a1d01dbc50ff7ab9e",
+    "bytes": 32347
+  }
+}

@@ -199,7 +199,7 @@ func TestFetchSourceBytes_FileSchemeResolveError(t *testing.T) {
 		FSRoots:     []string{"/nonexistent-root-dir-xyz"},
 	}
 	u := mustParseURL("file:///etc/passwd")
-	_, _, err := fetchSourceBytes(u, config)
+	_, _, err := fetchSourceBytes(context.Background(), u, config)
 	assert.Error(t, err)
 	errMsg := err.Error()
 	if runtime.GOOS == "windows" {
@@ -223,7 +223,7 @@ func TestFetchHTTPSourceBytes_RealHTTPRequestFailure(t *testing.T) {
 		MaxBodySize: 10 * 1024 * 1024,
 	}
 	// A URL with a space is invalid for http.NewRequestWithContext
-	_, err := fetchHTTPSourceBytes("http://[::1]:namedport/path", config)
+	_, err := fetchHTTPSourceBytes(context.Background(), "http://[::1]:namedport/path", config)
 	assert.Error(t, err)
 }
 
@@ -238,7 +238,7 @@ func TestFetchHTTPSourceBytes_RealHTTPNon2xxStatus(t *testing.T) {
 		Timeout:     30 * time.Second,
 		MaxBodySize: 10 * 1024 * 1024,
 	}
-	_, err := fetchHTTPSourceBytes(srv.URL, config)
+	_, err := fetchHTTPSourceBytes(context.Background(), srv.URL, config)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unexpected status code 500")
 }
@@ -259,7 +259,7 @@ func TestFetchHTTPSourceBytes_RealHTTPBodyExceedsLimit(t *testing.T) {
 		Timeout:     30 * time.Second,
 		MaxBodySize: 10, // Very small limit
 	}
-	_, err := fetchHTTPSourceBytes(srv.URL, config)
+	_, err := fetchHTTPSourceBytes(context.Background(), srv.URL, config)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "exceeds max size")
 }
@@ -275,7 +275,7 @@ func TestFetchHTTPSourceBytes_RealHTTPSuccess(t *testing.T) {
 		Timeout:     30 * time.Second,
 		MaxBodySize: 10 * 1024 * 1024,
 	}
-	data, err := fetchHTTPSourceBytes(srv.URL, config)
+	data, err := fetchHTTPSourceBytes(context.Background(), srv.URL, config)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("hello"), data)
 }
@@ -335,15 +335,10 @@ func TestResolveComponents_UnknownComponentType(t *testing.T) {
 		},
 	}
 
-	// Parse an expression like $components.unknownType.someName
-	// This should resolve to the Components type with Name="unknownType" and Tail="someName"
-	expr, err := expression.Parse("$components.unknownType.someName")
-	require.NoError(t, err)
-	assert.Equal(t, expression.Components, expr.Type)
-	assert.Equal(t, "unknownType", expr.Name)
-
-	// Evaluate should return "unknown component type" error
-	_, err = expression.Evaluate(expr, ctx)
+	// The legacy evaluator remains defensive for manually constructed ASTs,
+	// while the 1.1 parser rejects unknown component types.
+	expr := expression.Expression{Type: expression.Components, Name: "unknownType", Tail: "someName"}
+	_, err := expression.Evaluate(expr, ctx)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown component type")
 }
@@ -686,7 +681,7 @@ func TestFetchHTTPSourceBytes_ClientDoError(t *testing.T) {
 		Timeout:     30 * time.Second,
 		MaxBodySize: 10 * 1024 * 1024,
 	}
-	_, err := fetchHTTPSourceBytes(srv.URL, config)
+	_, err := fetchHTTPSourceBytes(context.Background(), srv.URL, config)
 	assert.Error(t, err)
 }
 
@@ -754,18 +749,19 @@ func TestResolveComponents_AllKnownTypes(t *testing.T) {
 	}
 
 	tests := []struct {
-		expr     string
+		name     string
+		expr     expression.Expression
 		expected any
 	}{
-		{"$components.parameters.p1", "val1"},
-		{"$components.successActions.sa1", "val2"},
-		{"$components.failureActions.fa1", "val3"},
-		{"$components.inputs.i1", "val4"},
+		{"parameters", expression.Expression{Type: expression.Components, Name: "parameters", Tail: "p1"}, "val1"},
+		{"successActions", expression.Expression{Type: expression.Components, Name: "successActions", Tail: "sa1"}, "val2"},
+		{"failureActions", expression.Expression{Type: expression.Components, Name: "failureActions", Tail: "fa1"}, "val3"},
+		{"inputs", expression.Expression{Type: expression.Components, Name: "inputs", Tail: "i1"}, "val4"},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.expr, func(t *testing.T) {
-			result, err := expression.EvaluateString(tc.expr, ctx)
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := expression.Evaluate(tc.expr, ctx)
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
@@ -782,18 +778,19 @@ func TestResolveComponents_NilMaps(t *testing.T) {
 	}
 
 	tests := []struct {
-		expr string
+		name string
+		expr expression.Expression
 		msg  string
 	}{
-		{"$components.parameters.p1", "no component parameters"},
-		{"$components.successActions.sa1", "no component success actions"},
-		{"$components.failureActions.fa1", "no component failure actions"},
-		{"$components.inputs.i1", "no component inputs"},
+		{"parameters", expression.Expression{Type: expression.Components, Name: "parameters", Tail: "p1"}, "no component parameters"},
+		{"successActions", expression.Expression{Type: expression.Components, Name: "successActions", Tail: "sa1"}, "no component success actions"},
+		{"failureActions", expression.Expression{Type: expression.Components, Name: "failureActions", Tail: "fa1"}, "no component failure actions"},
+		{"inputs", expression.Expression{Type: expression.Components, Name: "inputs", Tail: "i1"}, "no component inputs"},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.expr, func(t *testing.T) {
-			_, err := expression.EvaluateString(tc.expr, ctx)
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := expression.Evaluate(tc.expr, ctx)
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), tc.msg)
 		})
@@ -815,18 +812,19 @@ func TestResolveComponents_KeyNotFound(t *testing.T) {
 	}
 
 	tests := []struct {
-		expr string
+		name string
+		expr expression.Expression
 		msg  string
 	}{
-		{"$components.parameters.missing", "not found"},
-		{"$components.successActions.missing", "not found"},
-		{"$components.failureActions.missing", "not found"},
-		{"$components.inputs.missing", "not found"},
+		{"parameters", expression.Expression{Type: expression.Components, Name: "parameters", Tail: "missing"}, "not found"},
+		{"successActions", expression.Expression{Type: expression.Components, Name: "successActions", Tail: "missing"}, "not found"},
+		{"failureActions", expression.Expression{Type: expression.Components, Name: "failureActions", Tail: "missing"}, "not found"},
+		{"inputs", expression.Expression{Type: expression.Components, Name: "inputs", Tail: "missing"}, "not found"},
 	}
 
 	for _, tc := range tests {
-		t.Run(tc.expr, func(t *testing.T) {
-			_, err := expression.EvaluateString(tc.expr, ctx)
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := expression.Evaluate(tc.expr, ctx)
 			assert.Error(t, err)
 			assert.Contains(t, err.Error(), tc.msg)
 		})
@@ -840,8 +838,10 @@ func TestResolveComponents_KeyNotFound(t *testing.T) {
 func TestResolveComponents_NilComponentsContext(t *testing.T) {
 	ctx := &expression.Context{}
 
-	// Use a non-parameters component name to hit the Components case (not ComponentParameters)
-	_, err := expression.EvaluateString("$components.unknownType.something", ctx)
+	_, err := expression.Evaluate(
+		expression.Expression{Type: expression.Components, Name: "unknownType", Tail: "something"},
+		ctx,
+	)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no components context")
 }
@@ -866,8 +866,10 @@ func TestResolveComponents_EmptyTail(t *testing.T) {
 		},
 	}
 
-	// $components.parameters has no tail (no second dot after parameters)
-	_, err := expression.EvaluateString("$components.parameters", ctx)
+	_, err := expression.Evaluate(
+		expression.Expression{Type: expression.Components, Name: "parameters"},
+		ctx,
+	)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "incomplete components expression")
 }
@@ -1031,4 +1033,22 @@ func TestResolveSources_NilArazzoFactory(t *testing.T) {
 	})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no ArazzoFactory")
+}
+
+func TestResolveSources_ArazzoFactoryError(t *testing.T) {
+	sentinel := errors.New("factory failed")
+	doc := &high.Arazzo{
+		SourceDescriptions: []*high.SourceDescription{
+			{Name: "flows", URL: "https://example.com/flows.yaml", Type: "arazzo"},
+		},
+	}
+	_, err := ResolveSources(doc, &ResolveConfig{
+		HTTPHandler: func(_ string) ([]byte, error) { return []byte("ok"), nil },
+		ArazzoFactory: func(_ string, _ []byte) (*high.Arazzo, error) {
+			return nil, sentinel
+		},
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrSourceDescLoadFailed)
+	assert.Contains(t, err.Error(), sentinel.Error())
 }

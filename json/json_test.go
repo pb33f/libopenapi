@@ -241,3 +241,28 @@ func TestHandleScalarNode_DecodeError(t *testing.T) {
 	_, err := json.YAMLNodeToJSON(node, "  ")
 	assert.Error(t, err)
 }
+
+// A non-string mapping key is marshalled to JSON so it can be used as an object key. NaN has
+// no JSON representation, so the marshal fails and the error must surface rather than produce
+// a malformed document. The branch is reachable, despite reading as defensive.
+func TestYAMLNodeToJSON_UnmarshalableMappingKey(t *testing.T) {
+	for _, src := range []string{"? .nan\n: value\n", "{.nan: value}"} {
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(src), &node))
+
+		out, err := json.YAMLNodeToJSON(&node, "  ")
+		require.Error(t, err, "input %q", src)
+		assert.Contains(t, err.Error(), "unsupported value: NaN")
+		assert.Nil(t, out)
+	}
+}
+
+// A numeric key that does have a JSON representation is stringified rather than rejected.
+func TestYAMLNodeToJSON_NumericMappingKey(t *testing.T) {
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("? 1.5\n: value\n"), &node))
+
+	out, err := json.YAMLNodeToJSON(&node, "")
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"1.5":"value"}`, string(out))
+}

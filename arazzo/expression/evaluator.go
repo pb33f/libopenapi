@@ -13,6 +13,7 @@ import (
 
 // Context holds runtime values for expression evaluation.
 type Context struct {
+	Self            string
 	URL             string
 	Method          string
 	StatusCode      int
@@ -20,8 +21,17 @@ type Context struct {
 	RequestQuery    map[string]string
 	RequestPath     map[string]string
 	RequestBody     *yaml.Node
+	RequestPayload  *yaml.Node
 	ResponseHeaders map[string]string
+	ResponseQuery   map[string]string
+	ResponsePath    map[string]string
 	ResponseBody    *yaml.Node
+	ResponsePayload *yaml.Node
+	MessageHeaders  map[string]string
+	MessageQuery    map[string]string
+	MessagePath     map[string]string
+	MessageBody     *yaml.Node
+	MessagePayload  *yaml.Node
 	Inputs          map[string]any
 	Outputs         map[string]any
 	Steps           map[string]*StepContext
@@ -44,7 +54,11 @@ type WorkflowContext struct {
 
 // SourceDescContext holds resolved source description data.
 type SourceDescContext struct {
-	URL string
+	URL        string
+	Type       string
+	Operations map[string]any
+	Workflows  map[string]any
+	Fields     map[string]any
 }
 
 // ComponentsContext holds resolved component data.
@@ -62,6 +76,11 @@ func Evaluate(expr Expression, ctx *Context) (any, error) {
 	}
 
 	switch expr.Type {
+	case Self:
+		if ctx.Self == "" {
+			return nil, fmt.Errorf("no self URI available")
+		}
+		return ctx.Self, nil
 	case URL:
 		return ctx.URL, nil
 	case Method:
@@ -100,13 +119,10 @@ func Evaluate(expr Expression, ctx *Context) (any, error) {
 		return v, nil
 
 	case RequestBody:
-		if ctx.RequestBody == nil {
-			return nil, fmt.Errorf("no request body available")
-		}
-		if expr.JSONPointer == "" {
-			return ctx.RequestBody, nil
-		}
-		return resolveJSONPointer(ctx.RequestBody, expr.JSONPointer)
+		return resolveStructuredSource(ctx.RequestBody, expr.JSONPointer, "request body")
+
+	case RequestPayload:
+		return resolveStructuredSource(ctx.RequestPayload, expr.JSONPointer, "request payload")
 
 	case ResponseHeader:
 		if ctx.ResponseHeaders == nil {
@@ -119,39 +135,92 @@ func Evaluate(expr Expression, ctx *Context) (any, error) {
 		return v, nil
 
 	case ResponseQuery:
-		return nil, fmt.Errorf("response query parameters are not supported")
+		if ctx.ResponseQuery == nil {
+			return nil, fmt.Errorf("no response query parameters available")
+		}
+		v, ok := ctx.ResponseQuery[expr.Property]
+		if !ok {
+			return nil, fmt.Errorf("response query parameter %q not found", expr.Property)
+		}
+		return v, nil
 
 	case ResponsePath:
-		return nil, fmt.Errorf("response path parameters are not supported")
+		if ctx.ResponsePath == nil {
+			return nil, fmt.Errorf("no response path parameters available")
+		}
+		v, ok := ctx.ResponsePath[expr.Property]
+		if !ok {
+			return nil, fmt.Errorf("response path parameter %q not found", expr.Property)
+		}
+		return v, nil
 
 	case ResponseBody:
-		if ctx.ResponseBody == nil {
-			return nil, fmt.Errorf("no response body available")
+		return resolveStructuredSource(ctx.ResponseBody, expr.JSONPointer, "response body")
+
+	case ResponsePayload:
+		return resolveStructuredSource(ctx.ResponsePayload, expr.JSONPointer, "response payload")
+
+	case MessageHeader:
+		if ctx.MessageHeaders == nil {
+			return nil, fmt.Errorf("no message headers available")
 		}
-		if expr.JSONPointer == "" {
-			return ctx.ResponseBody, nil
+		v, ok := ctx.MessageHeaders[expr.Property]
+		if !ok {
+			return nil, fmt.Errorf("message header %q not found", expr.Property)
 		}
-		return resolveJSONPointer(ctx.ResponseBody, expr.JSONPointer)
+		return v, nil
+
+	case MessageQuery:
+		if ctx.MessageQuery == nil {
+			return nil, fmt.Errorf("no message query parameters available")
+		}
+		v, ok := ctx.MessageQuery[expr.Property]
+		if !ok {
+			return nil, fmt.Errorf("message query parameter %q not found", expr.Property)
+		}
+		return v, nil
+
+	case MessagePath:
+		if ctx.MessagePath == nil {
+			return nil, fmt.Errorf("no message path parameters available")
+		}
+		v, ok := ctx.MessagePath[expr.Property]
+		if !ok {
+			return nil, fmt.Errorf("message path parameter %q not found", expr.Property)
+		}
+		return v, nil
+
+	case MessageBody:
+		return resolveStructuredSource(ctx.MessageBody, expr.JSONPointer, "message body")
+
+	case MessagePayload:
+		return resolveStructuredSource(ctx.MessagePayload, expr.JSONPointer, "message payload")
 
 	case Inputs:
 		if ctx.Inputs == nil {
 			return nil, fmt.Errorf("no inputs available")
 		}
-		v, ok := ctx.Inputs[expr.Name]
+		v, ok, err := resolveNamedValue(ctx.Inputs, expr.Name)
+		if err != nil {
+			return nil, fmt.Errorf("input %q: %w", expr.Name, err)
+		}
 		if !ok {
 			return nil, fmt.Errorf("input %q not found", expr.Name)
 		}
-		return v, nil
+		return resolveValuePointer(v, expr.JSONPointer)
 
 	case Outputs:
 		if ctx.Outputs == nil {
 			return nil, fmt.Errorf("no outputs available")
 		}
-		v, ok := ctx.Outputs[expr.Name]
+		v, ok, err := resolveNamedValue(ctx.Outputs, expr.Name)
+		if err != nil {
+			return nil, fmt.Errorf("output %q: %w", expr.Name, err)
+		}
 		if !ok {
 			return nil, fmt.Errorf("output %q not found", expr.Name)
 		}
-		return v, nil
+		return resolveValuePointer(v, expr.JSONPointer)
 
 	case Steps:
 		return resolveSteps(expr, ctx)
@@ -166,14 +235,13 @@ func Evaluate(expr Expression, ctx *Context) (any, error) {
 		return resolveComponents(expr, ctx)
 
 	case ComponentParameters:
-		if ctx.Components == nil || ctx.Components.Parameters == nil {
-			return nil, fmt.Errorf("no component parameters available")
-		}
-		v, ok := ctx.Components.Parameters[expr.Name]
-		if !ok {
-			return nil, fmt.Errorf("component parameter %q not found", expr.Name)
-		}
-		return v, nil
+		return resolveComponentValue(ctx.Components, expr.Name, "parameter")
+
+	case ComponentSuccessActions:
+		return resolveComponentValue(ctx.Components, expr.Name, "success action")
+
+	case ComponentFailureActions:
+		return resolveComponentValue(ctx.Components, expr.Name, "failure action")
 
 	default:
 		return nil, fmt.Errorf("unsupported expression type: %d", expr.Type)
@@ -189,6 +257,44 @@ func EvaluateString(input string, ctx *Context) (any, error) {
 	return Evaluate(expr, ctx)
 }
 
+func resolveStructuredSource(node *yaml.Node, pointer, label string) (any, error) {
+	if node == nil {
+		return nil, fmt.Errorf("no %s available", label)
+	}
+	if pointer == "" {
+		return node, nil
+	}
+	if pointer[0] != '/' {
+		return nil, fmt.Errorf("JSON pointer must start with '/'")
+	}
+	return resolveJSONPointer(node, pointer)
+}
+
+func resolveComponentValue(components *ComponentsContext, name, componentType string) (any, error) {
+	if components == nil {
+		return nil, fmt.Errorf("no component %ss available", componentType)
+	}
+	var values map[string]any
+	switch componentType {
+	case "parameter":
+		values = components.Parameters
+	case "success action":
+		values = components.SuccessActions
+	case "failure action":
+		values = components.FailureActions
+	default:
+		return nil, fmt.Errorf("unsupported component type %q", componentType)
+	}
+	if values == nil {
+		return nil, fmt.Errorf("no component %ss available", componentType)
+	}
+	value, ok := values[name]
+	if !ok {
+		return nil, fmt.Errorf("component %s %q not found", componentType, name)
+	}
+	return value, nil
+}
+
 func resolveSteps(expr Expression, ctx *Context) (any, error) {
 	if ctx.Steps == nil {
 		return nil, fmt.Errorf("no steps context available")
@@ -200,7 +306,7 @@ func resolveSteps(expr Expression, ctx *Context) (any, error) {
 	if expr.Tail == "" {
 		return sc, nil
 	}
-	return resolveStepTail(expr.Tail, sc, expr.Name)
+	return resolveStepTail(expr.Tail, sc, expr.Name, expr.JSONPointer)
 }
 
 func splitTail(tail string) (segment, rest string) {
@@ -211,7 +317,7 @@ func splitTail(tail string) (segment, rest string) {
 	}
 }
 
-func resolveStepTail(tail string, sc *StepContext, stepName string) (any, error) {
+func resolveStepTail(tail string, sc *StepContext, stepName, pointer string) (any, error) {
 	segment, rest := splitTail(tail)
 
 	switch segment {
@@ -222,11 +328,14 @@ func resolveStepTail(tail string, sc *StepContext, stepName string) (any, error)
 		if rest == "" {
 			return sc.Outputs, nil
 		}
-		v, ok := sc.Outputs[rest]
+		v, ok, err := resolveNamedValue(sc.Outputs, rest)
+		if err != nil {
+			return nil, fmt.Errorf("step %q output %q: %w", stepName, rest, err)
+		}
 		if !ok {
 			return nil, fmt.Errorf("step %q output %q not found", stepName, rest)
 		}
-		return v, nil
+		return resolveValuePointer(v, pointer)
 	case "inputs":
 		if sc.Inputs == nil {
 			return nil, fmt.Errorf("step %q has no inputs", stepName)
@@ -234,11 +343,14 @@ func resolveStepTail(tail string, sc *StepContext, stepName string) (any, error)
 		if rest == "" {
 			return sc.Inputs, nil
 		}
-		v, ok := sc.Inputs[rest]
+		v, ok, err := resolveNamedValue(sc.Inputs, rest)
+		if err != nil {
+			return nil, fmt.Errorf("step %q input %q: %w", stepName, rest, err)
+		}
 		if !ok {
 			return nil, fmt.Errorf("step %q input %q not found", stepName, rest)
 		}
-		return v, nil
+		return resolveValuePointer(v, pointer)
 	default:
 		return nil, fmt.Errorf("unknown step property %q for step %q", segment, stepName)
 	}
@@ -266,11 +378,14 @@ func resolveWorkflows(expr Expression, ctx *Context) (any, error) {
 		if rest == "" {
 			return wc.Outputs, nil
 		}
-		v, ok := wc.Outputs[rest]
+		v, ok, err := resolveNamedValue(wc.Outputs, rest)
+		if err != nil {
+			return nil, fmt.Errorf("workflow %q output %q: %w", expr.Name, rest, err)
+		}
 		if !ok {
 			return nil, fmt.Errorf("workflow %q output %q not found", expr.Name, rest)
 		}
-		return v, nil
+		return resolveValuePointer(v, expr.JSONPointer)
 	case "inputs":
 		if wc.Inputs == nil {
 			return nil, fmt.Errorf("workflow %q has no inputs", expr.Name)
@@ -278,11 +393,14 @@ func resolveWorkflows(expr Expression, ctx *Context) (any, error) {
 		if rest == "" {
 			return wc.Inputs, nil
 		}
-		v, ok := wc.Inputs[rest]
+		v, ok, err := resolveNamedValue(wc.Inputs, rest)
+		if err != nil {
+			return nil, fmt.Errorf("workflow %q input %q: %w", expr.Name, rest, err)
+		}
 		if !ok {
 			return nil, fmt.Errorf("workflow %q input %q not found", expr.Name, rest)
 		}
-		return v, nil
+		return resolveValuePointer(v, expr.JSONPointer)
 	default:
 		return nil, fmt.Errorf("unknown workflow property %q for workflow %q", segment, expr.Name)
 	}
@@ -299,8 +417,20 @@ func resolveSourceDescriptions(expr Expression, ctx *Context) (any, error) {
 	if expr.Tail == "" {
 		return sd, nil
 	}
-	if expr.Tail == "url" {
+	if value, found := sd.Operations[expr.Tail]; found {
+		return value, nil
+	}
+	if value, found := sd.Workflows[expr.Tail]; found {
+		return value, nil
+	}
+	if value, found := sd.Fields[expr.Tail]; found {
+		return value, nil
+	}
+	switch expr.Tail {
+	case "url":
 		return sd.URL, nil
+	case "type":
+		return sd.Type, nil
 	}
 	return nil, fmt.Errorf("unknown source description property %q for %q", expr.Tail, expr.Name)
 }
@@ -363,7 +493,7 @@ func resolveComponents(expr Expression, ctx *Context) (any, error) {
 // resolveJSONPointer navigates a yaml.Node tree using a JSON Pointer (RFC 6901).
 // The pointer should start with "/" (the leading "#" has already been stripped).
 func resolveJSONPointer(node *yaml.Node, pointer string) (any, error) {
-	if pointer == "" || pointer == "/" {
+	if pointer == "" {
 		return node, nil
 	}
 
@@ -373,25 +503,8 @@ func resolveJSONPointer(node *yaml.Node, pointer string) (any, error) {
 		current = current.Content[0]
 	}
 
-	pos := 0
-	if pointer[0] == '/' {
-		pos = 1
-	}
-
-	for pos < len(pointer) {
-		// Find next segment boundary
-		nextSlash := strings.IndexByte(pointer[pos:], '/')
-		var segment string
-		if nextSlash == -1 {
-			segment = pointer[pos:]
-			pos = len(pointer)
-		} else {
-			segment = pointer[pos : pos+nextSlash]
-			pos = pos + nextSlash + 1
-		}
-
-		// Unescape JSON Pointer: ~1 -> /, ~0 -> ~
-		segment = UnescapeJSONPointer(segment)
+	for _, rawSegment := range strings.Split(pointer[1:], "/") {
+		segment := UnescapeJSONPointer(rawSegment)
 
 		switch current.Kind {
 		case yaml.MappingNode:
@@ -423,6 +536,87 @@ func resolveJSONPointer(node *yaml.Node, pointer string) (any, error) {
 	}
 
 	return yamlNodeToValue(current), nil
+}
+
+func resolveValuePointer(value any, pointer string) (any, error) {
+	if pointer == "" {
+		return value, nil
+	}
+	if pointer[0] != '/' {
+		return nil, fmt.Errorf("JSON pointer must start with '/'")
+	}
+	if node, ok := value.(*yaml.Node); ok {
+		return resolveJSONPointer(node, pointer)
+	}
+	current := value
+	for _, rawSegment := range strings.Split(pointer[1:], "/") {
+		segment := UnescapeJSONPointer(rawSegment)
+		switch typed := current.(type) {
+		case map[string]any:
+			next, ok := typed[segment]
+			if !ok {
+				return nil, fmt.Errorf("JSON pointer segment %q not found", segment)
+			}
+			current = next
+		case []any:
+			index, err := strconv.Atoi(segment)
+			if err != nil {
+				return nil, fmt.Errorf("invalid array index %q in JSON pointer", segment)
+			}
+			if index < 0 || index >= len(typed) {
+				return nil, fmt.Errorf("array index %d out of bounds (length %d)", index, len(typed))
+			}
+			current = typed[index]
+		default:
+			return nil, fmt.Errorf("cannot traverse into %T with pointer segment %q", current, segment)
+		}
+	}
+	return current, nil
+}
+
+// resolveNamedValue preserves exact dotted names, then treats the suffix after
+// the longest declared name as member traversal. This supports both legal
+// dotted Arazzo names and expressions such as "$inputs.order.id".
+func resolveNamedValue(values map[string]any, name string) (any, bool, error) {
+	if value, found := values[name]; found {
+		return value, true, nil
+	}
+	for separator := strings.LastIndexByte(name, '.'); separator > 0; separator = strings.LastIndexByte(name[:separator], '.') {
+		if value, found := values[name[:separator]]; found {
+			resolved, err := resolveDottedValue(value, name[separator+1:])
+			return resolved, true, err
+		}
+	}
+	return nil, false, nil
+}
+
+func resolveDottedValue(value any, path string) (any, error) {
+	current := value
+	for _, segment := range strings.Split(path, ".") {
+		if node, ok := current.(*yaml.Node); ok {
+			resolved, err := resolveJSONPointer(node, "/"+escapeJSONPointer(segment))
+			if err != nil {
+				return nil, err
+			}
+			current = resolved
+			continue
+		}
+		values, ok := current.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("cannot traverse into %T with member %q", current, segment)
+		}
+		next, found := values[segment]
+		if !found {
+			return nil, fmt.Errorf("member %q not found", segment)
+		}
+		current = next
+	}
+	return current, nil
+}
+
+func escapeJSONPointer(segment string) string {
+	segment = strings.ReplaceAll(segment, "~", "~0")
+	return strings.ReplaceAll(segment, "/", "~1")
 }
 
 // UnescapeJSONPointer applies RFC 6901 unescaping: ~1 -> /, ~0 -> ~
