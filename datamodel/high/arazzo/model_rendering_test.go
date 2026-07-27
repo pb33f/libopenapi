@@ -233,6 +233,10 @@ func TestSelector_ScalarAndObjectRendering(t *testing.T) {
 }
 
 func TestOutputValue_AllVariantsAndInvalidStates(t *testing.T) {
+	var nilOutput *OutputValue
+	nilOutput.SetExpression("$statusCode")
+	nilOutput.SetSelector(&Selector{})
+
 	expression := NewExpressionOutputValue("$statusCode")
 	value, ok := expression.GetExpression()
 	require.True(t, ok)

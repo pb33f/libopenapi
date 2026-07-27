@@ -1559,6 +1559,57 @@ func TestEnsureResolvedPathWithinRoots_MissingPathInsideRoot(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestResolvePathForContainment_ErrorBranches(t *testing.T) {
+	t.Run("existing prefix is not a directory", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "file.yaml")
+		require.NoError(t, os.WriteFile(file, []byte("content"), 0o600))
+		path := filepath.Join(file, "child.yaml")
+
+		evalSymlinks := func(candidate string) (string, error) {
+			if candidate == path {
+				return "", os.ErrNotExist
+			}
+			return candidate, nil
+		}
+
+		_, err := resolvePathForContainmentWith(path, evalSymlinks, os.Stat)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "is not a directory")
+	})
+
+	t.Run("existing prefix disappears before stat", func(t *testing.T) {
+		root := t.TempDir()
+		path := filepath.Join(root, "missing.yaml")
+		sentinel := errors.New("prefix disappeared")
+
+		evalSymlinks := func(candidate string) (string, error) {
+			if candidate == path {
+				return "", os.ErrNotExist
+			}
+			return candidate, nil
+		}
+		stat := func(string) (os.FileInfo, error) { return nil, sentinel }
+
+		_, err := resolvePathForContainmentWith(path, evalSymlinks, stat)
+		assert.ErrorIs(t, err, sentinel)
+	})
+
+	t.Run("non-missing evaluation error", func(t *testing.T) {
+		sentinel := errors.New("evaluation failed")
+		evalSymlinks := func(string) (string, error) { return "", sentinel }
+
+		_, err := resolvePathForContainmentWith("any", evalSymlinks, os.Stat)
+		assert.ErrorIs(t, err, sentinel)
+	})
+
+	t.Run("filesystem root never resolves", func(t *testing.T) {
+		evalSymlinks := func(string) (string, error) { return "", os.ErrNotExist }
+
+		_, err := resolvePathForContainmentWith(".", evalSymlinks, os.Stat)
+		assert.ErrorIs(t, err, os.ErrNotExist)
+	})
+}
+
 func TestEnsureResolvedPathWithinRoots_EvalSymlinksOtherError(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Windows does not support Unix-style directory execute permissions")

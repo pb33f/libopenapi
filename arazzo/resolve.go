@@ -496,14 +496,22 @@ func ensureResolvedPathWithinRoots(path string, roots []string) error {
 // os.ErrNotExist for the whole path when its final component is missing, which would
 // otherwise hide a symlinked parent that escapes the configured roots.
 func resolvePathForContainment(path string) (string, error) {
+	return resolvePathForContainmentWith(path, filepath.EvalSymlinks, os.Stat)
+}
+
+func resolvePathForContainmentWith(
+	path string,
+	evalSymlinks func(string) (string, error),
+	stat func(string) (os.FileInfo, error),
+) (string, error) {
 	candidate := filepath.Clean(path)
 	var missing []string
 
 	for {
-		resolved, err := filepath.EvalSymlinks(candidate)
+		resolved, err := evalSymlinks(candidate)
 		if err == nil {
 			if len(missing) > 0 {
-				info, statErr := os.Stat(resolved)
+				info, statErr := stat(resolved)
 				if statErr != nil {
 					return "", statErr
 				}
