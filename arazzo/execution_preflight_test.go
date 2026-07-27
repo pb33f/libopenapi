@@ -266,7 +266,7 @@ func TestEngine_PreflightExecutionBoundaries(t *testing.T) {
 	assert.NoError(t, engine.preflightExecution("missing"))
 
 	document := &high.Arazzo{
-		Workflows: []*high.Workflow{{
+		Workflows: []*high.Workflow{nil, {
 			WorkflowId: "cycle",
 			Steps:      []*high.Step{nil, {StepId: "self", WorkflowId: "cycle"}},
 		}},
@@ -295,6 +295,10 @@ func TestEngine_PreflightsDeferredExecutionFeaturesBeforeExecutor(t *testing.T) 
 			step.ChannelPath = "/orders"
 			step.Action = "send"
 		}},
+		{name: "action", field: "action", configure: func(_ *high.Workflow, step *high.Step) {
+			step.OperationId = ""
+			step.Action = "send"
+		}},
 		{name: "correlation id", field: "correlationId", configure: func(_ *high.Workflow, step *high.Step) {
 			step.CorrelationId = "$message.header.X-Correlation-ID"
 		}},
@@ -316,8 +320,23 @@ func TestEngine_PreflightsDeferredExecutionFeaturesBeforeExecutor(t *testing.T) 
 		{name: "selector replacement target", field: "requestBody.replacements.targetSelectorType", configure: func(_ *high.Workflow, step *high.Step) {
 			step.RequestBody = &high.RequestBody{Replacements: []*high.PayloadReplacement{{TargetSelectorType: "jsonpath"}}}
 		}},
+		{name: "selector replacement value", field: "requestBody.replacements.value", configure: func(_ *high.Workflow, step *high.Step) {
+			step.RequestBody = &high.RequestBody{Replacements: []*high.PayloadReplacement{nil, {Value: selectorValueNode()}}}
+		}},
 		{name: "action parameters", field: "successAction.parameters", configure: func(_ *high.Workflow, step *high.Step) {
-			step.OnSuccess = []*high.SuccessAction{{Name: "end", Type: "end", Parameters: []*high.Parameter{{Name: "id"}}}}
+			step.OnSuccess = []*high.SuccessAction{nil, {Name: "end", Type: "end", Parameters: []*high.Parameter{{Name: "id"}}}}
+		}},
+		{name: "failure action parameters", field: "failureAction.parameters", configure: func(_ *high.Workflow, step *high.Step) {
+			step.OnFailure = []*high.FailureAction{nil, {Name: "end", Type: "end", Parameters: []*high.Parameter{{Name: "id"}}}}
+		}},
+		{name: "workflow selector parameter", field: "parameters.value", configure: func(workflow *high.Workflow, _ *high.Step) {
+			workflow.Parameters = []*high.Parameter{nil, {Name: "id", Value: selectorValueNode()}}
+		}},
+		{name: "workflow success action parameters", field: "successAction.parameters", configure: func(workflow *high.Workflow, _ *high.Step) {
+			workflow.SuccessActions = []*high.SuccessAction{nil, {Name: "end", Type: "end", Parameters: []*high.Parameter{{Name: "id"}}}}
+		}},
+		{name: "workflow failure action parameters", field: "failureAction.parameters", configure: func(workflow *high.Workflow, _ *high.Step) {
+			workflow.FailureActions = []*high.FailureAction{nil, {Name: "end", Type: "end", Parameters: []*high.Parameter{{Name: "id"}}}}
 		}},
 	}
 
@@ -336,6 +355,12 @@ func TestEngine_PreflightsDeferredExecutionFeaturesBeforeExecutor(t *testing.T) 
 			var typed *UnsupportedExecutionFeatureError
 			require.ErrorAs(t, err, &typed)
 			assert.Equal(t, test.field, typed.Field)
+			assert.Contains(t, typed.Error(), `workflow "root"`)
+			if typed.StepId == "" {
+				assert.NotContains(t, typed.Error(), " step ")
+			} else {
+				assert.Contains(t, typed.Error(), `step "call"`)
+			}
 			assert.Empty(t, executor.operationIDs)
 		})
 	}

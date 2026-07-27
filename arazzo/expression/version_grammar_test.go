@@ -98,6 +98,8 @@ func TestParseWithVersion_Arazzo10GeneralFormStillValidated(t *testing.T) {
 		"$components.inputs.",
 		"$components.bad type.name",
 		"$components.inputs.bad name",
+		"$steps.",
+		"$steps..outputs.value",
 	}
 
 	for _, input := range tests {
