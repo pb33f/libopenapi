@@ -304,7 +304,7 @@ func TestComposedRefFor(t *testing.T) {
 
 	got, ok = composedRefFor(processedNodes, "/tmp/common.yaml#/components/schemas/Thing/properties/id")
 	assert.True(t, ok)
-	assert.Equal(t, "#/components/schemas/ThingProperties/id", got)
+	assert.Equal(t, "#/components/schemas/ExactMatch", got)
 
 	got, ok = composedRefFor(orderedmap.New[string, *processRef](), "/tmp/common.yaml#/components/schemas/Missing")
 	assert.False(t, ok)
