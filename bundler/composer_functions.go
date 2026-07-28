@@ -117,31 +117,34 @@ func composedRefFor(
 		return "", false
 	}
 
-	longestKey := ""
-	var longestRef *processRef
-	for key, pr := range processedNodes.FromOldest() {
-		if pr == nil || len(pr.location) == 0 {
-			continue
-		}
-		if key == absoluteKey {
-			continue
-		}
-		if !strings.HasPrefix(absoluteKey, key) {
-			continue
-		}
-		suffix := strings.TrimPrefix(absoluteKey, key)
-		if suffix == "" || !strings.HasPrefix(suffix, "/") {
-			continue
-		}
-		if len(key) > len(longestKey) {
-			longestKey = key
-			longestRef = pr
-		}
+	if ref, ok := composedRefFromProcessRef(processedNodes.GetOrZero(absoluteKey), ""); ok {
+		return ref, true
 	}
-	if longestRef == nil {
+
+	fragmentStart := strings.Index(absoluteKey, "#/")
+	if fragmentStart == -1 {
 		return "", false
 	}
-	return "#/" + joinLocationAsJSONPointer(longestRef.location) + strings.TrimPrefix(absoluteKey, longestKey), true
+
+	parentKey := absoluteKey
+	for {
+		slash := strings.LastIndex(parentKey, "/")
+		if slash <= fragmentStart+1 {
+			return "", false
+		}
+
+		parentKey = parentKey[:slash]
+		if ref, ok := composedRefFromProcessRef(processedNodes.GetOrZero(parentKey), absoluteKey[len(parentKey):]); ok {
+			return ref, true
+		}
+	}
+}
+
+func composedRefFromProcessRef(pr *processRef, suffix string) (string, bool) {
+	if pr == nil || len(pr.location) == 0 {
+		return "", false
+	}
+	return "#/" + joinLocationAsJSONPointer(pr.location) + suffix, true
 }
 
 func calculateCollisionName(name, pointer, delimiter string, iteration int) string {
