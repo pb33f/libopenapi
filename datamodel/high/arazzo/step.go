@@ -5,27 +5,31 @@ package arazzo
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/arazzo"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"go.yaml.in/yaml/v4"
 )
 
 // Step represents a high-level Arazzo Step Object.
-// https://spec.openapis.org/arazzo/v1.0.1#step-object
+// https://spec.openapis.org/arazzo/v1.1.0#step-object
 type Step struct {
-	StepId          string                              `json:"stepId,omitempty" yaml:"stepId,omitempty"`
-	Description     string                              `json:"description,omitempty" yaml:"description,omitempty"`
-	OperationId     string                              `json:"operationId,omitempty" yaml:"operationId,omitempty"`
-	OperationPath   string                              `json:"operationPath,omitempty" yaml:"operationPath,omitempty"`
-	WorkflowId      string                              `json:"workflowId,omitempty" yaml:"workflowId,omitempty"`
-	Parameters      []*Parameter                        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	RequestBody     *RequestBody                        `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
-	SuccessCriteria []*Criterion                        `json:"successCriteria,omitempty" yaml:"successCriteria,omitempty"`
-	OnSuccess       []*SuccessAction                    `json:"onSuccess,omitempty" yaml:"onSuccess,omitempty"`
-	OnFailure       []*FailureAction                    `json:"onFailure,omitempty" yaml:"onFailure,omitempty"`
-	Outputs         *orderedmap.Map[string, string]     `json:"outputs,omitempty" yaml:"outputs,omitempty"`
-	Extensions      *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
+	StepId          string                                `json:"stepId,omitempty" yaml:"stepId,omitempty"`
+	Description     string                                `json:"description,omitempty" yaml:"description,omitempty"`
+	OperationId     string                                `json:"operationId,omitempty" yaml:"operationId,omitempty"`
+	OperationPath   string                                `json:"operationPath,omitempty" yaml:"operationPath,omitempty"`
+	ChannelPath     string                                `json:"channelPath,omitempty" yaml:"channelPath,omitempty"`
+	Action          string                                `json:"action,omitempty" yaml:"action,omitempty"`
+	WorkflowId      string                                `json:"workflowId,omitempty" yaml:"workflowId,omitempty"`
+	CorrelationId   string                                `json:"correlationId,omitempty" yaml:"correlationId,omitempty"`
+	Timeout         *int64                                `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	DependsOn       []string                              `json:"dependsOn,omitempty" yaml:"dependsOn,omitempty"`
+	Parameters      []*Parameter                          `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	RequestBody     *RequestBody                          `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
+	SuccessCriteria []*Criterion                          `json:"successCriteria,omitempty" yaml:"successCriteria,omitempty"`
+	OnSuccess       []*SuccessAction                      `json:"onSuccess,omitempty" yaml:"onSuccess,omitempty"`
+	OnFailure       []*FailureAction                      `json:"onFailure,omitempty" yaml:"onFailure,omitempty"`
+	Outputs         *orderedmap.Map[string, *OutputValue] `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Extensions      *orderedmap.Map[string, *yaml.Node]   `json:"-" yaml:"-"`
 	low             *low.Step
 }
 
@@ -45,8 +49,24 @@ func NewStep(step *low.Step) *Step {
 	if !step.OperationPath.IsEmpty() {
 		s.OperationPath = step.OperationPath.Value
 	}
+	if !step.ChannelPath.IsEmpty() {
+		s.ChannelPath = step.ChannelPath.Value
+	}
+	if !step.Action.IsEmpty() {
+		s.Action = step.Action.Value
+	}
 	if !step.WorkflowId.IsEmpty() {
 		s.WorkflowId = step.WorkflowId.Value
+	}
+	if !step.CorrelationId.IsEmpty() {
+		s.CorrelationId = step.CorrelationId.Value
+	}
+	if !step.Timeout.IsEmpty() {
+		timeout := step.Timeout.Value
+		s.Timeout = &timeout
+	}
+	if !step.DependsOn.IsEmpty() {
+		s.DependsOn = buildValueSlice(step.DependsOn.Value)
 	}
 	if !step.Parameters.IsEmpty() {
 		s.Parameters = buildSlice(step.Parameters.Value, NewParameter)
@@ -64,7 +84,7 @@ func NewStep(step *low.Step) *Step {
 		s.OnFailure = buildSlice(step.OnFailure.Value, NewFailureAction)
 	}
 	if !step.Outputs.IsEmpty() {
-		s.Outputs = lowmodel.FromReferenceMap[string, string](step.Outputs.Value)
+		s.Outputs = buildOutputValueMap(step.Outputs.Value)
 	}
 	s.Extensions = high.ExtractExtensions(step.Extensions)
 	return s
@@ -100,8 +120,23 @@ func (s *Step) MarshalYAML() (any, error) {
 	if s.OperationPath != "" {
 		m.Set(low.OperationPathLabel, s.OperationPath)
 	}
+	if s.ChannelPath != "" {
+		m.Set(low.ChannelPathLabel, s.ChannelPath)
+	}
+	if s.Action != "" {
+		m.Set(low.ActionLabel, s.Action)
+	}
 	if s.WorkflowId != "" {
 		m.Set(low.WorkflowIdLabel, s.WorkflowId)
+	}
+	if s.CorrelationId != "" {
+		m.Set(low.CorrelationIdLabel, s.CorrelationId)
+	}
+	if s.Timeout != nil {
+		m.Set(low.TimeoutLabel, *s.Timeout)
+	}
+	if len(s.DependsOn) > 0 {
+		m.Set(low.DependsOnLabel, s.DependsOn)
 	}
 	if len(s.Parameters) > 0 {
 		m.Set(low.ParametersLabel, s.Parameters)

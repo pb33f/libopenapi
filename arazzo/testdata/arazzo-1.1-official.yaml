@@ -1,0 +1,83 @@
+arazzo: 1.1.0
+$self: https://api.example.com/workflows/pet-purchase.arazzo.yaml
+info:
+  title: A pet purchasing workflow
+  summary: Purchase a pet through HTTP and asynchronous APIs
+  version: 1.0.0
+sourceDescriptions:
+  - name: petstore
+    url: ../apis/petstore.yaml
+    type: openapi
+  - name: orders
+    url: ../apis/orders.asyncapi.yaml
+    type: asyncapi
+workflows:
+  - workflowId: purchasePet
+    inputs:
+      type: object
+      properties:
+        petId:
+          type: integer
+        correlationId:
+          type: string
+    steps:
+      - stepId: fetchPet
+        operationId: $sourceDescriptions.petstore.getPet
+        parameters:
+          - name: petId
+            in: path
+            value: $inputs.petId
+        successCriteria:
+          - condition: $statusCode == 200
+        outputs:
+          pet:
+            context: $response.body
+            selector: $.pet
+            type:
+              type: jsonpath
+              version: rfc9535
+      - stepId: placeOrder
+        channelPath: '{$sourceDescriptions.orders.url}#/channels/orders'
+        action: send
+        dependsOn:
+          - fetchPet
+        parameters:
+          - name: correlationId
+            in: header
+            value: $inputs.correlationId
+        requestBody:
+          contentType: application/json
+          payload:
+            petId: $inputs.petId
+          replacements:
+            - target: $.petId
+              targetSelectorType:
+                type: jsonpath
+                version: rfc9535
+              value:
+                context: $steps.fetchPet.outputs.pet
+                selector: $.id
+                type: jsonpath
+      - stepId: confirmOrder
+        operationId: $sourceDescriptions.orders.confirmOrder
+        action: receive
+        correlationId: $inputs.correlationId
+        dependsOn:
+          - placeOrder
+        timeout: 6000
+        outputs:
+          orderId: $message.payload#/orderId
+    outputs:
+      orderId: $steps.confirmOrder.outputs.orderId
+    successActions:
+      - name: complete
+        type: end
+        parameters:
+          - name: orderId
+            value: $outputs.orderId
+    failureActions:
+      - name: abort
+        type: end
+        parameters:
+          - name: reason
+            value: purchase-failed

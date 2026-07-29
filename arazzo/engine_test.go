@@ -355,10 +355,10 @@ func TestEngine_RunWorkflow_ExposesNestedWorkflowInputsViaWorkflowsContext(t *te
 }
 
 func TestEngine_RunWorkflow_EvaluatesStepAndWorkflowOutputs(t *testing.T) {
-	stepOutputs := orderedmap.New[string, string]()
-	stepOutputs.Set("petId", "$response.body#/id")
-	workflowOutputs := orderedmap.New[string, string]()
-	workflowOutputs.Set("createdPetId", "$steps.s1.outputs.petId")
+	stepOutputs := orderedmap.New[string, *high.OutputValue]()
+	stepOutputs.Set("petId", high.NewExpressionOutputValue("$response.body#/id"))
+	workflowOutputs := orderedmap.New[string, *high.OutputValue]()
+	workflowOutputs.Set("createdPetId", high.NewExpressionOutputValue("$steps.s1.outputs.petId"))
 
 	doc := &high.Arazzo{
 		Workflows: []*high.Workflow{

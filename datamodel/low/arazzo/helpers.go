@@ -5,7 +5,9 @@ package arazzo
 
 import (
 	"context"
+	"fmt"
 	"hash/maphash"
+	"strconv"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -71,6 +73,56 @@ func assignNodeReference[T any](
 	return nil
 }
 
+// resolveAliasNode follows an alias chain without allowing malformed or cyclic
+// aliases to hang model construction. The caller retains the authored node for
+// source metadata and uses the returned node only for shape inspection/building.
+func resolveAliasNode(node *yaml.Node) (*yaml.Node, error) {
+	if node == nil {
+		return nil, nil
+	}
+	if node.Kind != yaml.AliasNode {
+		return node, nil
+	}
+	seen := make(map[*yaml.Node]struct{})
+	current := node
+	for current.Kind == yaml.AliasNode {
+		if _, exists := seen[current]; exists {
+			return nil, fmt.Errorf("cyclic YAML alias at line %d, column %d", node.Line, node.Column)
+		}
+		seen[current] = struct{}{}
+		if current.Alias == nil {
+			return nil, fmt.Errorf("empty YAML alias at line %d, column %d", current.Line, current.Column)
+		}
+		current = current.Alias
+	}
+	return current, nil
+}
+
+// extractScalarString preserves the authored YAML node while reading the scalar
+// value from its resolved alias target.
+func extractScalarString(label string, root *yaml.Node) (low.NodeReference[string], error) {
+	var result low.NodeReference[string]
+	key, value, found := findLabeledNode(label, root)
+	if !found {
+		return result, nil
+	}
+	result.KeyNode = key
+	result.ValueNode = value
+	resolved, err := resolveAliasNode(value)
+	if err != nil {
+		return result, fmt.Errorf("%s: %w", label, err)
+	}
+	if resolved.Tag == "!!null" {
+		return result, nil
+	}
+	if resolved.Kind != yaml.ScalarNode {
+		return result, fmt.Errorf("%s at line %d, column %d must be a scalar",
+			label, value.Line, value.Column)
+	}
+	result.Value = resolved.Value
+	return result, nil
+}
+
 // extractArray extracts a YAML sequence node into a slice of ValueReferences for the given label.
 func extractArray[N any, T interface {
 	*N
@@ -85,16 +137,32 @@ func extractArray[N any, T interface {
 	}
 	result.KeyNode = key
 	result.ValueNode = value
-	if value.Kind != yaml.SequenceNode {
+	resolvedValue, err := resolveAliasNode(value)
+	if err != nil {
+		return result, fmt.Errorf("%s: %w", label, err)
+	}
+	if resolvedValue.Tag == "!!null" {
 		return result, nil
 	}
-	items := make([]low.ValueReference[T], 0, len(value.Content))
-	for _, itemNode := range value.Content {
+	if resolvedValue.Kind != yaml.SequenceNode {
+		return result, fmt.Errorf("%s at line %d, column %d must be a sequence of objects",
+			label, value.Line, value.Column)
+	}
+	items := make([]low.ValueReference[T], 0, len(resolvedValue.Content))
+	for _, itemNode := range resolvedValue.Content {
+		resolvedItem, resolveErr := resolveAliasNode(itemNode)
+		if resolveErr != nil {
+			return result, fmt.Errorf("%s item: %w", label, resolveErr)
+		}
+		if resolvedItem.Kind != yaml.MappingNode {
+			return result, fmt.Errorf("%s item at line %d, column %d must be a mapping",
+				label, itemNode.Line, itemNode.Column)
+		}
 		obj := T(new(N))
-		if err := low.BuildModel(itemNode, obj); err != nil {
+		if err := low.BuildModel(resolvedItem, obj); err != nil {
 			return result, err
 		}
-		if err := obj.Build(ctx, nil, itemNode, idx); err != nil {
+		if err := obj.Build(ctx, nil, resolvedItem, idx); err != nil {
 			return result, err
 		}
 		items = append(items, low.ValueReference[T]{
@@ -120,21 +188,37 @@ func extractObjectMap[N any, T interface {
 	}
 	result.KeyNode = key
 	result.ValueNode = value
-	if value.Kind != yaml.MappingNode {
+	resolvedValue, err := resolveAliasNode(value)
+	if err != nil {
+		return result, fmt.Errorf("%s: %w", label, err)
+	}
+	if resolvedValue.Tag == "!!null" {
 		return result, nil
 	}
+	if resolvedValue.Kind != yaml.MappingNode {
+		return result, fmt.Errorf("%s at line %d, column %d must be a mapping",
+			label, value.Line, value.Column)
+	}
 	m := orderedmap.New[low.KeyReference[string], low.ValueReference[T]]()
-	for j := 0; j < len(value.Content); j += 2 {
-		if j+1 >= len(value.Content) {
+	for j := 0; j < len(resolvedValue.Content); j += 2 {
+		if j+1 >= len(resolvedValue.Content) {
 			break
 		}
-		mapKey := value.Content[j]
-		mapVal := value.Content[j+1]
+		mapKey := resolvedValue.Content[j]
+		mapVal := resolvedValue.Content[j+1]
+		resolvedMapVal, resolveErr := resolveAliasNode(mapVal)
+		if resolveErr != nil {
+			return result, fmt.Errorf("%s member %q: %w", label, mapKey.Value, resolveErr)
+		}
+		if resolvedMapVal.Kind != yaml.MappingNode {
+			return result, fmt.Errorf("%s member %q at line %d, column %d must be a mapping",
+				label, mapKey.Value, mapVal.Line, mapVal.Column)
+		}
 		obj := T(new(N))
-		if err := low.BuildModel(mapVal, obj); err != nil {
+		if err := low.BuildModel(resolvedMapVal, obj); err != nil {
 			return result, err
 		}
-		if err := obj.Build(ctx, mapKey, mapVal, idx); err != nil {
+		if err := obj.Build(ctx, mapKey, resolvedMapVal, idx); err != nil {
 			return result, err
 		}
 		m.Set(low.KeyReference[string]{
@@ -150,26 +234,42 @@ func extractObjectMap[N any, T interface {
 }
 
 // extractStringArray extracts a YAML sequence of scalar strings into a NodeReference.
-func extractStringArray(label string, root *yaml.Node) low.NodeReference[[]low.ValueReference[string]] {
+func extractStringArray(label string, root *yaml.Node) (low.NodeReference[[]low.ValueReference[string]], error) {
 	var result low.NodeReference[[]low.ValueReference[string]]
 	key, value, found := findLabeledNode(label, root)
 	if !found {
-		return result
+		return result, nil
 	}
 	result.KeyNode = key
 	result.ValueNode = value
-	if value.Kind != yaml.SequenceNode {
-		return result
+	resolvedValue, err := resolveAliasNode(value)
+	if err != nil {
+		return result, fmt.Errorf("%s: %w", label, err)
 	}
-	items := make([]low.ValueReference[string], 0, len(value.Content))
-	for _, itemNode := range value.Content {
+	if resolvedValue.Tag == "!!null" {
+		return result, nil
+	}
+	if resolvedValue.Kind != yaml.SequenceNode {
+		return result, fmt.Errorf("%s at line %d, column %d must be a sequence of scalar strings",
+			label, value.Line, value.Column)
+	}
+	items := make([]low.ValueReference[string], 0, len(resolvedValue.Content))
+	for _, itemNode := range resolvedValue.Content {
+		resolvedItem, resolveErr := resolveAliasNode(itemNode)
+		if resolveErr != nil {
+			return result, fmt.Errorf("%s item: %w", label, resolveErr)
+		}
+		if resolvedItem.Kind != yaml.ScalarNode || resolvedItem.Tag == "!!null" {
+			return result, fmt.Errorf("%s item at line %d, column %d must be a scalar step identifier",
+				label, itemNode.Line, itemNode.Column)
+		}
 		items = append(items, low.ValueReference[string]{
-			Value:     itemNode.Value,
+			Value:     resolvedItem.Value,
 			ValueNode: itemNode,
 		})
 	}
 	result.Value = items
-	return result
+	return result, nil
 }
 
 // extractRawNode extracts a raw *yaml.Node for a given label without further processing.
@@ -216,25 +316,81 @@ func extractExpressionsMap(label string, root *yaml.Node) low.NodeReference[*ord
 	return result
 }
 
-// extractRawNodeMap extracts a YAML mapping node into an ordered map of string keys to raw *yaml.Node values.
-func extractRawNodeMap(label string, root *yaml.Node) low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]] {
-	var result low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]]
+// extractOutputValuesMap extracts a map whose values are runtime-expression scalars or Selector Objects.
+func extractOutputValuesMap(
+	ctx context.Context,
+	label string,
+	root *yaml.Node,
+	idx *index.SpecIndex,
+) (low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*OutputValue]]], error) {
+	var result low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*OutputValue]]]
 	key, value, found := findLabeledNode(label, root)
 	if !found {
-		return result
+		return result, nil
 	}
 	result.KeyNode = key
 	result.ValueNode = value
-	if value.Kind != yaml.MappingNode {
-		return result
+	resolvedValue, err := resolveAliasNode(value)
+	if err != nil {
+		return result, fmt.Errorf("%s: %w", label, err)
 	}
-	m := orderedmap.New[low.KeyReference[string], low.ValueReference[*yaml.Node]]()
-	for j := 0; j < len(value.Content); j += 2 {
-		if j+1 >= len(value.Content) {
+	if resolvedValue.Tag == "!!null" {
+		return result, nil
+	}
+	if resolvedValue.Kind != yaml.MappingNode {
+		return result, fmt.Errorf("%s at line %d, column %d must be a mapping",
+			label, value.Line, value.Column)
+	}
+	outputs := orderedmap.New[low.KeyReference[string], low.ValueReference[*OutputValue]]()
+	for i := 0; i < len(resolvedValue.Content); i += 2 {
+		if i+1 >= len(resolvedValue.Content) {
 			break
 		}
-		mapKey := value.Content[j]
-		mapVal := value.Content[j+1]
+		outputKey := resolvedValue.Content[i]
+		outputNode := resolvedValue.Content[i+1]
+		output := new(OutputValue)
+		if err := output.Build(ctx, outputKey, outputNode, idx); err != nil {
+			return result, err
+		}
+		outputs.Set(low.KeyReference[string]{
+			Value:   outputKey.Value,
+			KeyNode: outputKey,
+		}, low.ValueReference[*OutputValue]{
+			Value:     output,
+			ValueNode: outputNode,
+		})
+	}
+	result.Value = outputs
+	return result, nil
+}
+
+// extractRawNodeMap extracts a YAML mapping node into an ordered map of string keys to raw *yaml.Node values.
+func extractRawNodeMap(label string, root *yaml.Node) (low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]], error) {
+	var result low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]]
+	key, value, found := findLabeledNode(label, root)
+	if !found {
+		return result, nil
+	}
+	result.KeyNode = key
+	result.ValueNode = value
+	resolvedValue, err := resolveAliasNode(value)
+	if err != nil {
+		return result, fmt.Errorf("%s: %w", label, err)
+	}
+	if resolvedValue.Tag == "!!null" {
+		return result, nil
+	}
+	if resolvedValue.Kind != yaml.MappingNode {
+		return result, fmt.Errorf("%s at line %d, column %d must be a mapping",
+			label, value.Line, value.Column)
+	}
+	m := orderedmap.New[low.KeyReference[string], low.ValueReference[*yaml.Node]]()
+	for j := 0; j < len(resolvedValue.Content); j += 2 {
+		if j+1 >= len(resolvedValue.Content) {
+			break
+		}
+		mapKey := resolvedValue.Content[j]
+		mapVal := resolvedValue.Content[j+1]
 		m.Set(low.KeyReference[string]{
 			Value:   mapKey.Value,
 			KeyNode: mapKey,
@@ -244,7 +400,7 @@ func extractRawNodeMap(label string, root *yaml.Node) low.NodeReference[*ordered
 		})
 	}
 	result.Value = m
-	return result
+	return result, nil
 }
 
 // extractComponentRef extracts a string field from root.Content by label, returning it as a NodeReference.
@@ -264,24 +420,37 @@ func extractComponentRef(label string, root *yaml.Node) low.NodeReference[string
 
 // hashYAMLNode writes a yaml.Node tree directly into a maphash.Hash for efficient hashing.
 func hashYAMLNode(h *maphash.Hash, node *yaml.Node) {
+	hashYAMLNodePath(h, node, make(map[*yaml.Node]struct{}))
+}
+
+func hashYAMLNodePath(h *maphash.Hash, node *yaml.Node, active map[*yaml.Node]struct{}) {
 	if node == nil {
 		return
 	}
+	if _, exists := active[node]; exists {
+		return
+	}
+	active[node] = struct{}{}
+	defer delete(active, node)
 	switch node.Kind {
 	case yaml.ScalarNode:
 		h.WriteString(node.Value)
 		h.WriteByte(low.HASH_PIPE)
 	case yaml.MappingNode, yaml.SequenceNode:
+		// The kind is part of the hash: without it a mapping and a sequence holding the same
+		// scalars are indistinguishable, so `{a: b}` and `[a, b]` would compare as equal.
+		h.WriteByte(byte(node.Kind))
+		h.WriteByte(low.HASH_PIPE)
 		for _, child := range node.Content {
-			hashYAMLNode(h, child)
+			hashYAMLNodePath(h, child, active)
 		}
 	case yaml.DocumentNode:
 		for _, child := range node.Content {
-			hashYAMLNode(h, child)
+			hashYAMLNodePath(h, child, active)
 		}
 	case yaml.AliasNode:
 		if node.Alias != nil {
-			hashYAMLNode(h, node.Alias)
+			hashYAMLNodePath(h, node.Alias, active)
 		}
 	}
 }
@@ -296,4 +465,79 @@ func hashExtensionsInto(h *maphash.Hash, ext *orderedmap.Map[low.KeyReference[st
 		h.WriteByte(low.HASH_PIPE)
 		hashYAMLNode(h, pair.Value().Value)
 	}
+}
+
+// requireNodeKind verifies that a named field, when present, uses one of the expected
+// YAML node kinds.
+//
+// The reflection-driven model builder silently ignores a value whose node kind does not
+// match the target Go field, which turns an authoring mistake into quiet data loss: a
+// mapping-valued timeout, or a scalar dependsOn, simply disappears from the model. The
+// composite Arazzo 1.1 objects (Selector, OutputValue, targetSelectorType) already reject
+// an unexpected node kind with a source-positioned error, so this brings the scalar and
+// sequence fields into line with them.
+//
+// An absent field is not an error; requiredness is the validator's concern, not the
+// parser's. Likewise a well-formed value that is semantically wrong is left alone.
+func requireNodeKind(label, description string, root *yaml.Node, kinds ...yaml.Kind) error {
+	_, value, found := findLabeledNode(label, root)
+	if !found || value == nil {
+		return nil
+	}
+	resolved, err := resolveAliasNode(value)
+	if err != nil {
+		return fmt.Errorf("%s: %w", label, err)
+	}
+	// An explicit or aliased YAML null is treated as absent rather than as a kind violation.
+	if resolved.Tag == "!!null" {
+		return nil
+	}
+	for _, kind := range kinds {
+		if resolved.Kind == kind {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s at line %d, column %d must be %s",
+		label, value.Line, value.Column, description)
+}
+
+// requireScalar is the common case: a field that must be a single scalar value.
+func requireScalar(label, description string, root *yaml.Node) error {
+	return requireNodeKind(label, description, root, yaml.ScalarNode)
+}
+
+// requireSequence is the common case: a field that must be a YAML sequence.
+func requireSequence(label, description string, root *yaml.Node) error {
+	return requireNodeKind(label, description, root, yaml.SequenceNode)
+}
+
+// requireInteger verifies that a named field, when present, is an integer the model
+// builder will actually accept.
+//
+// A node-kind check alone is not enough. The builder gates integer fields on the YAML
+// tag via utils.IsNodeIntValue, so a quoted scalar such as "5000" is a well-formed
+// scalar that parses as an integer yet is still silently dropped. Gating on the same
+// predicate the builder uses closes that gap; the subsequent base-10 parse then rejects
+// values the builder would coerce to zero, such as 0x1F.
+func requireInteger(label, description string, root *yaml.Node) error {
+	_, value, found := findLabeledNode(label, root)
+	if !found || value == nil {
+		return nil
+	}
+	resolved, err := resolveAliasNode(value)
+	if err != nil {
+		return fmt.Errorf("%s: %w", label, err)
+	}
+	if resolved.Tag == "!!null" {
+		return nil
+	}
+	if !utils.IsNodeIntValue(resolved) {
+		return fmt.Errorf("%s at line %d, column %d must be %s, got %q",
+			label, value.Line, value.Column, description, resolved.Value)
+	}
+	if _, err := strconv.ParseInt(resolved.Value, 10, 64); err != nil {
+		return fmt.Errorf("%s at line %d, column %d must be %s, got %q",
+			label, value.Line, value.Column, description, resolved.Value)
+	}
+	return nil
 }

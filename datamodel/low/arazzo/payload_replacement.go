@@ -5,6 +5,7 @@ package arazzo
 
 import (
 	"context"
+	"fmt"
 	"hash/maphash"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -14,15 +15,16 @@ import (
 )
 
 // PayloadReplacement represents a low-level Arazzo Payload Replacement Object.
-// https://spec.openapis.org/arazzo/v1.0.1#payload-replacement-object
+// https://spec.openapis.org/arazzo/v1.1.0#payload-replacement-object
 type PayloadReplacement struct {
-	Target     low.NodeReference[string]
-	Value      low.NodeReference[*yaml.Node]
-	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
-	KeyNode    *yaml.Node
-	RootNode   *yaml.Node
-	index      *index.SpecIndex
-	context    context.Context
+	Target             low.NodeReference[string]
+	TargetSelectorType low.NodeReference[*yaml.Node]
+	Value              low.NodeReference[*yaml.Node]
+	Extensions         *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode            *yaml.Node
+	RootNode           *yaml.Node
+	index              *index.SpecIndex
+	context            context.Context
 	*low.Reference
 	low.NodeMap
 }
@@ -66,7 +68,24 @@ func (p *PayloadReplacement) Build(ctx context.Context, keyNode, root *yaml.Node
 		Context:    &p.context,
 	}, ctx, keyNode, root, idx)
 
+	var err error
+	p.Target, err = extractScalarString(TargetLabel, root)
+	if err != nil {
+		return err
+	}
 	p.Value = extractRawNode(ValueLabel, root)
+	p.TargetSelectorType = extractRawNode(TargetSelectorTypeLabel, root)
+	if p.TargetSelectorType.IsEmpty() {
+		return nil
+	}
+	resolvedType, err := resolveAliasNode(p.TargetSelectorType.Value)
+	if err != nil {
+		return fmt.Errorf("targetSelectorType: %w", err)
+	}
+	if resolvedType.Kind != yaml.ScalarNode && resolvedType.Kind != yaml.MappingNode {
+		return fmt.Errorf("targetSelectorType at line %d, column %d must be a scalar or mapping",
+			p.TargetSelectorType.Value.Line, p.TargetSelectorType.Value.Column)
+	}
 	return nil
 }
 
@@ -81,6 +100,9 @@ func (p *PayloadReplacement) Hash() uint64 {
 		if !p.Target.IsEmpty() {
 			h.WriteString(p.Target.Value)
 			h.WriteByte(low.HASH_PIPE)
+		}
+		if !p.TargetSelectorType.IsEmpty() {
+			hashYAMLNode(h, p.TargetSelectorType.Value)
 		}
 		if !p.Value.IsEmpty() {
 			hashYAMLNode(h, p.Value.Value)

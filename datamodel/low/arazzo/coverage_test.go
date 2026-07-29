@@ -67,8 +67,7 @@ workflows:
 	require.NoError(t, err)
 
 	err = a.Build(context.Background(), nil, node.Content[0], nil)
-	assert.NoError(t, err)
-	// sourceDescriptions is not a valid sequence, so it should be empty
+	assert.Error(t, err)
 	assert.True(t, a.SourceDescriptions.IsEmpty() || len(a.SourceDescriptions.Value) == 0)
 }
 
@@ -90,7 +89,7 @@ workflows: not-a-sequence`
 	require.NoError(t, err)
 
 	err = a.Build(context.Background(), nil, node.Content[0], nil)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.True(t, a.Workflows.IsEmpty() || len(a.Workflows.Value) == 0)
 }
 
@@ -325,7 +324,7 @@ func TestComponents_Build_ParametersNotMapping(t *testing.T) {
 	var comp Components
 	_ = low.BuildModel(node.Content[0], &comp)
 	err := comp.Build(context.Background(), nil, node.Content[0], nil)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	// parameters value is not a mapping, so the map value should be nil
 	assert.Nil(t, comp.Parameters.Value)
 }
@@ -339,7 +338,7 @@ func TestComponents_Build_SuccessActionsNotMapping(t *testing.T) {
 	var comp Components
 	_ = low.BuildModel(node.Content[0], &comp)
 	err := comp.Build(context.Background(), nil, node.Content[0], nil)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Nil(t, comp.SuccessActions.Value)
 }
 
@@ -352,7 +351,7 @@ func TestComponents_Build_FailureActionsNotMapping(t *testing.T) {
 	var comp Components
 	_ = low.BuildModel(node.Content[0], &comp)
 	err := comp.Build(context.Background(), nil, node.Content[0], nil)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Nil(t, comp.FailureActions.Value)
 }
 
@@ -591,8 +590,7 @@ func TestCov_ExtractArray_NotSequence(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &node)
 
 	result, err := extractArray[SourceDescription](context.Background(), "items", node.Content[0], nil)
-	assert.NoError(t, err)
-	// Should have KeyNode set but no items
+	assert.Error(t, err)
 	assert.Nil(t, result.Value)
 }
 
@@ -604,7 +602,7 @@ func TestCov_ExtractObjectMap_NotMapping(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &node)
 
 	result, err := extractObjectMap[Parameter](context.Background(), "things", node.Content[0], nil)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Nil(t, result.Value)
 }
 
@@ -640,7 +638,8 @@ func TestCov_ExtractStringArray_NotSequence(t *testing.T) {
 	var node yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &node)
 
-	result := extractStringArray("items", node.Content[0])
+	result, err := extractStringArray("items", node.Content[0])
+	assert.Error(t, err)
 	assert.Nil(t, result.Value)
 }
 
@@ -652,7 +651,8 @@ func TestExtractStringArray_Found(t *testing.T) {
 	var node yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &node)
 
-	result := extractStringArray("items", node.Content[0])
+	result, err := extractStringArray("items", node.Content[0])
+	require.NoError(t, err)
 	require.NotNil(t, result.Value)
 	assert.Len(t, result.Value, 2)
 	assert.Equal(t, "alpha", result.Value[0].Value)
@@ -703,7 +703,8 @@ func TestCov_ExtractRawNodeMap_NotMapping(t *testing.T) {
 	var node yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &node)
 
-	result := extractRawNodeMap("inputs", node.Content[0])
+	result, err := extractRawNodeMap("inputs", node.Content[0])
+	assert.Error(t, err)
 	assert.Nil(t, result.Value)
 }
 
@@ -720,7 +721,8 @@ func TestExtractRawNodeMap_OddContent(t *testing.T) {
 		},
 	}
 
-	result := extractRawNodeMap("inputs", root)
+	result, err := extractRawNodeMap("inputs", root)
+	assert.NoError(t, err)
 	require.NotNil(t, result.Value)
 	assert.Equal(t, 1, result.Value.Len())
 }
@@ -1112,7 +1114,8 @@ func TestExtractStringArray_OddRootContent(t *testing.T) {
 		},
 	}
 
-	result := extractStringArray("items", root)
+	result, err := extractStringArray("items", root)
+	require.NoError(t, err)
 	require.NotNil(t, result.Value)
 	assert.Len(t, result.Value, 1)
 	assert.Equal(t, "a", result.Value[0].Value)

@@ -615,13 +615,13 @@ func TestEvaluate_ResponseQuery_Unsupported(t *testing.T) {
 	ctx := &Context{ResponseHeaders: map[string]string{"foo": "bar"}}
 	_, err := Evaluate(Expression{Type: ResponseQuery, Property: "x"}, ctx)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not supported")
+	assert.Contains(t, err.Error(), "no response query parameters")
 }
 
 func TestEvaluate_ResponsePath_Unsupported(t *testing.T) {
 	_, err := Evaluate(Expression{Type: ResponsePath, Property: "x"}, &Context{})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not supported")
+	assert.Contains(t, err.Error(), "no response path parameters")
 }
 
 func TestEvaluate_UnsupportedExpressionType(t *testing.T) {
@@ -722,9 +722,9 @@ func TestJSONPointer_EmptyPointer(t *testing.T) {
 
 func TestJSONPointer_RootSlash(t *testing.T) {
 	ctx := fullContext(t)
-	val, err := Evaluate(Expression{Type: RequestBody, JSONPointer: "/"}, ctx)
-	assert.NoError(t, err)
-	assert.NotNil(t, val)
+	_, err := Evaluate(Expression{Type: RequestBody, JSONPointer: "/"}, ctx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), `segment "" not found`)
 }
 
 func TestJSONPointer_ResponseBody(t *testing.T) {
@@ -958,5 +958,5 @@ func TestEvaluate_Error_ComponentsParametersMissing(t *testing.T) {
 func TestEvaluate_ResponseQuery_NotSupported(t *testing.T) {
 	_, err := Evaluate(Expression{Type: ResponseQuery, Property: "x"}, &Context{})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not supported")
+	assert.Contains(t, err.Error(), "no response query parameters")
 }

@@ -134,11 +134,9 @@ func TestParse_Steps_WithTail(t *testing.T) {
 }
 
 func TestParse_Steps_NoTail(t *testing.T) {
-	expr, err := Parse("$steps.myStep")
-	assert.NoError(t, err)
-	assert.Equal(t, Steps, expr.Type)
-	assert.Equal(t, "myStep", expr.Name)
-	assert.Empty(t, expr.Tail)
+	_, err := Parse("$steps.myStep")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid step output reference")
 }
 
 func TestParse_Workflows(t *testing.T) {
@@ -150,11 +148,9 @@ func TestParse_Workflows(t *testing.T) {
 }
 
 func TestParse_Workflows_NoTail(t *testing.T) {
-	expr, err := Parse("$workflows.myFlow")
-	assert.NoError(t, err)
-	assert.Equal(t, Workflows, expr.Type)
-	assert.Equal(t, "myFlow", expr.Name)
-	assert.Empty(t, expr.Tail)
+	_, err := Parse("$workflows.myFlow")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid workflow input/output reference")
 }
 
 func TestParse_SourceDescriptions(t *testing.T) {
@@ -166,11 +162,9 @@ func TestParse_SourceDescriptions(t *testing.T) {
 }
 
 func TestParse_SourceDescriptions_NoTail(t *testing.T) {
-	expr, err := Parse("$sourceDescriptions.petStore")
-	assert.NoError(t, err)
-	assert.Equal(t, SourceDescriptions, expr.Type)
-	assert.Equal(t, "petStore", expr.Name)
-	assert.Empty(t, expr.Tail)
+	_, err := Parse("$sourceDescriptions.petStore")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid source description reference")
 }
 
 func TestParse_ComponentParameters(t *testing.T) {
@@ -181,27 +175,23 @@ func TestParse_ComponentParameters(t *testing.T) {
 }
 
 func TestParse_Components_General(t *testing.T) {
-	expr, err := Parse("$components.inputs.someInput")
-	assert.NoError(t, err)
-	assert.Equal(t, Components, expr.Type)
-	assert.Equal(t, "inputs", expr.Name)
-	assert.Equal(t, "someInput", expr.Tail)
+	_, err := Parse("$components.inputs.someInput")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown component type")
 }
 
 func TestParse_Components_SuccessActions(t *testing.T) {
 	expr, err := Parse("$components.successActions.retry")
 	assert.NoError(t, err)
-	assert.Equal(t, Components, expr.Type)
-	assert.Equal(t, "successActions", expr.Name)
-	assert.Equal(t, "retry", expr.Tail)
+	assert.Equal(t, ComponentSuccessActions, expr.Type)
+	assert.Equal(t, "retry", expr.Name)
+	assert.Empty(t, expr.Tail)
 }
 
 func TestParse_Components_NoTail(t *testing.T) {
-	expr, err := Parse("$components.schemas")
-	assert.NoError(t, err)
-	assert.Equal(t, Components, expr.Type)
-	assert.Equal(t, "schemas", expr.Name)
-	assert.Empty(t, expr.Tail)
+	_, err := Parse("$components.schemas")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid component reference")
 }
 
 // ---------------------------------------------------------------------------
@@ -255,31 +245,31 @@ func TestParse_RequestBody_EmptyPointer(t *testing.T) {
 func TestParse_Error_EmptyInputsName(t *testing.T) {
 	_, err := Parse("$inputs.")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "empty name")
+	assert.Contains(t, err.Error(), "invalid identifier")
 }
 
 func TestParse_Error_EmptyOutputsName(t *testing.T) {
 	_, err := Parse("$outputs.")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "empty name")
+	assert.Contains(t, err.Error(), "invalid identifier")
 }
 
 func TestParse_Error_EmptyStepsName(t *testing.T) {
 	_, err := Parse("$steps.")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "empty name")
+	assert.Contains(t, err.Error(), "invalid step output reference")
 }
 
 func TestParse_Error_EmptyWorkflowsName(t *testing.T) {
 	_, err := Parse("$workflows.")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "empty name")
+	assert.Contains(t, err.Error(), "invalid workflow input/output reference")
 }
 
 func TestParse_Error_EmptySourceDescriptionsName(t *testing.T) {
 	_, err := Parse("$sourceDescriptions.")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "empty name")
+	assert.Contains(t, err.Error(), "invalid source description reference")
 }
 
 func TestParse_Error_EmptyNamedIdentifier(t *testing.T) {
@@ -292,20 +282,20 @@ func TestParse_Error_EmptyNamedIdentifier(t *testing.T) {
 	for _, tc := range cases {
 		_, err := Parse(tc)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "empty name")
+		assert.Contains(t, err.Error(), "invalid")
 	}
 }
 
 func TestParse_Error_EmptyComponentsName(t *testing.T) {
 	_, err := Parse("$components.")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "empty name")
+	assert.Contains(t, err.Error(), "invalid component reference")
 }
 
 func TestParse_Error_EmptyComponentParametersName(t *testing.T) {
 	_, err := Parse("$components.parameters.")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "empty parameter name")
+	assert.Contains(t, err.Error(), "invalid component reference")
 }
 
 func TestParse_Error_EmptyHeaderName(t *testing.T) {
@@ -315,15 +305,17 @@ func TestParse_Error_EmptyHeaderName(t *testing.T) {
 }
 
 func TestParse_Error_EmptyQueryName(t *testing.T) {
-	_, err := Parse("$request.query.")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "empty query name")
+	expr, err := Parse("$request.query.")
+	assert.NoError(t, err)
+	assert.Equal(t, RequestQuery, expr.Type)
+	assert.Empty(t, expr.Property)
 }
 
 func TestParse_Error_EmptyPathName(t *testing.T) {
-	_, err := Parse("$request.path.")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "empty path name")
+	expr, err := Parse("$request.path.")
+	assert.NoError(t, err)
+	assert.Equal(t, RequestPath, expr.Type)
+	assert.Empty(t, expr.Property)
 }
 
 func TestParse_Error_InvalidHeaderTchar(t *testing.T) {
@@ -506,16 +498,9 @@ func TestParseEmbedded_Mixed(t *testing.T) {
 }
 
 func TestParseEmbedded_LiteralBracesBeforeExpression(t *testing.T) {
-	tokens, err := ParseEmbedded("literal {brace} {$inputs.id}")
-	assert.NoError(t, err)
-	assert.Len(t, tokens, 2)
-
-	assert.False(t, tokens[0].IsExpression)
-	assert.Equal(t, "literal {brace} ", tokens[0].Literal)
-
-	assert.True(t, tokens[1].IsExpression)
-	assert.Equal(t, Inputs, tokens[1].Expression.Type)
-	assert.Equal(t, "id", tokens[1].Expression.Name)
+	_, err := ParseEmbedded("literal {brace} {$inputs.id}")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "literal opening brace")
 }
 
 func TestParseEmbedded_Multiple(t *testing.T) {
@@ -546,11 +531,9 @@ func TestParseEmbedded_EmptyInput(t *testing.T) {
 }
 
 func TestParseEmbedded_LiteralBracesWithoutExpressionPrefix(t *testing.T) {
-	tokens, err := ParseEmbedded("{notAnExpression}")
-	assert.NoError(t, err)
-	assert.Len(t, tokens, 1)
-	assert.False(t, tokens[0].IsExpression)
-	assert.Equal(t, "{notAnExpression}", tokens[0].Literal)
+	_, err := ParseEmbedded("{notAnExpression}")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "literal opening brace")
 }
 
 func TestParseEmbedded_MultipleExpressionsMixed(t *testing.T) {
@@ -623,14 +606,14 @@ func TestValidate_Valid(t *testing.T) {
 		"$response.body#/data",
 		"$inputs.name",
 		"$outputs.value",
-		"$steps.step1",
 		"$steps.step1.outputs.result",
-		"$workflows.flow1",
 		"$workflows.flow1.outputs.token",
-		"$sourceDescriptions.petStore",
 		"$sourceDescriptions.petStore.url",
 		"$components.parameters.limit",
-		"$components.inputs.someInput",
+		"$components.successActions.retry",
+		"$components.failureActions.abort",
+		"$message.payload#/id",
+		"$self",
 	}
 	for _, v := range validExprs {
 		assert.NoError(t, Validate(v), "expected %q to be valid", v)

@@ -30,17 +30,66 @@ var (
 
 // Step errors
 var (
-	ErrMissingStepId         = errors.New("missing required 'stepId'")
-	ErrDuplicateStepId       = errors.New("duplicate stepId within workflow")
-	ErrStepMutualExclusion   = errors.New("step must have exactly one of operationId, operationPath, or workflowId")
-	ErrExecutorNotConfigured = errors.New("executor is not configured")
+	ErrMissingStepId               = errors.New("missing required 'stepId'")
+	ErrDuplicateStepId             = errors.New("duplicate stepId within workflow")
+	ErrStepMutualExclusion         = errors.New("step must have exactly one of operationId, operationPath, or workflowId")
+	ErrExecutorNotConfigured       = errors.New("executor is not configured")
+	ErrUnsupportedSelectorOutput   = errors.New("selector outputs are not supported by the execution engine")
+	ErrUnsupportedExecutionFeature = errors.New("Arazzo 1.1 execution feature is not supported by the execution engine")
 )
+
+// UnsupportedExecutionFeatureError identifies a modeled Arazzo 1.1 feature
+// whose execution semantics are intentionally deferred.
+type UnsupportedExecutionFeatureError struct {
+	WorkflowId string
+	StepId     string
+	Field      string
+}
+
+// Error returns stable workflow, step, and field context.
+func (e *UnsupportedExecutionFeatureError) Error() string {
+	if e.StepId != "" {
+		return fmt.Sprintf("%s: workflow %q step %q field %q",
+			ErrUnsupportedExecutionFeature, e.WorkflowId, e.StepId, e.Field)
+	}
+	return fmt.Sprintf("%s: workflow %q field %q",
+		ErrUnsupportedExecutionFeature, e.WorkflowId, e.Field)
+}
+
+// Unwrap exposes ErrUnsupportedExecutionFeature for errors.Is.
+func (e *UnsupportedExecutionFeatureError) Unwrap() error {
+	return ErrUnsupportedExecutionFeature
+}
+
+// UnsupportedSelectorOutputError identifies a 1.1 Selector Object output that the
+// current execution engine cannot evaluate safely.
+type UnsupportedSelectorOutputError struct {
+	WorkflowId string
+	StepId     string
+	OutputName string
+}
+
+// Error returns stable workflow, step, and output context.
+func (e *UnsupportedSelectorOutputError) Error() string {
+	if e.StepId != "" {
+		return fmt.Sprintf("%s: workflow %q step %q output %q",
+			ErrUnsupportedSelectorOutput, e.WorkflowId, e.StepId, e.OutputName)
+	}
+	return fmt.Sprintf("%s: workflow %q output %q",
+		ErrUnsupportedSelectorOutput, e.WorkflowId, e.OutputName)
+}
+
+// Unwrap exposes ErrUnsupportedSelectorOutput for errors.Is.
+func (e *UnsupportedSelectorOutputError) Unwrap() error {
+	return ErrUnsupportedSelectorOutput
+}
 
 // Parameter errors
 var (
 	ErrMissingParameterName  = errors.New("missing required 'name'")
 	ErrMissingParameterIn    = errors.New("missing required 'in' for operation parameter")
 	ErrInvalidParameterIn    = errors.New("'in' must be path, query, header, or cookie")
+	ErrParameterInNotAllowed = errors.New("'in' is not permitted for workflow or action parameters")
 	ErrMissingParameterValue = errors.New("missing required 'value'")
 )
 
@@ -62,8 +111,9 @@ var (
 
 // Expression errors
 var (
-	ErrInvalidExpression       = errors.New("invalid runtime expression")
-	ErrUnknownExpressionPrefix = errors.New("unknown expression prefix")
+	ErrInvalidExpression            = errors.New("invalid runtime expression")
+	ErrUnknownExpressionPrefix      = errors.New("unknown expression prefix")
+	ErrUnsupportedExpressionDialect = errors.New("expression dialect evaluation is not supported")
 )
 
 // Reference errors

@@ -11,13 +11,22 @@ import (
 )
 
 // RequestBody represents a high-level Arazzo Request Body Object.
-// https://spec.openapis.org/arazzo/v1.0.1#request-body-object
+// https://spec.openapis.org/arazzo/v1.1.0#request-body-object
 type RequestBody struct {
 	ContentType  string                              `json:"contentType,omitempty" yaml:"contentType,omitempty"`
 	Payload      *yaml.Node                          `json:"payload,omitempty" yaml:"payload,omitempty"`
 	Replacements []*PayloadReplacement               `json:"replacements,omitempty" yaml:"replacements,omitempty"`
 	Extensions   *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low          *low.RequestBody
+}
+
+// GetSelectors returns every typed Selector Object nested in the request payload.
+// Callers do not need to traverse untyped YAML mappings to discover selectors.
+func (r *RequestBody) GetSelectors() []*Selector {
+	if r == nil {
+		return nil
+	}
+	return selectorsFromNode(r.Payload)
 }
 
 // NewRequestBody creates a new high-level RequestBody instance from a low-level one.

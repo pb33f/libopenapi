@@ -38,9 +38,10 @@ func rootPos[T any](low *T, getRootNode func(*T) *yaml.Node) (int, int) {
 var componentKeyRegex = regexp.MustCompile(`^[a-zA-Z0-9.\-_]+$`)
 var sourceDescriptionNameRegex = regexp.MustCompile(`^[A-Za-z0-9_\-]+$`)
 
-// Validate performs structural validation of an Arazzo document.
-// Returns nil if the document is valid; callers should nil-check the result
-// before accessing Errors or Warnings.
+// Validate performs compatibility validation for the legacy Arazzo 1.0
+// surface. Complete schema-driven Arazzo validation, including 1.1, belongs in
+// libopenapi-validator. Returns nil when no supported errors or warnings are
+// found; callers should nil-check the result before accessing it.
 func Validate(doc *high.Arazzo) *ValidationResult {
 	v := &validator{
 		doc:    doc,
@@ -62,6 +63,13 @@ type validator struct {
 	result   *ValidationResult
 	opLookup *operationResolver
 }
+
+type parameterValidationContext uint8
+
+const (
+	operationParameterContext parameterValidationContext = iota
+	workflowActionParameterContext
+)
 
 func (v *validator) addError(path string, line, col int, cause error) {
 	v.result.Errors = append(v.result.Errors, &ValidationError{
@@ -357,6 +365,8 @@ func (v *validator) validateWorkflow(wf *high.Workflow, idx int, workflowIds map
 		v.validateStep(step, stepPath, stepIds, workflowIds)
 	}
 
+	v.validateParameters(wf.Parameters, prefix+".parameters", workflowActionParameterContext)
+
 	// Validate workflow-level success/failure actions
 	v.validateSuccessActions(wf.SuccessActions, prefix+".successActions", stepIds, workflowIds)
 	v.validateFailureActions(wf.FailureActions, prefix+".failureActions", stepIds, workflowIds)
@@ -396,7 +406,11 @@ func (v *validator) validateStep(step *high.Step, path string, stepIds, workflow
 	}
 
 	// Validate parameters
-	v.validateParameters(step.Parameters, path+".parameters")
+	parameterContext := operationParameterContext
+	if step.WorkflowId != "" {
+		parameterContext = workflowActionParameterContext
+	}
+	v.validateParameters(step.Parameters, path+".parameters", parameterContext)
 
 	// Validate success criteria
 	for i, c := range step.SuccessCriteria {
@@ -592,45 +606,77 @@ func extractSourceNameFromOperationPath(operationPath string) (string, bool) {
 	return "", false
 }
 
-func (v *validator) validateParameters(params []*high.Parameter, path string) {
+func (v *validator) validateParameters(
+	params []*high.Parameter,
+	path string,
+	validationContext parameterValidationContext,
+) {
 	seen := make(map[string]bool)
 	for i, p := range params {
 		paramPath := fmt.Sprintf("%s[%d]", path, i)
 		pLine, pCol := rootPos(p.GoLow(), (*low.Parameter).GetRootNode)
 
+		resolved := p
 		if p.IsReusable() {
-			// Reusable parameter - validate reference resolves
 			v.validateComponentReference(p.Reference, paramPath+".reference", "parameters")
-			continue
-		}
-
-		// Rule 5: Parameter validation
-		if p.Name == "" {
-			v.addError(paramPath+".name", pLine, pCol, ErrMissingParameterName)
-		}
-		if p.Value == nil {
-			v.addError(paramPath+".value", pLine, pCol, ErrMissingParameterValue)
-		}
-
-		// Rule 5: Parameter `in` validation
-		if p.In == "" {
-			v.addError(paramPath+".in", pLine, pCol, ErrMissingParameterIn)
-		} else {
-			switch p.In {
-			case "path", "query", "header", "cookie":
-				// valid
-			default:
-				v.addError(paramPath+".in", pLine, pCol, ErrInvalidParameterIn)
+			resolved = v.resolveComponentParameter(p.Reference)
+			if resolved == nil {
+				continue
 			}
 		}
 
-		// Rule 16: Duplicate parameters (name+in)
-		key := p.Name + ":" + p.In
+		// Rule 5: Parameter validation
+		if resolved.Name == "" {
+			v.addError(paramPath+".name", pLine, pCol, ErrMissingParameterName)
+		}
+		if resolved.Value == nil {
+			v.addError(paramPath+".value", pLine, pCol, ErrMissingParameterValue)
+		}
+
+		switch validationContext {
+		case operationParameterContext:
+			if resolved.In == "" {
+				v.addError(paramPath+".in", pLine, pCol, ErrMissingParameterIn)
+			} else {
+				switch resolved.In {
+				case "path", "query", "header", "cookie":
+					// valid
+				default:
+					v.addError(paramPath+".in", pLine, pCol, ErrInvalidParameterIn)
+				}
+			}
+		case workflowActionParameterContext:
+			if resolved.In != "" {
+				v.addError(paramPath+".in", pLine, pCol, ErrParameterInNotAllowed)
+			}
+		}
+
+		key := resolved.Name
+		if validationContext == operationParameterContext {
+			key += ":" + resolved.In
+		}
 		if seen[key] {
-			v.addError(paramPath, pLine, pCol, fmt.Errorf("duplicate parameter (name=%q, in=%q)", p.Name, p.In))
+			if validationContext == operationParameterContext {
+				v.addError(paramPath, pLine, pCol,
+					fmt.Errorf("duplicate parameter (name=%q, in=%q)", resolved.Name, resolved.In))
+			} else {
+				v.addError(paramPath, pLine, pCol,
+					fmt.Errorf("duplicate parameter name %q", resolved.Name))
+			}
 		}
 		seen[key] = true
 	}
+}
+
+func (v *validator) resolveComponentParameter(reference string) *high.Parameter {
+	const prefix = "$components.parameters."
+	if v.doc.Components == nil ||
+		v.doc.Components.Parameters == nil ||
+		!strings.HasPrefix(reference, prefix) {
+		return nil
+	}
+	parameter, _ := v.doc.Components.Parameters.Get(strings.TrimPrefix(reference, prefix))
+	return parameter
 }
 
 func (v *validator) validateSuccessActions(actions []*high.SuccessAction, path string, stepIds, workflowIds map[string]bool) {
@@ -649,6 +695,7 @@ func (v *validator) validateSuccessActions(actions []*high.SuccessAction, path s
 		}
 
 		v.validateActionCommon(a.Name, a.Type, a.WorkflowId, a.StepId, actionPath, aLine, aCol, stepIds, workflowIds, seen)
+		v.validateParameters(a.Parameters, actionPath+".parameters", workflowActionParameterContext)
 	}
 }
 
@@ -668,6 +715,7 @@ func (v *validator) validateFailureActions(actions []*high.FailureAction, path s
 		}
 
 		v.validateActionCommon(a.Name, a.Type, a.WorkflowId, a.StepId, actionPath, aLine, aCol, stepIds, workflowIds, seen)
+		v.validateParameters(a.Parameters, actionPath+".parameters", workflowActionParameterContext)
 
 		if a.RetryAfter != nil && *a.RetryAfter < 0 {
 			v.addError(actionPath+".retryAfter", aLine, aCol, fmt.Errorf("retryAfter must be non-negative, got %f", *a.RetryAfter))
@@ -727,30 +775,56 @@ func (v *validator) validateCriterion(c *high.Criterion, path string) {
 		v.validateCriterionExpressionType(c.ExpressionType, path+".type")
 	}
 
-	// Validate context as runtime expression if present
+	// Validate context as runtime expression if present. This validator is scoped to
+	// Arazzo 1.0 (see checkVersion), so the 1.0 grammar applies; under the 1.1 grammar
+	// a legal 1.0 reference such as $components.inputs.name would be a false negative.
 	if c.Context != "" {
-		if err := expression.Validate(c.Context); err != nil {
+		if err := expression.ValidateWithVersion(c.Context, expression.Arazzo10); err != nil {
 			v.addError(path+".context", cLine, cCol, fmt.Errorf("%w: %v", ErrInvalidExpression, err))
 		}
 	}
 }
 
 func (v *validator) validateCriterionExpressionType(cet *high.CriterionExpressionType, path string) {
+	line, column := rootPos(cet.GoLow(), (*low.ExpressionType).GetRootNode)
+	typeLine, typeColumn := line, column
+	versionLine, versionColumn := line, column
+	if lowExpressionType := cet.GoLow(); lowExpressionType != nil {
+		if node := lowExpressionType.Type.ValueNode; node != nil {
+			typeLine, typeColumn = lowNodePos(node)
+		}
+		if node := lowExpressionType.Version.ValueNode; node != nil {
+			versionLine, versionColumn = lowNodePos(node)
+		}
+	}
 	if cet.Type == "" {
-		v.addError(path+".type", 0, 0, fmt.Errorf("missing required 'type' in criterion expression type"))
+		v.addError(path+".type", typeLine, typeColumn, fmt.Errorf("missing required 'type' in criterion expression type"))
 		return
 	}
 
 	switch cet.Type {
 	case "jsonpath":
-		if cet.Version != "" && cet.Version != "draft-goessner-dispatch-jsonpath-00" {
-			v.addError(path+".version", 0, 0, fmt.Errorf("unknown jsonpath version %q", cet.Version))
+		if cet.Version != "" &&
+			cet.Version != "rfc9535" &&
+			cet.Version != "draft-goessner-dispatch-jsonpath-00" {
+			v.addError(path+".version", versionLine, versionColumn, fmt.Errorf("unknown jsonpath version %q", cet.Version))
 		}
 	case "xpath":
-		validVersions := map[string]bool{"xpath-30": true, "xpath-20": true, "xpath-10": true}
-		if cet.Version != "" && !validVersions[cet.Version] {
-			v.addError(path+".version", 0, 0, fmt.Errorf("unknown xpath version %q", cet.Version))
+		validVersions := map[string]bool{
+			"xpath-31": true,
+			"xpath-30": true,
+			"xpath-20": true,
+			"xpath-10": true,
 		}
+		if cet.Version != "" && !validVersions[cet.Version] {
+			v.addError(path+".version", versionLine, versionColumn, fmt.Errorf("unknown xpath version %q", cet.Version))
+		}
+	case "jsonpointer":
+		if cet.Version != "" && cet.Version != "rfc6901" {
+			v.addError(path+".version", versionLine, versionColumn, fmt.Errorf("unknown jsonpointer version %q", cet.Version))
+		}
+	default:
+		v.addError(path+".type", typeLine, typeColumn, fmt.Errorf("unknown expression type %q", cet.Type))
 	}
 }
 

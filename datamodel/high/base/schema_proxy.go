@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -1091,14 +1092,22 @@ func (sp *SchemaProxy) marshalYAMLInlineInternal(ctx *InlineRenderContext) (inte
 
 	if s != nil && s.GoLow() != nil && s.GoLow().Index != nil {
 		idx := s.GoLow().Index
-		circ := idx.GetCircularReferences()
 
-		// Extract ignored and safe circular references from rolodex if available
-		if idx.GetRolodex() != nil {
-			ignored := idx.GetRolodex().GetIgnoredCircularReferences()
-			safe := idx.GetRolodex().GetSafeCircularReferences()
-			circ = append(circ, ignored...)
-			circ = append(circ, safe...)
+		// GetCircularReferences hands back the index's own slice, which the resolver grows with
+		// append and therefore leaves spare capacity on. clone before extending, or the appends
+		// below write into memory shared with every other render using this index.
+		circ := slices.Clone(idx.GetCircularReferences())
+
+		// extract ignored and safe circular references from rolodex if available, along with the
+		// root index circulars. circular references are registered on the rolodex root, but this
+		// schema's index is the one owning its resolved content, which for an external $ref is not
+		// the root. without that the guard below silently stops firing for referenced schemas.
+		if rolodex := idx.GetRolodex(); rolodex != nil {
+			if root := rolodex.GetRootIndex(); root != nil && root != idx {
+				circ = append(circ, root.GetCircularReferences()...)
+			}
+			circ = append(circ, rolodex.GetIgnoredCircularReferences()...)
+			circ = append(circ, rolodex.GetSafeCircularReferences()...)
 		}
 
 		cirError := func(str string) error {
