@@ -8,6 +8,7 @@ import (
 
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"go.yaml.in/yaml/v4"
 )
 
 func (g *Generator) irFromOpenAPI(name string, proxy *highbase.SchemaProxy, path string) (*SchemaIR, error) {
@@ -343,6 +344,17 @@ func (g *Generator) populateUnion(ir *SchemaIR, schema *highbase.Schema, path st
 		}
 		variants = append(variants, g.childIR(variantName, child, path+".union"))
 	}
+	// A oneOf/anyOf whose non-null variants are all scalar consts is an
+	// OpenAPI 3.1 const-based enum, not a structural union: fold it before
+	// building the union so the IR stays consistent.
+	if nodes, nullable, ok := constScalarEnumFromVariants(variants); ok {
+		ir.Enum = nodes
+		if nullable {
+			ir.Nullable = true
+		}
+		ir.Kind = KindEnum
+		return
+	}
 	nonNull := nonNullVariants(variants)
 	if len(nonNull) == 1 && len(nonNull) != len(variants) {
 		*ir = *nonNull[0]
@@ -569,6 +581,52 @@ func nonNullVariants(variants []*SchemaIR) []*SchemaIR {
 		out = append(out, variant)
 	}
 	return out
+}
+
+// constScalarEnumFromVariants reports whether a oneOf/anyOf is best modeled
+// as a scalar const enum (OpenAPI 3.1 style: oneOf of const values, e.g.
+// "oneOf: [ {const: available}, {const: pending} ]"). When it is, it returns
+// the const values in variant order, whether the union declares nullability
+// through a null-of variant, and true. Object, array, union and
+// dynamically-referenced variants are structural and never collapse to an
+// enum.
+func constScalarEnumFromVariants(variants []*SchemaIR) ([]*yaml.Node, bool, bool) {
+	if len(variants) == 0 {
+		return nil, false, false
+	}
+	nodes := make([]*yaml.Node, 0, len(variants))
+	nullable := false
+	for _, v := range variants {
+		if v == nil {
+			return nil, false, false
+		}
+		if isNullOnlyIR(v) {
+			nullable = true
+			continue
+		}
+		if v.Const == nil {
+			return nil, false, false
+		}
+		if s := v.SourceSchema; s != nil {
+			for _, t := range s.Type {
+				if t == "object" || t == "array" {
+					return nil, false, false
+				}
+			}
+			if s.DynamicRef != "" ||
+				len(s.AllOf) > 0 || len(s.OneOf) > 0 || len(s.AnyOf) > 0 || len(s.Enum) > 0 ||
+				(s.Properties != nil && s.Properties.Len() > 0) ||
+				(s.PatternProperties != nil && s.PatternProperties.Len() > 0) ||
+				s.Items != nil || len(s.PrefixItems) > 0 {
+				return nil, false, false
+			}
+		}
+		nodes = append(nodes, v.Const)
+	}
+	if len(nodes) == 0 {
+		return nil, false, false
+	}
+	return nodes, nullable, true
 }
 
 func isNullOnlyIR(ir *SchemaIR) bool {
