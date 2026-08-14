@@ -2557,3 +2557,15 @@ components:
 		assert.True(t, doc.GetRolodex().GetRootIndex().GetConfig().AllowRemoteLookup)
 	})
 }
+
+// A spec whose root node has no top-level `openapi` key leaves the low-level
+// document nil, which BuildV3Model used to dereference.
+func TestDocument_BuildV3Model_NoVersionNode(t *testing.T) {
+	doc, err := NewDocument([]byte("title: openapi\n"))
+	require.NoError(t, err)
+
+	m, buildErr := doc.BuildV3Model()
+	assert.Nil(t, m)
+	require.Error(t, buildErr)
+	assert.Contains(t, buildErr.Error(), "no openapi version/tag found")
+}
