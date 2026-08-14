@@ -344,6 +344,10 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], error) {
 
 	var docErr error
 	lowDoc, docErr = v3low.CreateDocumentFromConfig(d.info, d.config)
+	if lowDoc == nil {
+		// no openapi version tag was found, so there is nothing to extract.
+		return nil, docErr
+	}
 	d.rolodex = lowDoc.Rolodex
 
 	if docErr != nil {
