@@ -3,6 +3,9 @@ name: Build
 permissions:
   contents: read
 
+env:
+  LIBOPENAPI_RUN_NETWORK_TESTS: "1"
+
 on:
   push:
     branches:
