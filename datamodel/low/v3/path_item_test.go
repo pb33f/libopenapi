@@ -119,6 +119,35 @@ get:
 	assert.NotNil(t, n.RootNode)
 }
 
+func TestPathItem_Build_NullParameters_BuildsAllOperations(t *testing.T) {
+	yml := `post:
+  operationId: createThing
+  parameters:
+put:
+  operationId: replaceThing
+  parameters:
+delete:
+  operationId: deleteThing
+  parameters:`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	err := n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "input is not an array")
+
+	// every operation must be fully built out, even though a sibling failed to build first.
+	assert.NotNil(t, n.Post.Value.Reference)
+	assert.NotNil(t, n.Put.Value.Reference)
+	assert.NotNil(t, n.Delete.Value.Reference)
+	assert.False(t, n.Put.Value.IsReference())
+}
+
 func TestPathItem_AdditionalOperations(t *testing.T) {
 	yml := `get:
   description: standard get operation
