@@ -319,6 +319,11 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 		if err := low.BuildModel(pathNode, &op); err != nil {
 			return err
 		}
+		// initialize the embedded reference so a sibling operation that fails to
+		// build later cannot leave this operation with a nil *low.Reference, which
+		// panics when IsReference is called on the returned model (see #616).
+		op.reference = low.Reference{}
+		op.Reference = &op.reference
 
 		opRef := low.NodeReference[*Operation]{
 			Value:     &op,
@@ -376,6 +381,8 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 					if err := low.BuildModel(opValueNode, &addOp); err != nil {
 						return err
 					}
+					addOp.reference = low.Reference{}
+					addOp.Reference = &addOp.reference
 
 					addOpRef := low.NodeReference[*Operation]{
 						Value:     &addOp,
