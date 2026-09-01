@@ -4,8 +4,10 @@
 package index
 
 import (
+	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -117,9 +119,83 @@ func TestSpecIndex_MapNodes_OverwriteSemantics(t *testing.T) {
 	var lines [][]nodeLineEntry
 	lines = addNodeLineEntry(lines, first)
 	lines = addNodeLineEntry(lines, second)
+	sortNodeLines(lines)
 
 	assert.Same(t, second, lookupNodeLines(lines, 4, 2))
 	assert.Len(t, lines[4], 1)
+}
+
+func TestSpecIndex_SortNodeLines_OrdersAndDedupes(t *testing.T) {
+	// entries arrive in document (DFS) order, not column order. after sorting, lookups
+	// must work for every column and the last write for a column must win.
+	nodes := []*yaml.Node{
+		{Line: 1, Column: 30, Value: "c"},
+		{Line: 1, Column: 10, Value: "a"},
+		{Line: 1, Column: 20, Value: "b-child"},
+		{Line: 1, Column: 20, Value: "b-parent"},
+		{Line: 1, Column: 5, Value: "first"},
+	}
+	var lines [][]nodeLineEntry
+	for _, n := range nodes {
+		lines = addNodeLineEntry(lines, n)
+	}
+	sortNodeLines(lines)
+
+	assert.Len(t, lines[1], 4)
+	assert.Equal(t, "first", lines[1][0].node.Value, "first entry on a line is the leftmost node")
+	assert.Same(t, nodes[4], lookupNodeLines(lines, 1, 5))
+	assert.Same(t, nodes[1], lookupNodeLines(lines, 1, 10))
+	assert.Same(t, nodes[3], lookupNodeLines(lines, 1, 20))
+	assert.Same(t, nodes[0], lookupNodeLines(lines, 1, 30))
+	assert.Nil(t, lookupNodeLines(lines, 1, 25))
+}
+
+// singleLineJSONSpec builds a minified OpenAPI document with roughly n schema nodes,
+// all on line 1, mirroring specs published as compact JSON (e.g. very large public APIs).
+func singleLineJSONSpec(n int) []byte {
+	var b strings.Builder
+	b.WriteString(`{"openapi":"3.1.0","info":{"title":"dense","version":"1"},"paths":{},"components":{"schemas":{`)
+	for i := 0; i < n; i++ {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		fmt.Fprintf(&b, `"s%d":{"type":"object","properties":{"id":{"type":"integer"},"ref":{"$ref":"#/components/schemas/s%d"}}}`, i, (i+1)%n)
+	}
+	b.WriteString(`}}}`)
+	return []byte(b.String())
+}
+
+func TestSpecIndex_MapNodes_SingleLineDocument(t *testing.T) {
+	spec := singleLineJSONSpec(2000)
+	var rootNode yaml.Node
+	assert.NoError(t, yaml.Unmarshal(spec, &rootNode))
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	<-index.nodeMapCompleted
+
+	// every node in the document lives on line 1 and must be retrievable by position.
+	total := 0
+	var walk func(n *yaml.Node)
+	walk = func(n *yaml.Node) {
+		for _, c := range n.Content {
+			walk(c)
+		}
+		if n.Kind == yaml.DocumentNode {
+			return
+		}
+		total++
+		assert.Equal(t, 1, n.Line)
+		found, ok := index.GetNode(n.Line, n.Column)
+		assert.True(t, ok)
+		assert.NotNil(t, found)
+	}
+	walk(&rootNode)
+	assert.Greater(t, total, 2000*8)
+
+	// the line index and the legacy map must agree.
+	legacy := index.GetNodeMap()
+	assert.Len(t, legacy, 1)
+	assert.Len(t, legacy[1], len(index.nodeLines[1]))
 }
 
 func TestSpecIndex_GetNodeMap_LegacyMaterialization(t *testing.T) {
@@ -164,6 +240,26 @@ func TestSpecIndex_GetNodeMap_AfterRelease(t *testing.T) {
 	node, ok := index.GetNode(1, 1)
 	assert.False(t, ok)
 	assert.Nil(t, node)
+}
+
+// BenchmarkSpecIndex_MapNodes_SingleLine guards against per-line work becoming linear
+// again: with 20k schemas (~200k nodes on one line) a linear scan per insert or lookup
+// takes minutes, the sorted index takes milliseconds.
+func BenchmarkSpecIndex_MapNodes_SingleLine(b *testing.B) {
+	spec := singleLineJSONSpec(20000)
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(spec, &rootNode)
+	probe := rootNode.Content[0].Content[1] // "info" key node
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+		<-index.nodeMapCompleted
+		found, ok := index.GetNode(probe.Line, probe.Column)
+		if !ok || found != probe {
+			b.Fatal("probe node not found")
+		}
+	}
 }
 
 func BenchmarkSpecIndex_MapNodes(b *testing.B) {
