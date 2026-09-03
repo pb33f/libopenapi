@@ -392,3 +392,41 @@ func TestResolveOperationReference_EmptyTagNode(t *testing.T) {
 	assert.Equal(t, "from-empty-tag-node", resolvedNode.Content[1].Value)
 	assert.NotNil(t, foundCtx.Value(index.FoundIndexKey))
 }
+
+// TestPathItem_Build_SiblingOperationSafeAfterRefError reproduces issue #616:
+// when one operation in a path item fails to build (here, a dangling $ref),
+// the sibling operations must still be safe to inspect. Previously they were
+// returned with a nil embedded *low.Reference, so IsReference() panicked with a
+// nil pointer dereference.
+func TestPathItem_Build_SiblingOperationSafeAfterRefError(t *testing.T) {
+	yml := `get:
+  responses:
+    '200':
+      description: ok
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Nope'
+post:
+  responses:
+    '200':
+      description: ok`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	err := n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	// the dangling $ref is expected to surface as an error...
+	assert.Error(t, err)
+
+	// ...but the sibling POST operation must still be safe to inspect: its
+	// embedded reference is initialized, so IsReference() does not panic.
+	assert.NotNil(t, n.Post.Value)
+	assert.NotPanics(t, func() {
+		assert.False(t, n.Post.Value.IsReference())
+	})
+}
