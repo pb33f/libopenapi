@@ -145,14 +145,19 @@ func evaluateSimpleOperand(operand string, exprCtx *expression.Context, caches *
 		return op[1 : len(op)-1], nil
 	}
 
-	if b, err := strconv.ParseBool(op); err == nil {
-		return b, nil
-	}
+	// Parse numbers before bools. strconv.ParseBool accepts "0" and "1", which
+	// would make `$response.body#/count > 0` compare a number to false.
 	if i, err := strconv.ParseInt(op, 10, 64); err == nil {
 		return i, nil
 	}
 	if f, err := strconv.ParseFloat(op, 64); err == nil {
 		return f, nil
+	}
+	if op == "true" || op == "True" || op == "TRUE" {
+		return true, nil
+	}
+	if op == "false" || op == "False" || op == "FALSE" {
+		return false, nil
 	}
 
 	return op, nil

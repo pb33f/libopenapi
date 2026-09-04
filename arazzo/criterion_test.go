@@ -61,6 +61,26 @@ func TestEvaluateCriterion_SimpleCondition_BooleanOperators(t *testing.T) {
 	assert.False(t, ok, "unsupported challenge must fail")
 }
 
+func TestEvaluateCriterion_NumericLiteralZeroIsNotBoolean(t *testing.T) {
+	body := yamlMapping(t, map[string]any{
+		"pagination": map[string]any{"totalCount": 1},
+	})
+	ok, err := EvaluateCriterion(&high.Criterion{
+		Condition: "$response.body#/pagination/totalCount > 0",
+	}, &expression.Context{ResponseBody: body})
+	require.NoError(t, err)
+	assert.True(t, ok)
+
+	empty := yamlMapping(t, map[string]any{
+		"pagination": map[string]any{"totalCount": 0},
+	})
+	ok, err = EvaluateCriterion(&high.Criterion{
+		Condition: "$response.body#/pagination/totalCount > 0",
+	}, &expression.Context{ResponseBody: empty})
+	require.NoError(t, err)
+	assert.False(t, ok)
+}
+
 func yamlMapping(t *testing.T, v any) *yaml.Node {
 	t.Helper()
 	b, err := yaml.Marshal(v)

@@ -392,6 +392,16 @@ func TestEvaluateSimpleOperand_Integer(t *testing.T) {
 	assert.Equal(t, int64(42), val)
 }
 
+func TestEvaluateSimpleOperand_ZeroAndOneAreIntegers(t *testing.T) {
+	val, err := evaluateSimpleOperand("0", nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), val)
+
+	val, err = evaluateSimpleOperand("1", nil, nil)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), val)
+}
+
 func TestEvaluateSimpleOperand_NegativeInteger(t *testing.T) {
 	val, err := evaluateSimpleOperand("-5", nil, nil)
 	require.NoError(t, err)
