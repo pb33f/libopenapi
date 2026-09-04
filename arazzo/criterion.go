@@ -97,33 +97,9 @@ func evaluateSimpleConditionString(condition string, exprCtx *expression.Context
 	if trimmed == "" {
 		return false, nil
 	}
-
-	if b, err := strconv.ParseBool(trimmed); err == nil {
-		return b, nil
-	}
-
-	leftRaw, op, rightRaw, found := splitSimpleCondition(trimmed)
-	if found {
-		left, err := evaluateSimpleOperand(leftRaw, exprCtx, caches)
-		if err != nil {
-			return false, err
-		}
-		right, err := evaluateSimpleOperand(rightRaw, exprCtx, caches)
-		if err != nil {
-			return false, err
-		}
-		return compareSimpleValues(left, right, op)
-	}
-
-	val, err := evaluateSimpleOperand(trimmed, exprCtx, caches)
-	if err != nil {
-		return false, err
-	}
-	b, ok := val.(bool)
-	if !ok {
-		return false, fmt.Errorf("simple condition %q did not evaluate to a boolean", condition)
-	}
-	return b, nil
+	// Compound simple conditions may combine literals, operators, and runtime
+	// expressions with &&, ||, and parentheses (Arazzo 1.0.1 Criterion Object).
+	return evaluateBooleanExpr(trimmed, exprCtx, caches)
 }
 
 func splitSimpleCondition(input string) (left, op, right string, found bool) {

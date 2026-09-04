@@ -451,6 +451,11 @@ func (e *Engine) populateStepOutputs(step *high.Step, result *StepResult, exprCt
 	for name, outputExpression := range step.Outputs.FromOldest() {
 		value, err := e.evaluateStringValue(outputExpression, exprCtx)
 		if err != nil {
+			// Missing body/header values are valid on empty responses (e.g. HTTP 204).
+			if isOptionalRuntimeValueError(err) {
+				result.Outputs[name] = nil
+				continue
+			}
 			return fmt.Errorf("failed to evaluate output %q for step %q: %w", name, step.StepId, err)
 		}
 		result.Outputs[name] = value
@@ -465,6 +470,11 @@ func (e *Engine) populateWorkflowOutputs(wf *high.Workflow, result *WorkflowResu
 	for name, outputExpression := range wf.Outputs.FromOldest() {
 		value, err := e.evaluateStringValue(outputExpression, exprCtx)
 		if err != nil {
+			if isOptionalRuntimeValueError(err) {
+				result.Outputs[name] = nil
+				exprCtx.Outputs[name] = nil
+				continue
+			}
 			return fmt.Errorf("failed to evaluate output %q for workflow %q: %w", name, wf.WorkflowId, err)
 		}
 		result.Outputs[name] = value
