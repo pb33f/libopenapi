@@ -111,6 +111,13 @@ func toPublicName(name string) string {
 	return out
 }
 
+// PublicName converts an OpenAPI name to the exported Go identifier used by
+// the model generator. SDK emitters use it to keep method and model references
+// consistent.
+func PublicName(name string) string {
+	return toPublicName(name)
+}
+
 func toPrivateName(name string) string {
 	pub := toPublicName(name)
 	parts := splitCamel(pub)
@@ -168,15 +175,26 @@ func splitCamel(value string) []string {
 	return parts
 }
 
-func refName(ref string) string {
+// RefName returns the RFC 6901-decoded final path segment of ref.
+func RefName(ref string) string {
 	if ref == "" {
 		return ""
 	}
+	segment := ref
 	i := strings.LastIndex(ref, "/")
-	if i < 0 || i == len(ref)-1 {
-		return ref
+	if i >= 0 && i < len(ref)-1 {
+		segment = ref[i+1:]
 	}
-	return ref[i+1:]
+	return unescapeJSONPointer(segment)
+}
+
+func refName(ref string) string {
+	return RefName(ref)
+}
+
+func unescapeJSONPointer(value string) string {
+	value = strings.ReplaceAll(value, "~1", "/")
+	return strings.ReplaceAll(value, "~0", "~")
 }
 
 func (g *Generator) refTypeName(ref string) string {

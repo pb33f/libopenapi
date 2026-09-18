@@ -28,8 +28,14 @@ func (g *Generator) renderFile(irs []*SchemaIR) (*GeneratedFile, error) {
 		if ir == nil {
 			continue
 		}
-		g.renderDecl(ir)
-		types = append(types, &GeneratedType{Name: ir.Name, Kind: ir.Kind})
+		fields := g.renderDecl(ir)
+		generatedType := &GeneratedType{Name: ir.Name, Kind: ir.Kind, Fields: fields}
+		for _, embedded := range ir.AllOf {
+			if embedded != nil && embedded.Kind == KindRef {
+				generatedType.Embedded = append(generatedType.Embedded, g.goType(embedded, true, false))
+			}
+		}
+		types = append(types, generatedType)
 	}
 	metadataSource, err := g.renderSchemaMetadataSource()
 	if err != nil {
@@ -127,24 +133,41 @@ func (g *Generator) writeImports(b *strings.Builder) {
 	b.WriteString(")\n\n")
 }
 
-func (g *Generator) renderDecl(ir *SchemaIR) {
-	if ir == nil || ir.Name == "" || ir.Kind == KindRef {
-		return
+func (g *Generator) renderDecl(ir *SchemaIR) []GeneratedField {
+	if ir == nil || ir.Name == "" {
+		return nil
 	}
 	switch ir.Kind {
+	case KindRef:
+		g.renderReferenceAliasDecl(ir)
 	case KindUnion:
 		g.renderUnionDecl(ir)
 	case KindObject, KindAllOf:
 		if shouldRenderObjectAlias(ir) {
 			g.renderAliasDecl(ir)
-			return
+			return nil
 		}
-		g.renderObjectDecl(ir)
+		return g.renderObjectDecl(ir)
 	case KindEnum:
 		g.renderEnumDecl(ir)
 	default:
 		g.renderAliasDecl(ir)
 	}
+	return nil
+}
+
+func (g *Generator) renderReferenceAliasDecl(ir *SchemaIR) {
+	if ir == nil || !g.rememberDecl(ir.Name) {
+		return
+	}
+	target := g.refTypeName(ir.Ref)
+	if target == "" || target == ir.Name {
+		return
+	}
+	if g.componentKinds[target] == KindUnion {
+		target += "Union"
+	}
+	g.decls = append(g.decls, "type "+ir.Name+" = "+target+"\n")
 }
 
 func (g *Generator) rememberDecl(name string) bool {
@@ -158,9 +181,9 @@ func (g *Generator) rememberDecl(name string) bool {
 	return true
 }
 
-func (g *Generator) renderObjectDecl(ir *SchemaIR) {
+func (g *Generator) renderObjectDecl(ir *SchemaIR) []GeneratedField {
 	if !g.rememberDecl(ir.Name) {
-		return
+		return nil
 	}
 	g.renderChildren(ir)
 	var b strings.Builder
@@ -169,6 +192,7 @@ func (g *Generator) renderObjectDecl(ir *SchemaIR) {
 	b.WriteString(ir.Name)
 	b.WriteString(" struct {\n")
 	fields := newNameRegistry()
+	var generatedFields []GeneratedField
 	additionalFieldName := "AdditionalProperties"
 	if ir.AllOf != nil {
 		for _, embed := range ir.AllOf {
@@ -187,6 +211,7 @@ func (g *Generator) renderObjectDecl(ir *SchemaIR) {
 				g.addDiagnostic(DiagnosticFieldNameCollision, ir.Name+"."+propName, "field name collision resolved as "+fieldName)
 			}
 			fieldType := g.goType(prop, required, true)
+			generatedFields = append(generatedFields, GeneratedField{Name: fieldName, Source: propName, Type: fieldType})
 			writeFieldComments(&b, fieldName, prop)
 			b.WriteByte('\t')
 			b.WriteString(fieldName)
@@ -220,6 +245,7 @@ func (g *Generator) renderObjectDecl(ir *SchemaIR) {
 	}
 	g.decls = append(g.decls, b.String())
 	g.recordSchemaMetadata(ir.Name, ir.SourceSchema)
+	return generatedFields
 }
 
 func (g *Generator) renderChildren(ir *SchemaIR) {
@@ -421,8 +447,9 @@ func (g *Generator) goType(ir *SchemaIR, required bool, field bool) string {
 	default:
 		typ = "any"
 	}
-	if field && shouldPointer(typ, ir, required, g.optionalFieldsAsPointers, g.nullableAsPointer) {
-		return "*" + typ
+	if field {
+		depth := pointerDepth(typ, ir, required, g.optionalFieldsAsPointers, g.nullableAsPointer, g.optionalNullableAsDoublePointer)
+		return strings.Repeat("*", depth) + typ
 	}
 	return typ
 }
@@ -435,14 +462,23 @@ func (g *Generator) formatType(format, fallback string) string {
 	return fallback
 }
 
-func shouldPointer(typ string, ir *SchemaIR, required, optionalPointers, nullablePointer bool) bool {
-	if typ == "any" || strings.HasPrefix(typ, "[]") || strings.HasPrefix(typ, "map[") {
-		return false
+func pointerDepth(typ string, ir *SchemaIR, required, optionalPointers, nullablePointer, optionalNullableDoublePointer bool) int {
+	compound := typ == "any" || strings.HasPrefix(typ, "[]") || strings.HasPrefix(typ, "map[")
+	nullable := ir != nil && ir.Nullable && nullablePointer
+	optional := !required && optionalPointers
+	if optionalNullableDoublePointer && optional && nullable {
+		if compound {
+			return 1
+		}
+		return 2
 	}
-	if ir != nil && ir.Nullable && nullablePointer {
-		return true
+	if compound {
+		return 0
 	}
-	return !required && optionalPointers
+	if nullable || optional {
+		return 1
+	}
+	return 0
 }
 
 func writeComment(b *strings.Builder, name, text string) {
