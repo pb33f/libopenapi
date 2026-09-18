@@ -12,8 +12,8 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowV3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -70,53 +70,10 @@ additionalOperations:
 	rootNode := idxNode.Content[0]
 	_ = n.Build(context.Background(), nil, rootNode, idx)
 
-	// Now manually set up additionalOperations after Build
-	// (Build doesn't process additionalOperations automatically)
-	found := false
-	for i := 0; i < len(rootNode.Content); i += 2 {
-		if rootNode.Content[i].Value == "additionalOperations" {
-			found = true
-			opsNode := rootNode.Content[i+1]
-			additionalOps := orderedmap.New[low.KeyReference[string], low.NodeReference[*lowV3.Operation]]()
-
-			// Build each operation in additionalOperations
-			for j := 0; j < len(opsNode.Content); j += 2 {
-				opName := opsNode.Content[j].Value
-				opNode := opsNode.Content[j+1]
-
-				var op lowV3.Operation
-				_ = low.BuildModel(opNode, &op)
-				_ = op.Build(context.Background(), nil, opNode, idx)
-
-				additionalOps.Set(
-					low.KeyReference[string]{
-						Value:   opName,
-						KeyNode: opsNode.Content[j],
-					},
-					low.NodeReference[*lowV3.Operation]{
-						Value:     &op,
-						ValueNode: opNode,
-					},
-				)
-			}
-
-			// Set the AdditionalOperations field - must set ValueNode for IsEmpty() to return false
-			n.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.NodeReference[*lowV3.Operation]]]{
-				Value:     additionalOps,
-				ValueNode: opsNode,             // This must be set for IsEmpty() to return false
-				KeyNode:   rootNode.Content[i], // This is the "additionalOperations" key node
-			}
-			break
-		}
-	}
-
-	assert.True(t, found, "additionalOperations should be found in YAML")
-
 	// Debug: Check if AdditionalOperations is set in low-level
-	assert.False(t, n.AdditionalOperations.IsEmpty(), "Low-level AdditionalOperations should not be empty")
-	if !n.AdditionalOperations.IsEmpty() {
-		assert.Equal(t, 2, n.AdditionalOperations.Value.Len(), "Should have 2 additional operations")
-	}
+	require.False(t, n.AdditionalOperations.IsEmpty(), "Low-level AdditionalOperations should not be empty")
+	assert.Equal(t, "additionalOperations", n.AdditionalOperations.KeyNode.Value, "KeyNode should be the additionalOperations container key")
+	assert.Equal(t, 2, n.AdditionalOperations.Value.Len(), "Should have 2 additional operations")
 
 	// Create high-level PathItem - this will trigger lines 131-133
 	r := NewPathItem(&n)
@@ -140,7 +97,7 @@ additionalOperations:
 	assert.NotNil(t, ops)
 
 	// Should have get + SEARCH + NOTIFY
-	assert.GreaterOrEqual(t, ops.Len(), 3)
+	assert.Equal(t, 3, ops.Len())
 
 	// Verify additional operations are in the operations map with correct details
 	searchOpFromMap := ops.GetOrZero("SEARCH")
@@ -150,6 +107,10 @@ additionalOperations:
 	notifyOpFromMap := ops.GetOrZero("NOTIFY")
 	assert.NotNil(t, notifyOpFromMap)
 	assert.Equal(t, "Custom NOTIFY method", notifyOpFromMap.Description)
+
+	rendered, _ := r.Render()
+	assert.Contains(t, string(rendered), "SEARCH")
+	assert.Contains(t, string(rendered), "NOTIFY")
 }
 
 func TestPathItem_GetOperations(t *testing.T) {
@@ -314,7 +275,7 @@ func TestPathItem_AdditionalOperations(t *testing.T) {
 	yml := `get:
   description: standard get operation
 post:
-  description: standard post operation  
+  description: standard post operation
 purge:
   description: purge operation for cache clearing
   operationId: purgeCache
@@ -339,26 +300,30 @@ lock:
 	assert.Equal(t, "standard post operation", r.Post.Description)
 
 	// test additional operations exist in low-level model
-	if !n.AdditionalOperations.IsEmpty() && n.AdditionalOperations.Value != nil {
-		assert.Equal(t, 2, n.AdditionalOperations.Value.Len(), "should have 2 additional operations in low-level")
+	require.False(t, n.AdditionalOperations.IsEmpty(), "Low-level AdditionalOperations should not be empty")
+	assert.Equal(t, "purge", n.AdditionalOperations.KeyNode.Value, "with no additionalOperations container, KeyNode should be the first bare key")
+	assert.Equal(t, 2, n.AdditionalOperations.Value.Len(), "should have 2 additional operations in low-level")
 
-		// test additional operations in high-level model
-		if r.AdditionalOperations != nil {
-			assert.Equal(t, 2, r.AdditionalOperations.Len())
+	// test additional operations in high-level model
+	assert.NotNil(t, r.AdditionalOperations)
+	assert.Equal(t, 2, r.AdditionalOperations.Len())
 
-			purgeOp := r.AdditionalOperations.GetOrZero("purge")
-			if purgeOp != nil {
-				assert.Equal(t, "purge operation for cache clearing", purgeOp.Description)
-				assert.Equal(t, "purgeCache", purgeOp.OperationId)
-			}
+	purgeOp := r.AdditionalOperations.GetOrZero("purge")
+	assert.NotNil(t, purgeOp)
+	assert.Equal(t, "purge operation for cache clearing", purgeOp.Description)
+	assert.Equal(t, "purgeCache", purgeOp.OperationId)
 
-			lockOp := r.AdditionalOperations.GetOrZero("lock")
-			if lockOp != nil {
-				assert.Equal(t, "lock operation for resource locking", lockOp.Description)
-				assert.Equal(t, "lockResource", lockOp.OperationId)
-			}
-		}
-	}
+	lockOp := r.AdditionalOperations.GetOrZero("lock")
+	assert.NotNil(t, lockOp)
+	assert.Equal(t, "lock operation for resource locking", lockOp.Description)
+	assert.Equal(t, "lockResource", lockOp.OperationId)
+
+	// get + post + purge + lock
+	assert.Equal(t, 4, r.GetOperations().Len())
+
+	rendered, _ := r.Render()
+	assert.Contains(t, string(rendered), "purge")
+	assert.Contains(t, string(rendered), "lock")
 }
 
 func TestPathItem_GetOperations_WithAdditional(t *testing.T) {
