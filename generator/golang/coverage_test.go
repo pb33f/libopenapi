@@ -271,10 +271,10 @@ func TestInternalBranchCoverage(t *testing.T) {
 	if got := gen.formatType("unknown", "string"); got != "string" {
 		t.Fatalf("fallback format: %s", got)
 	}
-	if shouldPointer("[]string", nil, false, true, true) {
+	if pointerDepth("[]string", nil, false, true, true, false) != 0 {
 		t.Fatal("slices should not be pointered")
 	}
-	if !shouldPointer("string", &SchemaIR{Nullable: true}, true, true, true) {
+	if pointerDepth("string", &SchemaIR{Nullable: true}, true, true, true, false) == 0 {
 		t.Fatal("nullable should pointer")
 	}
 	var comment strings.Builder
@@ -320,6 +320,57 @@ func TestInternalBranchCoverage(t *testing.T) {
 	}
 	if schemaDeclaresType(nil) {
 		t.Fatal("nil schema should not declare a type")
+	}
+}
+
+func TestGeneratedTypeExposesRenderedFields(t *testing.T) {
+	properties := orderedmap.New[string, *highbase.SchemaProxy]()
+	properties.Set("created_at", highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{"string"}, Format: "date-time"}))
+	schemas := orderedmap.New[string, *highbase.SchemaProxy]()
+	schemas.Set("Record", highbase.CreateSchemaProxy(&highbase.Schema{
+		Type: []string{"object"}, Properties: properties, Required: []string{"created_at"},
+	}))
+	file, err := NewGenerator(WithFormatMapping("date-time", "time.Time", "time")).RenderSchemas(schemas)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(file.Types) != 1 || len(file.Types[0].Fields) != 1 {
+		t.Fatalf("unexpected generated type metadata: %#v", file.Types)
+	}
+	field := file.Types[0].Fields[0]
+	if field.Name != "CreatedAt" || field.Type != "time.Time" {
+		t.Fatalf("unexpected generated field: %#v", field)
+	}
+}
+
+func TestSharedNameAndReferenceHelpers(t *testing.T) {
+	registry := NewNameRegistry("Client", "Thing", "ThingModel", "Thing__2")
+	if got := registry.Claim("", ""); got != "Value" {
+		t.Fatalf("empty claim = %q", got)
+	}
+	if got := registry.Claim("FreshClaim", ""); got != "FreshClaim" {
+		t.Fatalf("fresh claim = %q", got)
+	}
+	if got := registry.Claim("Client", "Type"); got != "ClientType" {
+		t.Fatalf("reserved name claim = %q", got)
+	}
+	if got := registry.Claim("Thing", "Model"); got != "Thing__3" {
+		t.Fatalf("collision claim = %q", got)
+	}
+	if got, collision := registry.Resolve("same", "Fresh"); got != "Fresh" || collision {
+		t.Fatalf("fresh resolution = %q, %t", got, collision)
+	}
+	if got, collision := registry.Resolve("same", "Fresh"); got != "Fresh" || collision {
+		t.Fatalf("repeat resolution = %q, %t", got, collision)
+	}
+	if got := RefName("#/components/schemas/Tenant~1Record~0V2"); got != "Tenant/Record~V2" {
+		t.Fatalf("decoded reference name = %q", got)
+	}
+	if got := NewGenerator(WithFormatMapping("date-time", "time.Time", "time")).ScalarType("date-time", "string"); got != "time.Time" {
+		t.Fatalf("mapped scalar type = %q", got)
+	}
+	if got := NewGenerator().ScalarType("unknown", "string"); got != "string" {
+		t.Fatalf("fallback scalar type = %q", got)
 	}
 }
 
