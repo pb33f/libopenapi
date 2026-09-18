@@ -223,6 +223,7 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 
 	ops := make([]low.NodeReference[*Operation], 0, len(root.Content)/2)
 	var additionalOps *orderedmap.Map[low.KeyReference[string], low.NodeReference[*Operation]]
+	var additionalOpsKeyNode, additionalOpsValueNode *yaml.Node
 
 	// extract parameters
 	params, ln, vn, pErr := low.ExtractArray[*Parameter](ctx, ParametersLabel, root, idx)
@@ -356,6 +357,7 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			// initialize additionalOps map if this is the first additional operation
 			if additionalOps == nil {
 				additionalOps = orderedmap.New[low.KeyReference[string], low.NodeReference[*Operation]]()
+				additionalOpsKeyNode, additionalOpsValueNode = currentNode, pathNode
 			}
 
 			// now we need to determine if these are inline additional operations, or just plonked into the root.
@@ -441,7 +443,9 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 		err = datamodel.TranslateSliceParallel[low.NodeReference[*Operation], any](extrOps, translateFunc, nil)
 
 		p.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.NodeReference[*Operation]]]{
-			Value: additionalOps,
+			Value:     additionalOps,
+			KeyNode:   additionalOpsKeyNode,
+			ValueNode: additionalOpsValueNode,
 		}
 	}
 	return nil
