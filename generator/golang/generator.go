@@ -21,6 +21,7 @@ type Generator struct {
 	optionalFieldsAsPointers         bool
 	omitEmpty                        bool
 	nullableAsPointer                bool
+	optionalNullableAsDoublePointer  bool
 	jsonTags                         bool
 	yamlTags                         bool
 	enumConstants                    bool
@@ -54,7 +55,7 @@ type Generator struct {
 	openapiCache map[*highbase.SchemaProxy]*SchemaIR
 	reflectCache map[reflect.Type]*SchemaIR
 	reflectStack map[reflect.Type]bool
-	typeNames    *nameRegistry
+	typeNames    *NameRegistry
 
 	componentNames     map[string]struct{}
 	componentTypeNames map[string]string
@@ -99,8 +100,26 @@ type GeneratedSourceFile struct {
 
 // GeneratedType describes one top-level generated Go type.
 type GeneratedType struct {
-	Name string
-	Kind Kind
+	Name     string
+	Kind     Kind
+	Fields   []GeneratedField
+	Embedded []string
+}
+
+// GeneratedField describes one named field emitted for a generated type.
+type GeneratedField struct {
+	Name   string
+	Source string
+	Type   string
+}
+
+// ScalarType returns the configured Go type for an OpenAPI string format, or
+// fallback when the generator has no mapping for format.
+func (g *Generator) ScalarType(format, fallback string) string {
+	if mapping, ok := g.formatMappings[format]; ok {
+		return mapping.goType
+	}
+	return fallback
 }
 
 // NewGenerator creates a Go model generator.
@@ -227,6 +246,12 @@ func (g *Generator) RenderSchemas(schemas *orderedmap.Map[string, *highbase.Sche
 		ir, err := r.irFromOpenAPI(name, schema, name)
 		if err != nil {
 			return nil, err
+		}
+		if schema != nil && schema.IsReference() {
+			aliasName := r.componentTypeName(name)
+			if aliasName != ir.Name {
+				ir = &SchemaIR{Name: aliasName, Ref: schema.GetReference(), Kind: KindRef}
+			}
 		}
 		irs = append(irs, ir)
 	}

@@ -5,15 +5,26 @@ package golang
 
 const conflictNameDelimiter = "__"
 
-type nameRegistry struct {
+// NameRegistry allocates deterministic, collision-free Go names.
+type NameRegistry struct {
 	used map[string]string
 }
 
-func newNameRegistry() *nameRegistry {
-	return &nameRegistry{used: make(map[string]string)}
+// NewNameRegistry creates a registry with reserved names already claimed.
+func NewNameRegistry(reserved ...string) *NameRegistry {
+	registry := &NameRegistry{used: make(map[string]string, len(reserved))}
+	for _, name := range reserved {
+		registry.used[name] = name
+	}
+	return registry
 }
 
-func (r *nameRegistry) resolve(original, candidate string) (string, bool) {
+func newNameRegistry() *NameRegistry {
+	return NewNameRegistry()
+}
+
+// Resolve returns candidate unless another original value already claimed it.
+func (r *NameRegistry) Resolve(original, candidate string) (string, bool) {
 	if candidate == "" {
 		candidate = "Value"
 	}
@@ -28,6 +39,36 @@ func (r *nameRegistry) resolve(original, candidate string) (string, bool) {
 		if _, ok := r.used[next]; !ok {
 			r.used[next] = original
 			return next, true
+		}
+	}
+}
+
+func (r *NameRegistry) resolve(original, candidate string) (string, bool) {
+	return r.Resolve(original, candidate)
+}
+
+// Claim reserves a name for a distinct declaration. collisionSuffix is tried
+// before the registry's numeric suffix convention.
+func (r *NameRegistry) Claim(preferred, collisionSuffix string) string {
+	if preferred == "" {
+		preferred = "Value"
+	}
+	if _, exists := r.used[preferred]; !exists {
+		r.used[preferred] = preferred
+		return preferred
+	}
+	if collisionSuffix != "" {
+		candidate := preferred + collisionSuffix
+		if _, exists := r.used[candidate]; !exists {
+			r.used[candidate] = candidate
+			return candidate
+		}
+	}
+	for suffix := 2; ; suffix++ {
+		candidate := preferred + conflictNameDelimiter + intString(suffix)
+		if _, exists := r.used[candidate]; !exists {
+			r.used[candidate] = candidate
+			return candidate
 		}
 	}
 }

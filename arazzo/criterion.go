@@ -40,9 +40,6 @@ func newCriterionCaches() *criterionCaches {
 	}
 }
 
-// simpleConditionOperators is kept at package level to avoid allocation per call.
-var simpleConditionOperators = []string{"==", "!=", ">=", "<=", ">", "<"}
-
 // ClearCriterionCaches is a no-op retained for backward compatibility.
 // Criterion caches are now scoped per-Engine instance and cleared via Engine.ClearCaches().
 //
@@ -102,7 +99,7 @@ func evaluateSimpleConditionString(condition string, exprCtx *expression.Context
 		return b, nil
 	}
 
-	leftRaw, op, rightRaw, found := splitSimpleCondition(trimmed)
+	leftRaw, op, rightRaw, found := expression.SplitSimpleCondition(trimmed)
 	if found {
 		left, err := evaluateSimpleOperand(leftRaw, exprCtx, caches)
 		if err != nil {
@@ -124,32 +121,6 @@ func evaluateSimpleConditionString(condition string, exprCtx *expression.Context
 		return false, fmt.Errorf("simple condition %q did not evaluate to a boolean", condition)
 	}
 	return b, nil
-}
-
-func splitSimpleCondition(input string) (left, op, right string, found bool) {
-	// Find where the left operand ends. If input starts with "$", skip past
-	// the expression boundary (first unescaped space) so that operators
-	// inside JSON pointer paths like "/data/>=threshold" are not matched.
-	searchStart := 0
-	if strings.HasPrefix(input, "$") {
-		if spaceIdx := strings.IndexByte(input, ' '); spaceIdx >= 0 {
-			searchStart = spaceIdx
-		} else {
-			return "", "", "", false
-		}
-	}
-	for _, candidate := range simpleConditionOperators {
-		if idx := strings.Index(input[searchStart:], candidate); idx >= 0 {
-			idx += searchStart
-			left = strings.TrimSpace(input[:idx])
-			right = strings.TrimSpace(input[idx+len(candidate):])
-			if left == "" || right == "" {
-				return "", "", "", false
-			}
-			return left, candidate, right, true
-		}
-	}
-	return "", "", "", false
 }
 
 func evaluateSimpleOperand(operand string, exprCtx *expression.Context, caches *criterionCaches) (any, error) {

@@ -254,7 +254,7 @@ func TestEvaluateSimpleConditionString_RightOperandError(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSplitSimpleCondition_EqualEqual(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("a == b")
+	l, op, r, found := expression.SplitSimpleCondition("a == b")
 	assert.True(t, found)
 	assert.Equal(t, "a", l)
 	assert.Equal(t, "==", op)
@@ -262,7 +262,7 @@ func TestSplitSimpleCondition_EqualEqual(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_NotEqual(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("a != b")
+	l, op, r, found := expression.SplitSimpleCondition("a != b")
 	assert.True(t, found)
 	assert.Equal(t, "a", l)
 	assert.Equal(t, "!=", op)
@@ -270,7 +270,7 @@ func TestSplitSimpleCondition_NotEqual(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_GreaterEqual(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("a >= b")
+	l, op, r, found := expression.SplitSimpleCondition("a >= b")
 	assert.True(t, found)
 	assert.Equal(t, "a", l)
 	assert.Equal(t, ">=", op)
@@ -278,7 +278,7 @@ func TestSplitSimpleCondition_GreaterEqual(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_LessEqual(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("a <= b")
+	l, op, r, found := expression.SplitSimpleCondition("a <= b")
 	assert.True(t, found)
 	assert.Equal(t, "a", l)
 	assert.Equal(t, "<=", op)
@@ -286,7 +286,7 @@ func TestSplitSimpleCondition_LessEqual(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_GreaterThan(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("a > b")
+	l, op, r, found := expression.SplitSimpleCondition("a > b")
 	assert.True(t, found)
 	assert.Equal(t, "a", l)
 	assert.Equal(t, ">", op)
@@ -294,7 +294,7 @@ func TestSplitSimpleCondition_GreaterThan(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_LessThan(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("a < b")
+	l, op, r, found := expression.SplitSimpleCondition("a < b")
 	assert.True(t, found)
 	assert.Equal(t, "a", l)
 	assert.Equal(t, "<", op)
@@ -302,22 +302,22 @@ func TestSplitSimpleCondition_LessThan(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_MissingLeftOperand(t *testing.T) {
-	_, _, _, found := splitSimpleCondition("== b")
+	_, _, _, found := expression.SplitSimpleCondition("== b")
 	assert.False(t, found)
 }
 
 func TestSplitSimpleCondition_MissingRightOperand(t *testing.T) {
-	_, _, _, found := splitSimpleCondition("a ==")
+	_, _, _, found := expression.SplitSimpleCondition("a ==")
 	assert.False(t, found)
 }
 
 func TestSplitSimpleCondition_NoOperator(t *testing.T) {
-	_, _, _, found := splitSimpleCondition("just a string")
+	_, _, _, found := expression.SplitSimpleCondition("just a string")
 	assert.False(t, found)
 }
 
 func TestSplitSimpleCondition_OperatorInsideJSONPointer(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("$response.body#/data/>=threshold == true")
+	l, op, r, found := expression.SplitSimpleCondition("$response.body#/data/>=threshold == true")
 	assert.True(t, found)
 	assert.Equal(t, "$response.body#/data/>=threshold", l)
 	assert.Equal(t, "==", op)
@@ -325,7 +325,7 @@ func TestSplitSimpleCondition_OperatorInsideJSONPointer(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_NormalExpressionWithOperator(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("$statusCode == 200")
+	l, op, r, found := expression.SplitSimpleCondition("$statusCode == 200")
 	assert.True(t, found)
 	assert.Equal(t, "$statusCode", l)
 	assert.Equal(t, "==", op)
@@ -333,7 +333,7 @@ func TestSplitSimpleCondition_NormalExpressionWithOperator(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_ExpressionWithComparison(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("$statusCode >= 400")
+	l, op, r, found := expression.SplitSimpleCondition("$statusCode >= 400")
 	assert.True(t, found)
 	assert.Equal(t, "$statusCode", l)
 	assert.Equal(t, ">=", op)
@@ -341,7 +341,7 @@ func TestSplitSimpleCondition_ExpressionWithComparison(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_BareExpressionNoOperator(t *testing.T) {
-	_, _, _, found := splitSimpleCondition("$response.body#/success")
+	_, _, _, found := expression.SplitSimpleCondition("$response.body#/success")
 	assert.False(t, found)
 }
 
