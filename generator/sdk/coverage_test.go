@@ -252,14 +252,18 @@ func TestPrepareWorkflowRejectsUnsupportedShapes(t *testing.T) {
 		want string
 	}{
 		{"missing id", func(w *higharazzo.Workflow) { w.WorkflowId = "" }, "workflowId is required"},
-		{"workflow outputs", func(w *higharazzo.Workflow) { w.Outputs = orderedmap.New[string, string]() }, "workflow-level dependencies"},
+		{"workflow outputs", func(w *higharazzo.Workflow) {
+			w.Outputs = orderedmap.New[string, *higharazzo.OutputValue]()
+		}, "workflow-level dependencies"},
 		{"workflow dependency", func(w *higharazzo.Workflow) { w.DependsOn = []string{"x"} }, "workflow-level dependencies"},
 		{"no steps", func(w *higharazzo.Workflow) { w.Steps = nil }, "exactly one operation step"},
 		{"nil step", func(w *higharazzo.Workflow) { w.Steps = []*higharazzo.Step{nil} }, "exactly one operation step"},
 		{"operation path", func(w *higharazzo.Workflow) { w.Steps[0].OperationPath = "/x" }, "exactly one operationId"},
 		{"workflow reference", func(w *higharazzo.Workflow) { w.Steps[0].WorkflowId = "other" }, "exactly one operationId"},
 		{"missing operation id", func(w *higharazzo.Workflow) { w.Steps[0].OperationId = "" }, "exactly one operationId"},
-		{"step outputs", func(w *higharazzo.Workflow) { w.Steps[0].Outputs = orderedmap.New[string, string]() }, "step actions and outputs"},
+		{"step outputs", func(w *higharazzo.Workflow) {
+			w.Steps[0].Outputs = orderedmap.New[string, *higharazzo.OutputValue]()
+		}, "step actions and outputs"},
 		{"step parameter", func(w *higharazzo.Workflow) { w.Steps[0].Parameters = []*higharazzo.Parameter{{}} }, "direct named parameter bindings"},
 		{"unknown operation", func(w *higharazzo.Workflow) { w.Steps[0].OperationId = "missing" }, `operationId "missing"`},
 		{"unexpected body", func(w *higharazzo.Workflow) { w.Steps[0].RequestBody = &higharazzo.RequestBody{} }, "does not"},
