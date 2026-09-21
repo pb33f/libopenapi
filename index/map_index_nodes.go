@@ -111,9 +111,10 @@ func mapNodesRecursive(node *yaml.Node, lines [][]nodeLineEntry) [][]nodeLineEnt
 		node = node.Content[0]
 	}
 	for _, child := range node.Content {
-		lines = addNodeLineEntry(lines, child)
 		lines = mapNodesRecursive(child, lines)
 	}
+	// Record each node once, in post-order. Parents still win position collisions,
+	// without allocating duplicate entries for every child before recursing.
 	return addNodeLineEntry(lines, node)
 }
 

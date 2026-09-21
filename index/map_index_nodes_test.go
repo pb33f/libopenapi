@@ -125,6 +125,47 @@ func TestSpecIndex_MapNodes_OverwriteSemantics(t *testing.T) {
 	assert.Len(t, lines[4], 1)
 }
 
+func TestSpecIndex_MapNodes_RecordsEachNodeOnce(t *testing.T) {
+	petstore, err := os.ReadFile("../test_specs/petstorev3.json")
+	assert.NoError(t, err)
+	var root yaml.Node
+	assert.NoError(t, yaml.Unmarshal(petstore, &root))
+
+	// Check before sorting: deduplication must not hide duplicate traversal writes.
+	lines := mapNodesRecursive(&root, nil)
+	writes := make(map[*yaml.Node]int)
+	for _, entries := range lines {
+		for _, entry := range entries {
+			writes[entry.node]++
+		}
+	}
+	var check func(*yaml.Node)
+	check = func(node *yaml.Node) {
+		assert.Equal(t, 1, writes[node], "node at %d:%d", node.Line, node.Column)
+		for _, child := range node.Content {
+			check(child)
+		}
+	}
+	check(root.Content[0])
+}
+
+func TestSpecIndex_MapNodes_PostOrderCollisions(t *testing.T) {
+	child := &yaml.Node{Line: 1, Column: 1}
+	parent := &yaml.Node{Kind: yaml.SequenceNode, Line: 1, Column: 1, Content: []*yaml.Node{child}}
+	first := &yaml.Node{Line: 2, Column: 1}
+	last := &yaml.Node{Line: 2, Column: 1}
+	root := &yaml.Node{Kind: yaml.SequenceNode, Line: 0, Content: []*yaml.Node{parent, first, last}}
+	index := &SpecIndex{nodeMapCompleted: make(chan struct{})}
+	index.MapNodes(root)
+
+	node, ok := index.GetNode(1, 1)
+	assert.True(t, ok)
+	assert.Same(t, parent, node, "parents win over children")
+	node, ok = index.GetNode(2, 1)
+	assert.True(t, ok)
+	assert.Same(t, last, node, "later siblings win over earlier siblings")
+}
+
 func TestSpecIndex_SortNodeLines_OrdersAndDedupes(t *testing.T) {
 	// entries arrive in document (DFS) order, not column order. after sorting, lookups
 	// must work for every column and the last write for a column must win.
