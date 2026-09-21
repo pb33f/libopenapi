@@ -418,24 +418,9 @@ func (g *Generator) goType(ir *SchemaIR, required bool, field bool) string {
 	case KindMap:
 		typ = "map[string]" + g.goType(ir.AdditionalProperties, true, false)
 	case KindString:
-		typ = g.formatType(ir.Format, "string")
-	case KindInteger:
-		switch ir.Format {
-		case "int32":
-			typ = "int32"
-		case "int64":
-			typ = "int64"
-		default:
-			typ = "int"
-		}
-	case KindNumber:
-		if ir.Format == "float" {
-			typ = "float32"
-		} else {
-			typ = "float64"
-		}
-	case KindBoolean:
-		typ = "bool"
+		typ = g.formatType(ir.Format, builtinScalarType(ir.Kind, ir.Format))
+	case KindInteger, KindNumber, KindBoolean:
+		typ = builtinScalarType(ir.Kind, ir.Format)
 	case KindEnum:
 		if ir.Name != "" {
 			typ = ir.Name
@@ -460,6 +445,30 @@ func (g *Generator) formatType(format, fallback string) string {
 		return mapping.goType
 	}
 	return fallback
+}
+
+// builtinScalarType is the one mapping from a scalar kind and format to a Go
+// builtin. goType and ScalarType both use it, so generated models and SDK
+// parameters cannot drift apart.
+func builtinScalarType(kind Kind, format string) string {
+	switch kind {
+	case KindInteger:
+		switch format {
+		case "int32":
+			return "int32"
+		case "int64":
+			return "int64"
+		}
+		return "int"
+	case KindNumber:
+		if format == "float" {
+			return "float32"
+		}
+		return "float64"
+	case KindBoolean:
+		return "bool"
+	}
+	return "string"
 }
 
 func pointerDepth(typ string, ir *SchemaIR, required, optionalPointers, nullablePointer, optionalNullableDoublePointer bool) int {

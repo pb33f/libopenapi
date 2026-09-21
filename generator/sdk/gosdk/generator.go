@@ -49,7 +49,7 @@ var workflowsTemplate = template.Must(template.New("workflows").Funcs(templateFu
 // finite Arazzo workflow helpers.
 func Generate(document *highv3.Document, options Options) (*sdk.Result, error) {
 	if len(options.Workflows) > 0 {
-		return nil, errors.New("sdk/golang: Generate does not accept workflows; prepare the contract and call GenerateContract")
+		return nil, errors.New("gosdk: Generate does not accept workflows; prepare the contract and call GenerateContract")
 	}
 	contract, err := sdk.Prepare(document, options.Prepare)
 	if err != nil {
@@ -61,14 +61,14 @@ func Generate(document *highv3.Document, options Options) (*sdk.Result, error) {
 // GenerateContract emits a Go SDK from a prepared contract.
 func GenerateContract(contract *sdk.Contract, options Options) (*sdk.Result, error) {
 	if contract == nil {
-		return nil, errors.New("sdk/golang: contract is required")
+		return nil, errors.New("gosdk: contract is required")
 	}
 	if len(contract.Operations) == 0 {
-		return nil, errors.New("sdk/golang: contract contains no selected operations")
+		return nil, errors.New("gosdk: contract contains no selected operations")
 	}
 	packageName := options.packageName()
 	if !token.IsIdentifier(packageName) || token.Lookup(packageName).IsKeyword() {
-		return nil, fmt.Errorf("sdk/golang: invalid package name %q", packageName)
+		return nil, fmt.Errorf("gosdk: invalid package name %q", packageName)
 	}
 	var sdkEmitter *emitter
 	modelOptions := append([]modelgen.Option(nil), options.Models...)
@@ -86,7 +86,7 @@ func GenerateContract(contract *sdk.Contract, options Options) (*sdk.Result, err
 	}
 	models, err := modelsGenerator.RenderSchemas(sdkEmitter.schemas)
 	if err != nil {
-		return nil, fmt.Errorf("sdk/golang: generate models: %w", err)
+		return nil, fmt.Errorf("gosdk: generate models: %w", err)
 	}
 	if err := resolveWorkflowFieldTypes(models.Types, view.Workflows); err != nil {
 		return nil, err
@@ -122,11 +122,11 @@ func GenerateContract(contract *sdk.Contract, options Options) (*sdk.Result, err
 func render(tmpl *template.Template, value any) ([]byte, error) {
 	var output bytes.Buffer
 	if err := tmpl.Execute(&output, value); err != nil {
-		return nil, fmt.Errorf("sdk/golang: execute %s template: %w", tmpl.Name(), err)
+		return nil, fmt.Errorf("gosdk: execute %s template: %w", tmpl.Name(), err)
 	}
 	formatted, err := format.Source(output.Bytes())
 	if err != nil {
-		return nil, fmt.Errorf("sdk/golang: format %s: %w\n%s", tmpl.Name(), err, output.Bytes())
+		return nil, fmt.Errorf("gosdk: format %s: %w\n%s", tmpl.Name(), err, output.Bytes())
 	}
 	return formatted, nil
 }
@@ -200,28 +200,7 @@ func (e *emitter) findReachableComponents() {
 		if schema == nil {
 			return
 		}
-		for _, child := range schema.AllOf {
-			walk(child)
-		}
-		for _, child := range schema.OneOf {
-			walk(child)
-		}
-		for _, child := range schema.AnyOf {
-			walk(child)
-		}
-		if schema.Items != nil && schema.Items.IsA() {
-			walk(schema.Items.A)
-		}
-		if schema.AdditionalProperties != nil && schema.AdditionalProperties.IsA() {
-			walk(schema.AdditionalProperties.A)
-		}
-		for _, children := range []*orderedmap.Map[string, *highbase.SchemaProxy]{schema.Properties, schema.PatternProperties} {
-			if children != nil {
-				for _, child := range children.FromOldest() {
-					walk(child)
-				}
-			}
-		}
+		forEachShapeChild(schema, walk)
 	}
 	for _, operation := range e.contract.Operations {
 		if operation == nil {
@@ -285,7 +264,7 @@ func (e *emitter) prepareView() (*clientView, error) {
 			view.DefaultServer = operation.Servers[0]
 		}
 		if len(operation.Servers) > 0 && view.DefaultServer != "" && operation.Servers[0] != view.DefaultServer {
-			return nil, fmt.Errorf("sdk/golang: operation %q uses unsupported operation-specific server %q", operation.ID, operation.Servers[0])
+			return nil, fmt.Errorf("gosdk: operation %q uses unsupported operation-specific server %q", operation.ID, operation.Servers[0])
 		}
 		for _, alternative := range operation.Security {
 			if alternative == nil {
@@ -296,7 +275,7 @@ func (e *emitter) prepareView() (*clientView, error) {
 					continue
 				}
 				if _, ok := knownSchemes[scheme.Name]; !ok {
-					return nil, fmt.Errorf("sdk/golang: operation %q references undefined security scheme %q", operation.ID, scheme.Name)
+					return nil, fmt.Errorf("gosdk: operation %q references undefined security scheme %q", operation.ID, scheme.Name)
 				}
 			}
 		}
@@ -310,7 +289,7 @@ func (e *emitter) prepareView() (*clientView, error) {
 		}
 		methodName := modelgen.PublicName(operation.Name)
 		if prior, exists := resourceMethods[resourceName][methodName]; exists {
-			return nil, fmt.Errorf("sdk/golang: operations %q and %q both map to %s.%s", prior, operation.ID, resourceName, methodName)
+			return nil, fmt.Errorf("gosdk: operations %q and %q both map to %s.%s", prior, operation.ID, resourceName, methodName)
 		}
 		resourceMethods[resourceName][methodName] = operation.ID
 		operationView, err := e.prepareOperation(operation, methodName)
@@ -356,38 +335,38 @@ func (e *emitter) prepareOperation(operation *sdk.Operation, methodName string) 
 			continue
 		}
 		if parameter.Schema == nil {
-			return view, fmt.Errorf("sdk/golang: operation %q parameter %q has no schema", operation.ID, parameter.Name)
+			return view, fmt.Errorf("gosdk: operation %q parameter %q has no schema", operation.ID, parameter.Name)
 		}
 		if !parameterSchemaSupported(parameter.Schema) {
-			return view, fmt.Errorf("sdk/golang: operation %q parameter %q uses unsupported object or tuple serialization", operation.ID, parameter.Name)
+			return view, fmt.Errorf("gosdk: operation %q parameter %q uses unsupported object or tuple serialization", operation.ID, parameter.Name)
 		}
 		if parameter.In == "cookie" {
-			return view, fmt.Errorf("sdk/golang: operation %q parameter %q uses unsupported cookie serialization", operation.ID, parameter.Name)
+			return view, fmt.Errorf("gosdk: operation %q parameter %q uses unsupported cookie serialization", operation.ID, parameter.Name)
 		}
 		if parameter.In != "path" && parameter.In != "query" && parameter.In != "header" {
-			return view, fmt.Errorf("sdk/golang: operation %q parameter %q has unsupported location %q", operation.ID, parameter.Name, parameter.In)
+			return view, fmt.Errorf("gosdk: operation %q parameter %q has unsupported location %q", operation.ID, parameter.Name, parameter.In)
 		}
 		if parameter.AllowReserved {
-			return view, fmt.Errorf("sdk/golang: operation %q parameter %q uses unsupported allowReserved serialization", operation.ID, parameter.Name)
+			return view, fmt.Errorf("gosdk: operation %q parameter %q uses unsupported allowReserved serialization", operation.ID, parameter.Name)
 		}
 		if !supportedStyle(parameter.In, parameter.Style) {
-			return view, fmt.Errorf("sdk/golang: operation %q parameter %q uses unsupported %s style %q", operation.ID, parameter.Name, parameter.In, parameter.Style)
+			return view, fmt.Errorf("gosdk: operation %q parameter %q uses unsupported %s style %q", operation.ID, parameter.Name, parameter.In, parameter.Style)
 		}
 		typeName, err := e.schemaType(parameter.Schema, operation.ID+modelgen.PublicName(parameter.Name)+"Parameter")
 		if err != nil {
-			return view, fmt.Errorf("sdk/golang: operation %q parameter %q: %w", operation.ID, parameter.Name, err)
+			return view, fmt.Errorf("gosdk: operation %q parameter %q: %w", operation.ID, parameter.Name, err)
 		}
 		if !parameter.Required {
 			typeName = "*" + typeName
 		}
 		fieldName := modelgen.PublicName(parameter.Name)
 		if prior, ok := fieldNames[fieldName]; ok {
-			return view, fmt.Errorf("sdk/golang: operation %q parameters %q and %q have the same Go field name %q", operation.ID, prior, parameter.Name, fieldName)
+			return view, fmt.Errorf("gosdk: operation %q parameters %q and %q have the same Go field name %q", operation.ID, prior, parameter.Name, fieldName)
 		}
 		fieldNames[fieldName] = parameter.Name
 		encoder, array, err := e.parameterEncoder(parameter.Schema)
 		if err != nil {
-			return view, fmt.Errorf("sdk/golang: operation %q parameter %q: %w", operation.ID, parameter.Name, err)
+			return view, fmt.Errorf("gosdk: operation %q parameter %q: %w", operation.ID, parameter.Name, err)
 		}
 		view.Parameters = append(view.Parameters, parameterView{
 			Name: parameter.Name, FieldName: fieldName, Type: typeName, In: parameter.In,
@@ -400,18 +379,18 @@ func (e *emitter) prepareOperation(operation *sdk.Operation, methodName string) 
 	}
 	if operation.RequestBody != nil {
 		if prior, exists := fieldNames["Body"]; exists {
-			return view, fmt.Errorf("sdk/golang: operation %q parameter %q collides with request body field Body", operation.ID, prior)
+			return view, fmt.Errorf("gosdk: operation %q parameter %q collides with request body field Body", operation.ID, prior)
 		}
 		mediaType, schema, err := jsonMedia(operation.RequestBody.Content)
 		if err != nil {
-			return view, fmt.Errorf("sdk/golang: operation %q request body: %w", operation.ID, err)
+			return view, fmt.Errorf("gosdk: operation %q request body: %w", operation.ID, err)
 		}
 		if schema == nil {
-			return view, fmt.Errorf("sdk/golang: operation %q request body has no schema", operation.ID)
+			return view, fmt.Errorf("gosdk: operation %q request body has no schema", operation.ID)
 		}
 		typeName, err := e.schemaType(schema, operation.ID+"Request")
 		if err != nil {
-			return view, fmt.Errorf("sdk/golang: operation %q request body: %w", operation.ID, err)
+			return view, fmt.Errorf("gosdk: operation %q request body: %w", operation.ID, err)
 		}
 		fieldType := typeName
 		if !operation.RequestBody.Required {
@@ -428,12 +407,12 @@ func (e *emitter) prepareOperation(operation *sdk.Operation, methodName string) 
 	view.SuccessStatuses = successes
 	view.SuccessCondition, err = statusCondition(successes)
 	if err != nil {
-		return view, fmt.Errorf("sdk/golang: operation %q success responses: %w", operation.ID, err)
+		return view, fmt.Errorf("gosdk: operation %q success responses: %w", operation.ID, err)
 	}
 	for index := range errorResponses {
 		errorResponses[index].Condition, err = statusCondition([]string{errorResponses[index].Status})
 		if err != nil {
-			return view, fmt.Errorf("sdk/golang: operation %q error response %s: %w", operation.ID, errorResponses[index].Status, err)
+			return view, fmt.Errorf("gosdk: operation %q error response %s: %w", operation.ID, errorResponses[index].Status, err)
 		}
 	}
 	view.ErrorResponses = errorResponses
@@ -455,11 +434,11 @@ func (e *emitter) prepareOperation(operation *sdk.Operation, methodName string) 
 
 func (e *emitter) prepareWorkflow(workflow *sdk.Workflow, operations map[string]*operationView) (workflowView, error) {
 	if workflow == nil || workflow.Operation == nil {
-		return workflowView{}, errors.New("sdk/golang: workflow and operation are required")
+		return workflowView{}, errors.New("gosdk: workflow and operation are required")
 	}
 	operation, ok := operations[workflow.Operation.ID]
 	if !ok {
-		return workflowView{}, fmt.Errorf("sdk/golang: workflow %q operation %q is not generated", workflow.ID, workflow.Operation.ID)
+		return workflowView{}, fmt.Errorf("gosdk: workflow %q operation %q is not generated", workflow.ID, workflow.Operation.ID)
 	}
 	view := workflowView{
 		ID: workflow.ID, MethodName: e.names.Claim(modelgen.PublicName(workflow.ID), "Workflow"),
@@ -471,7 +450,7 @@ func (e *emitter) prepareWorkflow(workflow *sdk.Workflow, operations map[string]
 	}
 	inputSchema, inputShape, err := workflowInputSchema(workflow.Inputs)
 	if err != nil {
-		return workflowView{}, fmt.Errorf("sdk/golang: workflow %q inputs: %w", workflow.ID, err)
+		return workflowView{}, fmt.Errorf("gosdk: workflow %q inputs: %w", workflow.ID, err)
 	}
 	inputKey := "__workflow_" + view.InputType
 	e.schemas.Set(inputKey, inputSchema)
@@ -479,7 +458,7 @@ func (e *emitter) prepareWorkflow(workflow *sdk.Workflow, operations map[string]
 	e.collectSchema(inputSchema)
 	view.SuccessCondition, err = statusCondition(workflow.SuccessStatuses)
 	if err != nil {
-		return workflowView{}, fmt.Errorf("sdk/golang: workflow %q success responses: %w", workflow.ID, err)
+		return workflowView{}, fmt.Errorf("gosdk: workflow %q success responses: %w", workflow.ID, err)
 	}
 	operationSuccess := make(map[string]struct{}, len(operation.SuccessStatuses))
 	for _, status := range operation.SuccessStatuses {
@@ -487,7 +466,7 @@ func (e *emitter) prepareWorkflow(workflow *sdk.Workflow, operations map[string]
 	}
 	for _, status := range workflow.SuccessStatuses {
 		if _, ok := operationSuccess[status]; !ok {
-			return workflowView{}, fmt.Errorf("sdk/golang: workflow %q accepts status %s but operation %q does not", workflow.ID, status, workflow.Operation.ID)
+			return workflowView{}, fmt.Errorf("gosdk: workflow %q accepts status %s but operation %q does not", workflow.ID, status, workflow.Operation.ID)
 		}
 	}
 	declaredInputs := make(map[string]struct{}, inputShape.Properties.Len())
@@ -504,10 +483,10 @@ func (e *emitter) prepareWorkflow(workflow *sdk.Workflow, operations map[string]
 		}
 		parameter, exists := operationParameters[binding.In+"\x00"+binding.Name]
 		if !exists {
-			return workflowView{}, fmt.Errorf("sdk/golang: workflow %q parameter %s %q is not generated", workflow.ID, binding.In, binding.Name)
+			return workflowView{}, fmt.Errorf("gosdk: workflow %q parameter %s %q is not generated", workflow.ID, binding.In, binding.Name)
 		}
 		if _, exists := declaredInputs[binding.Input]; !exists {
-			return workflowView{}, fmt.Errorf("sdk/golang: workflow %q parameter input %q is not declared by workflow inputs", workflow.ID, binding.Input)
+			return workflowView{}, fmt.Errorf("gosdk: workflow %q parameter input %q is not declared by workflow inputs", workflow.ID, binding.Input)
 		}
 		view.ParameterFields = append(view.ParameterFields, workflowAssignmentView{
 			Target: parameter.FieldName, Input: binding.Input, ExpectedType: parameter.Type,
@@ -515,7 +494,7 @@ func (e *emitter) prepareWorkflow(workflow *sdk.Workflow, operations map[string]
 	}
 	if len(workflow.PayloadBindings) > 0 {
 		if operation.Body == nil || !operation.Body.Required {
-			return workflowView{}, fmt.Errorf("sdk/golang: workflow %q requires a declared required JSON request body", workflow.ID)
+			return workflowView{}, fmt.Errorf("gosdk: workflow %q requires a declared required JSON request body", workflow.ID)
 		}
 		view.BodyType = operation.Body.Type
 		for _, binding := range workflow.PayloadBindings {
@@ -523,10 +502,10 @@ func (e *emitter) prepareWorkflow(workflow *sdk.Workflow, operations map[string]
 				continue
 			}
 			if strings.Contains(binding.Input, ".") {
-				return workflowView{}, fmt.Errorf("sdk/golang: workflow %q payload input %q is nested; only direct workflow inputs are supported", workflow.ID, binding.Input)
+				return workflowView{}, fmt.Errorf("gosdk: workflow %q payload input %q is nested; only direct workflow inputs are supported", workflow.ID, binding.Input)
 			}
 			if _, exists := declaredInputs[binding.Input]; !exists {
-				return workflowView{}, fmt.Errorf("sdk/golang: workflow %q payload input %q is not declared by workflow inputs", workflow.ID, binding.Input)
+				return workflowView{}, fmt.Errorf("gosdk: workflow %q payload input %q is not declared by workflow inputs", workflow.ID, binding.Input)
 			}
 			view.BodyFields = append(view.BodyFields, workflowAssignmentView{
 				Input: binding.Input, ExpectedModel: operation.Body.Type, ExpectedField: binding.Property,
@@ -573,16 +552,16 @@ func resolveWorkflowFieldTypes(types []*modelgen.GeneratedType, workflows []work
 		workflow := &workflows[workflowIndex]
 		inputType := typesByName[workflow.InputType]
 		if inputType == nil || inputType.Kind != modelgen.KindObject {
-			return fmt.Errorf("sdk/golang: workflow %q inputs %q are not a struct model", workflow.ID, workflow.InputType)
+			return fmt.Errorf("gosdk: workflow %q inputs %q are not a struct model", workflow.ID, workflow.InputType)
 		}
 		for assignmentIndex := range workflow.ParameterFields {
 			assignment := &workflow.ParameterFields[assignmentIndex]
 			inputField, ok := generatedField(typesByName, inputType, assignment.Input, make(map[string]struct{}))
 			if !ok {
-				return fmt.Errorf("sdk/golang: workflow %q input %q is not present on %s", workflow.ID, assignment.Input, workflow.InputType)
+				return fmt.Errorf("gosdk: workflow %q input %q is not present on %s", workflow.ID, assignment.Input, workflow.InputType)
 			}
 			if inputField.Type != assignment.ExpectedType {
-				return fmt.Errorf("sdk/golang: workflow %q input %q has type %s, operation parameter requires %s", workflow.ID, assignment.Input, inputField.Type, assignment.ExpectedType)
+				return fmt.Errorf("gosdk: workflow %q input %q has type %s, operation parameter requires %s", workflow.ID, assignment.Input, inputField.Type, assignment.ExpectedType)
 			}
 			assignment.Source = inputField.Name
 		}
@@ -590,15 +569,15 @@ func resolveWorkflowFieldTypes(types []*modelgen.GeneratedType, workflows []work
 			assignment := &workflow.BodyFields[assignmentIndex]
 			inputField, ok := generatedField(typesByName, inputType, assignment.Input, make(map[string]struct{}))
 			if !ok {
-				return fmt.Errorf("sdk/golang: workflow %q input %q is not present on %s", workflow.ID, assignment.Input, workflow.InputType)
+				return fmt.Errorf("gosdk: workflow %q input %q is not present on %s", workflow.ID, assignment.Input, workflow.InputType)
 			}
 			bodyType := typesByName[assignment.ExpectedModel]
 			bodyField, ok := generatedField(typesByName, bodyType, assignment.ExpectedField, make(map[string]struct{}))
 			if !ok {
-				return fmt.Errorf("sdk/golang: workflow %q payload property %q is not present on %s", workflow.ID, assignment.ExpectedField, assignment.ExpectedModel)
+				return fmt.Errorf("gosdk: workflow %q payload property %q is not present on %s", workflow.ID, assignment.ExpectedField, assignment.ExpectedModel)
 			}
 			if inputField.Type != bodyField.Type {
-				return fmt.Errorf("sdk/golang: workflow %q input %q has type %s, payload property %q requires %s", workflow.ID, assignment.Input, inputField.Type, assignment.ExpectedField, bodyField.Type)
+				return fmt.Errorf("gosdk: workflow %q input %q has type %s, payload property %q requires %s", workflow.ID, assignment.Input, inputField.Type, assignment.ExpectedField, bodyField.Type)
 			}
 			assignment.Source = inputField.Name
 			assignment.Target = bodyField.Name
@@ -641,20 +620,20 @@ func (e *emitter) prepareResponses(operation *sdk.Operation) (string, []string, 
 		isSuccess := statusIsSuccess(status)
 		_, schema, err := jsonMedia(response.Content)
 		if err != nil {
-			return "", nil, nil, fmt.Errorf("sdk/golang: operation %q response %s: %w", operation.ID, status, err)
+			return "", nil, nil, fmt.Errorf("gosdk: operation %q response %s: %w", operation.ID, status, err)
 		}
 		typeName := ""
 		if schema != nil {
 			typeName, err = e.schemaType(schema, operation.ID+statusName(status)+"Response")
 			if err != nil {
-				return "", nil, nil, fmt.Errorf("sdk/golang: operation %q response %s: %w", operation.ID, status, err)
+				return "", nil, nil, fmt.Errorf("gosdk: operation %q response %s: %w", operation.ID, status, err)
 			}
 		}
 		if isSuccess {
 			successes = append(successes, status)
 			if typeName != "" {
 				if selectedType != "" && selectedType != typeName {
-					return "", nil, nil, fmt.Errorf("sdk/golang: operation %q has incompatible success response types %s and %s", operation.ID, selectedType, typeName)
+					return "", nil, nil, fmt.Errorf("gosdk: operation %q has incompatible success response types %s and %s", operation.ID, selectedType, typeName)
 				}
 				selectedType = typeName
 			}
@@ -663,7 +642,7 @@ func (e *emitter) prepareResponses(operation *sdk.Operation) (string, []string, 
 		errorResponses = append(errorResponses, errorResponseView{Status: status, Type: typeName})
 	}
 	if len(successes) == 0 {
-		return "", nil, nil, fmt.Errorf("sdk/golang: operation %q has no declared 2xx response", operation.ID)
+		return "", nil, nil, fmt.Errorf("gosdk: operation %q has no declared 2xx response", operation.ID)
 	}
 	if selectedType != "" {
 		responseType = selectedType
@@ -699,27 +678,15 @@ func (e *emitter) schemaType(proxy *highbase.SchemaProxy, hint string) (string, 
 		}
 	}
 	if len(types) == 1 {
-		switch types[0] {
-		case "string":
-			if mapped := e.models.ScalarType(schema.Format, "string"); mapped != "string" {
+		if goType, scalar := e.models.ScalarType(types[0], schema.Format); scalar {
+			// A string format mapped to a named Go type is emitted as a model so
+			// models.gen.go owns the import.
+			if types[0] == "string" && goType != "string" {
 				return e.addInlineSchema(hint, proxy), nil
 			}
-			return "string", nil
-		case "integer":
-			if schema.Format == "int32" {
-				return "int32", nil
-			}
-			if schema.Format == "int64" {
-				return "int64", nil
-			}
-			return "int", nil
-		case "number":
-			if schema.Format == "float" {
-				return "float32", nil
-			}
-			return "float64", nil
-		case "boolean":
-			return "bool", nil
+			return goType, nil
+		}
+		switch types[0] {
 		case "array":
 			if schema.Items == nil || !schema.Items.IsA() {
 				return "[]any", nil
@@ -789,13 +756,13 @@ func (e *emitter) collectSchema(proxy *highbase.SchemaProxy) {
 		ref := proxy.GetReference()
 		if name, component := componentSchemaRefName(ref); component {
 			if err := e.ensureComponent(name); err != nil && e.collectErr == nil {
-				e.collectErr = fmt.Errorf("sdk/golang: %w", err)
+				e.collectErr = fmt.Errorf("gosdk: %w", err)
 			}
 		} else if e.collectErr == nil {
 			if strings.HasPrefix(ref, "#/") {
-				e.collectErr = fmt.Errorf("sdk/golang: schema reference %q is not a components/schemas reference", ref)
+				e.collectErr = fmt.Errorf("gosdk: schema reference %q is not a components/schemas reference", ref)
 			} else {
-				e.collectErr = fmt.Errorf("sdk/golang: external schema reference %q is not supported by SDK generation", ref)
+				e.collectErr = fmt.Errorf("gosdk: external schema reference %q is not supported by SDK generation", ref)
 			}
 		}
 		return
@@ -804,7 +771,14 @@ func (e *emitter) collectSchema(proxy *highbase.SchemaProxy) {
 	if schema == nil {
 		return
 	}
-	visit := e.collectSchema
+	forEachShapeChild(schema, e.collectSchema)
+}
+
+// forEachShapeChild visits the child schemas that generator/golang renders into
+// Go shape. Validation-only keywords are deliberately absent: a $ref beneath
+// one of them must not make a component reachable. Reachability and collection
+// share this walk so the two can never disagree about what is generated.
+func forEachShapeChild(schema *highbase.Schema, visit func(*highbase.SchemaProxy)) {
 	for _, child := range schema.AllOf {
 		visit(child)
 	}
@@ -906,7 +880,7 @@ func (e *emitter) parameterEncoder(proxy *highbase.SchemaProxy) (string, bool, e
 	}
 	switch nonNullType {
 	case "string":
-		if mapped := e.models.ScalarType(schema.Format, "string"); mapped != "string" {
+		if mapped, _ := e.models.ScalarType("string", schema.Format); mapped != "string" {
 			return "", false, fmt.Errorf("custom scalar format %q maps to %s and is not supported for parameter serialization", schema.Format, mapped)
 		}
 		return "encodeString", false, nil

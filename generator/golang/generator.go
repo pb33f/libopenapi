@@ -113,13 +113,22 @@ type GeneratedField struct {
 	Type   string
 }
 
-// ScalarType returns the configured Go type for an OpenAPI string format, or
-// fallback when the generator has no mapping for format.
-func (g *Generator) ScalarType(format, fallback string) string {
-	if mapping, ok := g.formatMappings[format]; ok {
-		return mapping.goType
+// ScalarType returns the Go type this generator renders for a scalar JSON
+// Schema type and format, including configured string format mappings. The
+// second result is false when jsonType is not a scalar. SDK emitters call it so
+// parameter types and model field types come from one mapping.
+func (g *Generator) ScalarType(jsonType, format string) (string, bool) {
+	kind := kindForJSONType(jsonType)
+	switch kind {
+	case KindString:
+		if mapping, ok := g.formatMappings[format]; ok {
+			return mapping.goType, true
+		}
+		return builtinScalarType(kind, format), true
+	case KindInteger, KindNumber, KindBoolean:
+		return builtinScalarType(kind, format), true
 	}
-	return fallback
+	return "", false
 }
 
 // NewGenerator creates a Go model generator.
