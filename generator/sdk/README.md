@@ -4,7 +4,7 @@
 Arazzo. Language emitters consume that prepared contract. Generated clients do
 not import libopenapi or parse specifications at runtime.
 
-The first emitter is `generator/sdk/golang`. It generates:
+The first emitter is `generator/sdk/gosdk`. It generates:
 
 - reachable models through `generator/golang`;
 - one shared HTTP client and security runtime;
@@ -27,7 +27,7 @@ if err != nil {
     return err
 }
 
-result, err := sdkgolang.GenerateContract(contract, sdkgolang.Options{
+result, err := gosdk.GenerateContract(contract, gosdk.Options{
     PackageName: "exampleapi",
 })
 ```

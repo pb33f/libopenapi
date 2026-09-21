@@ -62,7 +62,8 @@ func TestGeneratedSDKExecutesResourceOperations(t *testing.T) {
 		}
 	}
 	for _, expected := range []string{
-		"buffer.Grow(capacity)",
+		"buffer.Grow(length + bytes.MinRead)",
+		"target := request",
 		"var securityWidgetsList = [][]securityRequirement",
 		"response.StatusCode == 201",
 		`input.Body, "application/json"`,
@@ -843,5 +844,80 @@ func TestGeneratedClient(t *testing.T) {
 	wait.Wait()
 	close(errorsSeen)
 	for err := range errorsSeen { t.Error(err) }
+}
+
+type doerFunc func(*http.Request) (*http.Response, error)
+
+func (do doerFunc) Do(request *http.Request) (*http.Response, error) { return do(request) }
+
+func unavailableCredential() Credential {
+	return CredentialFunc(func(context.Context, SecurityScheme, []string, *http.Request) error {
+		return errors.New("tenant key unavailable")
+	})
+}
+
+// A credential that fails part-way through one alternative must not leave its
+// partial writes on the request the fallback alternative sends.
+func TestFailedAlternativeDoesNotLeakIntoFallback(t *testing.T) {
+	var authorization, query string
+	recorder := doerFunc(func(request *http.Request) (*http.Response, error) {
+		authorization, query = request.Header.Get("Authorization"), request.URL.RawQuery
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("{}"))}, nil
+	})
+	client, err := NewClient("https://api.example.test/v1", WithHTTPClient(recorder),
+		WithCredential("bearerAuth", BearerToken("token")),
+		WithCredential("tenantKey", unavailableCredential()),
+		WithCredential("serviceKey", APIKey("service")),
+	)
+	if err != nil { t.Fatal(err) }
+	if _, err := client.Widgets.List(context.Background(), &ListWidgetsParams{TenantID: "tenant-1"}); err != nil {
+		t.Fatalf("fallback credential alternative failed: %v", err)
+	}
+	if authorization != "" || query != "api_key=service" {
+		t.Fatalf("failed alternative leaked into the fallback request: Authorization=%q query=%q", authorization, query)
+	}
+
+	withoutFallback, err := NewClient("https://api.example.test/v1", WithHTTPClient(recorder),
+		WithCredential("bearerAuth", BearerToken("token")),
+		WithCredential("tenantKey", unavailableCredential()),
+	)
+	if err != nil { t.Fatal(err) }
+	if _, err := withoutFallback.Widgets.List(context.Background(), &ListWidgetsParams{TenantID: "tenant-1"}); err == nil || !strings.Contains(err.Error(), "tenant key unavailable") {
+		t.Fatalf("expected the credential failure to surface, got %v", err)
+	}
+}
+
+// Content-Length is a preallocation hint and never a bound: the limit holds and
+// the body arrives whole whether the length is declared, absent, or wrong.
+func TestResponseBodyReadPaths(t *testing.T) {
+	payload := "{\"items\":[]}"
+	for _, test := range []struct {
+		name          string
+		contentLength int64
+		body          string
+		wantErr       string
+	}{
+		{name: "declared length", contentLength: int64(len(payload)), body: payload},
+		{name: "unknown length", contentLength: -1, body: payload},
+		{name: "understated length", contentLength: 2, body: payload},
+		{name: "declared length over the limit", contentLength: 65, body: strings.Repeat(" ", 65), wantErr: "exceeds 64 bytes"},
+		{name: "unknown length over the limit", contentLength: -1, body: strings.Repeat(" ", 65), wantErr: "exceeds 64 bytes"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			client, err := NewClient("https://api.example.test/v1", WithMaxResponseBody(64),
+				WithCredential("serviceKey", APIKey("service")),
+				WithHTTPClient(doerFunc(func(*http.Request) (*http.Response, error) {
+					return &http.Response{StatusCode: http.StatusOK, ContentLength: test.contentLength, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(test.body))}, nil
+				})),
+			)
+			if err != nil { t.Fatal(err) }
+			page, err := client.Widgets.List(context.Background(), &ListWidgetsParams{TenantID: "tenant-1"})
+			if test.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), test.wantErr) { t.Fatalf("expected %q, got %v", test.wantErr, err) }
+				return
+			}
+			if err != nil || page.Value.Items == nil { t.Fatalf("body did not arrive whole: %#v %v", page, err) }
+		})
+	}
 }
 `

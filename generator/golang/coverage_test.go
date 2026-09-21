@@ -366,11 +366,28 @@ func TestSharedNameAndReferenceHelpers(t *testing.T) {
 	if got := RefName("#/components/schemas/Tenant~1Record~0V2"); got != "Tenant/Record~V2" {
 		t.Fatalf("decoded reference name = %q", got)
 	}
-	if got := NewGenerator(WithFormatMapping("date-time", "time.Time", "time")).ScalarType("date-time", "string"); got != "time.Time" {
-		t.Fatalf("mapped scalar type = %q", got)
-	}
-	if got := NewGenerator().ScalarType("unknown", "string"); got != "string" {
-		t.Fatalf("fallback scalar type = %q", got)
+	mapped := NewGenerator(WithFormatMapping("date-time", "time.Time", "time"))
+	for _, test := range []struct {
+		jsonType string
+		format   string
+		want     string
+		scalar   bool
+	}{
+		{jsonType: "string", format: "date-time", want: "time.Time", scalar: true},
+		{jsonType: "string", format: "uuid", want: "string", scalar: true},
+		{jsonType: "integer", format: "int32", want: "int32", scalar: true},
+		{jsonType: "integer", format: "int64", want: "int64", scalar: true},
+		{jsonType: "integer", want: "int", scalar: true},
+		{jsonType: "number", format: "float", want: "float32", scalar: true},
+		{jsonType: "number", format: "double", want: "float64", scalar: true},
+		{jsonType: "boolean", want: "bool", scalar: true},
+		{jsonType: "array"},
+		{jsonType: "object"},
+	} {
+		got, scalar := mapped.ScalarType(test.jsonType, test.format)
+		if got != test.want || scalar != test.scalar {
+			t.Fatalf("ScalarType(%q, %q) = %q, %t; want %q, %t", test.jsonType, test.format, got, scalar, test.want, test.scalar)
+		}
 	}
 }
 
