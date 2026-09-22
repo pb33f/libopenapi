@@ -11,11 +11,8 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// renderConstEnumSpec renders a spec whose components.schemas hold the given
-// declarations and returns the generated Go source. It exercises the real
-// document -> model -> generator pipeline (populateUnion + fold path) through
-// the public RenderSchemas API, so these are true render regressions, not
-// unit tests of the guard helper.
+// renderConstEnumSpec runs a real spec through Document -> BuildV3Model ->
+// RenderSchemas (public API) and returns the generated Go source.
 func renderConstEnumSpec(t *testing.T, body string) string {
 	t.Helper()
 	spec := "openapi: 3.1.0\ninfo:\n  title: const enum regression\n  version: \"1\"\n" +
@@ -35,10 +32,7 @@ func renderConstEnumSpec(t *testing.T, body string) string {
 	return string(file.Source)
 }
 
-// TestRenderUntypedObjectConstStaysUnion is the P1 regression: an object
-// constant written without any "type" keyword must NOT be folded into a
-// KindEnum. Before the scalar-node guard it collapsed to "type ObjectConst
-// string" with empty constants, which cannot unmarshal object JSON.
+// P1 regression: an untyped object const must NOT fold into a string enum.
 func TestRenderUntypedObjectConstStaysUnion(t *testing.T) {
 	src := renderConstEnumSpec(t, `    ObjectConst:
       oneOf:
@@ -55,9 +49,7 @@ func TestRenderUntypedObjectConstStaysUnion(t *testing.T) {
 	}
 }
 
-// TestRenderUntypedArrayConstStaysUnion is the P1 regression for sequences:
-// an array constant written without any "type" keyword must NOT be folded
-// into a KindEnum either.
+// P1 regression: an untyped array const must NOT fold into a string enum.
 func TestRenderUntypedArrayConstStaysUnion(t *testing.T) {
 	src := renderConstEnumSpec(t, `    ArrayConst:
       oneOf:
@@ -72,9 +64,7 @@ func TestRenderUntypedArrayConstStaysUnion(t *testing.T) {
 	}
 }
 
-// TestRenderScalarConstFoldsToEnum is the positive control: the scalar const
-// oneOf that the feature targets must still fold into a typed enum with
-// constants, so the scalar guard does not regress the intended behaviour.
+// Positive control: a scalar const oneOf must still fold into a typed enum.
 func TestRenderScalarConstFoldsToEnum(t *testing.T) {
 	src := renderConstEnumSpec(t, `    PetStatus:
       oneOf:
@@ -99,11 +89,7 @@ func TestRenderScalarConstFoldsToEnum(t *testing.T) {
 	}
 }
 
-// TestConstScalarEnumFromVariantsRejectsUntypedStructuralConsts pins the guard
-// at the unit level: an untyped mapping or sequence const (a yaml node that is
-// not a scalar) must veto the fold even though the schema declares no "type"
-// and no structural keyword. This is the branch the render regressions above
-// exercise end-to-end.
+// Unit guard: an untyped mapping/sequence const must veto the fold.
 func TestConstScalarEnumFromVariantsRejectsUntypedStructuralConsts(t *testing.T) {
 	mapping := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 	sequence := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
