@@ -108,8 +108,10 @@ func (resource *{{$resource.TypeName}}) {{.MethodName}}(ctx context.Context{{if 
 	if {{.SuccessCondition}} {
 		result := &Response[{{.ResponseType}}]{StatusCode: response.StatusCode, Header: header}
 {{- if ne .ResponseType "struct{}"}}
+		if {{.DecodeCondition}} {
 		if err := decodeJSON(payload, &result.Value); err != nil {
 			return nil, &ResponseDecodeError{StatusCode: response.StatusCode, Header: header, Body: payload, Cause: err}
+		}
 		}
 {{- end}}
 		return result, nil

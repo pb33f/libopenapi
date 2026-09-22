@@ -399,12 +399,18 @@ func (e *emitter) prepareOperation(operation *sdk.Operation, methodName string) 
 		view.Body = &bodyView{Type: typeName, FieldType: fieldType, Required: operation.RequestBody.Required, ContentType: mediaType, Description: operation.RequestBody.Description}
 	}
 	view.HasParameters = len(view.Parameters) > 0 || view.Body != nil
-	responseType, successes, errorResponses, err := e.prepareResponses(operation)
+	responseType, successes, decodedSuccesses, errorResponses, err := e.prepareResponses(operation)
 	if err != nil {
 		return view, err
 	}
 	view.ResponseType = responseType
 	view.SuccessStatuses = successes
+	if len(decodedSuccesses) > 0 {
+		view.DecodeCondition, err = decodeStatusCondition(decodedSuccesses, successes)
+		if err != nil {
+			return view, fmt.Errorf("gosdk: operation %q JSON success responses: %w", operation.ID, err)
+		}
+	}
 	view.SuccessCondition, err = statusCondition(successes)
 	if err != nil {
 		return view, fmt.Errorf("gosdk: operation %q success responses: %w", operation.ID, err)
@@ -607,10 +613,11 @@ func generatedField(types map[string]*modelgen.GeneratedType, generatedType *mod
 	return modelgen.GeneratedField{}, false
 }
 
-func (e *emitter) prepareResponses(operation *sdk.Operation) (string, []string, []errorResponseView, error) {
+func (e *emitter) prepareResponses(operation *sdk.Operation) (string, []string, []string, []errorResponseView, error) {
 	responseType := "struct{}"
 	var selectedType string
 	var successes []string
+	var decodedSuccesses []string
 	var errorResponses []errorResponseView
 	for _, response := range operation.Responses {
 		if response == nil {
@@ -620,20 +627,21 @@ func (e *emitter) prepareResponses(operation *sdk.Operation) (string, []string, 
 		isSuccess := statusIsSuccess(status)
 		_, schema, err := jsonMedia(response.Content)
 		if err != nil {
-			return "", nil, nil, fmt.Errorf("gosdk: operation %q response %s: %w", operation.ID, status, err)
+			return "", nil, nil, nil, fmt.Errorf("gosdk: operation %q response %s: %w", operation.ID, status, err)
 		}
 		typeName := ""
 		if schema != nil {
 			typeName, err = e.schemaType(schema, operation.ID+statusName(status)+"Response")
 			if err != nil {
-				return "", nil, nil, fmt.Errorf("gosdk: operation %q response %s: %w", operation.ID, status, err)
+				return "", nil, nil, nil, fmt.Errorf("gosdk: operation %q response %s: %w", operation.ID, status, err)
 			}
 		}
 		if isSuccess {
 			successes = append(successes, status)
 			if typeName != "" {
+				decodedSuccesses = append(decodedSuccesses, status)
 				if selectedType != "" && selectedType != typeName {
-					return "", nil, nil, fmt.Errorf("gosdk: operation %q has incompatible success response types %s and %s", operation.ID, selectedType, typeName)
+					return "", nil, nil, nil, fmt.Errorf("gosdk: operation %q has incompatible success response types %s and %s", operation.ID, selectedType, typeName)
 				}
 				selectedType = typeName
 			}
@@ -642,12 +650,12 @@ func (e *emitter) prepareResponses(operation *sdk.Operation) (string, []string, 
 		errorResponses = append(errorResponses, errorResponseView{Status: status, Type: typeName})
 	}
 	if len(successes) == 0 {
-		return "", nil, nil, fmt.Errorf("gosdk: operation %q has no declared 2xx response", operation.ID)
+		return "", nil, nil, nil, fmt.Errorf("gosdk: operation %q has no declared 2xx response", operation.ID)
 	}
 	if selectedType != "" {
 		responseType = selectedType
 	}
-	return responseType, successes, errorResponses, nil
+	return responseType, successes, decodedSuccesses, errorResponses, nil
 }
 
 func (e *emitter) schemaType(proxy *highbase.SchemaProxy, hint string) (string, error) {
@@ -930,6 +938,37 @@ func statusCondition(statuses []string) (string, error) {
 		return "false", nil
 	}
 	return strings.Join(conditions, " || "), nil
+}
+
+func decodeStatusCondition(decoded, successes []string) (string, error) {
+	condition, err := statusCondition(decoded)
+	if err != nil {
+		return "", err
+	}
+	decodedStatuses := make(map[string]struct{}, len(decoded))
+	decodedRanges := make(map[byte]struct{})
+	for _, status := range decoded {
+		canonical := strings.ToUpper(status)
+		decodedStatuses[canonical] = struct{}{}
+		if len(canonical) == 3 && canonical[1:] == "XX" {
+			decodedRanges[canonical[0]] = struct{}{}
+		}
+	}
+	for _, status := range successes {
+		canonical := strings.ToUpper(status)
+		if _, ok := decodedStatuses[canonical]; ok || len(canonical) != 3 || canonical[1:] == "XX" {
+			continue
+		}
+		if _, overlapsRange := decodedRanges[canonical[0]]; !overlapsRange {
+			continue
+		}
+		code, parseErr := strconv.Atoi(canonical)
+		if parseErr != nil || code < 100 || code > 599 {
+			return "", fmt.Errorf("unsupported response status %q", status)
+		}
+		condition = fmt.Sprintf("(%s) && response.StatusCode != %d", condition, code)
+	}
+	return condition, nil
 }
 
 func statusIsSuccess(status string) bool {

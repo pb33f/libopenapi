@@ -405,10 +405,11 @@ paths:
           in: header
           schema: {type: integer, format: int32}
       responses:
-        "200":
+        "2XX":
           description: widgets
           content:
             application/json: {schema: {$ref: "#/components/schemas/WidgetPage"}}
+        "204": {description: no widgets}
         "400":
           description: bad request
           content:
@@ -703,6 +704,14 @@ func TestGeneratedClient(t *testing.T) {
 				_, _ = io.WriteString(w, "{")
 				return
 			}
+			if r.URL.Query().Get("limit") == "96" {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			if r.URL.Query().Get("limit") == "95" {
+				w.Header().Set("X-Correlation-ID", "empty-success")
+				return
+			}
 			w.Header().Set("X-Page", "one")
 			_, _ = io.WriteString(w, ` + "`" + `{"items":[{"id":"a-1"}]}` + "`" + `)
 		case r.Method == http.MethodGet && strings.Contains(r.URL.EscapedPath(), "/widgets/"):
@@ -808,6 +817,16 @@ func TestGeneratedClient(t *testing.T) {
 	var decodeError *ResponseDecodeError
 	if !errors.As(err, &decodeError) || decodeError.StatusCode != http.StatusOK || decodeError.Header.Get("X-Correlation-ID") != "broken-success" || string(decodeError.Body) != "{" || errors.Unwrap(decodeError) == nil {
 		t.Fatalf("malformed success lost response context: %#v %v", decodeError, err)
+	}
+	bodylessSuccess := 96
+	response, err := client.Widgets.List(context.Background(), &ListWidgetsParams{TenantID: "tenant-1", Limit: &bodylessSuccess})
+	if err != nil || response.StatusCode != http.StatusNoContent {
+		t.Fatalf("bodyless declared success failed: %#v %v", response, err)
+	}
+	emptySuccess := 95
+	_, err = client.Widgets.List(context.Background(), &ListWidgetsParams{TenantID: "tenant-1", Limit: &emptySuccess})
+	if !errors.As(err, &decodeError) || decodeError.StatusCode != http.StatusOK || decodeError.Header.Get("X-Correlation-ID") != "empty-success" || len(decodeError.Body) != 0 || errors.Unwrap(decodeError) == nil {
+		t.Fatalf("empty success was not rejected with response context: %#v %v", decodeError, err)
 	}
 
 	for _, status := range []int{http.StatusTemporaryRedirect, http.StatusPermanentRedirect} {
