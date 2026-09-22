@@ -607,6 +607,13 @@ func constScalarEnumFromVariants(variants []*SchemaIR) ([]*yaml.Node, bool, bool
 		if v.Const == nil {
 			return nil, false, false
 		}
+		// Only a scalar const can be folded into an enum: an untyped mapping
+		// or sequence const has no YAML "type" to catch in s.Type below, so it
+		// must be rejected on the node itself (P1). Restrict to the four
+		// scalar families the enum renderer can actually emit.
+		if v.Const.Kind != yaml.ScalarNode || enumFamily(v.Const) == "unknown" {
+			return nil, false, false
+		}
 		if s := v.SourceSchema; s != nil {
 			for _, t := range s.Type {
 				if t == "object" || t == "array" {
