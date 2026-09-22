@@ -41,6 +41,7 @@ type operationView struct {
 	ResponseType     string
 	SuccessStatuses  []string
 	SuccessCondition string
+	DecodeCondition  string
 	ErrorResponses   []errorResponseView
 	Security         [][]securityRequirementView
 }

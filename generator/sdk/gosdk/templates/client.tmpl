@@ -482,7 +482,7 @@ func NullableValue[T any](value T) **T {
 
 func decodeJSON(body []byte, target any) error {
 	if len(body) == 0 {
-		return nil
+		return errors.New("decode response body: empty body")
 	}
 	if err := json.Unmarshal(body, target); err != nil {
 		return fmt.Errorf("decode response body: %w", err)

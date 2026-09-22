@@ -307,24 +307,55 @@ func TestPrepareResponsesContracts(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			operation := &sdk.Operation{ID: "read", Responses: test.responses}
-			_, _, _, err := emitter.prepareResponses(operation)
+			_, _, _, _, err := emitter.prepareResponses(operation)
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("expected error containing %q, got %v", test.want, err)
 			}
 		})
 	}
 
-	responseType, successes, failures, err := emitter.prepareResponses(&sdk.Operation{ID: "read", Responses: []*sdk.Response{
+	responseType, successes, decodedSuccesses, failures, err := emitter.prepareResponses(&sdk.Operation{ID: "read", Responses: []*sdk.Response{
 		nil,
 		{Status: "200", Content: jsonContent(schema("string", ""))},
 		{Status: "default", Content: jsonContent(schema("object", ""))},
 	}})
-	if err != nil || responseType != "string" || len(successes) != 1 || len(failures) != 1 || failures[0].Status != "default" {
-		t.Fatalf("unexpected prepared responses: %q %#v %#v %v", responseType, successes, failures, err)
+	if err != nil || responseType != "string" || len(successes) != 1 || len(decodedSuccesses) != 1 || decodedSuccesses[0] != "200" || len(failures) != 1 || failures[0].Status != "default" {
+		t.Fatalf("unexpected prepared responses: %q %#v %#v %#v %v", responseType, successes, decodedSuccesses, failures, err)
 	}
-	_, successes, _, err = emitter.prepareResponses(&sdk.Operation{ID: "wildcard", Responses: []*sdk.Response{{Status: "2xx"}}})
+	_, successes, _, _, err = emitter.prepareResponses(&sdk.Operation{ID: "wildcard", Responses: []*sdk.Response{{Status: "2xx"}}})
 	if err != nil || len(successes) != 1 || successes[0] != "2XX" {
 		t.Fatalf("lowercase wildcard was not normalized: %#v, %v", successes, err)
+	}
+}
+
+func TestDecodeStatusConditionHonorsExactBodylessOverride(t *testing.T) {
+	tests := []struct {
+		name      string
+		decoded   []string
+		successes []string
+		want      string
+		wantError bool
+	}{
+		{name: "exact override", decoded: []string{"2XX"}, successes: []string{"2XX", "204"}, want: "(response.StatusCode/100 == 2) && response.StatusCode != 204"},
+		{name: "decoded exact", decoded: []string{"200"}, successes: []string{"200", "204"}, want: "response.StatusCode == 200"},
+		{name: "nonoverlapping exact", decoded: []string{"2XX"}, successes: []string{"2XX", "304"}, want: "response.StatusCode/100 == 2"},
+		{name: "irrelevant malformed status", decoded: []string{"2XX"}, successes: []string{"2XX", "bad"}, want: "response.StatusCode/100 == 2"},
+		{name: "invalid decoded status", decoded: []string{"bad"}, wantError: true},
+		{name: "invalid overlapping exact", decoded: []string{"2XX"}, successes: []string{"2A4"}, wantError: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			condition, err := decodeStatusCondition(test.decoded, test.successes)
+			if test.wantError {
+				if err == nil {
+					t.Fatalf("condition = %q, error = nil", condition)
+				}
+				return
+			}
+			if err != nil || condition != test.want {
+				t.Fatalf("condition = %q, error = %v, want %q", condition, err, test.want)
+			}
+		})
 	}
 }
 
@@ -718,6 +749,7 @@ func TestPrepareOperationRejectsInvalidResponseStatuses(t *testing.T) {
 		want      string
 	}{
 		{name: "success", responses: []*sdk.Response{{Status: "2a0"}}, want: "success responses"},
+		{name: "JSON success", responses: []*sdk.Response{{Status: "2a0", Content: jsonContent(schema("string", ""))}}, want: "JSON success responses"},
 		{name: "error", responses: []*sdk.Response{{Status: "204"}, {Status: "oops"}}, want: "error response"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
