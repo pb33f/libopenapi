@@ -142,11 +142,13 @@ func (g *Generator) irFromSchema(name string, nameResolved bool, schema *highbas
 		// Properties declared beside oneOf/anyOf apply to every variant. Go
 		// renders unions as raw JSON and ignores them; other emitters combine
 		// them with the variants.
-		// Their diagnostics are dropped so Go reports only on what it renders.
+		// They neither claim nested type names nor report diagnostics, so Go
+		// names and reports only what it renders.
 		if ir.Kind == KindUnion && schema.Properties != nil && schema.Properties.Len() > 0 {
-			recorded := len(g.diagnostics)
+			recorded, names := len(g.diagnostics), g.typeNames
+			g.typeNames = nil
 			g.populateObjectMembers(ir, schema, path)
-			g.diagnostics = g.diagnostics[:recorded]
+			g.diagnostics, g.typeNames = g.diagnostics[:recorded], names
 		}
 		return ir
 	}

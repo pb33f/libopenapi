@@ -90,26 +90,21 @@ func TestSchemaShapesFromReview(t *testing.T) {
 			t.Errorf("missing %q in:\n%s", want, source)
 		}
 	}
-	// allOf sibling properties are a documented IR limitation, so a pointer to
-	// one cannot be resolved and is reported rather than guessed.
-	if !strings.Contains(source, "export type Lost = unknown;") {
-		t.Errorf("unresolvable pointer not rendered as unknown:\n%s", source)
-	}
-	reported := false
-	for _, d := range file.Diagnostics {
-		if d.Code == DiagnosticUnsupportedPointer && strings.HasSuffix(d.Path, "Composed/properties/extra") {
-			reported = true
+	// Properties declared beside allOf are kept, so a pointer to one resolves.
+	for _, want := range []string{
+		"export type Lost = string;",
+		"export type Composed = Partial & {\n  extra?: string;\n};",
+	} {
+		if !strings.Contains(source, want) {
+			t.Errorf("missing %q in:\n%s", want, source)
 		}
-	}
-	if !reported {
-		t.Errorf("missing %s diagnostic: %+v", DiagnosticUnsupportedPointer, file.Diagnostics)
 	}
 }
 
 func TestPointerTargetRejectsPathsTheIRCannotFollow(t *testing.T) {
 	object := &golang.SchemaIR{Kind: golang.KindObject, Properties: orderedmap.New[string, *golang.SchemaIR]()}
 	object.Properties.Set("name", &golang.SchemaIR{Kind: golang.KindString})
-	r := &render{}
+	r := &render{siblings: map[*golang.SchemaIR]*orderedmap.Map[string, *golang.SchemaIR]{}}
 	for name, tc := range map[string]struct {
 		ir       *golang.SchemaIR
 		segments []string
