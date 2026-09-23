@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
@@ -237,8 +238,6 @@ func (r *render) expr(ir *golang.SchemaIR, indent string) string {
 		out = r.enumExpr(ir)
 	case golang.KindArray:
 		out = arrayOf(r.expr(ir.Items, indent))
-	case golang.KindMap:
-		out = "Record<string, " + r.expr(ir.AdditionalProperties, indent) + ">"
 	case golang.KindObject, golang.KindAllOf:
 		// The shared IR flattens allOf: inline object members merge into
 		// Properties while $ref members stay in AllOf, even on KindObject.
@@ -343,9 +342,7 @@ func (r *render) enumExpr(ir *golang.SchemaIR) string {
 		seen[literal] = struct{}{}
 		values = append(values, literal)
 	}
-	if len(values) == 0 {
-		return "null"
-	}
+	// An enum of only null never reaches here: expr renders it as null first.
 	out := strings.Join(values, " | ")
 	if nullable {
 		out += " | null"
@@ -420,9 +417,6 @@ func (r *render) allOfExpr(ir *golang.SchemaIR, indent string) string {
 	if ir.Properties != nil && ir.Properties.Len() > 0 {
 		parts = append(parts, r.objectBody(ir, indent, false))
 	}
-	if len(parts) == 0 {
-		return "unknown"
-	}
 	return strings.Join(parts, " & ")
 }
 
@@ -433,9 +427,6 @@ func (r *render) allOfExpr(ir *golang.SchemaIR, indent string) string {
 // intersected with its mapped values so the union narrows on that property.
 func (r *render) unionExpr(ir *golang.SchemaIR, indent string) string {
 	union := ir.Union
-	if union == nil || len(union.Variants) == 0 {
-		return "unknown"
-	}
 	discriminatorValues := make(map[string][]string)
 	if union.Discriminator != nil && union.Discriminator.PropertyName != "" {
 		for value, target := range union.Discriminator.Mapping {
@@ -480,9 +471,6 @@ func (r *render) unionExpr(ir *golang.SchemaIR, indent string) string {
 // by $ref has a type this cannot see, where a guessed literal could make the
 // variant never. It also reports false when a value does not fit the type.
 func (r *render) discriminatorLiterals(variant *golang.SchemaIR, property string, values []string) (string, bool) {
-	if !strings.HasPrefix(variant.Ref, componentSchemaPrefix) {
-		return "", false
-	}
 	target := r.components[unescapePointer(strings.TrimPrefix(variant.Ref, componentSchemaPrefix))]
 	if target == nil || target.Properties == nil {
 		return "", false
@@ -516,9 +504,6 @@ func (r *render) discriminatorLiterals(variant *golang.SchemaIR, property string
 }
 
 func writeDoc(b *strings.Builder, ir *golang.SchemaIR, indent string) {
-	if ir == nil {
-		return
-	}
 	var lines []string
 	if description := strings.TrimSpace(ir.Description); description != "" {
 		lines = append(lines, strings.Split(description, "\n")...)
@@ -555,10 +540,8 @@ func literalType(node *yaml.Node) (string, bool) {
 	case "!!null":
 		return "null", true
 	case "!!bool":
-		if node.Value == "true" || node.Value == "false" {
-			return node.Value, true
-		}
-		return "", false
+		// YAML also spells booleans True and FALSE.
+		return strconv.FormatBool(strings.EqualFold(node.Value, "true")), true
 	case "!!int", "!!float":
 		var number json.Number
 		if err := json.Unmarshal([]byte(node.Value), &number); err != nil {
