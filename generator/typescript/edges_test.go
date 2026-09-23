@@ -89,7 +89,7 @@ func TestEdgeCaseRendering(t *testing.T) {
 		"export type Both = (string | number) & Flags;",
 		" * First paragraph.\n *\n * Second paragraph.",
 		"export type Values = Record<string, Choice>;",
-		"export type Tail = Exclude<NonNullable<Values>[string], undefined>;",
+		"export type Tail = Choice;",
 	} {
 		if !strings.Contains(source, want) {
 			t.Errorf("missing %q in:\n%s", want, source)
