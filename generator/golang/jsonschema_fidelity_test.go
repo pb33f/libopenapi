@@ -313,6 +313,108 @@ enum:
 	assertParsesAndCompiles(t, file.Source)
 }
 
+func TestJSONSchema202012ConstScalarEnumVariants(t *testing.T) {
+	schemas := orderedmap.New[string, *highbase.SchemaProxy]()
+	// OpenAPI 3.1 style const-based enum: oneOf of scalar const values.
+	schemas.Set("const string enum", schemaProxyFromYAML(t, `
+oneOf:
+  - const: available
+    title: Available
+  - const: pending
+    title: Pending
+  - const: sold
+    title: Sold
+`))
+	// const with an explicit scalar type on each variant.
+	schemas.Set("const typed enum", schemaProxyFromYAML(t, `
+oneOf:
+  - type: string
+    const: low
+  - type: string
+    const: high
+`))
+	// anyOf of const values is folded the same way.
+	schemas.Set("const anyOf enum", schemaProxyFromYAML(t, `
+anyOf:
+  - const: ready
+  - const: done
+`))
+	// integer const enum keeps the numeric base type.
+	schemas.Set("const int enum", schemaProxyFromYAML(t, `
+oneOf:
+  - const: 1
+  - const: 2
+  - const: 3
+`))
+	// a null-of variant yields a nullable enum.
+	schemas.Set("const nullable enum", schemaProxyFromYAML(t, `
+oneOf:
+  - const: active
+  - const: paused
+  - type: "null"
+`))
+	// mixed const value types cannot form Go constants; fall back to any.
+	schemas.Set("const mixed enum", schemaProxyFromYAML(t, `
+oneOf:
+  - const: low
+  - const: 2
+`))
+
+	file, err := NewGenerator(WithEnumConstants(true)).RenderSchemas(schemas)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := strings.Join(strings.Fields(string(file.Source)), " ")
+
+	assertContains(t, src, "type ConstStringEnum string")
+	assertContains(t, src, "ConstStringEnumAvailable ConstStringEnum = \"available\"")
+	assertContains(t, src, "ConstStringEnumSold ConstStringEnum = \"sold\"")
+
+	assertContains(t, src, "type ConstTypedEnum string")
+	assertContains(t, src, "ConstTypedEnumLow ConstTypedEnum = \"low\"")
+
+	assertContains(t, src, "type ConstAnyOfEnum string")
+	assertContains(t, src, "ConstAnyOfEnumReady ConstAnyOfEnum = \"ready\"")
+
+	assertContains(t, src, "type ConstIntEnum int")
+	assertContains(t, src, "ConstIntEnumValue1 ConstIntEnum = 1")
+
+	assertContains(t, src, "type ConstNullableEnum string")
+	assertContains(t, src, "ConstNullableEnumActive ConstNullableEnum = \"active\"")
+
+	// Mixed-type const oneOf cannot produce typed constants.
+	assertContains(t, src, "type ConstMixedEnum any")
+	assertNotContains(t, src, "ConstMixedEnumLow")
+
+	assertParsesAndCompiles(t, file.Source)
+}
+
+// TestJSONSchemaSchemaObjectUnionNotEnum guards object oneOf variants (a real
+// union, prototypical discriminated or plain) from being collapsed into an
+// enum: the const-enum folding must only apply to whole-variant scalar consts.
+func TestJSONSchemaSchemaObjectUnionNotEnum(t *testing.T) {
+	schemas := singleSchemaMap(t, "Shape", schemaProxyFromYAML(t, `
+oneOf:
+  - type: object
+    properties:
+      radius:
+        type: number
+  - type: object
+    properties:
+      width:
+        type: number
+      height:
+        type: number
+`))
+	file, err := NewGenerator(WithEnumConstants(true)).RenderSchemas(schemas)
+	if err != nil {
+		t.Fatal(err)
+	}
+	src := string(file.Source)
+	assertNotContains(t, src, "type Shape string")
+	assertParsesAndCompiles(t, file.Source)
+}
+
 func TestJSONSchema202012ClosedNestedObjectUsesStruct(t *testing.T) {
 	source, err := RenderSchema("closed parent", schemaProxyFromYAML(t, `
 type: object
