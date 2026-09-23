@@ -5,6 +5,7 @@ package model
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"sort"
 	"strings"
@@ -1828,7 +1829,7 @@ func mergeSimpleAllOfObjectSchemaView(schema *base.Schema) (*base.Schema, bool) 
 	if schema == nil {
 		return nil, false
 	}
-	merged := *schema
+	merged := copySchemaPublicFields(schema)
 
 	typeRef, ok := mergeSimpleAllOfObjectType(schema)
 	if !ok {
@@ -1858,7 +1859,22 @@ func mergeSimpleAllOfObjectSchemaView(schema *base.Schema) (*base.Schema, bool) 
 	merged.Properties = propertiesRef
 	merged.Required = requiredRef
 
-	return &merged, true
+	return merged, true
+}
+
+// copySchemaPublicFields creates a shallow comparison view without copying the
+// schema's internal sync.Map. Public model values intentionally retain their
+// existing pointers because the view is read-only.
+func copySchemaPublicFields(schema *base.Schema) *base.Schema {
+	source := reflect.ValueOf(schema).Elem()
+	destination := reflect.ValueOf(&base.Schema{}).Elem()
+	schemaType := source.Type()
+	for i := 0; i < source.NumField(); i++ {
+		if schemaType.Field(i).PkgPath == "" {
+			destination.Field(i).Set(source.Field(i))
+		}
+	}
+	return destination.Addr().Interface().(*base.Schema)
 }
 
 func mergeSimpleAllOfObjectType(schema *base.Schema) (low.NodeReference[base.SchemaDynamicValue[string, []low.ValueReference[string]]], bool) {

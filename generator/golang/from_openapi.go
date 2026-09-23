@@ -140,6 +140,17 @@ func (g *Generator) irFromSchema(name string, nameResolved bool, schema *highbas
 
 	if len(schema.OneOf) > 0 || len(schema.AnyOf) > 0 {
 		g.populateUnion(ir, schema, path)
+		// Properties declared beside oneOf/anyOf apply to every variant. Go
+		// renders unions as raw JSON and ignores them; other emitters combine
+		// them with the variants.
+		// They neither claim nested type names nor report diagnostics, so Go
+		// names and reports only what it renders.
+		if ir.Kind == KindUnion && schema.Properties != nil && schema.Properties.Len() > 0 {
+			recorded, names := len(g.diagnostics), g.typeNames
+			g.typeNames = nil
+			g.populateObjectMembers(ir, schema, path)
+			g.diagnostics, g.typeNames = g.diagnostics[:recorded], names
+		}
 		return ir
 	}
 
@@ -257,6 +268,10 @@ func (g *Generator) populateMultiTypeUnion(ir *SchemaIR, types []string, path st
 
 func (g *Generator) populateObject(ir *SchemaIR, schema *highbase.Schema, path string) {
 	ir.Kind = KindObject
+	g.populateObjectMembers(ir, schema, path)
+}
+
+func (g *Generator) populateObjectMembers(ir *SchemaIR, schema *highbase.Schema, path string) {
 	ir.Properties = orderedProperties()
 	if schema.Properties != nil {
 		for propName, propSchema := range schema.Properties.FromOldest() {
@@ -632,6 +647,13 @@ func constScalarEnumFromVariants(variants []*SchemaIR) ([]*yaml.Node, bool, bool
 		return nil, false, false
 	}
 	return nodes, nullable, true
+}
+
+// IsNullOnly reports whether ir admits only null: type null, const null, or an
+// enum whose only value is null. Emitters use it to render such a schema as
+// their null type.
+func IsNullOnly(ir *SchemaIR) bool {
+	return isNullOnlyIR(ir)
 }
 
 func isNullOnlyIR(ir *SchemaIR) bool {

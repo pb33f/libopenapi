@@ -101,7 +101,7 @@ parameters: not-a-sequence`
 	var step Step
 	require.NoError(t, low.BuildModel(root, &step))
 	err := step.Build(context.Background(), nil, root, nil)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 	assert.Nil(t, step.Parameters.Value)
 }
 
@@ -113,7 +113,7 @@ successCriteria: not-a-sequence`
 	root := buildNode(t, yml)
 	var step Step
 	require.NoError(t, low.BuildModel(root, &step))
-	assert.NoError(t, step.Build(context.Background(), nil, root, nil))
+	assert.Error(t, step.Build(context.Background(), nil, root, nil))
 	assert.Nil(t, step.SuccessCriteria.Value)
 }
 
@@ -125,7 +125,7 @@ onSuccess: not-a-sequence`
 	root := buildNode(t, yml)
 	var step Step
 	require.NoError(t, low.BuildModel(root, &step))
-	assert.NoError(t, step.Build(context.Background(), nil, root, nil))
+	assert.Error(t, step.Build(context.Background(), nil, root, nil))
 	assert.Nil(t, step.OnSuccess.Value)
 }
 
@@ -137,7 +137,7 @@ onFailure: not-a-sequence`
 	root := buildNode(t, yml)
 	var step Step
 	require.NoError(t, low.BuildModel(root, &step))
-	assert.NoError(t, step.Build(context.Background(), nil, root, nil))
+	assert.Error(t, step.Build(context.Background(), nil, root, nil))
 	assert.Nil(t, step.OnFailure.Value)
 }
 
@@ -214,7 +214,7 @@ steps: not-a-sequence`
 	root := buildNode(t, yml)
 	var wf Workflow
 	require.NoError(t, low.BuildModel(root, &wf))
-	assert.NoError(t, wf.Build(context.Background(), nil, root, nil))
+	assert.Error(t, wf.Build(context.Background(), nil, root, nil))
 	assert.Nil(t, wf.Steps.Value)
 }
 
@@ -228,7 +228,7 @@ successActions: not-a-sequence`
 	root := buildNode(t, yml)
 	var wf Workflow
 	require.NoError(t, low.BuildModel(root, &wf))
-	assert.NoError(t, wf.Build(context.Background(), nil, root, nil))
+	assert.Error(t, wf.Build(context.Background(), nil, root, nil))
 	assert.Nil(t, wf.SuccessActions.Value)
 }
 
@@ -242,7 +242,7 @@ failureActions: not-a-sequence`
 	root := buildNode(t, yml)
 	var wf Workflow
 	require.NoError(t, low.BuildModel(root, &wf))
-	assert.NoError(t, wf.Build(context.Background(), nil, root, nil))
+	assert.Error(t, wf.Build(context.Background(), nil, root, nil))
 	assert.Nil(t, wf.FailureActions.Value)
 }
 
@@ -256,7 +256,7 @@ parameters: not-a-sequence`
 	root := buildNode(t, yml)
 	var wf Workflow
 	require.NoError(t, low.BuildModel(root, &wf))
-	assert.NoError(t, wf.Build(context.Background(), nil, root, nil))
+	assert.Error(t, wf.Build(context.Background(), nil, root, nil))
 	assert.Nil(t, wf.Parameters.Value)
 }
 
@@ -402,7 +402,7 @@ replacements: not-a-sequence`
 	root := buildNode(t, yml)
 	var rb RequestBody
 	require.NoError(t, low.BuildModel(root, &rb))
-	assert.NoError(t, rb.Build(context.Background(), nil, root, nil))
+	assert.Error(t, rb.Build(context.Background(), nil, root, nil))
 	assert.Nil(t, rb.Replacements.Value)
 }
 
@@ -434,7 +434,7 @@ criteria: not-a-sequence`
 	root := buildNode(t, yml)
 	var sa SuccessAction
 	require.NoError(t, low.BuildModel(root, &sa))
-	assert.NoError(t, sa.Build(context.Background(), nil, root, nil))
+	assert.Error(t, sa.Build(context.Background(), nil, root, nil))
 	assert.Nil(t, sa.Criteria.Value)
 }
 
@@ -490,7 +490,7 @@ criteria: not-a-sequence`
 	root := buildNode(t, yml)
 	var fa FailureAction
 	require.NoError(t, low.BuildModel(root, &fa))
-	assert.NoError(t, fa.Build(context.Background(), nil, root, nil))
+	assert.Error(t, fa.Build(context.Background(), nil, root, nil))
 	assert.Nil(t, fa.Criteria.Value)
 }
 
@@ -951,14 +951,16 @@ type:
 func TestFinalCov_ExtractStringArray_NotSeq(t *testing.T) {
 	yml := `dependsOn: not-a-sequence`
 	root := buildNode(t, yml)
-	result := extractStringArray(DependsOnLabel, root)
+	result, err := extractStringArray(DependsOnLabel, root)
+	require.Error(t, err)
 	assert.Nil(t, result.Value)
 }
 
 func TestFinalCov_ExtractStringArray_Empty(t *testing.T) {
 	yml := `dependsOn: []`
 	root := buildNode(t, yml)
-	result := extractStringArray(DependsOnLabel, root)
+	result, err := extractStringArray(DependsOnLabel, root)
+	require.NoError(t, err)
 	assert.NotNil(t, result.Value)
 	assert.Len(t, result.Value, 0)
 }
@@ -988,14 +990,16 @@ func TestFinalCov_ExtractExpressionsMap_Empty(t *testing.T) {
 func TestFinalCov_ExtractRawNodeMap_NotMapping(t *testing.T) {
 	yml := `inputs: not-a-mapping`
 	root := buildNode(t, yml)
-	result := extractRawNodeMap(InputsLabel, root)
+	result, err := extractRawNodeMap(InputsLabel, root)
+	require.Error(t, err)
 	assert.Nil(t, result.Value)
 }
 
 func TestFinalCov_ExtractRawNodeMap_Empty(t *testing.T) {
 	yml := `inputs: {}`
 	root := buildNode(t, yml)
-	result := extractRawNodeMap(InputsLabel, root)
+	result, err := extractRawNodeMap(InputsLabel, root)
+	require.NoError(t, err)
 	assert.NotNil(t, result.Value)
 	assert.Equal(t, 0, result.Value.Len())
 }

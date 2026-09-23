@@ -225,6 +225,8 @@ func TestRolodexLocalFileSystem_BadPath(t *testing.T) {
 }
 
 func TestRolodexRemoteFileSystem(t *testing.T) {
+	requireNetworkTests(t)
+
 	data, _ := os.ReadFile("../../../test_specs/first.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 

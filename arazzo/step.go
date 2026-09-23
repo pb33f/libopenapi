@@ -102,7 +102,7 @@ func (e *Engine) executeStep(ctx context.Context, step *high.Step, wf *high.Work
 		}
 	}
 	if result.Success {
-		if err := e.populateStepOutputs(step, result, exprCtx); err != nil {
+		if err := e.populateStepOutputs(step, wf, result, exprCtx); err != nil {
 			result.Success = false
 			result.Error = err
 		}
@@ -420,7 +420,7 @@ func (e *Engine) evaluateStringValue(input string, exprCtx *expression.Context) 
 		return expression.Evaluate(parsed, exprCtx)
 	}
 	if strings.Contains(input, "{$") {
-		tokens, err := expression.ParseEmbedded(input)
+		tokens, err := expression.ParseEmbeddedWithVersion(input, e.exprVersion)
 		if err != nil {
 			return nil, err
 		}
@@ -444,13 +444,39 @@ func (e *Engine) evaluateStringValue(input string, exprCtx *expression.Context) 
 	return input, nil
 }
 
-func (e *Engine) populateStepOutputs(step *high.Step, result *StepResult, exprCtx *expression.Context) error {
+// populateStepOutputs evaluates every step output before publishing any of them.
+// Outputs are staged and committed only once all succeed, so a failure partway
+// through leaves result.Outputs untouched rather than exposing a partial map to
+// later steps via the expression context.
+func (e *Engine) populateStepOutputs(
+	step *high.Step,
+	wf *high.Workflow,
+	result *StepResult,
+	exprCtx *expression.Context,
+) error {
 	if step.Outputs == nil || step.Outputs.Len() == 0 {
 		return nil
 	}
+	workflowId := ""
+	if wf != nil {
+		workflowId = wf.WorkflowId
+	}
+	// result.Outputs starts empty and this is its only writer, so a failure can simply
+	// discard what was written rather than staging into a second map first. That keeps
+	// the happy path -- the hot one -- free of extra allocation.
 	for name, outputExpression := range step.Outputs.FromOldest() {
-		value, err := e.evaluateStringValue(outputExpression, exprCtx)
+		expressionValue, ok := outputExpression.GetExpression()
+		if !ok {
+			clear(result.Outputs)
+			return &UnsupportedSelectorOutputError{
+				WorkflowId: workflowId,
+				StepId:     step.StepId,
+				OutputName: name,
+			}
+		}
+		value, err := e.evaluateStringValue(expressionValue, exprCtx)
 		if err != nil {
+			clear(result.Outputs)
 			return fmt.Errorf("failed to evaluate output %q for step %q: %w", name, step.StepId, err)
 		}
 		result.Outputs[name] = value
@@ -462,15 +488,32 @@ func (e *Engine) populateWorkflowOutputs(wf *high.Workflow, result *WorkflowResu
 	if wf.Outputs == nil || wf.Outputs.Len() == 0 {
 		return nil
 	}
+	// exprCtx.Outputs may already hold entries, so a failure here cannot be undone by
+	// clearing it. Stage into a slice instead: one allocation, no hashing, and the
+	// authored output order is preserved on commit.
+	staged := make([]stagedOutput, 0, wf.Outputs.Len())
 	for name, outputExpression := range wf.Outputs.FromOldest() {
-		value, err := e.evaluateStringValue(outputExpression, exprCtx)
+		expressionValue, ok := outputExpression.GetExpression()
+		if !ok {
+			return &UnsupportedSelectorOutputError{WorkflowId: wf.WorkflowId, OutputName: name}
+		}
+		value, err := e.evaluateStringValue(expressionValue, exprCtx)
 		if err != nil {
 			return fmt.Errorf("failed to evaluate output %q for workflow %q: %w", name, wf.WorkflowId, err)
 		}
-		result.Outputs[name] = value
-		exprCtx.Outputs[name] = value
+		staged = append(staged, stagedOutput{name: name, value: value})
+	}
+	for _, output := range staged {
+		result.Outputs[output.name] = output.value
+		exprCtx.Outputs[output.name] = output.value
 	}
 	return nil
+}
+
+// stagedOutput holds an evaluated workflow output awaiting commit.
+type stagedOutput struct {
+	name  string
+	value any
 }
 
 func firstHeaderValues(headers map[string][]string) map[string]string {

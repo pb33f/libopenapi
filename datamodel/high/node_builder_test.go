@@ -112,15 +112,10 @@ func (te *test1) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.V
 
 func (te *test1) MarshalYAML() (interface{}, error) {
 	panic("MarshalYAML")
-	nb := NewNodeBuilder(te, te)
-	return nb.Render(), nil
 }
 
 func (te *test1) GetKeyNode() *yaml.Node {
 	panic("GetKeyNode")
-	kn := utils.CreateStringNode("meddy")
-	kn.Line = 20
-	return kn
 }
 
 func (te *test1) GetValueNode() *yaml.Node {
@@ -131,7 +126,6 @@ func (te *test1) GetValueNode() *yaml.Node {
 
 func (te *test1) GoesLowUntyped() any {
 	panic("GoesLowUntyped")
-	return te
 }
 
 type test2 struct {

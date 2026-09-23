@@ -12,7 +12,7 @@ import (
 
 // FailureAction represents a high-level Arazzo Failure Action Object.
 // A failure action can be a full definition or a Reusable Object with a $components reference.
-// https://spec.openapis.org/arazzo/v1.0.1#failure-action-object
+// https://spec.openapis.org/arazzo/v1.1.0#failure-action-object
 type FailureAction struct {
 	Name       string                              `json:"name,omitempty" yaml:"name,omitempty"`
 	Type       string                              `json:"type,omitempty" yaml:"type,omitempty"`
@@ -21,6 +21,7 @@ type FailureAction struct {
 	RetryAfter *float64                            `json:"retryAfter,omitempty" yaml:"retryAfter,omitempty"`
 	RetryLimit *int64                              `json:"retryLimit,omitempty" yaml:"retryLimit,omitempty"`
 	Criteria   []*Criterion                        `json:"criteria,omitempty" yaml:"criteria,omitempty"`
+	Parameters []*Parameter                        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 	Reference  string                              `json:"reference,omitempty" yaml:"reference,omitempty"`
 	Extensions *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low        *low.FailureAction
@@ -60,6 +61,9 @@ func NewFailureAction(fa *low.FailureAction) *FailureAction {
 	}
 	if !fa.Criteria.IsEmpty() {
 		f.Criteria = buildSlice(fa.Criteria.Value, NewCriterion)
+	}
+	if !fa.Parameters.IsEmpty() {
+		f.Parameters = buildSlice(fa.Parameters.Value, NewParameter)
 	}
 	f.Extensions = high.ExtractExtensions(fa.Extensions)
 	return f
@@ -107,6 +111,9 @@ func (f *FailureAction) MarshalYAML() (any, error) {
 	}
 	if len(f.Criteria) > 0 {
 		m.Set(low.CriteriaLabel, f.Criteria)
+	}
+	if len(f.Parameters) > 0 {
+		m.Set(low.ParametersLabel, f.Parameters)
 	}
 	marshalExtensions(m, f.Extensions)
 	return m, nil

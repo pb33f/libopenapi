@@ -25,6 +25,13 @@ type cachedCriterionJSONPath struct {
 	err  error
 }
 
+type criterionJSONPathDialect string
+
+const (
+	criterionJSONPathRFC9535 criterionJSONPathDialect = "rfc9535"
+	criterionJSONPathLegacy  criterionJSONPathDialect = "draft-goessner-dispatch-jsonpath-00"
+)
+
 // criterionCaches holds per-Engine caches for compiled criterion patterns.
 // Using plain maps instead of sync.Map because Engine is not safe for concurrent use.
 type criterionCaches struct {
@@ -39,9 +46,6 @@ func newCriterionCaches() *criterionCaches {
 		jsonPath: make(map[string]cachedCriterionJSONPath),
 	}
 }
-
-// simpleConditionOperators is kept at package level to avoid allocation per call.
-var simpleConditionOperators = []string{"==", "!=", ">=", "<=", ">", "<"}
 
 // ClearCriterionCaches is a no-op retained for backward compatibility.
 // Criterion caches are now scoped per-Engine instance and cleared via Engine.ClearCaches().
@@ -102,7 +106,7 @@ func evaluateSimpleConditionString(condition string, exprCtx *expression.Context
 		return b, nil
 	}
 
-	leftRaw, op, rightRaw, found := splitSimpleCondition(trimmed)
+	leftRaw, op, rightRaw, found := expression.SplitSimpleCondition(trimmed)
 	if found {
 		left, err := evaluateSimpleOperand(leftRaw, exprCtx, caches)
 		if err != nil {
@@ -124,32 +128,6 @@ func evaluateSimpleConditionString(condition string, exprCtx *expression.Context
 		return false, fmt.Errorf("simple condition %q did not evaluate to a boolean", condition)
 	}
 	return b, nil
-}
-
-func splitSimpleCondition(input string) (left, op, right string, found bool) {
-	// Find where the left operand ends. If input starts with "$", skip past
-	// the expression boundary (first unescaped space) so that operators
-	// inside JSON pointer paths like "/data/>=threshold" are not matched.
-	searchStart := 0
-	if strings.HasPrefix(input, "$") {
-		if spaceIdx := strings.IndexByte(input, ' '); spaceIdx >= 0 {
-			searchStart = spaceIdx
-		} else {
-			return "", "", "", false
-		}
-	}
-	for _, candidate := range simpleConditionOperators {
-		if idx := strings.Index(input[searchStart:], candidate); idx >= 0 {
-			idx += searchStart
-			left = strings.TrimSpace(input[:idx])
-			right = strings.TrimSpace(input[idx+len(candidate):])
-			if left == "" || right == "" {
-				return "", "", "", false
-			}
-			return left, candidate, right, true
-		}
-	}
-	return "", "", "", false
 }
 
 func evaluateSimpleOperand(operand string, exprCtx *expression.Context, caches *criterionCaches) (any, error) {
@@ -280,7 +258,11 @@ func evaluateJSONPathCriterion(criterion *high.Criterion, exprCtx *expression.Co
 		return false, fmt.Errorf("failed to evaluate context expression: %w", err)
 	}
 
-	path, err := compileCriterionJSONPath(criterion.Condition, caches)
+	dialect := criterionJSONPathRFC9535
+	if criterion.ExpressionType != nil && criterion.ExpressionType.Version != "" {
+		dialect = criterionJSONPathDialect(criterion.ExpressionType.Version)
+	}
+	path, err := compileCriterionJSONPath(criterion.Condition, dialect, caches)
 	if err != nil {
 		return false, fmt.Errorf("invalid jsonpath %q: %w", criterion.Condition, err)
 	}
@@ -309,15 +291,33 @@ func compileCriterionRegex(raw string, caches *criterionCaches) (*regexp.Regexp,
 	return re, err
 }
 
-func compileCriterionJSONPath(raw string, caches *criterionCaches) (*jsonpath.JSONPath, error) {
+func compileCriterionJSONPath(
+	raw string,
+	dialect criterionJSONPathDialect,
+	caches *criterionCaches,
+) (*jsonpath.JSONPath, error) {
+	cacheKey := string(dialect) + "\x00" + raw
 	if caches != nil {
-		if cached, ok := caches.jsonPath[raw]; ok {
+		if cached, ok := caches.jsonPath[cacheKey]; ok {
 			return cached.path, cached.err
 		}
 	}
-	path, err := jsonpath.NewPath(raw, jsonpathconfig.WithPropertyNameExtension(), jsonpathconfig.WithLazyContextTracking())
+	var path *jsonpath.JSONPath
+	var err error
+	switch dialect {
+	case criterionJSONPathRFC9535:
+		path, err = jsonpath.NewPath(
+			raw,
+			jsonpathconfig.WithStrictRFC9535(),
+			jsonpathconfig.WithLazyContextTracking(),
+		)
+	case criterionJSONPathLegacy:
+		err = fmt.Errorf("%w: %s", ErrUnsupportedExpressionDialect, dialect)
+	default:
+		err = fmt.Errorf("unknown JSONPath dialect %q", dialect)
+	}
 	if caches != nil {
-		caches.jsonPath[raw] = cachedCriterionJSONPath{path: path, err: err}
+		caches.jsonPath[cacheKey] = cachedCriterionJSONPath{path: path, err: err}
 	}
 	return path, err
 }

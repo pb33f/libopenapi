@@ -254,7 +254,7 @@ func TestEvaluateSimpleConditionString_RightOperandError(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSplitSimpleCondition_EqualEqual(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("a == b")
+	l, op, r, found := expression.SplitSimpleCondition("a == b")
 	assert.True(t, found)
 	assert.Equal(t, "a", l)
 	assert.Equal(t, "==", op)
@@ -262,7 +262,7 @@ func TestSplitSimpleCondition_EqualEqual(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_NotEqual(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("a != b")
+	l, op, r, found := expression.SplitSimpleCondition("a != b")
 	assert.True(t, found)
 	assert.Equal(t, "a", l)
 	assert.Equal(t, "!=", op)
@@ -270,7 +270,7 @@ func TestSplitSimpleCondition_NotEqual(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_GreaterEqual(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("a >= b")
+	l, op, r, found := expression.SplitSimpleCondition("a >= b")
 	assert.True(t, found)
 	assert.Equal(t, "a", l)
 	assert.Equal(t, ">=", op)
@@ -278,7 +278,7 @@ func TestSplitSimpleCondition_GreaterEqual(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_LessEqual(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("a <= b")
+	l, op, r, found := expression.SplitSimpleCondition("a <= b")
 	assert.True(t, found)
 	assert.Equal(t, "a", l)
 	assert.Equal(t, "<=", op)
@@ -286,7 +286,7 @@ func TestSplitSimpleCondition_LessEqual(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_GreaterThan(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("a > b")
+	l, op, r, found := expression.SplitSimpleCondition("a > b")
 	assert.True(t, found)
 	assert.Equal(t, "a", l)
 	assert.Equal(t, ">", op)
@@ -294,7 +294,7 @@ func TestSplitSimpleCondition_GreaterThan(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_LessThan(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("a < b")
+	l, op, r, found := expression.SplitSimpleCondition("a < b")
 	assert.True(t, found)
 	assert.Equal(t, "a", l)
 	assert.Equal(t, "<", op)
@@ -302,22 +302,22 @@ func TestSplitSimpleCondition_LessThan(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_MissingLeftOperand(t *testing.T) {
-	_, _, _, found := splitSimpleCondition("== b")
+	_, _, _, found := expression.SplitSimpleCondition("== b")
 	assert.False(t, found)
 }
 
 func TestSplitSimpleCondition_MissingRightOperand(t *testing.T) {
-	_, _, _, found := splitSimpleCondition("a ==")
+	_, _, _, found := expression.SplitSimpleCondition("a ==")
 	assert.False(t, found)
 }
 
 func TestSplitSimpleCondition_NoOperator(t *testing.T) {
-	_, _, _, found := splitSimpleCondition("just a string")
+	_, _, _, found := expression.SplitSimpleCondition("just a string")
 	assert.False(t, found)
 }
 
 func TestSplitSimpleCondition_OperatorInsideJSONPointer(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("$response.body#/data/>=threshold == true")
+	l, op, r, found := expression.SplitSimpleCondition("$response.body#/data/>=threshold == true")
 	assert.True(t, found)
 	assert.Equal(t, "$response.body#/data/>=threshold", l)
 	assert.Equal(t, "==", op)
@@ -325,7 +325,7 @@ func TestSplitSimpleCondition_OperatorInsideJSONPointer(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_NormalExpressionWithOperator(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("$statusCode == 200")
+	l, op, r, found := expression.SplitSimpleCondition("$statusCode == 200")
 	assert.True(t, found)
 	assert.Equal(t, "$statusCode", l)
 	assert.Equal(t, "==", op)
@@ -333,7 +333,7 @@ func TestSplitSimpleCondition_NormalExpressionWithOperator(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_ExpressionWithComparison(t *testing.T) {
-	l, op, r, found := splitSimpleCondition("$statusCode >= 400")
+	l, op, r, found := expression.SplitSimpleCondition("$statusCode >= 400")
 	assert.True(t, found)
 	assert.Equal(t, "$statusCode", l)
 	assert.Equal(t, ">=", op)
@@ -341,7 +341,7 @@ func TestSplitSimpleCondition_ExpressionWithComparison(t *testing.T) {
 }
 
 func TestSplitSimpleCondition_BareExpressionNoOperator(t *testing.T) {
-	_, _, _, found := splitSimpleCondition("$response.body#/success")
+	_, _, _, found := expression.SplitSimpleCondition("$response.body#/success")
 	assert.False(t, found)
 }
 
@@ -1617,7 +1617,7 @@ func TestValidateSourceURL_FileSchemeSkipsHostCheck(t *testing.T) {
 func TestFetchSourceBytes_UnsupportedScheme(t *testing.T) {
 	u := mustParseURL("ftp://example.com/api.yaml")
 	config := &ResolveConfig{MaxBodySize: 10 * 1024 * 1024}
-	_, _, err := fetchSourceBytes(u, config)
+	_, _, err := fetchSourceBytes(context.Background(), u, config)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported source scheme")
 }
@@ -1631,7 +1631,7 @@ func TestFetchSourceBytes_HTTP(t *testing.T) {
 
 	u := mustParseURL(server.URL + "/api.yaml")
 	config := &ResolveConfig{MaxBodySize: 1024, Timeout: 5e9}
-	b, resolvedURL, err := fetchSourceBytes(u, config)
+	b, resolvedURL, err := fetchSourceBytes(context.Background(), u, config)
 	require.NoError(t, err)
 	assert.Equal(t, "http-content", string(b))
 	assert.Contains(t, resolvedURL, server.URL)
@@ -1644,7 +1644,7 @@ func TestFetchSourceBytes_File(t *testing.T) {
 
 	u := &url.URL{Scheme: "file", Path: filepath.ToSlash(filePath)}
 	config := &ResolveConfig{MaxBodySize: 1024}
-	b, resolvedURL, err := fetchSourceBytes(u, config)
+	b, resolvedURL, err := fetchSourceBytes(context.Background(), u, config)
 	require.NoError(t, err)
 	assert.Equal(t, "file-content", string(b))
 	assert.Contains(t, resolvedURL, "file://")
@@ -1653,7 +1653,7 @@ func TestFetchSourceBytes_File(t *testing.T) {
 func TestFetchSourceBytes_FileError(t *testing.T) {
 	u := mustParseURL("file:///nonexistent/path/file.yaml")
 	config := &ResolveConfig{MaxBodySize: 1024}
-	_, _, err := fetchSourceBytes(u, config)
+	_, _, err := fetchSourceBytes(context.Background(), u, config)
 	require.Error(t, err)
 }
 
@@ -1665,7 +1665,7 @@ func TestFetchSourceBytes_HTTPError(t *testing.T) {
 
 	u := mustParseURL(server.URL + "/api.yaml")
 	config := &ResolveConfig{MaxBodySize: 1024, Timeout: 5e9}
-	_, _, err := fetchSourceBytes(u, config)
+	_, _, err := fetchSourceBytes(context.Background(), u, config)
 	require.Error(t, err)
 }
 
@@ -1680,7 +1680,7 @@ func TestFetchHTTPSourceBytes_CustomHandler(t *testing.T) {
 			return []byte("response body"), nil
 		},
 	}
-	b, err := fetchHTTPSourceBytes("https://example.com/api.yaml", config)
+	b, err := fetchHTTPSourceBytes(context.Background(), "https://example.com/api.yaml", config)
 	require.NoError(t, err)
 	assert.Equal(t, "response body", string(b))
 }
@@ -1692,7 +1692,7 @@ func TestFetchHTTPSourceBytes_CustomHandler_ExceedsMax(t *testing.T) {
 			return []byte("this is too long"), nil
 		},
 	}
-	_, err := fetchHTTPSourceBytes("https://example.com/api.yaml", config)
+	_, err := fetchHTTPSourceBytes(context.Background(), "https://example.com/api.yaml", config)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "exceeds max size")
 }
@@ -1704,7 +1704,7 @@ func TestFetchHTTPSourceBytes_CustomHandler_Error(t *testing.T) {
 			return nil, fmt.Errorf("handler error")
 		},
 	}
-	_, err := fetchHTTPSourceBytes("https://example.com/api.yaml", config)
+	_, err := fetchHTTPSourceBytes(context.Background(), "https://example.com/api.yaml", config)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "handler error")
 }
@@ -1720,7 +1720,7 @@ func TestFetchHTTPSourceBytes_RealHTTP_Success(t *testing.T) {
 		MaxBodySize: 1024,
 		Timeout:     5e9, // 5 seconds
 	}
-	b, err := fetchHTTPSourceBytes(server.URL, config)
+	b, err := fetchHTTPSourceBytes(context.Background(), server.URL, config)
 	require.NoError(t, err)
 	assert.Equal(t, "openapi: 3.1.0", string(b))
 }
@@ -1735,7 +1735,7 @@ func TestFetchHTTPSourceBytes_RealHTTP_StatusError(t *testing.T) {
 		MaxBodySize: 1024,
 		Timeout:     5e9,
 	}
-	_, err := fetchHTTPSourceBytes(server.URL, config)
+	_, err := fetchHTTPSourceBytes(context.Background(), server.URL, config)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unexpected status code 500")
 }
@@ -1751,7 +1751,7 @@ func TestFetchHTTPSourceBytes_RealHTTP_BodyExceedsMax(t *testing.T) {
 		MaxBodySize: 5,
 		Timeout:     5e9,
 	}
-	_, err := fetchHTTPSourceBytes(server.URL, config)
+	_, err := fetchHTTPSourceBytes(context.Background(), server.URL, config)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "exceeds max size")
 }
@@ -1843,6 +1843,30 @@ func TestResolveFilePath_AbsoluteInsideRoots(t *testing.T) {
 	resolved, err := resolveFilePath(path, []string{tmpDir})
 	require.NoError(t, err)
 	assert.Equal(t, path, resolved)
+}
+
+// TestResolveFilePath_AbsoluteSymlinkEvaluationFails covers the second root check for
+// absolute paths. The first check canonicalizes via EvalSymlinks and skips the result
+// when that call fails, so a path that is lexically inside a root passes it. Descending
+// through a regular file makes EvalSymlinks fail with ENOTDIR rather than ErrNotExist,
+// which ensureResolvedPathWithinRoots surfaces instead of treating as a missing file.
+func TestResolveFilePath_AbsoluteSymlinkEvaluationFails(t *testing.T) {
+	// Resolve the temp dir up front. On macOS t.TempDir() sits under /var, which is
+	// itself a symlink to /private/var; leaving it unresolved would trip the first
+	// containment check instead of reaching the branch under test.
+	tmpDir, err := filepath.EvalSymlinks(t.TempDir())
+	require.NoError(t, err)
+
+	regularFile := filepath.Join(tmpDir, "not-a-directory.yaml")
+	require.NoError(t, os.WriteFile(regularFile, []byte("content"), 0o600))
+
+	// Lexically inside tmpDir, but traverses through a regular file.
+	path := filepath.Join(regularFile, "child.yaml")
+
+	_, err = resolveFilePath(path, []string{tmpDir})
+	require.Error(t, err)
+	assert.NotContains(t, err.Error(), "outside configured roots",
+		"expected the raw EvalSymlinks failure, not the containment rejection")
 }
 
 // ---------------------------------------------------------------------------

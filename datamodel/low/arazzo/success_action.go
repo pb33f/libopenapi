@@ -15,24 +15,26 @@ import (
 
 // SuccessAction represents a low-level Arazzo Success Action Object.
 // A success action can be a full definition or a Reusable Object with a $components reference.
-// https://spec.openapis.org/arazzo/v1.0.1#success-action-object
+// https://spec.openapis.org/arazzo/v1.1.0#success-action-object
 type SuccessAction struct {
-	Name       low.NodeReference[string]
-	Type       low.NodeReference[string]
-	WorkflowId low.NodeReference[string]
-	StepId     low.NodeReference[string]
-	Criteria   low.NodeReference[[]low.ValueReference[*Criterion]]
+	Name         low.NodeReference[string]
+	Type         low.NodeReference[string]
+	WorkflowId   low.NodeReference[string]
+	StepId       low.NodeReference[string]
+	Criteria     low.NodeReference[[]low.ValueReference[*Criterion]]
+	Parameters   low.NodeReference[[]low.ValueReference[*Parameter]]
 	ComponentRef low.NodeReference[string]
-	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
-	KeyNode    *yaml.Node
-	RootNode   *yaml.Node
-	index      *index.SpecIndex
-	context    context.Context
+	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode      *yaml.Node
+	RootNode     *yaml.Node
+	index        *index.SpecIndex
+	context      context.Context
 	*low.Reference
 	low.NodeMap
 }
 
 var extractSuccessActionCriteria = extractArray[Criterion]
+var extractSuccessActionParameters = extractArray[Parameter]
 
 // IsReusable returns true if this success action is a Reusable Object (has a reference field).
 func (s *SuccessAction) IsReusable() bool {
@@ -86,6 +88,15 @@ func (s *SuccessAction) Build(ctx context.Context, keyNode, root *yaml.Node, idx
 		return err
 	}
 	s.Criteria = criteria
+
+	if err := requireSequence(ParametersLabel, "a sequence of Parameter Objects", root); err != nil {
+		return err
+	}
+	parameters, err := extractSuccessActionParameters(ctx, ParametersLabel, root, idx)
+	if err != nil {
+		return err
+	}
+	s.Parameters = parameters
 	return nil
 }
 
@@ -120,6 +131,11 @@ func (s *SuccessAction) Hash() uint64 {
 		if !s.Criteria.IsEmpty() {
 			for _, c := range s.Criteria.Value {
 				low.HashUint64(h, c.Value.Hash())
+			}
+		}
+		if !s.Parameters.IsEmpty() {
+			for _, parameter := range s.Parameters.Value {
+				low.HashUint64(h, parameter.Value.Hash())
 			}
 		}
 		hashExtensionsInto(h, s.Extensions)

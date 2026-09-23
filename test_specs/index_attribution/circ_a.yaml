@@ -1,0 +1,5 @@
+A:
+  type: object
+  properties:
+    toB:
+      $ref: "./circ_b.yaml#/B"

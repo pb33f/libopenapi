@@ -843,9 +843,9 @@ func TestEvaluateStringValue_EmbeddedWithLiteralBracesBeforeExpression(t *testin
 		Inputs: map[string]any{"id": "abc-123"},
 	}
 
-	val, err := engine.evaluateStringValue("literal {brace} {$inputs.id}", exprCtx)
-	require.NoError(t, err)
-	assert.Equal(t, "literal {brace} abc-123", val)
+	_, err := engine.evaluateStringValue("literal {brace} {$inputs.id}", exprCtx)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "literal opening brace")
 }
 
 func TestEvaluateStringValue_EmbeddedParseError(t *testing.T) {
@@ -898,32 +898,32 @@ func TestPopulateStepOutputs_NilOutputs(t *testing.T) {
 	result := &StepResult{Outputs: make(map[string]any)}
 	exprCtx := &expression.Context{}
 
-	err := engine.populateStepOutputs(step, result, exprCtx)
+	err := engine.populateStepOutputs(step, nil, result, exprCtx)
 	require.NoError(t, err)
 }
 
 func TestPopulateStepOutputs_EmptyOutputs(t *testing.T) {
 	doc := &high.Arazzo{Arazzo: "1.0.1"}
 	engine := NewEngine(doc, nil, nil)
-	outputs := orderedmap.New[string, string]()
+	outputs := orderedmap.New[string, *high.OutputValue]()
 	step := &high.Step{StepId: "s1", Outputs: outputs}
 	result := &StepResult{Outputs: make(map[string]any)}
 	exprCtx := &expression.Context{}
 
-	err := engine.populateStepOutputs(step, result, exprCtx)
+	err := engine.populateStepOutputs(step, nil, result, exprCtx)
 	require.NoError(t, err)
 }
 
 func TestPopulateStepOutputs_ValidOutputs(t *testing.T) {
 	doc := &high.Arazzo{Arazzo: "1.0.1"}
 	engine := NewEngine(doc, nil, nil)
-	outputs := orderedmap.New[string, string]()
-	outputs.Set("statusResult", "$statusCode")
+	outputs := orderedmap.New[string, *high.OutputValue]()
+	outputs.Set("statusResult", high.NewExpressionOutputValue("$statusCode"))
 	step := &high.Step{StepId: "s1", Outputs: outputs}
 	result := &StepResult{Outputs: make(map[string]any)}
 	exprCtx := &expression.Context{StatusCode: 201}
 
-	err := engine.populateStepOutputs(step, result, exprCtx)
+	err := engine.populateStepOutputs(step, nil, result, exprCtx)
 	require.NoError(t, err)
 	assert.Equal(t, 201, result.Outputs["statusResult"])
 }
@@ -931,13 +931,13 @@ func TestPopulateStepOutputs_ValidOutputs(t *testing.T) {
 func TestPopulateStepOutputs_EvalError(t *testing.T) {
 	doc := &high.Arazzo{Arazzo: "1.0.1"}
 	engine := NewEngine(doc, nil, nil)
-	outputs := orderedmap.New[string, string]()
-	outputs.Set("badOutput", "$inputs.missing")
+	outputs := orderedmap.New[string, *high.OutputValue]()
+	outputs.Set("badOutput", high.NewExpressionOutputValue("$inputs.missing"))
 	step := &high.Step{StepId: "s1", Outputs: outputs}
 	result := &StepResult{Outputs: make(map[string]any)}
 	exprCtx := &expression.Context{}
 
-	err := engine.populateStepOutputs(step, result, exprCtx)
+	err := engine.populateStepOutputs(step, nil, result, exprCtx)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to evaluate output")
 }
@@ -960,7 +960,7 @@ func TestPopulateWorkflowOutputs_NilOutputs(t *testing.T) {
 func TestPopulateWorkflowOutputs_EmptyOutputs(t *testing.T) {
 	doc := &high.Arazzo{Arazzo: "1.0.1"}
 	engine := NewEngine(doc, nil, nil)
-	outputs := orderedmap.New[string, string]()
+	outputs := orderedmap.New[string, *high.OutputValue]()
 	wf := &high.Workflow{WorkflowId: "wf1", Outputs: outputs}
 	result := &WorkflowResult{Outputs: make(map[string]any)}
 	exprCtx := &expression.Context{Outputs: make(map[string]any)}
@@ -972,8 +972,8 @@ func TestPopulateWorkflowOutputs_EmptyOutputs(t *testing.T) {
 func TestPopulateWorkflowOutputs_ValidOutputs(t *testing.T) {
 	doc := &high.Arazzo{Arazzo: "1.0.1"}
 	engine := NewEngine(doc, nil, nil)
-	outputs := orderedmap.New[string, string]()
-	outputs.Set("finalStatus", "$statusCode")
+	outputs := orderedmap.New[string, *high.OutputValue]()
+	outputs.Set("finalStatus", high.NewExpressionOutputValue("$statusCode"))
 	wf := &high.Workflow{WorkflowId: "wf1", Outputs: outputs}
 	result := &WorkflowResult{Outputs: make(map[string]any)}
 	exprCtx := &expression.Context{StatusCode: 200, Outputs: make(map[string]any)}
@@ -987,8 +987,8 @@ func TestPopulateWorkflowOutputs_ValidOutputs(t *testing.T) {
 func TestPopulateWorkflowOutputs_EvalError(t *testing.T) {
 	doc := &high.Arazzo{Arazzo: "1.0.1"}
 	engine := NewEngine(doc, nil, nil)
-	outputs := orderedmap.New[string, string]()
-	outputs.Set("bad", "$inputs.missing")
+	outputs := orderedmap.New[string, *high.OutputValue]()
+	outputs.Set("bad", high.NewExpressionOutputValue("$inputs.missing"))
 	wf := &high.Workflow{WorkflowId: "wf1", Outputs: outputs}
 	result := &WorkflowResult{Outputs: make(map[string]any)}
 	exprCtx := &expression.Context{Outputs: make(map[string]any)}
@@ -1272,8 +1272,8 @@ func TestExecuteStep_SubWorkflowFailsNoError(t *testing.T) {
 // ===========================================================================
 
 func TestRunWorkflow_PopulateWorkflowOutputsError(t *testing.T) {
-	outputs := orderedmap.New[string, string]()
-	outputs.Set("badRef", "$inputs.nonexistent")
+	outputs := orderedmap.New[string, *high.OutputValue]()
+	outputs.Set("badRef", high.NewExpressionOutputValue("$inputs.nonexistent"))
 	doc := &high.Arazzo{
 		Workflows: []*high.Workflow{
 			{
@@ -1301,8 +1301,8 @@ func TestRunWorkflow_PopulateWorkflowOutputsError(t *testing.T) {
 // ===========================================================================
 
 func TestExecuteStep_PopulateStepOutputsError(t *testing.T) {
-	stepOutputs := orderedmap.New[string, string]()
-	stepOutputs.Set("badRef", "$inputs.nonexistent")
+	stepOutputs := orderedmap.New[string, *high.OutputValue]()
+	stepOutputs.Set("badRef", high.NewExpressionOutputValue("$inputs.nonexistent"))
 	doc := &high.Arazzo{
 		Workflows: []*high.Workflow{
 			{
@@ -1550,10 +1550,64 @@ func TestEnsureResolvedPathWithinRoots_PathOutsideRoots(t *testing.T) {
 	assert.Contains(t, err.Error(), "outside configured roots")
 }
 
-func TestEnsureResolvedPathWithinRoots_EvalSymlinksNotExist(t *testing.T) {
-	// If the path doesn't exist, EvalSymlinks returns ErrNotExist => return nil
-	err := ensureResolvedPathWithinRoots("/nonexistent/path/file.yaml", []string{"/some/root"})
+func TestEnsureResolvedPathWithinRoots_MissingPathInsideRoot(t *testing.T) {
+	root := t.TempDir()
+	canonicalRoot, err := filepath.EvalSymlinks(root)
+	require.NoError(t, err)
+	path := filepath.Join(root, "missing", "file.yaml")
+	err = ensureResolvedPathWithinRoots(path, []string{canonicalRoot})
 	assert.NoError(t, err)
+}
+
+func TestResolvePathForContainment_ErrorBranches(t *testing.T) {
+	t.Run("existing prefix is not a directory", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "file.yaml")
+		require.NoError(t, os.WriteFile(file, []byte("content"), 0o600))
+		path := filepath.Join(file, "child.yaml")
+
+		evalSymlinks := func(candidate string) (string, error) {
+			if candidate == path {
+				return "", os.ErrNotExist
+			}
+			return candidate, nil
+		}
+
+		_, err := resolvePathForContainmentWith(path, evalSymlinks, os.Stat)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "is not a directory")
+	})
+
+	t.Run("existing prefix disappears before stat", func(t *testing.T) {
+		root := t.TempDir()
+		path := filepath.Join(root, "missing.yaml")
+		sentinel := errors.New("prefix disappeared")
+
+		evalSymlinks := func(candidate string) (string, error) {
+			if candidate == path {
+				return "", os.ErrNotExist
+			}
+			return candidate, nil
+		}
+		stat := func(string) (os.FileInfo, error) { return nil, sentinel }
+
+		_, err := resolvePathForContainmentWith(path, evalSymlinks, stat)
+		assert.ErrorIs(t, err, sentinel)
+	})
+
+	t.Run("non-missing evaluation error", func(t *testing.T) {
+		sentinel := errors.New("evaluation failed")
+		evalSymlinks := func(string) (string, error) { return "", sentinel }
+
+		_, err := resolvePathForContainmentWith("any", evalSymlinks, os.Stat)
+		assert.ErrorIs(t, err, sentinel)
+	})
+
+	t.Run("filesystem root never resolves", func(t *testing.T) {
+		evalSymlinks := func(string) (string, error) { return "", os.ErrNotExist }
+
+		_, err := resolvePathForContainmentWith(".", evalSymlinks, os.Stat)
+		assert.ErrorIs(t, err, os.ErrNotExist)
+	})
 }
 
 func TestEnsureResolvedPathWithinRoots_EvalSymlinksOtherError(t *testing.T) {
@@ -1707,7 +1761,7 @@ func TestResolveSources_FetchFails(t *testing.T) {
 func TestFetchSourceBytes_UnsupportedScheme_Coverage(t *testing.T) {
 	config := &ResolveConfig{MaxBodySize: 10 * 1024 * 1024}
 	u, _ := parseAndResolveSourceURL("ftp://example.com/file", "")
-	_, _, err := fetchSourceBytes(u, config)
+	_, _, err := fetchSourceBytes(context.Background(), u, config)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported source scheme")
 }
@@ -1724,7 +1778,7 @@ func TestFetchHTTPSourceBytes_HandlerOversized(t *testing.T) {
 			return []byte("toolongbody"), nil
 		},
 	}
-	_, err := fetchHTTPSourceBytes("https://example.com", config)
+	_, err := fetchHTTPSourceBytes(context.Background(), "https://example.com", config)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "exceeds max size")
 }
@@ -1776,7 +1830,7 @@ func TestFetchSourceBytes_FileSchemeSuccess(t *testing.T) {
 	fileURL := (&url.URL{Scheme: "file", Path: filepath.ToSlash(testFile)}).String()
 	u, err := parseAndResolveSourceURL(fileURL, "")
 	require.NoError(t, err)
-	data, resolvedURL, err := fetchSourceBytes(u, config)
+	data, resolvedURL, err := fetchSourceBytes(context.Background(), u, config)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("openapi: 3.0.0"), data)
 	assert.Contains(t, resolvedURL, "spec.yaml")
@@ -1797,7 +1851,7 @@ func TestFetchHTTPSourceBytes_RealHTTPSuccess_WithServer(t *testing.T) {
 		Timeout:     30 * 1000 * 1000 * 1000, // 30 seconds in nanoseconds (time.Duration)
 		MaxBodySize: 10 * 1024 * 1024,
 	}
-	data, err := fetchHTTPSourceBytes(srv.URL, config)
+	data, err := fetchHTTPSourceBytes(context.Background(), srv.URL, config)
 	assert.NoError(t, err)
 	assert.Equal(t, []byte("openapi: 3.0.0"), data)
 }
@@ -1871,11 +1925,11 @@ func TestEngine_FullIntegration_ExpressionParams(t *testing.T) {
 // ===========================================================================
 
 func TestEngine_FullIntegration_StepAndWorkflowOutputs(t *testing.T) {
-	stepOutputs := orderedmap.New[string, string]()
-	stepOutputs.Set("status", "$statusCode")
+	stepOutputs := orderedmap.New[string, *high.OutputValue]()
+	stepOutputs.Set("status", high.NewExpressionOutputValue("$statusCode"))
 
-	wfOutputs := orderedmap.New[string, string]()
-	wfOutputs.Set("result", "$steps.s1.outputs.status")
+	wfOutputs := orderedmap.New[string, *high.OutputValue]()
+	wfOutputs.Set("result", high.NewExpressionOutputValue("$steps.s1.outputs.status"))
 
 	doc := &high.Arazzo{
 		Arazzo: "1.0.1",
@@ -1979,8 +2033,8 @@ func TestEngine_TopologicalSort_UnknownDependsOnSkipped(t *testing.T) {
 // ===========================================================================
 
 func TestEngine_FullIntegration_ResponseBodyExpressions(t *testing.T) {
-	stepOutputs := orderedmap.New[string, string]()
-	stepOutputs.Set("petName", "$response.body#/name")
+	stepOutputs := orderedmap.New[string, *high.OutputValue]()
+	stepOutputs.Set("petName", high.NewExpressionOutputValue("$response.body#/name"))
 
 	doc := &high.Arazzo{
 		Arazzo: "1.0.1",
@@ -2080,7 +2134,7 @@ func TestFetchSourceBytes_WindowsDriveInHost(t *testing.T) {
 			MaxBodySize: 10 * 1024 * 1024,
 			FSRoots:     []string{resolvedTmpDir},
 		}
-		data, _, err := fetchSourceBytes(fakeURL, config)
+		data, _, err := fetchSourceBytes(context.Background(), fakeURL, config)
 		assert.NoError(t, err)
 		assert.Equal(t, []byte("openapi: 3.0.0"), data)
 	} else {
@@ -2090,7 +2144,7 @@ func TestFetchSourceBytes_WindowsDriveInHost(t *testing.T) {
 			MaxBodySize: 10 * 1024 * 1024,
 			FSRoots:     []string{"/fake"},
 		}
-		_, _, err := fetchSourceBytes(synthURL, config)
+		_, _, err := fetchSourceBytes(context.Background(), synthURL, config)
 		// Will fail to find the file, but the drive letter reconstruction branch is hit
 		assert.Error(t, err)
 	}

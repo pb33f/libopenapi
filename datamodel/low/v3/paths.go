@@ -182,17 +182,24 @@ func extractPathItemsMap(ctx context.Context, root *yaml.Node, idx *index.SpecIn
 			cNode := value.currentNode
 
 			foundContext := ctx
+			// pathIdx is a closure local on purpose. idx is captured and shared by every goroutine
+			// this slice is translated across, so it must never be assigned to.
+			pathIdx := idx
 			var isRef bool
 			var refNode *yaml.Node
 			if ok, _, _ := utils.IsNodeRefValue(pNode); ok {
 				isRef = true
 				refNode = pNode
-				r, _, err, fCtx := low.LocateRefNodeWithContext(ctx, pNode, idx)
+				r, fIdx, err, fCtx := low.LocateRefNodeWithContext(ctx, pNode, idx)
 				if r != nil {
 					pNode = r
 					foundContext = fCtx
 					if err != nil && !idx.AllowCircularReferenceResolving() {
 						return buildResult{}, fmt.Errorf("path item build failed: %s", err.Error())
+					}
+					// attribute the path item to the file that owns the resolved node.
+					if fIdx != nil {
+						pathIdx = fIdx
 					}
 				} else {
 					return buildResult{}, fmt.Errorf("path item build failed: cannot find reference: '%s' at line %d, col %d",
@@ -202,7 +209,7 @@ func extractPathItemsMap(ctx context.Context, root *yaml.Node, idx *index.SpecIn
 
 			path := new(PathItem)
 			_ = low.BuildModel(pNode, path)
-			err := path.Build(foundContext, cNode, pNode, idx)
+			err := path.Build(foundContext, cNode, pNode, pathIdx)
 
 			if isRef {
 				path.SetReference(refNode.Content[1].Value, refNode)

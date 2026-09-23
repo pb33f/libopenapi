@@ -178,6 +178,27 @@ func (p *Parameter) IsExploded() bool {
 	return *p.Explode
 }
 
+// EffectiveStyle returns the parameter serialization style after applying the
+// OpenAPI location-specific default.
+func (p *Parameter) EffectiveStyle() string {
+	if p.Style != "" {
+		return p.Style
+	}
+	if p.In == "query" || p.In == "cookie" {
+		return "form"
+	}
+	return "simple"
+}
+
+// EffectiveExplode returns the explode value after applying the OpenAPI
+// default. Form parameters explode by default; all other styles do not.
+func (p *Parameter) EffectiveExplode() bool {
+	if p.Explode != nil {
+		return *p.Explode
+	}
+	return p.EffectiveStyle() == "form"
+}
+
 // IsDefaultFormEncoding will return true if the parameter has no exploded value, or has exploded set to true, and no style
 // or a style set to form. This combination is the default encoding/serialization style for parameters for OpenAPI 3+
 func (p *Parameter) IsDefaultFormEncoding() bool {

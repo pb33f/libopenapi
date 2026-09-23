@@ -1,0 +1,71 @@
+openapi: 3.1.0
+info:
+  title: level one
+  version: 1.0.0
+paths: {}
+pathItems:
+  PI:
+    get:
+      operationId: externalOp
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+components:
+  schemas:
+    L1:
+      type: object
+      externalDocs:
+        url: https://pb33f.io
+      xml:
+        name: l1
+      properties:
+        alpha:
+          type: string
+        beta:
+          type: integer
+        deep:
+          $ref: './level2.yaml#/Deep'
+      patternProperties:
+        '^x-':
+          type: string
+      dependentSchemas:
+        alpha:
+          type: object
+      additionalProperties:
+        type: boolean
+      propertyNames:
+        type: string
+      unevaluatedProperties:
+        type: boolean
+      unevaluatedItems:
+        type: string
+      contentSchema:
+        type: string
+      not:
+        type: 'null'
+      if:
+        type: object
+      then:
+        type: object
+      else:
+        type: object
+      allOf:
+        - type: object
+      anyOf:
+        - type: object
+      oneOf:
+        - type: object
+      prefixItems:
+        - type: string
+      contains:
+        type: string
+      items:
+        type: string
+      $defs:
+        Helper:
+          type: string

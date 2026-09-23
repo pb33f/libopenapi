@@ -1434,8 +1434,8 @@ func TestValidate_EarlyReturn_WhenRequiredFieldsMissing(t *testing.T) {
 func TestValidate_EmptyOutputKeyIsAccepted(t *testing.T) {
 	// An output with a valid key regex should pass
 	doc := validMinimalDoc()
-	outputs := orderedmap.New[string, string]()
-	outputs.Set("valid.key-1_0", "$steps.addPet.outputs.id")
+	outputs := orderedmap.New[string, *high.OutputValue]()
+	outputs.Set("valid.key-1_0", high.NewExpressionOutputValue("$steps.addPet.outputs.id"))
 	doc.Workflows[0].Outputs = outputs
 	result := Validate(doc)
 	assert.Nil(t, result)
@@ -1443,8 +1443,8 @@ func TestValidate_EmptyOutputKeyIsAccepted(t *testing.T) {
 
 func TestValidate_InvalidOutputKey(t *testing.T) {
 	doc := validMinimalDoc()
-	outputs := orderedmap.New[string, string]()
-	outputs.Set("invalid key!", "$steps.addPet.outputs.id")
+	outputs := orderedmap.New[string, *high.OutputValue]()
+	outputs.Set("invalid key!", high.NewExpressionOutputValue("$steps.addPet.outputs.id"))
 	doc.Workflows[0].Outputs = outputs
 	result := Validate(doc)
 	require.NotNil(t, result)
@@ -1454,8 +1454,8 @@ func TestValidate_InvalidOutputKey(t *testing.T) {
 
 func TestValidate_StepInvalidOutputKey(t *testing.T) {
 	doc := validMinimalDoc()
-	outputs := orderedmap.New[string, string]()
-	outputs.Set("bad key!", "$response.body#/id")
+	outputs := orderedmap.New[string, *high.OutputValue]()
+	outputs.Set("bad key!", high.NewExpressionOutputValue("$response.body#/id"))
 	doc.Workflows[0].Steps[0].Outputs = outputs
 	result := Validate(doc)
 	require.NotNil(t, result)

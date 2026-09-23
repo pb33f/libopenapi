@@ -404,6 +404,12 @@ func (sp *SchemaProxy) AddNode(key int, node *yaml.Node) {
 }
 
 // GetIndex will return the index.SpecIndex pointer that was passed to the SchemaProxy during build.
+// This is the index owning the proxy's own nodes (the key node and the value node).
+//
+// For a child proxy (a property, an allOf member, and so on) the reference is resolved before the
+// proxy is built, so this is already the referenced file. For a component level proxy holding an
+// unresolved $ref node it is the file the $ref was written in, not the file it points at, and
+// Schema().GetIndex() is the one that names the file the content came from.
 func (sp *SchemaProxy) GetIndex() *index.SpecIndex {
 	return sp.idx
 }

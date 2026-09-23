@@ -12,13 +12,14 @@ import (
 
 // SuccessAction represents a high-level Arazzo Success Action Object.
 // A success action can be a full definition or a Reusable Object with a $components reference.
-// https://spec.openapis.org/arazzo/v1.0.1#success-action-object
+// https://spec.openapis.org/arazzo/v1.1.0#success-action-object
 type SuccessAction struct {
 	Name       string                              `json:"name,omitempty" yaml:"name,omitempty"`
 	Type       string                              `json:"type,omitempty" yaml:"type,omitempty"`
 	WorkflowId string                              `json:"workflowId,omitempty" yaml:"workflowId,omitempty"`
 	StepId     string                              `json:"stepId,omitempty" yaml:"stepId,omitempty"`
 	Criteria   []*Criterion                        `json:"criteria,omitempty" yaml:"criteria,omitempty"`
+	Parameters []*Parameter                        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 	Reference  string                              `json:"reference,omitempty" yaml:"reference,omitempty"`
 	Extensions *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low        *low.SuccessAction
@@ -50,6 +51,9 @@ func NewSuccessAction(sa *low.SuccessAction) *SuccessAction {
 	}
 	if !sa.Criteria.IsEmpty() {
 		s.Criteria = buildSlice(sa.Criteria.Value, NewCriterion)
+	}
+	if !sa.Parameters.IsEmpty() {
+		s.Parameters = buildSlice(sa.Parameters.Value, NewParameter)
 	}
 	s.Extensions = high.ExtractExtensions(sa.Extensions)
 	return s
@@ -91,6 +95,9 @@ func (s *SuccessAction) MarshalYAML() (any, error) {
 	}
 	if len(s.Criteria) > 0 {
 		m.Set(low.CriteriaLabel, s.Criteria)
+	}
+	if len(s.Parameters) > 0 {
+		m.Set(low.ParametersLabel, s.Parameters)
 	}
 	marshalExtensions(m, s.Extensions)
 	return m, nil
