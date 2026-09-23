@@ -88,7 +88,7 @@ func TestEdgeCaseRendering(t *testing.T) {
 		"export type Deep = unknown;",
 		"export type Both = (string | number) & Flags;",
 		" * First paragraph.\n *\n * Second paragraph.",
-		"export type Values = Record<string, Choice>;",
+		"export type Values = { [key: string]: Choice };",
 		"export type Tail = Choice;",
 	} {
 		if !strings.Contains(source, want) {

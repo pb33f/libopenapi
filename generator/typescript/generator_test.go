@@ -127,7 +127,7 @@ func TestValidNamesWinOverRenamedComponents(t *testing.T) {
 	for _, want := range []string{
 		"export type MyType = number;",    // valid name kept verbatim
 		"export type MyType__2 = string;", // my-type renamed onto a taken name
-		"export interface RecordType {",   // shadowing a global the output uses
+		"export interface ArrayType {",    // shadowing a global the output uses
 		"export type Default = string;",   // reserved word renamed
 	} {
 		if !strings.Contains(source, want) {

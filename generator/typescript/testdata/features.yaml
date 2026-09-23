@@ -241,7 +241,7 @@ components:
     Escapes:
       type: string
       enum: ['a<b', 'x&y', 'quote"d']
-    Record:
+    Array:
       type: object
       properties:
         value:

@@ -129,3 +129,56 @@ func TestIsNullOnly(t *testing.T) {
 		}
 	}
 }
+
+// Union sibling properties are never rendered by Go, so they must not claim
+// nested type names a rendered type later needs. Under a compact delimiter
+// the sibling d_foo of I and the property foo of Id both want IDFoo.
+func TestUnionSiblingsDoNotClaimGoTypeNames(t *testing.T) {
+	spec := []byte(`openapi: 3.1.0
+info:
+  title: Names
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    I:
+      type: object
+      properties:
+        d_foo:
+          type: object
+          properties:
+            x:
+              type: string
+      oneOf:
+        - type: object
+        - type: string
+    Id:
+      type: object
+      properties:
+        foo:
+          type: object
+          properties:
+            y:
+              type: string
+`)
+	doc, err := libopenapi.NewDocument(spec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	model, err := doc.BuildV3Model()
+	if err != nil {
+		t.Fatal(err)
+	}
+	file, err := NewGenerator(WithNestedTypeNameDelimiter("")).RenderSchemas(model.Model.Components.Schemas)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(file.Source), "type IDFoo struct") || strings.Contains(string(file.Source), "IDFoo__2") {
+		t.Fatalf("rendered nested type lost its name:\n%s", file.Source)
+	}
+	for _, d := range file.Diagnostics {
+		if d.Code == DiagnosticTypeNameCollision {
+			t.Fatalf("unexpected collision: %+v", d)
+		}
+	}
+}

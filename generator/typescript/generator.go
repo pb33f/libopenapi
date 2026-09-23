@@ -6,6 +6,7 @@ package typescript
 import (
 	"encoding/json"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -74,7 +75,8 @@ type GeneratedFile struct {
 	Source []byte
 	// Types lists the exported type names in declaration order.
 	Types []string
-	// Diagnostics reports naming decisions made while rendering.
+	// Diagnostics reports naming decisions, pointers and schema keywords that
+	// could not be rendered exactly, and nested schemas that could not be built.
 	Diagnostics []Diagnostic
 }
 
@@ -98,15 +100,12 @@ func RenderSchemas(schemas *orderedmap.Map[string, *highbase.SchemaProxy], opts 
 // RenderSchemas renders an ordered map of component schemas as one TypeScript
 // module, declaring one exported type per schema in input order.
 func (g *Generator) RenderSchemas(schemas *orderedmap.Map[string, *highbase.SchemaProxy]) (*GeneratedFile, error) {
-	// The IR diagnostics describe Go model decisions (json.RawMessage unions,
-	// pointer shapes) that do not apply to TypeScript, so they are not
-	// forwarded; naming diagnostics are produced here.
-	verbatim := func(name string) string { return name }
-	irs, _, err := golang.NewGenerator(golang.WithTypeNameResolver(verbatim)).SchemaIRs(schemas)
+	irs, irDiagnostics, err := golang.NewGenerator(golang.WithTypeNameResolver(verbatim)).SchemaIRs(schemas)
 	if err != nil {
 		return nil, err
 	}
-	r := &render{names: make(map[string]string), components: make(map[string]*golang.SchemaIR)}
+	r := &render{names: make(map[string]string), components: make(map[string]*golang.SchemaIR), siblings: make(map[*golang.SchemaIR]*orderedmap.Map[string, *golang.SchemaIR])}
+	r.forwardChildSchemaDiagnostics(irDiagnostics)
 	var componentNames []string
 	if schemas != nil {
 		// Verbatim names claim first so a renamed component can never take the
@@ -119,8 +118,8 @@ func (g *Generator) RenderSchemas(schemas *orderedmap.Map[string, *highbase.Sche
 			componentNames = append(componentNames, name)
 			r.components[name] = irs[i]
 			i++
-			candidate, verbatim := g.typeName(name)
-			if verbatim {
+			candidate, kept := g.typeName(name)
+			if kept {
 				r.names[name] = r.claim(registry, name, candidate)
 				continue
 			}
@@ -180,12 +179,30 @@ func (g *Generator) typeName(name string) (string, bool) {
 	return renamed, false
 }
 
+// verbatim keeps names exactly as the document spells them when the golang IR
+// builder names types.
+func verbatim(name string) string { return name }
+
 // render carries per-invocation state: resolved component names, component
 // IRs for discriminator lookups, and the diagnostics recorded while printing.
 type render struct {
 	names       map[string]string
 	components  map[string]*golang.SchemaIR
+	siblings    map[*golang.SchemaIR]*orderedmap.Map[string, *golang.SchemaIR]
 	diagnostics []Diagnostic
+}
+
+// forwardChildSchemaDiagnostics keeps the IR diagnostics that apply to
+// TypeScript. Most describe Go model decisions (json.RawMessage unions,
+// pointer depth); a nested schema that could not be built renders as unknown
+// here too, so that one is kept.
+func (r *render) forwardChildSchemaDiagnostics(diagnostics []Diagnostic) {
+	for _, d := range diagnostics {
+		if d.Code == golang.DiagnosticChildSchema {
+			d.Message = strings.Replace(d.Message, "rendered as any", "rendered as unknown", 1)
+			r.diagnostics = append(r.diagnostics, d)
+		}
+	}
 }
 
 func (r *render) claim(registry *golang.NameRegistry, component, candidate string) string {
@@ -221,7 +238,7 @@ func (r *render) expr(ir *golang.SchemaIR, indent string) string {
 	}
 	if ir.Const != nil {
 		if literal, ok := literalType(ir.Const); ok {
-			return withNull(literal, ir.Nullable)
+			return withNull(literal, ir.Nullable && !nullExcluded(ir))
 		}
 	}
 	var out string
@@ -237,7 +254,7 @@ func (r *render) expr(ir *golang.SchemaIR, indent string) string {
 	case golang.KindEnum:
 		out = r.enumExpr(ir)
 	case golang.KindArray:
-		out = arrayOf(r.expr(ir.Items, indent))
+		out = r.arrayExpr(ir, indent)
 	case golang.KindObject, golang.KindAllOf:
 		// The shared IR flattens allOf: inline object members merge into
 		// Properties while $ref members stay in AllOf, even on KindObject.
@@ -251,7 +268,7 @@ func (r *render) expr(ir *golang.SchemaIR, indent string) string {
 	default:
 		return "unknown"
 	}
-	return withNull(out, ir.Nullable)
+	return withNull(out, ir.Nullable && !nullExcluded(ir))
 }
 
 const componentSchemaPrefix = "#/components/schemas/"
@@ -300,11 +317,11 @@ func (r *render) pointerTarget(ir *golang.SchemaIR, segments []string) (*golang.
 	for i := 0; i < len(segments) && ir != nil; i++ {
 		switch segments[i] {
 		case "properties":
-			if i+1 >= len(segments) || ir.Properties == nil {
+			if i+1 >= len(segments) {
 				return nil, false
 			}
 			i++
-			ir, _ = ir.Properties.Get(segments[i])
+			ir, _ = r.properties(ir).Get(segments[i])
 		case "items":
 			ir = ir.Items
 		case "additionalProperties":
@@ -323,7 +340,7 @@ func unescapePointer(segment string) string {
 func (r *render) enumExpr(ir *golang.SchemaIR) string {
 	var values []string
 	seen := make(map[string]struct{})
-	nullable := ir.Nullable
+	nullable := ir.Nullable && !nullExcluded(ir)
 	for _, node := range ir.Enum {
 		literal, ok := literalType(node)
 		if !ok {
@@ -347,18 +364,99 @@ func (r *render) enumExpr(ir *golang.SchemaIR) string {
 	return out
 }
 
-func (r *render) objectExpr(ir *golang.SchemaIR, indent string) string {
-	hasProperties := ir.Properties != nil && ir.Properties.Len() > 0
-	if !hasProperties && len(ir.Required) == 0 {
-		if ir.AdditionalProperties != nil {
-			return "Record<string, " + r.expr(ir.AdditionalProperties, indent) + ">"
-		}
-		if ir.AdditionalAllowed != nil && !*ir.AdditionalAllowed {
-			return "Record<string, never>"
-		}
-		return "Record<string, unknown>"
+// nullExcluded reports a 3.1 schema whose type array admits null while its
+// enum or const does not, so null is not a valid value. OpenAPI 3.0 nullable
+// adds null regardless, and a nullable oneOf collapsed onto one variant keeps
+// the variant's schema, whose type array does not name null.
+func nullExcluded(ir *golang.SchemaIR) bool {
+	schema := ir.SourceSchema
+	if schema == nil || !slices.Contains(schema.Type, "null") || (schema.Nullable != nil && *schema.Nullable) {
+		return false
 	}
-	return r.objectBody(ir, indent, false)
+	if schema.Const != nil {
+		return !isNullNode(schema.Const)
+	}
+	return len(schema.Enum) > 0 && !slices.ContainsFunc(schema.Enum, isNullNode)
+}
+
+func isNullNode(node *yaml.Node) bool {
+	return node != nil && node.Tag == "!!null"
+}
+
+// arrayExpr renders items as an element type and 3.1 prefixItems as a tuple.
+// Prefix positions are optional because JSON Schema does not require an array
+// to reach them; items then types the rest, items: false closes the tuple, and
+// no items leaves the rest unknown.
+func (r *render) arrayExpr(ir *golang.SchemaIR, indent string) string {
+	if len(ir.PrefixItems) == 0 {
+		return arrayOf(r.expr(ir.Items, indent))
+	}
+	elements := make([]string, 0, len(ir.PrefixItems)+1)
+	for _, prefix := range ir.PrefixItems {
+		elements = append(elements, parenthesizeUnion(r.expr(prefix, indent))+"?")
+	}
+	closed := ir.SourceSchema != nil && ir.SourceSchema.Items != nil && ir.SourceSchema.Items.IsB() && !ir.SourceSchema.Items.B
+	if !closed {
+		elements = append(elements, "..."+arrayOf(r.expr(ir.Items, indent)))
+	}
+	return "[" + strings.Join(elements, ", ") + "]"
+}
+
+// objectExpr renders an object. Maps are written as index-signature literals
+// rather than Record<string, T>: a type alias may refer to itself through an
+// object literal but not through Record, so recursive maps such as a JSON value
+// type would not compile.
+func (r *render) objectExpr(ir *golang.SchemaIR, indent string) string {
+	if r.properties(ir).Len() > 0 || len(ir.Required) > 0 {
+		return r.objectBody(ir, indent, false)
+	}
+	switch {
+	case hasPatternProperties(ir):
+		return "{ [key: string]: unknown }"
+	case ir.AdditionalProperties != nil:
+		return "{ [key: string]: " + r.expr(ir.AdditionalProperties, indent) + " }"
+	case ir.AdditionalAllowed != nil && !*ir.AdditionalAllowed:
+		return "{ [key: string]: never }"
+	}
+	return "{ [key: string]: unknown }"
+}
+
+// properties returns the declared properties of ir. For an object built from
+// allOf that also declares properties beside it, the shared IR keeps only the
+// members' properties, so the sibling ones are built here and appended.
+func (r *render) properties(ir *golang.SchemaIR) *orderedmap.Map[string, *golang.SchemaIR] {
+	if cached, ok := r.siblings[ir]; ok {
+		return cached
+	}
+	props := orderedmap.New[string, *golang.SchemaIR]()
+	if ir.Properties != nil {
+		for name, prop := range ir.Properties.FromOldest() {
+			props.Set(name, prop)
+		}
+	}
+	if schema := ir.SourceSchema; schema != nil && len(schema.AllOf) > 0 && schema.Properties != nil && schema.Properties.Len() > 0 {
+		siblings, diagnostics, err := golang.NewGenerator(golang.WithTypeNameResolver(verbatim)).SchemaIRs(schema.Properties)
+		r.forwardChildSchemaDiagnostics(diagnostics)
+		if err != nil {
+			r.diagnostics = append(r.diagnostics, Diagnostic{
+				Code:    golang.DiagnosticChildSchema,
+				Path:    ir.Name,
+				Message: "properties declared beside allOf could not be built and were left out: " + err.Error(),
+			})
+			siblings = nil
+		}
+		for i, name := range slices.Collect(schema.Properties.KeysFromOldest()) {
+			if _, declared := props.Get(name); !declared && i < len(siblings) {
+				props.Set(name, siblings[i])
+			}
+		}
+	}
+	r.siblings[ir] = props
+	return props
+}
+
+func hasPatternProperties(ir *golang.SchemaIR) bool {
+	return ir.PatternProperties != nil && ir.PatternProperties.Len() > 0
 }
 
 // objectBody prints a braced object literal. Required names that have no
@@ -375,16 +473,14 @@ func (r *render) objectBody(ir *golang.SchemaIR, indent string, unionSiblings bo
 	var b strings.Builder
 	b.WriteString("{\n")
 	declared := make(map[string]struct{})
-	if ir.Properties != nil {
-		for name, prop := range ir.Properties.FromOldest() {
-			declared[name] = struct{}{}
-			writeDoc(&b, prop, inner)
-			b.WriteString(inner + propertyKey(name))
-			if !isRequired(ir, name) {
-				b.WriteString("?")
-			}
-			b.WriteString(": " + r.expr(prop, inner) + ";\n")
+	for name, prop := range r.properties(ir).FromOldest() {
+		declared[name] = struct{}{}
+		writeDoc(&b, prop, inner)
+		b.WriteString(inner + propertyKey(name))
+		if !isRequired(ir, name) {
+			b.WriteString("?")
 		}
+		b.WriteString(": " + r.expr(prop, inner) + ";\n")
 	}
 	undeclaredType := "unknown"
 	if ir.AdditionalProperties != nil && !unionSiblings {
@@ -401,6 +497,8 @@ func (r *render) objectBody(ir *golang.SchemaIR, indent string, unionSiblings bo
 		b.WriteString(inner + propertyKey(name) + ": " + undeclaredType + ";\n")
 	}
 	switch {
+	case hasPatternProperties(ir):
+		b.WriteString(inner + "[key: string]: unknown;\n")
 	case ir.AdditionalProperties != nil && len(declared) == 0 && !unionSiblings:
 		b.WriteString(inner + "[key: string]: " + undeclaredType + ";\n")
 	case ir.AdditionalProperties != nil || (ir.AdditionalAllowed != nil && *ir.AdditionalAllowed):
@@ -410,17 +508,26 @@ func (r *render) objectBody(ir *golang.SchemaIR, indent string, unionSiblings bo
 	return b.String()
 }
 
+// allOfExpr intersects the referenced members with an object literal of the
+// merged inline members. Required names with no declared property, such as a
+// member that only makes an inherited property required, are printed as
+// unknown so the intersection makes the inherited member required without
+// changing its type. A member that renders as unknown adds nothing and is
+// left out.
 func (r *render) allOfExpr(ir *golang.SchemaIR, indent string) string {
 	var parts []string
 	for _, child := range ir.AllOf {
 		part := r.expr(child, indent)
-		if child != nil && (child.Kind == golang.KindUnion || child.Kind == golang.KindEnum || child.Nullable) {
-			part = "(" + part + ")"
+		if part == "unknown" {
+			continue
 		}
-		parts = append(parts, part)
+		parts = append(parts, parenthesizeUnion(part))
 	}
-	if ir.Properties != nil && ir.Properties.Len() > 0 {
-		parts = append(parts, r.objectBody(ir, indent, false))
+	if r.properties(ir).Len() > 0 || len(ir.Required) > 0 {
+		parts = append(parts, r.objectBody(ir, indent, true))
+	}
+	if len(parts) == 0 {
+		return "unknown"
 	}
 	return strings.Join(parts, " & ")
 }
@@ -445,11 +552,12 @@ func (r *render) unionExpr(ir *golang.SchemaIR, indent string) string {
 	seen := make(map[string]struct{})
 	for _, variant := range union.Variants {
 		part := r.expr(variant, indent)
-		if variant != nil && variant.Kind == golang.KindRef {
-			if values := discriminatorValues[variant.Ref]; len(values) > 0 {
-				if literals, ok := r.discriminatorLiterals(variant, union.Discriminator.PropertyName, values); ok {
-					part = "(" + part + " & { " + propertyKey(union.Discriminator.PropertyName) + ": " + literals + " })"
-				}
+		if union.Discriminator != nil && variant.Kind == golang.KindRef {
+			// OpenAPI falls back to the schema name when no mapping entry
+			// matches, so the name is accepted alongside any mapped values.
+			values := append([]string{golang.RefName(variant.Ref)}, discriminatorValues[variant.Ref]...)
+			if literals, ok := r.discriminatorLiterals(variant, union.Discriminator.PropertyName, values); ok {
+				part = "(" + part + " & { " + propertyKey(union.Discriminator.PropertyName) + ": " + literals + " })"
 			}
 		}
 		if _, dup := seen[part]; dup {
@@ -463,10 +571,7 @@ func (r *render) unionExpr(ir *golang.SchemaIR, indent string) string {
 	if !hasSiblings {
 		return out
 	}
-	if len(parts) > 1 {
-		out = "(" + out + ")"
-	}
-	return r.objectBody(ir, indent, true) + " & " + out
+	return r.objectBody(ir, indent, true) + " & " + parenthesizeUnion(out)
 }
 
 // discriminatorLiterals renders mapping values as literal types matching the
@@ -493,17 +598,22 @@ func (r *render) discriminatorLiterals(variant *golang.SchemaIR, property string
 		return "", false
 	}
 	sort.Strings(values)
-	literals := make([]string, 0, len(values))
+	var literals []string
 	for _, value := range values {
-		if !numeric {
-			literals = append(literals, quote(value))
-			continue
+		literal := quote(value)
+		if numeric {
+			var number json.Number
+			if json.Unmarshal([]byte(value), &number) != nil {
+				continue // the schema name, or a key that is not a number
+			}
+			literal = number.String()
 		}
-		var number json.Number
-		if err := json.Unmarshal([]byte(value), &number); err != nil {
-			return "", false
+		if !slices.Contains(literals, literal) {
+			literals = append(literals, literal)
 		}
-		literals = append(literals, number.String())
+	}
+	if len(literals) == 0 {
+		return "", false
 	}
 	return strings.Join(literals, " | "), true
 }
@@ -576,10 +686,38 @@ func withNull(expr string, nullable bool) string {
 }
 
 func arrayOf(element string) string {
-	if identifierPattern.MatchString(element) || strings.HasPrefix(element, "Record<") && !strings.Contains(element, " | ") {
+	if identifierPattern.MatchString(element) {
 		return element + "[]"
 	}
 	return "Array<" + element + ">"
+}
+
+// parenthesizeUnion wraps an expression whose top level is a union so it keeps
+// its meaning inside an intersection or tuple. A " | " nested inside braces,
+// brackets, parentheses, angle brackets or a string literal does not count.
+func parenthesizeUnion(expr string) string {
+	depth := 0
+	inString := false
+	for i := 0; i < len(expr); i++ {
+		c := expr[i]
+		switch {
+		case inString:
+			if c == '\\' {
+				i++
+			} else if c == '"' {
+				inString = false
+			}
+		case c == '"':
+			inString = true
+		case strings.IndexByte("{[(<", c) >= 0:
+			depth++
+		case strings.IndexByte("}])>", c) >= 0:
+			depth--
+		case depth == 0 && strings.HasPrefix(expr[i:], " | "):
+			return "(" + expr + ")"
+		}
+	}
+	return expr
 }
 
 var identifierPattern = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
@@ -614,5 +752,5 @@ var reservedTypeNames = []string{
 	"protected", "public", "return", "static", "string", "super", "switch", "symbol", "this",
 	"throw", "true", "try", "typeof", "undefined", "unknown", "var", "void", "while", "with",
 	"yield",
-	"Array", "Record",
+	"Array",
 }

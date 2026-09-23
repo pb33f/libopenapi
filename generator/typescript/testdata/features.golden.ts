@@ -35,14 +35,14 @@ export type NullableStatus = "on" | "off" | null;
 
 export type Priority = 1 | 2 | 3;
 
-export type Labels = Record<string, string>;
+export type Labels = { [key: string]: string };
 
 export interface Extensible {
   kind: string;
   [key: string]: unknown;
 }
 
-export type Opaque = Record<string, unknown>;
+export type Opaque = { [key: string]: unknown };
 
 export type AnyValue = unknown;
 
@@ -52,7 +52,7 @@ export type Admin = Person & {
 
 export type PersonAlias = Person;
 
-export type Pet = (Cat & { petType: "cat" | "kitten" }) | (Dog & { petType: "dog" });
+export type Pet = (Cat & { petType: "Cat" | "cat" | "kitten" }) | (Dog & { petType: "Dog" | "dog" });
 
 export interface Cat {
   petType: string;
@@ -106,7 +106,7 @@ export interface VersionTwo {
   schemaVersion: number;
 }
 
-export type Bare = (Cat & { petType: "cat" });
+export type Bare = (Cat & { petType: "Cat" | "cat" });
 
 export type Inherited = Tabby;
 
@@ -122,11 +122,11 @@ export type NullableHolder = {
 
 export type Leaf = string;
 
-export type Closed = Record<string, never>;
+export type Closed = { [key: string]: never };
 
 export type Escapes = "a<b" | "x&y" | "quote\"d";
 
-export interface RecordType {
+export interface ArrayType {
   value?: string;
 }
 
