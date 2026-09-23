@@ -90,5 +90,6 @@ templates; templates receive prepared values and contain no schema traversal.
 
 The next Go increments are form/multipart, binary and streaming responses,
 explicit pagination mappings, and consumer observation adapters. TypeScript
-should reuse the prepared contract and behavior fixtures after the Go surface is
-proven. External SDK repositories and publication remain consumer concerns.
+models are available from `generator/typescript`; a TypeScript SDK should reuse
+the prepared contract and behavior fixtures after the Go surface is proven.
+External SDK repositories and publication remain consumer concerns.
