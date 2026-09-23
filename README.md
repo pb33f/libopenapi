@@ -76,6 +76,20 @@ See all the documentation at https://pb33f.io/libopenapi/
 - [Parsing Code](https://pb33f.io/libopenapi/parsing-code/)
 - [FAQ](https://pb33f.io/libopenapi/faq/)
 - [About libopenapi](https://pb33f.io/libopenapi/about/)
+
+### Generating TypeScript models
+
+`generator/typescript` renders the component schemas of an OpenAPI document as
+a type-only TypeScript module, built from the same model as the Go generator.
+
+```go
+file, err := typescript.RenderSchemas(docModel.Model.Components.Schemas)
+os.WriteFile("api.gen.ts", file.Source, 0o644)
+```
+
+See [generator/typescript/README.md](generator/typescript/README.md) for how
+each schema shape maps to TypeScript.
+
 ---
 
 ### Quick-start tutorial
