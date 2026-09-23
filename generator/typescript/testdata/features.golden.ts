@@ -78,9 +78,9 @@ export type Event = {
 export type Matrix = Array<number[]>;
 
 export interface AccountRef {
-  id: Exclude<NonNullable<Account>["id"], undefined>;
-  score?: Exclude<NonNullable<Account>["score"], undefined>;
-  firstTag?: Exclude<NonNullable<NonNullable<Account>["tags"]>[number], undefined>;
+  id: string;
+  score?: number | null;
+  firstTag?: string;
 }
 
 /**
@@ -120,7 +120,7 @@ export type NullableHolder = {
   } | null;
 } | null;
 
-export type Leaf = Exclude<NonNullable<NonNullable<NullableHolder>["inner"]>["leaf"], undefined>;
+export type Leaf = string;
 
 export type Closed = Record<string, never>;
 

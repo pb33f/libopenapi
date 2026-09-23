@@ -227,7 +227,7 @@ func (r *render) expr(ir *golang.SchemaIR, indent string) string {
 	var out string
 	switch ir.Kind {
 	case golang.KindRef:
-		out = r.refName(ir)
+		out = r.refName(ir, indent)
 	case golang.KindString:
 		out = "string"
 	case golang.KindInteger, golang.KindNumber:
@@ -256,7 +256,7 @@ func (r *render) expr(ir *golang.SchemaIR, indent string) string {
 
 const componentSchemaPrefix = "#/components/schemas/"
 
-func (r *render) refName(ir *golang.SchemaIR) string {
+func (r *render) refName(ir *golang.SchemaIR, indent string) string {
 	ref := ir.Ref
 	if strings.HasPrefix(ref, componentSchemaPrefix) {
 		segments := strings.Split(strings.TrimPrefix(ref, componentSchemaPrefix), "/")
@@ -264,13 +264,16 @@ func (r *render) refName(ir *golang.SchemaIR) string {
 			segments[i] = unescapePointer(segments[i])
 		}
 		if name, ok := r.names[segments[0]]; ok {
-			if expr, ok := indexedAccess(name, segments[1:]); ok {
-				return expr
+			if len(segments) == 1 {
+				return name
+			}
+			if target, ok := r.pointerTarget(r.components[segments[0]], segments[1:]); ok {
+				return r.expr(target, indent)
 			}
 			r.diagnostics = append(r.diagnostics, Diagnostic{
 				Code:    DiagnosticUnsupportedPointer,
 				Path:    ref,
-				Message: "reference points inside a schema through a keyword other than properties, items or additionalProperties; rendered as unknown",
+				Message: "reference points inside a schema to something other than a declared property, items or additionalProperties schema; rendered as unknown",
 			})
 			return "unknown"
 		}
@@ -286,37 +289,31 @@ func (r *render) refName(ir *golang.SchemaIR) string {
 	return golang.PublicName(target)
 }
 
-// indexedAccess renders a JSON pointer below a component as a TypeScript
-// indexed access type, for example ConnectorDefinition/properties/connectorId
-// as Exclude<NonNullable<ConnectorDefinition>["connectorId"], undefined>. Each
-// container is made non-nullable so a nullable component or property can still
-// be indexed. The final step excludes only the undefined an optional property
-// adds: the referenced schema does not admit it, while null is kept because a
-// nullable target does. It reports false for pointers through other keywords.
-func indexedAccess(base string, segments []string) (string, bool) {
-	if len(segments) == 0 {
-		return base, true
-	}
-	expr := base
-	for i := 0; i < len(segments); i++ {
-		var index string
+// pointerTarget walks a JSON pointer below a component through the IR and
+// returns the schema it names, so the reference renders as that schema's own
+// type rather than as an indexed access into its container (which would lose
+// the value type behind an index signature). libopenapi only resolves pointers
+// through literal schema keywords, never through a $ref, so the walk does not
+// follow references. It reports false for keywords other than properties,
+// items and additionalProperties, or when the IR does not carry the schema.
+func (r *render) pointerTarget(ir *golang.SchemaIR, segments []string) (*golang.SchemaIR, bool) {
+	for i := 0; i < len(segments) && ir != nil; i++ {
 		switch segments[i] {
 		case "properties":
-			if i+1 >= len(segments) {
-				return "", false
+			if i+1 >= len(segments) || ir.Properties == nil {
+				return nil, false
 			}
 			i++
-			index = quote(segments[i])
+			ir, _ = ir.Properties.Get(segments[i])
 		case "items":
-			index = "number"
+			ir = ir.Items
 		case "additionalProperties":
-			index = "string"
+			ir = ir.AdditionalProperties
 		default:
-			return "", false
+			return nil, false
 		}
-		expr = "NonNullable<" + expr + ">[" + index + "]"
 	}
-	return "Exclude<" + expr + ", undefined>", true
+	return ir, ir != nil
 }
 
 func unescapePointer(segment string) string {
@@ -352,7 +349,7 @@ func (r *render) enumExpr(ir *golang.SchemaIR) string {
 
 func (r *render) objectExpr(ir *golang.SchemaIR, indent string) string {
 	hasProperties := ir.Properties != nil && ir.Properties.Len() > 0
-	if !hasProperties {
+	if !hasProperties && len(ir.Required) == 0 {
 		if ir.AdditionalProperties != nil {
 			return "Record<string, " + r.expr(ir.AdditionalProperties, indent) + ">"
 		}
@@ -364,13 +361,16 @@ func (r *render) objectExpr(ir *golang.SchemaIR, indent string) string {
 	return r.objectBody(ir, indent, false)
 }
 
-// objectBody prints a braced object literal. A schema-valued or explicitly
-// allowed additionalProperties adds an unknown index signature: a typed index
-// signature would have to admit every declared property type as well. With
-// requiredOnly, required names that have no declared property are printed as
-// required unknown members; intersected with union variants that declare them,
-// they make the variant's member required without changing its type.
-func (r *render) objectBody(ir *golang.SchemaIR, indent string, requiredOnly bool) string {
+// objectBody prints a braced object literal. Required names that have no
+// declared property are still required members: they take the
+// additionalProperties schema when there is one, and unknown otherwise. Beside
+// a union (unionSiblings) they are always unknown, so that intersected with a
+// variant that declares the name they make it required without changing its
+// type. An additionalProperties schema becomes a typed index signature when
+// every member takes that type, and an unknown one otherwise, because an index
+// signature must admit every declared property's type; an explicit
+// additionalProperties: true also adds the unknown signature.
+func (r *render) objectBody(ir *golang.SchemaIR, indent string, unionSiblings bool) string {
 	inner := indent + "  "
 	var b strings.Builder
 	b.WriteString("{\n")
@@ -386,19 +386,24 @@ func (r *render) objectBody(ir *golang.SchemaIR, indent string, requiredOnly boo
 			b.WriteString(": " + r.expr(prop, inner) + ";\n")
 		}
 	}
-	if requiredOnly {
-		var names []string
-		for name := range ir.Required {
-			if _, ok := declared[name]; !ok {
-				names = append(names, name)
-			}
-		}
-		sort.Strings(names)
-		for _, name := range names {
-			b.WriteString(inner + propertyKey(name) + ": unknown;\n")
+	undeclaredType := "unknown"
+	if ir.AdditionalProperties != nil && !unionSiblings {
+		undeclaredType = r.expr(ir.AdditionalProperties, inner)
+	}
+	var names []string
+	for name := range ir.Required {
+		if _, ok := declared[name]; !ok {
+			names = append(names, name)
 		}
 	}
-	if ir.AdditionalProperties != nil || (ir.AdditionalAllowed != nil && *ir.AdditionalAllowed) {
+	sort.Strings(names)
+	for _, name := range names {
+		b.WriteString(inner + propertyKey(name) + ": " + undeclaredType + ";\n")
+	}
+	switch {
+	case ir.AdditionalProperties != nil && len(declared) == 0 && !unionSiblings:
+		b.WriteString(inner + "[key: string]: " + undeclaredType + ";\n")
+	case ir.AdditionalProperties != nil || (ir.AdditionalAllowed != nil && *ir.AdditionalAllowed):
 		b.WriteString(inner + "[key: string]: unknown;\n")
 	}
 	b.WriteString(indent + "}")
@@ -602,12 +607,12 @@ func validTypeName(name string) bool {
 // reserved words, predefined type names, and the global generic types the
 // generated output itself refers to.
 var reservedTypeNames = []string{
-	"any", "bigint", "boolean", "break", "case", "catch", "class", "const", "continue",
-	"debugger", "declare", "default", "delete", "do", "else", "enum", "export", "extends",
+	"any", "as", "await", "bigint", "boolean", "break", "case", "catch", "class", "const", "continue",
+	"debugger", "default", "delete", "do", "else", "enum", "export", "extends",
 	"false", "finally", "for", "function", "if", "implements", "import", "in", "instanceof",
 	"interface", "let", "never", "new", "null", "number", "object", "package", "private",
 	"protected", "public", "return", "static", "string", "super", "switch", "symbol", "this",
 	"throw", "true", "try", "typeof", "undefined", "unknown", "var", "void", "while", "with",
 	"yield",
-	"Array", "Exclude", "NonNullable", "Record",
+	"Array", "Record",
 }

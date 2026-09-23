@@ -101,9 +101,3 @@ func TestRenderSchemasReportsIRErrors(t *testing.T) {
 		t.Fatalf("got %v, want %v", err, golang.ErrNilSchema)
 	}
 }
-
-func TestIndexedAccessRejectsIncompletePointer(t *testing.T) {
-	if expr, ok := indexedAccess("Account", []string{"properties"}); ok {
-		t.Fatalf("pointer ending at properties rendered as %q", expr)
-	}
-}
