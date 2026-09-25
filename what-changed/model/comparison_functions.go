@@ -217,6 +217,19 @@ func CreateContext(l, r *yaml.Node) *ChangeContext {
 	return ctx
 }
 
+// keyedValueNode returns node when it carries a scalar value, otherwise a copy of node that reports key as its
+// value, so a change to a map entry or object can be described by its key. The supplied node is never modified:
+// it can be a component shared by several $refs, so writing into it would leak one entry's key into every other
+// entry that points at the same component, and race with any comparison reading the same document.
+func keyedValueNode(node *yaml.Node, key string) *yaml.Node {
+	if node.Value != EMPTY_STR {
+		return node
+	}
+	keyed := *node
+	keyed.Value = key
+	return &keyed
+}
+
 func FlattenLowLevelOrderedMap[T any](
 	lowMap *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 ) map[string]*low.ValueReference[T] {
@@ -704,11 +717,8 @@ func checkMapForChangesInternal[T any, R any](expLeft, expRight *orderedmap.Map[
 		rhash := g[k]
 		if rhash == EMPTY_STR {
 			chLock.Lock()
-			if p[k].GetValueNode().Value == EMPTY_STR {
-				p[k].GetValueNode().Value = k
-			}
 			CreateChange(changes, ObjectRemoved, label,
-				p[k].GetValueNode(), nil, breakingRemoved,
+				keyedValueNode(p[k].GetValueNode(), k), nil, breakingRemoved,
 				p[k].GetValue(), nil)
 			chLock.Unlock()
 			doneChan <- struct{}{}
@@ -738,11 +748,8 @@ func checkMapForChangesInternal[T any, R any](expLeft, expRight *orderedmap.Map[
 		lhash := f[k]
 		if lhash == EMPTY_STR {
 			chLock.Lock()
-			if p[k].GetValueNode().Value == EMPTY_STR {
-				p[k].GetValueNode().Value = k
-			}
 			CreateChange(changes, ObjectAdded, label,
-				nil, p[k].GetValueNode(), breakingAdded,
+				nil, keyedValueNode(p[k].GetValueNode(), k), breakingAdded,
 				nil, p[k].GetValue())
 			chLock.Unlock()
 		}
