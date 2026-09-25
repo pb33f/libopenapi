@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
@@ -26,7 +27,6 @@ import (
 	"github.com/pb33f/libopenapi/what-changed/model"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestLoadDocument_Simple_V2(t *testing.T) {
@@ -314,7 +314,7 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 		tc := compReport.TotalChanges()
 		bc := compReport.TotalBreakingChanges()
 		assert.Equal(t, 0, bc)
-		assert.Equal(t, 9, tc)
+		assert.Equal(t, 0, tc)
 
 		// there should be no other changes besides descriptions.
 		assert.Equal(t, 0, len(filtered))

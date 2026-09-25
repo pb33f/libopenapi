@@ -12,12 +12,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pb33f/go-yaml"
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	low "github.com/pb33f/libopenapi/datamodel/low/arazzo"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 type staticCandidateProvider struct {

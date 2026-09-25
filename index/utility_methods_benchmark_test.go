@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/pb33f/go-yaml"
 )
 
 // Benchmark buffer pool optimization vs original allocation pattern

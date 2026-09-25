@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi"
 	higharazzo "github.com/pb33f/libopenapi/datamodel/high/arazzo"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	highv3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestPrepareInputAndSelectionErrors(t *testing.T) {

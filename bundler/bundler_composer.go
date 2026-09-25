@@ -11,13 +11,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pb33f/go-yaml"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"go.yaml.in/yaml/v4"
 )
 
 type processRef struct {

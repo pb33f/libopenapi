@@ -9,7 +9,7 @@ import (
 	"strings"
 	"sync"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/pb33f/go-yaml"
 )
 
 // BreakingRulesConfig holds all breaking change rules organized by OpenAPI component.

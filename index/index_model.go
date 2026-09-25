@@ -14,8 +14,8 @@ import (
 
 	"github.com/pb33f/libopenapi/utils"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
-	"go.yaml.in/yaml/v4"
 )
 
 // Reference is a wrapper around *yaml.Node that tracks a single $ref usage in a specification.

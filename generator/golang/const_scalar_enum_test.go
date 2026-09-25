@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi"
-	"go.yaml.in/yaml/v4"
 )
 
 // renderConstEnumSpec runs a real spec through Document -> BuildV3Model ->

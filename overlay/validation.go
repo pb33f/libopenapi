@@ -4,8 +4,8 @@
 package overlay
 
 import (
+	"github.com/pb33f/go-yaml"
 	highoverlay "github.com/pb33f/libopenapi/datamodel/high/overlay"
-	"go.yaml.in/yaml/v4"
 )
 
 // validateOverlay checks that the overlay has all required fields.

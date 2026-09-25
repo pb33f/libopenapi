@@ -97,7 +97,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	gogenerator "github.com/pb33f/libopenapi/generator/golang"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"go.yaml.in/yaml/v4"
+	"github.com/pb33f/go-yaml"
 
 	"trainfullcircle/internal/trainmodels"
 )

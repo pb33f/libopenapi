@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 // requireMatchesMarshal asserts YAMLNodeToJSON gives exactly what converting the tree and marshaling it

@@ -15,11 +15,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pb33f/go-yaml"
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/datamodel/low/arazzo"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"go.yaml.in/yaml/v4"
 )
 
 var resolveFilepathAbs = filepath.Abs

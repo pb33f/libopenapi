@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"unicode/utf8"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/pb33f/go-yaml"
 )
 
 const (

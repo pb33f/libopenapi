@@ -16,6 +16,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/pb33f/go-yaml"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	highv3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -23,7 +24,6 @@ import (
 	"github.com/pb33f/libopenapi/generator/sdk"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"go.yaml.in/yaml/v4"
 )
 
 //go:embed templates/client.tmpl

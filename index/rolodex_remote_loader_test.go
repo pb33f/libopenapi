@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"context"
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 var test_httpClient = &http.Client{Timeout: time.Duration(60) * time.Second}

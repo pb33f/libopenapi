@@ -8,7 +8,7 @@ import (
 	"hash/maphash"
 	"sync"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/pb33f/go-yaml"
 )
 
 // globalHashSeed ensures consistent hashes across all pooled instances.

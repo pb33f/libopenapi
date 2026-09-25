@@ -11,8 +11,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 func Test_seekRefEnd(t *testing.T) {
