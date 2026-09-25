@@ -15,11 +15,11 @@ import (
 	"testing"
 	"unsafe"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowArazzo "github.com/pb33f/libopenapi/datamodel/low/arazzo"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 type arazzoContextKey string

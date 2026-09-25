@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestNewContact(t *testing.T) {

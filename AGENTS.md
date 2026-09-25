@@ -22,7 +22,7 @@ This repo is a library, not an app. The root package exposes the public entry po
 | `renderer/` | Schema/mock sample generation |
 | `orderedmap/` | Stable insertion-ordered map wrapper used throughout models/rendering |
 | `json/` | YAML-node to ordered JSON conversion |
-| `internal/jsonnode/` | Direct JSON parser building the exact `yaml.Node` tree yaml v4 builds; used for JSON specs, declines to `yaml.Unmarshal` otherwise |
+| `internal/jsonnode/` | Direct JSON parser building the exact `yaml.Node` tree the YAML parser builds; used for JSON specs, declines to `yaml.Unmarshal` otherwise |
 | `tests/` | Cross-package integration and benchmark coverage, especially sibling-ref behavior |
 | `test_specs/` | Realistic fixtures and regression specs used across packages |
 

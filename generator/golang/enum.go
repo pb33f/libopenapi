@@ -6,7 +6,7 @@ package golang
 import (
 	"strconv"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/pb33f/go-yaml"
 )
 
 type enumShape struct {

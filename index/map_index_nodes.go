@@ -7,7 +7,7 @@ import (
 	"cmp"
 	"slices"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/pb33f/go-yaml"
 )
 
 // NodeOrigin represents where a node has come from within a specification. This is not useful for single file specs,

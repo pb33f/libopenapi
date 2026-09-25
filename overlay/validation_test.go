@@ -6,9 +6,9 @@ package overlay
 import (
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	highoverlay "github.com/pb33f/libopenapi/datamodel/high/overlay"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestValidateOverlay_Valid(t *testing.T) {

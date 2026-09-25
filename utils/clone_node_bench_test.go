@@ -6,8 +6,8 @@ package utils
 import (
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 func BenchmarkCloneYAMLNode_Scalar(b *testing.B) {

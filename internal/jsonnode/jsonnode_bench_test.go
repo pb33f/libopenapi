@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/pb33f/go-yaml"
 )
 
 func benchmarkSpec(b *testing.B) []byte {

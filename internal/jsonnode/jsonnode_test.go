@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 // sameTree reports the first difference between two node trees, comparing every field yaml sets.

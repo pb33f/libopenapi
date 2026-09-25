@@ -7,12 +7,12 @@ import (
 	"bytes"
 	gocontext "context"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
 	highoverlay "github.com/pb33f/libopenapi/datamodel/high/overlay"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowoverlay "github.com/pb33f/libopenapi/datamodel/low/overlay"
 	"github.com/pb33f/libopenapi/overlay"
-	"go.yaml.in/yaml/v4"
 )
 
 // OverlayResult contains the result of applying an overlay to a target document.

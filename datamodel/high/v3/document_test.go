@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	v2 "github.com/pb33f/libopenapi/datamodel/high/v2"
@@ -25,7 +26,6 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 var lowDoc *lowv3.Document
@@ -701,6 +701,20 @@ func TestDocument_MarshalIndention_Error(t *testing.T) {
 	rendered = highDoc.RenderWithIndention(4)
 
 	assert.NotEqual(t, string(data), strings.TrimSpace(string(rendered)))
+}
+
+// Indents the emitter can't use (such as the 0 detected for minified JSON) render with 2 spaces.
+func TestDocument_RenderWithIndention_OutOfRange(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/single-definition.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
+
+	highDoc := NewDocument(lowDoc)
+	two := highDoc.RenderWithIndention(2)
+	for _, indent := range []int{-1, 0, 1, 10} {
+		assert.Equal(t, string(two), string(highDoc.RenderWithIndention(indent)), "indent %d", indent)
+	}
 }
 
 func TestDocument_MarshalJSON(t *testing.T) {

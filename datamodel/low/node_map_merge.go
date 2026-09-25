@@ -4,7 +4,7 @@
 package low
 
 import (
-	"go.yaml.in/yaml/v4"
+	"github.com/pb33f/go-yaml"
 )
 
 // MergeRecursiveNodesIfLineAbsent walks a node tree and adds each discovered node to dst
