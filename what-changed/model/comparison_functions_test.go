@@ -1060,3 +1060,16 @@ func TestCheckPropertyAdditionOrRemovalWithEncoding(t *testing.T) {
 		assert.NotEmpty(t, changes[0].NewEncoded)
 	})
 }
+
+func TestKeyedValueNode(t *testing.T) {
+	scalar := &yaml.Node{Kind: yaml.ScalarNode, Value: "hello", Line: 3, Column: 7}
+	assert.Same(t, scalar, keyedValueNode(scalar, "key"))
+
+	mapping := &yaml.Node{Kind: yaml.MappingNode, Line: 10, Column: 5}
+	keyed := keyedValueNode(mapping, "400")
+	assert.NotSame(t, mapping, keyed)
+	assert.Equal(t, "400", keyed.Value)
+	assert.Equal(t, 10, keyed.Line)
+	assert.Equal(t, 5, keyed.Column)
+	assert.Empty(t, mapping.Value)
+}

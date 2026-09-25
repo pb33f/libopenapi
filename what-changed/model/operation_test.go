@@ -1432,6 +1432,10 @@ func TestCompareOperations_V3_AddServer(t *testing.T) {
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.ServerChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, "https://quobix.com", extChanges.ServerChanges[0].Changes[0].New)
+
+	// the compared document must not be modified to carry the server URL.
+	assert.Empty(t, rDoc.Servers.Value[1].ValueNode.Value)
 }
 
 func TestCompareOperations_V3_RemoveServer(t *testing.T) {
@@ -1462,6 +1466,10 @@ func TestCompareOperations_V3_RemoveServer(t *testing.T) {
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.ServerChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, "https://quobix.com", extChanges.ServerChanges[0].Changes[0].Original)
+
+	// the compared document must not be modified to carry the server URL.
+	assert.Empty(t, rDoc.Servers.Value[1].ValueNode.Value)
 }
 
 func TestCompareOperations_V3_AddServerToOp(t *testing.T) {
