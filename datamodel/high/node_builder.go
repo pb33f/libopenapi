@@ -4,6 +4,7 @@
 package high
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -497,33 +498,33 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 			}
 		}
 
+		// a skipped item always leaves its reference in sl, so reaching the encoder means nothing was skipped.
 		if len(sl.Content) > 0 {
 			valueNode = sl
 			break
 		}
-		if skip {
+
+		if err := rawNode.Encode(encodeSafeValue(value)); err != nil {
+			// an item that failed to render has already reported why, and the encoder only echoes it.
+			if errors.Join(nodeErrors...) == nil {
+				nodeErrors = append(nodeErrors, err)
+			}
 			break
 		}
-
-		err := rawNode.Encode(encodeSafeValue(value))
-		if err != nil {
-			return parent
-		} else {
-			if entry.LowValue != nil {
-				if vnut, ok := entry.LowValue.(low.HasValueNodeUntyped); ok {
-					vn := vnut.GetValueNode()
-					if vn != nil && vn.Kind == yaml.SequenceNode {
-						for i := range vn.Content {
-							if len(rawNode.Content) > i {
-								rawNode.Content[i].Style = vn.Content[i].Style
-							}
+		if entry.LowValue != nil {
+			if vnut, ok := entry.LowValue.(low.HasValueNodeUntyped); ok {
+				vn := vnut.GetValueNode()
+				if vn != nil && vn.Kind == yaml.SequenceNode {
+					for i := range vn.Content {
+						if len(rawNode.Content) > i {
+							rawNode.Content[i].Style = vn.Content[i].Style
 						}
 					}
 				}
 			}
-
-			valueNode = &rawNode
 		}
+
+		valueNode = &rawNode
 
 	case reflect.Struct:
 		if r, ok := value.(low.ValueReference[any]); ok {
@@ -542,15 +543,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 
 	case reflect.Ptr:
 		if m, ok := value.(orderedmap.MapToYamlNoder); ok {
-			l := entry.LowValue
-
-			if l == nil {
-				if gl, ok := value.(GoesLowUntyped); ok && gl.GoLowUntyped() != nil {
-					l = gl.GoLowUntyped()
-				}
-			}
-
-			p := m.ToYamlNode(n, l)
+			p := m.ToYamlNode(n, entry.LowValue)
 			if p.Content != nil {
 				valueNode = p
 			}
@@ -658,9 +651,8 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 						}
 					}
 
-					err := rawNode.Encode(encodeSafeValue(value))
-					if err != nil {
-						return parent
+					if err := rawNode.Encode(encodeSafeValue(value)); err != nil {
+						nodeErrors = append(nodeErrors, err)
 					} else {
 						valueNode = &rawNode
 						valueNode.Line = line

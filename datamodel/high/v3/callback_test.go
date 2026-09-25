@@ -299,3 +299,39 @@ func TestBuildLowCallback_BuildError_Reference(t *testing.T) {
 	_, err := buildLowCallback(node.Content[0], idx)
 	assert.Error(t, err)
 }
+
+// A referenced callback is rebuilt from its target when rendered inline. If the target no longer
+// builds (here, it gains a path item pointing at a missing component after the low model was
+// built), the render fails instead of emitting a partial callback.
+func TestCallback_MarshalYAMLInline_ExternalRefBuildError(t *testing.T) {
+	yml := `openapi: 3.1.0
+components:
+  callbacks:
+    Hook:
+      '{$request.body#/url}':
+        post:
+          summary: ok
+    Alias:
+      $ref: '#/components/callbacks/Hook'`
+
+	var idxNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &idxNode))
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	callbacks := idxNode.Content[0].Content[3].Content[1]
+	hookNode, aliasNode := callbacks.Content[1], callbacks.Content[3]
+
+	var n v3.Callback
+	_ = low.BuildModel(aliasNode, &n)
+	require.NoError(t, n.Build(context.Background(), nil, aliasNode, idx))
+	require.True(t, n.IsReference())
+
+	hookNode.Content = append(hookNode.Content,
+		utils.CreateStringNode("broken"),
+		utils.CreateRefNode("#/components/pathItems/DoesNotExist"))
+
+	result, err := NewCallback(&n).MarshalYAMLInline()
+	assert.Nil(t, result)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to build resolved external reference '#/components/callbacks/Hook'")
+}
