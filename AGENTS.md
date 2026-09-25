@@ -22,6 +22,7 @@ This repo is a library, not an app. The root package exposes the public entry po
 | `renderer/` | Schema/mock sample generation |
 | `orderedmap/` | Stable insertion-ordered map wrapper used throughout models/rendering |
 | `json/` | YAML-node to ordered JSON conversion |
+| `internal/jsonnode/` | Direct JSON parser building the exact `yaml.Node` tree yaml v4 builds; used for JSON specs, declines to `yaml.Unmarshal` otherwise |
 | `tests/` | Cross-package integration and benchmark coverage, especially sibling-ref behavior |
 | `test_specs/` | Realistic fixtures and regression specs used across packages |
 
@@ -61,6 +62,7 @@ This repo is a library, not an app. The root package exposes the public entry po
 | `go test ./bundler -run TestBundle` | Target bundler regressions |
 | `go test ./what-changed/... -run Test` | Target diff/breaking-rule regressions |
 | `go test -bench . ./index ./datamodel/low/... ./what-changed/...` | Run benchmarks in hot paths |
+| `go test -run xxx -bench BenchmarkPipeline -count 6 .` | End-to-end build/render/compare/bundle benchmarks on large specs (compare runs with `benchstat`) |
 | `GOCACHE=/tmp/go-build go test ./...` | Useful in restricted sandboxes where default Go build cache is not writable |
 
 ## Testing Caveats

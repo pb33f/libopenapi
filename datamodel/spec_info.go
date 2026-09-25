@@ -14,6 +14,7 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
+	"github.com/pb33f/libopenapi/internal/jsonnode"
 	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 )
@@ -188,7 +189,7 @@ func extractSpecInfoInternal(spec []byte, bypass bool, skipJSON bool) (*SpecInfo
 		parseBytes = normalizeJSONForYAMLParser(spec)
 	}
 
-	err := yaml.Unmarshal(parseBytes, &parsedSpec)
+	err := jsonnode.Unmarshal(parseBytes, &parsedSpec)
 	if err != nil {
 		if !bypass {
 			return nil, fmt.Errorf("unable to parse specification: %s", err.Error())

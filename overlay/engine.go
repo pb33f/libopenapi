@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/jsonpath/pkg/jsonpath"
 	"github.com/pb33f/jsonpath/pkg/jsonpath/config"
 	highoverlay "github.com/pb33f/libopenapi/datamodel/high/overlay"
+	"github.com/pb33f/libopenapi/internal/jsonnode"
 	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 )
@@ -23,7 +24,7 @@ func Apply(targetBytes []byte, overlay *highoverlay.Overlay) (*Result, error) {
 	}
 
 	var rootNode yaml.Node
-	if err := yaml.Unmarshal(targetBytes, &rootNode); err != nil {
+	if err := jsonnode.Unmarshal(targetBytes, &rootNode); err != nil {
 		return nil, err
 	}
 
