@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"unsafe"
 
 	"go.yaml.in/yaml/v4"
 
@@ -2622,11 +2623,11 @@ func TestGenerateHashString_Caching(t *testing.T) {
 
 	obj := &cacheableStruct{value: "test"}
 
-	// First call should calculate and cache
+	// First call calculates the hash
 	hash1 := GenerateHashString(obj)
 	assert.NotEmpty(t, hash1)
 
-	// Second call should use cache (same result)
+	// Second call recalculates the same result
 	hash2 := GenerateHashString(obj)
 	assert.Equal(t, hash1, hash2)
 
@@ -2997,9 +2998,7 @@ func TestCompareYAMLNodes_NumericMapKeysAreNotEquivalent(t *testing.T) {
 }
 
 func TestGenerateHashString_SchemaProxyNoCache(t *testing.T) {
-	// Test that SchemaProxy types don't get cached (shouldCache = false)
-	// We can't easily test this without creating actual SchemaProxy objects
-	// but we can test the general caching bypass logic
+	// Pointers are never cached by address, so repeated calls recalculate the same hash.
 
 	type nonCacheableType struct {
 		value string
@@ -3416,21 +3415,131 @@ func TestGenerateHashString_PointerToNonPrimitive(t *testing.T) {
 }
 
 func TestGenerateHashString_CachingPathCoverage(t *testing.T) {
-	// Test cache storage path in GenerateHashString
 	type testStruct struct {
 		value string
 	}
 
 	ClearHashCache()
 
-	// Test struct that should get cached
 	obj := &testStruct{value: "test"}
 	hash1 := GenerateHashString(obj)
 	assert.NotEmpty(t, hash1)
 
-	// Should hit cache on second call
 	hash2 := GenerateHashString(obj)
 	assert.Equal(t, hash1, hash2)
+}
+
+type mutableHashable struct {
+	value uint64
+}
+
+func (m *mutableHashable) Hash() uint64 {
+	return m.value
+}
+
+type valueHashable struct{}
+
+type nilSafeHashable struct{}
+
+func (*nilSafeHashable) Hash() uint64 {
+	return 0
+}
+
+func (valueHashable) Hash() uint64 {
+	return 7
+}
+
+type innerHashable struct {
+	value uint64
+}
+
+func (i *innerHashable) Hash() uint64 {
+	return i.value
+}
+
+type outerHashable struct {
+	inner innerHashable
+}
+
+func (o *outerHashable) Hash() uint64 {
+	return o.inner.value + 100
+}
+
+// Model hashes are memoized per object until ClearHashCache; scalar YAML nodes are always recalculated.
+func TestGenerateHashString_MemoizedUntilCleared(t *testing.T) {
+	ClearHashCache()
+	h := &mutableHashable{value: 1}
+	first := GenerateHashString(h)
+	h.value = 2
+	assert.Equal(t, first, GenerateHashString(h))
+	ClearHashCache()
+	assert.Equal(t, "2", GenerateHashString(h))
+
+	n := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "content-A"}
+	a := GenerateHashString(n)
+	n.Value = "content-B"
+	assert.NotEqual(t, a, GenerateHashString(n))
+
+	// values and nil pointers are hashed directly.
+	assert.Equal(t, "7", GenerateHashString(valueHashable{}))
+	assert.Equal(t, "0", GenerateHashString((*nilSafeHashable)(nil)))
+}
+
+// A struct and its first field share an address; each must keep its own hash.
+func TestGenerateHashString_SameAddressDifferentType(t *testing.T) {
+	ClearHashCache()
+	outer := &outerHashable{inner: innerHashable{value: 1}}
+	assert.Equal(t, "65", GenerateHashString(outer))
+	assert.Equal(t, "1", GenerateHashString(&outer.inner))
+	assert.Equal(t, "65", GenerateHashString(outer))
+}
+
+type reusedHashable struct {
+	value uint64
+	_     [3]uint64
+}
+
+func (r *reusedHashable) Hash() uint64 {
+	return r.value
+}
+
+// https://github.com/pb33f/libopenapi/issues/615
+// Once an object is reclaimed its address is reused; the object allocated there must get its own hash, not the
+// memoized hash of the object that lived there before.
+func TestGenerateHashString_ReusedAddressGetsFreshHash(t *testing.T) {
+	ClearHashCache()
+	first := &reusedHashable{value: 1}
+	assert.Equal(t, "1", GenerateHashString(first))
+	address := uintptr(unsafe.Pointer(first))
+	first = nil
+	runtime.GC()
+
+	var next *reusedHashable
+	for i := 0; i < 1<<16; i++ {
+		next = &reusedHashable{value: 2}
+		if uintptr(unsafe.Pointer(next)) == address {
+			break
+		}
+	}
+	if uintptr(unsafe.Pointer(next)) != address {
+		t.Skip("the allocator did not reuse the address")
+	}
+	assert.Equal(t, "2", GenerateHashString(next))
+}
+
+// Non-scalar node hashes are memoized by node identity until ClearHashCache invalidates them.
+func TestHashYamlNodeFast_ClearHashCacheInvalidates(t *testing.T) {
+	var doc yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("a: b\nc: d\n"), &doc))
+	mapping := doc.Content[0]
+
+	ClearHashCache()
+	first := hashYamlNodeFast(mapping)
+	mapping.Content[1].Value = "changed"
+	assert.Equal(t, first, hashYamlNodeFast(mapping))
+
+	ClearHashCache()
+	assert.NotEqual(t, first, hashYamlNodeFast(mapping))
 }
 
 // Surgical tests to hit exact uncovered branches for 100% coverage

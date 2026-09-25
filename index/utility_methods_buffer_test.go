@@ -243,28 +243,28 @@ func TestClearHashCache_ComprehensiveTest(t *testing.T) {
 }
 
 func TestClearNodePools(t *testing.T) {
-	// Seed current pools with data so a reset must provide fresh containers.
-	oldStack := stackPool.Get().(*[]*yaml.Node)
-	*oldStack = append(*oldStack, &yaml.Node{Value: "stale"})
-	stackPool.Put(oldStack)
+	var node yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte("a: [1, 2, 3]\nb:\n  c: d\n"), &node))
+	before := HashNode(&node)
 
-	oldVisited := visitedPool.Get().(map[*yaml.Node]struct{})
-	oldVisited[&yaml.Node{Value: "stale"}] = struct{}{}
-	visitedPool.Put(oldVisited)
-
+	// a deprecated no-op: the pools stay usable and hashing is unaffected.
 	ClearNodePools()
 
-	newStack := stackPool.Get().(*[]*yaml.Node)
-	assert.NotNil(t, newStack)
-	assert.Empty(t, *newStack)
-	assert.GreaterOrEqual(t, cap(*newStack), 128)
+	assert.Equal(t, before, HashNode(&node))
+}
 
-	newVisited := visitedPool.Get().(map[*yaml.Node]struct{})
-	assert.NotNil(t, newVisited)
-	assert.Empty(t, newVisited)
+// HashNode returns its traversal stack to the pool; the stack must not keep popped nodes reachable.
+func TestHashNode_PooledStackHoldsNoNodes(t *testing.T) {
+	var node yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte("a: [1, 2, 3]\nb:\n  c: d\n  e: [f, g]\n"), &node))
+	_ = HashNode(&node)
 
-	stackPool.Put(newStack)
-	visitedPool.Put(newVisited)
+	stack := stackPool.Get().(*[]*yaml.Node)
+	defer stackPool.Put(stack)
+	assert.Empty(t, *stack)
+	for i, n := range (*stack)[:cap(*stack)] {
+		assert.Nil(t, n, "pooled stack slot %d still references a node", i)
+	}
 }
 
 // Test HashNode with large node that triggers caching
