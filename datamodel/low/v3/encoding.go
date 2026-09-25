@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"hash/maphash"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -28,7 +27,7 @@ type Encoding struct {
 	RootNode      *yaml.Node
 	index         *index.SpecIndex
 	context       context.Context
-	nodeStore     sync.Map
+	nodeStore     low.NodeLines
 	reference     low.Reference
 	*low.Reference
 	low.NodeMap
@@ -88,7 +87,7 @@ func (en *Encoding) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	root = utils.NodeAlias(root)
 	en.RootNode = root
 	utils.CheckForMergeNodes(root)
-	en.nodeStore = sync.Map{}
+	en.nodeStore = low.NodeLines{}
 	en.Nodes = &en.nodeStore
 	if len(root.Content) > 0 {
 		en.NodeMap.ExtractNodes(root, false)

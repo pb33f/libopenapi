@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"hash/maphash"
 	"slices"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -41,7 +40,7 @@ type Parameter struct {
 	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	index           *index.SpecIndex
 	context         context.Context
-	nodeStore       sync.Map
+	nodeStore       low.NodeLines
 	reference       low.Reference
 	*low.Reference
 	low.NodeMap
@@ -98,7 +97,7 @@ func (p *Parameter) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	p.KeyNode = keyNode
 	p.RootNode = root
 	utils.CheckForMergeNodes(root)
-	p.nodeStore = sync.Map{}
+	p.nodeStore = low.NodeLines{}
 	p.Nodes = &p.nodeStore
 	if len(root.Content) > 0 {
 		p.NodeMap.ExtractNodes(root, false)

@@ -4,7 +4,6 @@
 package low
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/pb33f/testify/assert"
@@ -22,7 +21,7 @@ four:
 
 	var root yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &root)
-	var syncMap sync.Map
+	var syncMap NodeLines
 	nm := &NodeMap{Nodes: &syncMap}
 	nm.ExtractNodes(root.Content[0], false)
 	testTheThing(t, nm)
@@ -30,7 +29,7 @@ four:
 
 func testTheThing(t *testing.T, nm *NodeMap) {
 	count := 0
-	nm.Nodes.Range(func(key, value interface{}) bool {
+	nm.Nodes.Range(func(key int, value any) bool {
 		count++
 		return true
 	})
@@ -52,7 +51,7 @@ func testTheThing(t *testing.T, nm *NodeMap) {
 	assert.Equal(t, "four", nodes[4][0].Value)
 }
 
-func testTheThingUnmarshalled(t *testing.T, nm *sync.Map) {
+func testTheThingUnmarshalled(t *testing.T, nm *NodeLines) {
 	n := &NodeMap{Nodes: nm}
 	nodes := n.GetNodes()
 
@@ -84,7 +83,7 @@ four:
 	nm := ExtractNodes(nil, root.Content[0])
 
 	count := 0
-	nm.Range(func(key, value interface{}) bool {
+	nm.Range(func(key int, value any) bool {
 		count++
 		return true
 	})
@@ -108,7 +107,7 @@ four:
 	nm := ExtractNodesRecursive(nil, root.Content[0])
 
 	count := 0
-	nm.Range(func(key, value interface{}) bool {
+	nm.Range(func(key int, value any) bool {
 		count++
 		return true
 	})
@@ -118,12 +117,12 @@ four:
 }
 
 func TestExtractNodes_Nil(t *testing.T) {
-	var syncMap sync.Map
+	var syncMap NodeLines
 	nm := &NodeMap{Nodes: &syncMap}
 	nm.ExtractNodes(nil, false)
 
 	count := 0
-	nm.Nodes.Range(func(key, value interface{}) bool {
+	nm.Nodes.Range(func(key int, value any) bool {
 		count++
 		return true
 	})
@@ -142,7 +141,7 @@ four:
 
 	var root yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &root)
-	var syncMap sync.Map
+	var syncMap NodeLines
 	nm := &NodeMap{Nodes: &syncMap}
 
 	syncMap.Store(1, root.Content[0])
@@ -151,7 +150,7 @@ four:
 }
 
 func Test_NodeMapGetNodes_SingleNode(t *testing.T) {
-	var syncMap sync.Map
+	var syncMap NodeLines
 	nm := &NodeMap{Nodes: &syncMap}
 
 	syncMap.Store(1, &yaml.Node{})
@@ -171,7 +170,7 @@ four:
 	var root yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &root)
 
-	var syncMap sync.Map
+	var syncMap NodeLines
 	nm := &NodeMap{Nodes: &syncMap}
 
 	nm.ExtractNodes(root.Content[0], true)
@@ -185,7 +184,7 @@ four:
 }
 
 func Test_NodeMapGetNodes_EmptyNode(t *testing.T) {
-	var syncMap sync.Map
+	var syncMap NodeLines
 	nm := &NodeMap{Nodes: &syncMap}
 
 	ex := nm.GetNodes()
@@ -206,11 +205,11 @@ x-rice:
 	_ = yaml.Unmarshal([]byte(yml), &root)
 
 	extensions := ExtractExtensions(root.Content[0])
-	var syncMap sync.Map
+	var syncMap NodeLines
 	ExtractExtensionNodes(nil, extensions, &syncMap)
 
 	count := 0
-	syncMap.Range(func(key, value interface{}) bool {
+	syncMap.Range(func(key int, value any) bool {
 		count++
 		return true
 	})
@@ -227,7 +226,7 @@ func TestExtractNodes_NoContent(t *testing.T) {
 	nm := ExtractNodes(nil, root.Content[0])
 
 	count := 0
-	nm.Range(func(key, value interface{}) bool {
+	nm.Range(func(key int, value any) bool {
 		count++
 		return true
 	})

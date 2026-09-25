@@ -7,7 +7,6 @@ import (
 	"context"
 	"hash/maphash"
 	"slices"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -33,7 +32,7 @@ type MediaType struct {
 	RootNode     *yaml.Node
 	index        *index.SpecIndex
 	context      context.Context
-	nodeStore    sync.Map
+	nodeStore    low.NodeLines
 	reference    low.Reference
 	*low.Reference
 	low.NodeMap
@@ -92,7 +91,7 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 	utils.CheckForMergeNodes(root)
 	mt.reference = low.Reference{}
 	mt.Reference = &mt.reference
-	mt.nodeStore = sync.Map{}
+	mt.nodeStore = low.NodeLines{}
 	mt.Nodes = &mt.nodeStore
 	if len(root.Content) > 0 {
 		mt.NodeMap.ExtractNodes(root, false)
