@@ -725,7 +725,7 @@ func rewriteInlinedAbsoluteRefs(rolodex *index.Rolodex, indexes []*index.SpecInd
 			if inlinedNode == nil {
 				continue
 			}
-			seqRef.Node.Content = inlinedNode.Content
+			inlineRefNode(seqRef.Node, inlinedNode)
 		}
 	}
 }
@@ -797,7 +797,7 @@ func inlineProcessRef(pr *processRef) *yaml.Node {
 			if pointerRef == nil || pointerRef.Node == nil {
 				return nil
 			}
-			pr.seqRef.Node.Content = pointerRef.Node.Content
+			inlineRefNode(pr.seqRef.Node, pointerRef.Node)
 			return pointerRef.Node
 		}
 	}
@@ -805,7 +805,7 @@ func inlineProcessRef(pr *processRef) *yaml.Node {
 	if pr.ref.Node == nil {
 		return nil
 	}
-	pr.seqRef.Node.Content = pr.ref.Node.Content
+	inlineRefNode(pr.seqRef.Node, pr.ref.Node)
 	return pr.ref.Node
 }
 
@@ -823,8 +823,24 @@ func inlineMatchingRefs(pr *processRef, inlinedNode *yaml.Node, refsByDefinition
 		if contextualProcessRefKey(pr.ref.FullDefinition, seqRef) != key {
 			continue
 		}
-		seqRef.Node.Content = inlinedNode.Content
+		inlineRefNode(seqRef.Node, inlinedNode)
 	}
+}
+
+// inlineRefNode replaces a $ref mapping node with its resolved target. A mapping target only
+// swaps content, so the ref node keeps its own style and comments. Any other target also hands
+// over its kind, tag, style and value, so a $ref to a sequence or scalar does not leave behind
+// a mapping node holding sequence items.
+func inlineRefNode(refNode, target *yaml.Node) {
+	refNode.Content = target.Content
+	if target.Kind == yaml.MappingNode {
+		return
+	}
+	refNode.Kind = target.Kind
+	refNode.Tag = target.Tag
+	refNode.Style = target.Style
+	refNode.Value = target.Value
+	refNode.Alias = target.Alias
 }
 
 // resolveBundleInlineConfig resolves the inlineLocalRefs setting from the fallback chain:
