@@ -586,8 +586,9 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 	}
 
 	if remoteParsedURL.Scheme == "" {
-		i.releaseRemoteProcessingWaiter(processingWaiter, cacheKey, nil, nil)
-		return nil, nil // not a remote file — scheme is empty, skip processing.
+		schemeErr := fmt.Errorf("remote URL '%s' has no scheme, unable to fetch it", remoteURL)
+		i.releaseRemoteProcessingWaiter(processingWaiter, cacheKey, nil, schemeErr)
+		return nil, schemeErr
 	}
 
 	i.logger.Debug("[rolodex remote loader] loading remote file", "file", remoteURL, "remoteURL", remoteParsedURL.String())
@@ -595,7 +596,7 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 	response, clientErr := i.RemoteHandlerFunc(remoteParsedURL.String())
 	if clientErr != nil {
 		i.appendRemoteError(clientErr)
-		i.releaseRemoteProcessingWaiter(processingWaiter, cacheKey, nil, nil)
+		i.releaseRemoteProcessingWaiter(processingWaiter, cacheKey, nil, clientErr)
 		if response != nil && response.Body != nil {
 			_ = response.Body.Close()
 		}
@@ -607,8 +608,9 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 		return nil, clientErr
 	}
 	if response == nil {
-		i.releaseRemoteProcessingWaiter(processingWaiter, cacheKey, nil, nil)
-		return nil, fmt.Errorf("empty response from remote URL: %s", remoteParsedURL.String())
+		emptyErr := fmt.Errorf("empty response from remote URL: %s", remoteParsedURL.String())
+		i.releaseRemoteProcessingWaiter(processingWaiter, cacheKey, nil, emptyErr)
+		return nil, emptyErr
 	}
 	defer func() {
 		if response.Body != nil {
@@ -648,6 +650,11 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 
 func (i *RemoteFS) normalizeRemoteURL(remoteParsedURL *url.URL) {
 	if i.rootURLParsed == nil || remoteParsedURL == nil {
+		return
+	}
+	// a base URL without a scheme or host (e.g. 'example.com/specs/') cannot be fetched from,
+	// rewriting with it would strip the scheme from every absolute remote reference.
+	if i.rootURLParsed.Scheme == "" || i.rootURLParsed.Host == "" {
 		return
 	}
 	remoteParsedURL.Host = i.rootURLParsed.Host
