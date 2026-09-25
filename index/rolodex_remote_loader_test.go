@@ -129,16 +129,90 @@ func TestNewRemoteFS_BasicCheck_Valid(t *testing.T) {
 }
 
 func TestNewRemoteFS_BasicCheck_NoScheme(t *testing.T) {
-	server := test_buildServer()
-	defer server.Close()
-
 	remoteFS, _ := NewRemoteFSWithRootURL("")
-	remoteFS.RemoteHandlerFunc = test_httpClient.Get
+	var requested []string
+	remoteFS.RemoteHandlerFunc = func(u string) (*http.Response, error) {
+		requested = append(requested, u)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(strings.NewReader("type: object")),
+		}, nil
+	}
 
+	// an empty root URL has no scheme or host, so the remote URL is fetched untouched.
 	file, err := remoteFS.Open("https://ding-dong-bing-bong.com/file1.yaml")
-
 	assert.NoError(t, err)
+	assert.NotNil(t, file)
+	assert.Equal(t, "https://ding-dong-bing-bong.com/file1.yaml", file.(*RemoteFile).GetFullPath())
+
+	// a location without a scheme cannot be fetched, it must fail instead of returning no file and no error.
+	file, err = remoteFS.Open("httpdocs/file1.yaml")
 	assert.Nil(t, file)
+	assert.EqualError(t, err, "remote URL 'httpdocs/file1.yaml' has no scheme, unable to fetch it")
+	assert.Equal(t, []string{"https://ding-dong-bing-bong.com/file1.yaml"}, requested)
+}
+
+func TestRemoteFS_OpenWithContext_NoSchemeReleasesWaitersWithError(t *testing.T) {
+	remoteFS, _ := NewRemoteFSWithRootURL("")
+	remoteFS.RemoteHandlerFunc = func(u string) (*http.Response, error) {
+		t.Errorf("a location without a scheme must never be fetched: %s", u)
+		return nil, errors.New("unexpected fetch")
+	}
+
+	// callers that wait on an in-flight open of the same location must receive the same error.
+	const workers = 32
+	for round := 0; round < 50; round++ {
+		start := make(chan struct{})
+		errs := make(chan error, workers)
+		for w := 0; w < workers; w++ {
+			go func() {
+				<-start
+				_, err := remoteFS.OpenWithContext(context.Background(), "httpdocs/shared.yaml")
+				errs <- err
+			}()
+		}
+		close(start)
+		for w := 0; w < workers; w++ {
+			assert.EqualError(t, <-errs, "remote URL 'httpdocs/shared.yaml' has no scheme, unable to fetch it")
+		}
+	}
+}
+
+func TestRemoteFS_OpenWithContext_FailedFetchReleasesWaitersWithError(t *testing.T) {
+	tests := []struct {
+		name     string
+		response *http.Response
+		err      error
+		expected string
+	}{
+		{name: "client error", err: errors.New("connection refused"), expected: "connection refused"},
+		{name: "no response", expected: "empty response from remote URL: https://example.com/shared.yaml"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			remoteFS, _ := NewRemoteFSWithRootURL("")
+			release := make(chan struct{})
+			remoteFS.RemoteHandlerFunc = func(string) (*http.Response, error) {
+				<-release
+				return tt.response, tt.err
+			}
+
+			// callers that wait on the in-flight fetch must receive its error, not a nil file and no error.
+			const workers = 16
+			errs := make(chan error, workers)
+			for w := 0; w < workers; w++ {
+				go func() {
+					_, err := remoteFS.OpenWithContext(context.Background(), "https://example.com/shared.yaml")
+					errs <- err
+				}()
+			}
+			time.Sleep(50 * time.Millisecond)
+			close(release)
+			for w := 0; w < workers; w++ {
+				assert.EqualError(t, <-errs, tt.expected)
+			}
+		})
+	}
 }
 
 func TestNewRemoteFS_BasicCheck_Relative(t *testing.T) {
@@ -557,6 +631,30 @@ func TestRemoteFS_NormalizeAndLoadCachedHelpers(t *testing.T) {
 	legacyFile := &RemoteFile{filename: "spec.yaml"}
 	rfs.Files.Store("/spec.yaml", legacyFile)
 	assert.Same(t, legacyFile, rfs.loadCachedRemoteFile("https://root.example/spec.yaml", "/spec.yaml"))
+}
+
+func TestRemoteFS_NormalizeRemoteURL_SkipsBaseWithoutSchemeOrHost(t *testing.T) {
+	tests := []struct {
+		name string
+		base string
+	}{
+		{name: "no scheme or host", base: "example.com/specs/"},
+		{name: "host without scheme", base: "//example.com/specs/"},
+		{name: "scheme without host", base: "file:///specs/"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := CreateOpenAPIIndexConfig()
+			config.BaseURL, _ = url.Parse(tt.base)
+			rfs, err := NewRemoteFSWithConfig(config)
+			assert.NoError(t, err)
+
+			target, err := url.Parse("https://other.example/schemas/pet.yaml")
+			assert.NoError(t, err)
+			rfs.normalizeRemoteURL(target)
+			assert.Equal(t, "https://other.example/schemas/pet.yaml", target.String())
+		})
+	}
 }
 
 func TestRemoteFS_CreateRemoteHelpers(t *testing.T) {

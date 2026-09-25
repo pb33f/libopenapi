@@ -905,6 +905,11 @@ func openFile(ctx context.Context, location string, v fs.FS) (fs.File, error) {
 	} else {
 		f, err = v.Open(location)
 	}
+	// a file system returning neither a file nor an error breaks the fs.FS contract,
+	// reading from the nil file would panic, so treat it as a failed open.
+	if f == nil && err == nil {
+		return nil, fmt.Errorf("file system returned no file and no error when opening '%s'", location)
+	}
 	return f, err
 }
 
