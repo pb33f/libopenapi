@@ -117,11 +117,11 @@ func TestGetPutVisitedMap_Reuse(t *testing.T) {
 }
 
 func TestClearNodePools(t *testing.T) {
-	// Ensure existing pool values are in use before replacing the pool.
 	initial := getVisitedMap()
 	initial[&yaml.Node{Value: "old"}] = true
 	putVisitedMap(initial)
 
+	// a deprecated no-op: maps are already cleared before they go back to the pool.
 	ClearNodePools()
 
 	fresh := getVisitedMap()
