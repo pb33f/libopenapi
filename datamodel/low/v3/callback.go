@@ -6,7 +6,6 @@ package v3
 import (
 	"context"
 	"hash/maphash"
-	"sync"
 
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
@@ -30,7 +29,7 @@ type Callback struct {
 	RootNode   *yaml.Node
 	index      *index.SpecIndex
 	context    context.Context
-	nodeStore  sync.Map
+	nodeStore  low.NodeLines
 	reference  low.Reference
 	*low.Reference
 	low.NodeMap
@@ -77,7 +76,7 @@ func (cb *Callback) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	root = utils.NodeAlias(root)
 	cb.RootNode = root
 	utils.CheckForMergeNodes(root)
-	cb.nodeStore = sync.Map{}
+	cb.nodeStore = low.NodeLines{}
 	cb.Nodes = &cb.nodeStore
 	if len(root.Content) > 0 {
 		cb.NodeMap.ExtractNodes(root, false)

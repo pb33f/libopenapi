@@ -4,7 +4,6 @@
 package low
 
 import (
-	"sync"
 	"testing"
 
 	"github.com/pb33f/testify/assert"
@@ -29,7 +28,7 @@ func TestNodeMapMergeHelpers(t *testing.T) {
 	require.NoError(t, yaml.Unmarshal([]byte("example:\n  nested:\n    value: ok\n"), &root))
 	node := root.Content[0]
 
-	var dst sync.Map
+	var dst NodeLines
 	blockedLine := node.Content[0].Line
 	dst.Store(blockedLine, []*yaml.Node{{Value: "existing"}})
 
@@ -39,8 +38,8 @@ func TestNodeMapMergeHelpers(t *testing.T) {
 	assert.True(t, blocked)
 
 	var foundNested bool
-	dst.Range(func(key, value any) bool {
-		if key.(int) == node.Content[1].Content[0].Line {
+	dst.Range(func(key int, value any) bool {
+		if key == node.Content[1].Content[0].Line {
 			foundNested = true
 		}
 		assert.NotNil(t, value)

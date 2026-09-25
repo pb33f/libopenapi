@@ -6,7 +6,6 @@ package base
 import (
 	"context"
 	"hash/maphash"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -28,7 +27,7 @@ type License struct {
 	RootNode   *yaml.Node
 	index      *index.SpecIndex
 	context    context.Context
-	nodeStore  sync.Map
+	nodeStore  low.NodeLines
 	reference  low.Reference
 	*low.Reference
 	low.NodeMap
@@ -39,7 +38,7 @@ func (l *License) Build(ctx context.Context, keyNode, root *yaml.Node, idx *inde
 	l.KeyNode = keyNode
 	l.reference = low.Reference{}
 	l.Reference = &l.reference
-	l.nodeStore = sync.Map{}
+	l.nodeStore = low.NodeLines{}
 	l.Nodes = &l.nodeStore
 	l.context = ctx
 	l.index = idx

@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -49,7 +48,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 
 	s.reference = low.Reference{}
 	s.Reference = &s.reference
-	s.nodeStore = sync.Map{}
+	s.nodeStore = low.NodeLines{}
 	s.Nodes = &s.nodeStore
 	if root != nil && len(root.Content) > 0 {
 		s.NodeMap.ExtractNodes(root, false)

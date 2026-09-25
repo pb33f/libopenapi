@@ -6,7 +6,6 @@ package base
 import (
 	"context"
 	"hash/maphash"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -35,7 +34,7 @@ type XML struct {
 	RootNode   *yaml.Node
 	index      *index.SpecIndex
 	context    context.Context
-	nodeStore  sync.Map
+	nodeStore  low.NodeLines
 	reference  low.Reference
 	*low.Reference
 	low.NodeMap
@@ -45,7 +44,7 @@ type XML struct {
 func (x *XML) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	x.reference = low.Reference{}
 	x.Reference = &x.reference
-	x.nodeStore = sync.Map{}
+	x.nodeStore = low.NodeLines{}
 	x.Nodes = &x.nodeStore
 	x.index = idx
 	if root == nil {

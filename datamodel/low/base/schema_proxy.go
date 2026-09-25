@@ -67,7 +67,7 @@ type SchemaProxy struct {
 	hashMu         sync.Mutex // protects cachedHash + hashGen
 	cachedHash     *uint64    // protected by hashMu
 	hashGen        uint64     // generation counter for invalidation
-	nodeStore      sync.Map
+	nodeStore      low.NodeLines
 	nodeMap        low.NodeMap
 	TransformedRef *yaml.Node // Original node that contained the ref before transformation
 	transformedRef *transformedSiblingRef
@@ -103,7 +103,7 @@ func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *in
 	}
 	// for transformed schemas, don't set reference since it's now an allOf structure
 	// the reference is embedded within the allOf, but the schema itself is not a pure reference
-	sp.nodeStore = sync.Map{}
+	sp.nodeStore = low.NodeLines{}
 	sp.nodeMap = low.NodeMap{Nodes: &sp.nodeStore}
 	sp.NodeMap = &sp.nodeMap
 	return nil
@@ -133,7 +133,7 @@ func (sp *SchemaProxy) prepareForResolvedBuild(ctx context.Context, key, value, 
 	if refLocation != "" {
 		sp.SetReference(refLocation, refNode)
 	}
-	sp.nodeStore = sync.Map{}
+	sp.nodeStore = low.NodeLines{}
 	sp.nodeMap = low.NodeMap{Nodes: &sp.nodeStore}
 	sp.NodeMap = &sp.nodeMap
 }
@@ -255,8 +255,8 @@ func (sp *SchemaProxy) Schema() *Schema {
 
 		// Copy accumulated nodes to the built schema
 		if sp.NodeMap != nil {
-			sp.NodeMap.Nodes.Range(func(key, value any) bool {
-				schema.AddNode(key.(int), value.(*yaml.Node))
+			sp.NodeMap.Nodes.Range(func(line int, value any) bool {
+				schema.AddNode(line, value.(*yaml.Node))
 				return true
 			})
 		}
