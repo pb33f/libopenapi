@@ -5,11 +5,14 @@ package v2
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -28,6 +31,24 @@ func TestDefinitions_Schemas_Build_Error(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
+}
+
+// When a definition fails, the pipeline stops reading. With far more definitions than the pipeline
+// buffers, the feeding goroutine is left mid-send and must exit via the done channel, not leak.
+func TestDefinitions_Schemas_Build_ErrorStopsFeed(t *testing.T) {
+	var yml strings.Builder
+	for i := 0; i < 1000; i++ {
+		fmt.Fprintf(&yml, "gonna%d:\n  $ref: break\n", i)
+	}
+
+	var idxNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml.String()), &idxNode))
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Definitions
+	err := n.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Nil(t, n.Schemas)
 }
 
 func TestDefinitions_Parameters_Build_Error(t *testing.T) {

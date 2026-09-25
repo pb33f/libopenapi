@@ -4,6 +4,7 @@
 package high
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -1732,4 +1734,106 @@ func TestEncodeSafeValue_DeepCopiesYAMLNodes(t *testing.T) {
 	// mutating the copy must not touch the original (this is the whole point).
 	copied.Content[1].Tag = ""
 	assert.Equal(t, "!!str", orig.Content[1].Tag)
+}
+
+type keyedSliceHigh struct {
+	Tags []string `yaml:"tags,omitempty"`
+}
+
+type keyedSliceLow struct {
+	Tags []low.NodeReference[string]
+}
+
+// A low-level slice of keyed items places the rendered field at the earliest of their key lines.
+func TestNewNodeBuilder_LowSliceTakesEarliestKeyLine(t *testing.T) {
+	keyAt := func(line int) low.NodeReference[string] {
+		return low.NodeReference[string]{KeyNode: &yaml.Node{Line: line}}
+	}
+	lo := &keyedSliceLow{Tags: []low.NodeReference[string]{keyAt(12), keyAt(7), keyAt(9)}}
+
+	nb := NewNodeBuilder(&keyedSliceHigh{Tags: []string{"a", "b", "c"}}, lo)
+	require.Len(t, nb.Nodes, 1)
+	assert.Equal(t, 7, nb.Nodes[0].Line)
+}
+
+type failingRenderable struct{}
+
+func (failingRenderable) MarshalYAML() (interface{}, error) {
+	return nil, errors.New("boom")
+}
+
+type holdsFailingRenderable struct {
+	F failingRenderable
+}
+
+func addEntry(t *testing.T, value any) (*yaml.Node, *NodeBuilder) {
+	t.Helper()
+	nb := &NodeBuilder{}
+	parent := nb.AddYAMLNode(utils.CreateEmptyMapNode(), &nodes.NodeEntry{Tag: "field", Key: "field", Value: value})
+	return parent, nb
+}
+
+// A slice item that fails to render is dropped, and its own error is reported once, not twice.
+func TestNewNodeBuilder_SliceItemRenderError(t *testing.T) {
+	parent, nb := addEntry(t, []failingRenderable{{}})
+	assert.Empty(t, parent.Content)
+	assert.EqualError(t, errors.Join(nb.Errors...), "boom")
+}
+
+// A slice the encoder cannot represent is dropped, and the encoder's error is reported.
+func TestNewNodeBuilder_SliceEncodeError(t *testing.T) {
+	parent, nb := addEntry(t, []chan int{make(chan int)})
+	assert.Empty(t, parent.Content)
+	assert.EqualError(t, errors.Join(nb.Errors...), "go-yaml dump error in representer: cannot represent type: chan int")
+}
+
+// A pointer the encoder cannot represent is dropped, and the encoder's error is reported.
+func TestNewNodeBuilder_PointerEncodeError(t *testing.T) {
+	parent, nb := addEntry(t, &holdsFailingRenderable{})
+	assert.Empty(t, parent.Content)
+	assert.EqualError(t, errors.Join(nb.Errors...), "go-yaml dump error in representer: boom")
+}
+
+// Encoded slices keep the quoting style of the matching low-level items; extra low items are ignored.
+func TestNewNodeBuilder_SliceKeepsLowItemStyles(t *testing.T) {
+	lowSeq := utils.CreateEmptySequenceNode()
+	lowSeq.Content = []*yaml.Node{
+		{Kind: yaml.ScalarNode, Value: "a", Style: yaml.DoubleQuotedStyle},
+		{Kind: yaml.ScalarNode, Value: "b", Style: yaml.SingleQuotedStyle},
+		{Kind: yaml.ScalarNode, Value: "c", Style: yaml.DoubleQuotedStyle},
+	}
+	nb := &NodeBuilder{}
+	parent := nb.AddYAMLNode(utils.CreateEmptyMapNode(), &nodes.NodeEntry{
+		Tag: "field", Key: "field", Value: []string{"a", "b"},
+		LowValue: low.NodeReference[[]string]{ValueNode: lowSeq},
+	})
+	require.Empty(t, nb.Errors)
+
+	out, err := yaml.Marshal(parent)
+	require.NoError(t, err)
+	assert.Equal(t, "field:\n    - \"a\"\n    - 'b'\n", string(out))
+}
+
+// A null scalar node renders as an empty value, keeping the key.
+func TestNewNodeBuilder_NullScalarNode(t *testing.T) {
+	parent, nb := addEntry(t, &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"})
+	require.Empty(t, nb.Errors)
+	require.Len(t, parent.Content, 2)
+	assert.Equal(t, "field", parent.Content[0].Value)
+	assert.Equal(t, "", parent.Content[1].Value)
+}
+
+// A null-tagged node that is not a scalar has no value to render, so the key is dropped too.
+func TestNewNodeBuilder_NullNonScalarNode(t *testing.T) {
+	parent, nb := addEntry(t, &yaml.Node{Kind: yaml.MappingNode, Tag: "!!null"})
+	assert.Empty(t, nb.Errors)
+	assert.Empty(t, parent.Content)
+}
+
+// A false *bool without renderZero produces no value, so the key is dropped.
+func TestNewNodeBuilder_FalseBoolPointerOmitted(t *testing.T) {
+	f := false
+	parent, nb := addEntry(t, &f)
+	assert.Empty(t, nb.Errors)
+	assert.Empty(t, parent.Content)
 }

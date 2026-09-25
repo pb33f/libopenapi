@@ -392,23 +392,7 @@ func TestNewArazzoDocument_BuildModelError(t *testing.T) {
 	var seed lowArazzo.Arazzo
 	require.NoError(t, low.BuildModel(root.Content[0], &seed))
 
-	arazzoType := reflect.TypeOf(lowArazzo.Arazzo{})
-	original, ok := arazzoLowBuildModelFieldCache.Load(arazzoType)
-	require.True(t, ok)
-
-	origType := reflect.TypeOf(original)
-	elemType := origType.Elem()
-	replacement := reflect.MakeSlice(origType, 1, 1)
-	elem := reflect.New(elemType).Elem()
-	setArazzoUnexportedField(elem.FieldByName("lookupKey"), "arazzo")
-	setArazzoUnexportedField(elem.FieldByName("index"), 0)
-	setArazzoUnexportedField(elem.FieldByName("kind"), reflect.Bool)
-	replacement.Index(0).Set(elem)
-
-	arazzoLowBuildModelFieldCache.Store(arazzoType, replacement.Interface())
-	t.Cleanup(func() {
-		arazzoLowBuildModelFieldCache.Store(arazzoType, original)
-	})
+	forceBuildModelFieldError(t, reflect.TypeOf(lowArazzo.Arazzo{}), "arazzo")
 
 	doc, err := NewArazzoDocument(yml)
 	assert.Error(t, err)
@@ -737,6 +721,29 @@ workflows:
 
 func setArazzoUnexportedField(field reflect.Value, value any) {
 	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().Set(reflect.ValueOf(value))
+}
+
+// forceBuildModelFieldError swaps the cached field layout low.BuildModel uses for modelType with a
+// single bool field mapped to key, so BuildModel fails with "unable to parse unsupported type" for
+// the rest of the test. BuildModel cannot fail for any real low-level model, so this is the only
+// way to prove callers propagate that error. The model type must already be cached.
+func forceBuildModelFieldError(t *testing.T, modelType reflect.Type, key string) {
+	t.Helper()
+	original, ok := arazzoLowBuildModelFieldCache.Load(modelType)
+	require.True(t, ok)
+
+	origType := reflect.TypeOf(original)
+	replacement := reflect.MakeSlice(origType, 1, 1)
+	elem := reflect.New(origType.Elem()).Elem()
+	setArazzoUnexportedField(elem.FieldByName("lookupKey"), key)
+	setArazzoUnexportedField(elem.FieldByName("index"), 0)
+	setArazzoUnexportedField(elem.FieldByName("kind"), reflect.Bool)
+	replacement.Index(0).Set(elem)
+
+	arazzoLowBuildModelFieldCache.Store(modelType, replacement.Interface())
+	t.Cleanup(func() {
+		arazzoLowBuildModelFieldCache.Store(modelType, original)
+	})
 }
 
 // The configured logger receives the resolved origin at debug level. Origin resolution weighs

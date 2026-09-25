@@ -420,6 +420,33 @@ func TestDocument_RenderAndReload(t *testing.T) {
 		h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl)
 }
 
+func TestDocument_SetConfiguration(t *testing.T) {
+	doc, err := NewDocument([]byte("openapi: 3.1.0\n"))
+	require.NoError(t, err)
+	assert.Nil(t, doc.GetConfiguration())
+
+	config := datamodel.NewDocumentConfiguration()
+	doc.SetConfiguration(config)
+	assert.Same(t, config, doc.GetConfiguration())
+}
+
+// Clearing the version renders a document with an empty 'openapi' value, which cannot be reloaded.
+func TestDocument_RenderAndReload_UnreadableRender(t *testing.T) {
+	doc, err := NewDocument([]byte("openapi: 3.1.0\ninfo:\n  title: t\n  version: 1.0.0\n"))
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	m.Model.Version = ""
+
+	rendered, newDoc, newModel, err := doc.RenderAndReload()
+	assert.Nil(t, rendered)
+	assert.Nil(t, newDoc)
+	assert.Nil(t, newModel)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unable to extract version")
+}
+
 func TestDocument_RenderAndReload_WithErrors(t *testing.T) {
 	// load an OpenAPI 3 specification from bytes
 	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
