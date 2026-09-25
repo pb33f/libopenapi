@@ -2572,3 +2572,50 @@ func TestSchemaProxy_MarshalYAMLInline_CircularReference_OtherWholeFile(t *testi
 	require.NoError(t, err)
 	assert.Equal(t, "type: object\n", string(out))
 }
+
+// matchCircularReference walks every circular reference source in order and skips malformed entries,
+// in both identity modes, and reports no match when nothing closes a loop.
+func TestSchemaProxy_MatchCircularReference_NoMatch(t *testing.T) {
+	var idxNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("components:\n  schemas:\n    Ten:\n      type: object"), &idxNode))
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+	idx.SetAbsolutePath(filepath.Join(t.TempDir(), "spec.yaml"))
+	other := &index.Reference{Definition: "#/components/schemas/Other",
+		FullDefinition: idx.GetSpecAbsolutePath() + "#/components/schemas/Other"}
+	idx.SetCircularReferences([]*index.CircularReferenceResult{nil, {}, {LoopPoint: other}})
+
+	refNode := utils.CreateRefNode("#/components/schemas/Ten")
+	lowProxy := new(lowbase.SchemaProxy)
+	require.NoError(t, lowProxy.Build(context.Background(), nil, refNode, idx))
+	sp := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: lowProxy, ValueNode: refNode})
+
+	loose := NewInlineRenderContext()
+	_, found := sp.matchCircularReference(loose, idx)
+	assert.False(t, found)
+
+	strict := NewInlineRenderContext()
+	strict.StrictCircularReferenceIdentity = true
+	for range 2 { // the second pass answers the loop point identity from the context's cache
+		_, found = sp.matchCircularReference(strict, idx)
+		assert.False(t, found)
+	}
+
+	// a reference with no resolvable target identity cannot close a loop in strict mode.
+	programmatic := CreateSchemaProxyRef("external.yaml#/Thing")
+	_, found = programmatic.matchCircularReference(strict, idx)
+	assert.False(t, found)
+}
+
+// absoluteSpecPath resolves a relative spec path the way filepath.Abs does, once per render context,
+// and leaves absolute and remote paths alone.
+func TestInlineRenderContext_AbsoluteSpecPath(t *testing.T) {
+	ctx := NewInlineRenderContext()
+	want, err := filepath.Abs("spec.yaml")
+	require.NoError(t, err)
+	assert.Equal(t, want, ctx.absoluteSpecPath("spec.yaml"))
+	assert.Equal(t, want, ctx.absoluteSpecPath("spec.yaml"))
+
+	abs := filepath.Join(t.TempDir(), "spec.yaml")
+	assert.Equal(t, abs, ctx.absoluteSpecPath(abs))
+	assert.Equal(t, "https://example.com/spec.yaml", ctx.absoluteSpecPath("https://example.com/spec.yaml"))
+}
