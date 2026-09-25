@@ -122,8 +122,6 @@ type NodeReference[T any] struct {
 
 	// The yaml.Node that is the key, that contains the value.
 	KeyNode *yaml.Node
-
-	Context context.Context
 }
 
 var _ HasValueNodeUntyped = &NodeReference[any]{}

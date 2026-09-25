@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"hash/maphash"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -29,7 +28,7 @@ type OAuthFlows struct {
 	RootNode          *yaml.Node
 	index             *index.SpecIndex
 	context           context.Context
-	nodeStore         sync.Map
+	nodeStore         low.NodeLines
 	reference         low.Reference
 	*low.Reference
 	low.NodeMap
@@ -73,7 +72,7 @@ func (o *OAuthFlows) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 	utils.CheckForMergeNodes(root)
 	o.reference = low.Reference{}
 	o.Reference = &o.reference
-	o.nodeStore = sync.Map{}
+	o.nodeStore = low.NodeLines{}
 	o.Nodes = &o.nodeStore
 	if len(root.Content) > 0 {
 		o.NodeMap.ExtractNodes(root, false)
@@ -159,7 +158,7 @@ type OAuthFlow struct {
 	RootNode         *yaml.Node
 	index            *index.SpecIndex
 	context          context.Context
-	nodeStore        sync.Map
+	nodeStore        low.NodeLines
 	reference        low.Reference
 	*low.Reference
 	low.NodeMap
@@ -199,7 +198,7 @@ func (o *OAuthFlow) GetRootNode() *yaml.Node {
 func (o *OAuthFlow) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	o.reference = low.Reference{}
 	o.Reference = &o.reference
-	o.nodeStore = sync.Map{}
+	o.nodeStore = low.NodeLines{}
 	o.Nodes = &o.nodeStore
 	if len(root.Content) > 0 {
 		o.NodeMap.ExtractNodes(root, false)

@@ -6,7 +6,6 @@ package v3
 import (
 	"context"
 	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -273,7 +272,7 @@ components:
 	idx := index.NewSpecIndex(&idxNode)
 	_, _, compNode := utils.FindKeyNodeFullTop(ComponentsLabel, idxNode.Content[0].Content)
 
-	var nodeStore sync.Map
+	var nodeStore low.NodeLines
 	components := &Components{}
 	components.Nodes = &nodeStore
 

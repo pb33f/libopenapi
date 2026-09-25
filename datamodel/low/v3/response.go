@@ -6,7 +6,6 @@ package v3
 import (
 	"context"
 	"hash/maphash"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -31,7 +30,7 @@ type Response struct {
 	RootNode    *yaml.Node
 	index       *index.SpecIndex
 	context     context.Context
-	nodeStore   sync.Map
+	nodeStore   low.NodeLines
 	reference   low.Reference
 	*low.Reference
 	low.NodeMap
@@ -93,7 +92,7 @@ func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 	root = utils.NodeAlias(root)
 	r.RootNode = root
 	utils.CheckForMergeNodes(root)
-	r.nodeStore = sync.Map{}
+	r.nodeStore = low.NodeLines{}
 	r.Nodes = &r.nodeStore
 	if len(root.Content) > 0 {
 		r.NodeMap.ExtractNodes(root, false)

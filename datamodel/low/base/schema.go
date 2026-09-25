@@ -2,7 +2,6 @@ package base
 
 import (
 	"context"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -161,7 +160,7 @@ type Schema struct {
 	refIndex *index.SpecIndex
 
 	context   context.Context
-	nodeStore sync.Map
+	nodeStore low.NodeLines
 	reference low.Reference
 	*low.Reference
 	low.NodeMap
