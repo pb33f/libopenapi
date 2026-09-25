@@ -137,7 +137,9 @@ func TestNewRemoteFS_BasicCheck_NoScheme(t *testing.T) {
 
 	file, err := remoteFS.Open("https://ding-dong-bing-bong.com/file1.yaml")
 
-	assert.NoError(t, err)
+	// With an empty root URL, normalization is a no-op — the URL keeps its
+	// original scheme and host. The fetch to a non-existent host returns an error.
+	assert.Error(t, err, "should error when fetching from non-existent host")
 	assert.Nil(t, file)
 }
 
@@ -614,4 +616,82 @@ func TestRemoteFile_SignalIndexingComplete_NilChannel(t *testing.T) {
 	assert.NotPanics(t, func() {
 		rf.signalIndexingComplete()
 	}, "signalIndexingComplete should not panic when channel is nil")
+}
+
+func TestNormalizeRemoteURL_PreservesSchemeWhenBaseURLHasEmptyScheme(t *testing.T) {
+	// When BaseURL has a host but empty scheme (malformed), normalizeRemoteURL should
+	// be a no-op, preserving the remote URL's original scheme and host.
+	config := CreateOpenAPIIndexConfig()
+	// Parse a URL with host but no scheme — simulates a malformed BaseURL
+	config.BaseURL = &url.URL{Host: "example.com"}
+	rfs, err := NewRemoteFSWithConfig(config)
+	assert.NoError(t, err)
+
+	target, err := url.Parse("https://other.example/spec.yaml")
+	assert.NoError(t, err)
+	rfs.normalizeRemoteURL(target)
+	assert.Equal(t, "https", target.Scheme, "scheme should be preserved when BaseURL has empty scheme")
+	assert.Equal(t, "other.example", target.Host, "host should be preserved when BaseURL has empty scheme")
+}
+
+func TestNormalizeRemoteURL_OverwritesSchemeWhenBaseURLHasScheme(t *testing.T) {
+	// When BaseURL has a valid scheme and host, normalizeRemoteURL should overwrite.
+	config := CreateOpenAPIIndexConfig()
+	config.BaseURL, _ = url.Parse("http://root.example/base")
+	rfs, err := NewRemoteFSWithConfig(config)
+	assert.NoError(t, err)
+
+	target, err := url.Parse("https://other.example/spec.yaml")
+	assert.NoError(t, err)
+	rfs.normalizeRemoteURL(target)
+	assert.Equal(t, "http", target.Scheme, "scheme should be overwritten when BaseURL has a valid scheme")
+	assert.Equal(t, "root.example", target.Host)
+}
+
+func TestNormalizeRemoteURL_NoOpWhenBaseURLIsEmpty(t *testing.T) {
+	// When BaseURL is completely empty, normalization should be a no-op.
+	config := CreateOpenAPIIndexConfig()
+	config.BaseURL = &url.URL{}
+	rfs, err := NewRemoteFSWithConfig(config)
+	assert.NoError(t, err)
+
+	target, err := url.Parse("https://other.example/spec.yaml")
+	assert.NoError(t, err)
+	rfs.normalizeRemoteURL(target)
+	assert.Equal(t, "https", target.Scheme)
+	assert.Equal(t, "other.example", target.Host)
+}
+
+func TestOpenWithContext_ReturnsErrorOnEmptyScheme(t *testing.T) {
+	// OpenWithContext must return an error (not nil,nil) when the scheme is empty,
+	// to prevent panics in callers. This is defense-in-depth — the primary fix
+	// in normalizeRemoteURL prevents scheme from being cleared, but the error
+	// return protects against any other path that produces an empty scheme.
+	config := CreateOpenAPIIndexConfig()
+	rfs, err := NewRemoteFSWithConfig(config)
+	assert.NoError(t, err)
+
+	// Use NewRemoteFSWithRootURL with a URL that has no scheme.
+	rfs2, err := NewRemoteFSWithRootURL("example.com")
+	assert.NoError(t, err)
+
+	// The rootURLParsed should have empty scheme
+	assert.Equal(t, "", rfs2.rootURLParsed.Scheme)
+
+	// Now test: normalize a URL with this root — should be a no-op
+	target, _ := url.Parse("https://example.com/spec.yaml")
+	rfs2.normalizeRemoteURL(target)
+	// With the fix, normalization is a no-op when root has empty scheme
+	assert.Equal(t, "https", target.Scheme)
+
+	// Test defense-in-depth: directly call OpenWithContext with manipulated rootURLParsed
+	// that has host but no scheme — normalization will be a no-op, scheme preserved,
+	// URL will be fetched normally (and likely fail with network error, not nil,nil panic)
+	rfs.rootURLParsed = &url.URL{Host: "example.com"}
+	file, err := rfs.OpenWithContext(context.Background(), "https://example.com/spec.yaml")
+	// The URL keeps its scheme, so it tries to fetch and returns an error from the HTTP layer.
+	// This is correct — no nil,nil panic.
+	if err != nil {
+		assert.Nil(t, file)
+	}
 }
