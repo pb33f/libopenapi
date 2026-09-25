@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"hash/maphash"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -30,7 +29,7 @@ type Paths struct {
 	RootNode   *yaml.Node
 	index      *index.SpecIndex
 	context    context.Context
-	nodeStore  sync.Map
+	nodeStore  low.NodeLines
 	reference  low.Reference
 	*low.Reference
 	low.NodeMap
@@ -97,7 +96,7 @@ func (p *Paths) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.
 	utils.CheckForMergeNodes(root)
 	p.reference = low.Reference{}
 	p.Reference = &p.reference
-	p.nodeStore = sync.Map{}
+	p.nodeStore = low.NodeLines{}
 	p.Nodes = &p.nodeStore
 	if keyNode != nil {
 		p.AddNode(keyNode.Line, keyNode)

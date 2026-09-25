@@ -4,6 +4,7 @@
 package libopenapi
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -24,5 +25,6 @@ func ClearAllCaches() {
 	index.ClearHashCache()            // nodeHashCache
 	index.ClearContentDetectionCache()
 	highbase.ClearInlineRenderingTracker()
+	high.ClearEncodeCache()
 	utils.ClearJSONPathCache()
 }

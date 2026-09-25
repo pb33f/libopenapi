@@ -67,7 +67,7 @@ type SchemaProxy struct {
 	hashMu         sync.Mutex // protects cachedHash + hashGen
 	cachedHash     *uint64    // protected by hashMu
 	hashGen        uint64     // generation counter for invalidation
-	nodeStore      sync.Map
+	nodeStore      low.NodeLines
 	nodeMap        low.NodeMap
 	TransformedRef *yaml.Node // Original node that contained the ref before transformation
 	transformedRef *transformedSiblingRef
@@ -103,7 +103,7 @@ func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *in
 	}
 	// for transformed schemas, don't set reference since it's now an allOf structure
 	// the reference is embedded within the allOf, but the schema itself is not a pure reference
-	sp.nodeStore = sync.Map{}
+	sp.nodeStore = low.NodeLines{}
 	sp.nodeMap = low.NodeMap{Nodes: &sp.nodeStore}
 	sp.NodeMap = &sp.nodeMap
 	return nil
@@ -133,7 +133,7 @@ func (sp *SchemaProxy) prepareForResolvedBuild(ctx context.Context, key, value, 
 	if refLocation != "" {
 		sp.SetReference(refLocation, refNode)
 	}
-	sp.nodeStore = sync.Map{}
+	sp.nodeStore = low.NodeLines{}
 	sp.nodeMap = low.NodeMap{Nodes: &sp.nodeStore}
 	sp.NodeMap = &sp.nodeMap
 }
@@ -230,8 +230,10 @@ func (sp *SchemaProxy) Schema() *Schema {
 		// handle property merging for references with sibling properties
 		buildNode := sp.vn
 		if cfg != nil {
-			if docConfig := sp.getDocumentConfig(); docConfig != nil && docConfig.MergeReferencedProperties {
-				if mergedNode := sp.attemptPropertyMerging(buildNode, docConfig); mergedNode != nil {
+			// read the flag straight from the rolodex config: the document configuration is only built
+			// when merging is actually enabled.
+			if rolodexConfig := sp.rolodexConfig(); rolodexConfig != nil && rolodexConfig.MergeReferencedProperties {
+				if mergedNode := sp.attemptPropertyMerging(buildNode, rolodexConfig.ToDocumentConfiguration()); mergedNode != nil {
 					buildNode = mergedNode
 				}
 			}
@@ -253,8 +255,8 @@ func (sp *SchemaProxy) Schema() *Schema {
 
 		// Copy accumulated nodes to the built schema
 		if sp.NodeMap != nil {
-			sp.NodeMap.Nodes.Range(func(key, value any) bool {
-				schema.AddNode(key.(int), value.(*yaml.Node))
+			sp.NodeMap.Nodes.Range(func(line int, value any) bool {
+				schema.AddNode(line, value.(*yaml.Node))
 				return true
 			})
 		}
@@ -418,16 +420,12 @@ type HasIndex interface {
 	GetIndex() *index.SpecIndex
 }
 
-// getDocumentConfig retrieves the document configuration from the index
-func (sp *SchemaProxy) getDocumentConfig() *datamodel.DocumentConfiguration {
+// rolodexConfig returns the index configuration of the rolodex this proxy's index belongs to, or nil.
+func (sp *SchemaProxy) rolodexConfig() *index.SpecIndexConfig {
 	if sp.idx == nil || sp.idx.GetRolodex() == nil {
 		return nil
 	}
-	rolodex := sp.idx.GetRolodex()
-	if config := rolodex.GetConfig(); config != nil {
-		return config.ToDocumentConfiguration()
-	}
-	return nil
+	return sp.idx.GetRolodex().GetConfig()
 }
 
 // attemptPropertyMerging attempts to merge properties for references with siblings

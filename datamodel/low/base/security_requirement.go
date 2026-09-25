@@ -7,7 +7,6 @@ import (
 	"context"
 	"hash/maphash"
 	"sort"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -31,7 +30,7 @@ type SecurityRequirement struct {
 	ContainsEmptyRequirement bool // if a requirement is empty (this means it's optional)
 	index                    *index.SpecIndex
 	context                  context.Context
-	nodeStore                sync.Map
+	nodeStore                low.NodeLines
 	reference                low.Reference
 	*low.Reference
 	low.NodeMap
@@ -52,7 +51,7 @@ func (s *SecurityRequirement) Build(ctx context.Context, keyNode, root *yaml.Nod
 	s.KeyNode = keyNode
 	s.reference = low.Reference{}
 	s.Reference = &s.reference
-	s.nodeStore = sync.Map{}
+	s.nodeStore = low.NodeLines{}
 	s.Nodes = &s.nodeStore
 	s.context = ctx
 	s.index = idx

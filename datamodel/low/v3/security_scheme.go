@@ -6,7 +6,6 @@ package v3
 import (
 	"context"
 	"hash/maphash"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -41,7 +40,7 @@ type SecurityScheme struct {
 	RootNode          *yaml.Node
 	index             *index.SpecIndex
 	context           context.Context
-	nodeStore         sync.Map
+	nodeStore         low.NodeLines
 	reference         low.Reference
 	*low.Reference
 	low.NodeMap
@@ -88,7 +87,7 @@ func (ss *SecurityScheme) Build(ctx context.Context, keyNode, root *yaml.Node, i
 	root = utils.NodeAlias(root)
 	ss.RootNode = root
 	utils.CheckForMergeNodes(root)
-	ss.nodeStore = sync.Map{}
+	ss.nodeStore = low.NodeLines{}
 	ss.Nodes = &ss.nodeStore
 	if len(root.Content) > 0 {
 		ss.NodeMap.ExtractNodes(root, false)

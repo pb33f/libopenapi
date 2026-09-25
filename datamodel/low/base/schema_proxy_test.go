@@ -648,7 +648,7 @@ components:
 	assert.NotNil(t, schema)
 
 	sp.idx.SetRolodex(&index.Rolodex{}) // set a rolodex to avoid nil deref
-	assert.Nil(t, sp.getDocumentConfig())
+	assert.Nil(t, sp.rolodexConfig())
 }
 
 func TestSchemaProxy_attemptPropertyMerging_MergeError(t *testing.T) {

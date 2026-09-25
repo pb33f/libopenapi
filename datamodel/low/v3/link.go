@@ -6,7 +6,6 @@ package v3
 import (
 	"context"
 	"hash/maphash"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -39,7 +38,7 @@ type Link struct {
 	RootNode     *yaml.Node
 	index        *index.SpecIndex
 	context      context.Context
-	nodeStore    sync.Map
+	nodeStore    low.NodeLines
 	reference    low.Reference
 	*low.Reference
 	low.NodeMap
@@ -91,7 +90,7 @@ func (l *Link) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 	root = utils.NodeAlias(root)
 	l.RootNode = root
 	utils.CheckForMergeNodes(root)
-	l.nodeStore = sync.Map{}
+	l.nodeStore = low.NodeLines{}
 	l.Nodes = &l.nodeStore
 	if len(root.Content) > 0 {
 		l.NodeMap.ExtractNodes(root, false)

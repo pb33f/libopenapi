@@ -6,7 +6,6 @@ package base
 import (
 	"context"
 	"hash/maphash"
-	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -29,7 +28,7 @@ type ExternalDoc struct {
 	RootNode    *yaml.Node
 	index       *index.SpecIndex
 	context     context.Context
-	nodeStore   sync.Map
+	nodeStore   low.NodeLines
 	reference   low.Reference
 	*low.Reference
 	low.NodeMap
@@ -55,7 +54,7 @@ func (ex *ExternalDoc) Build(ctx context.Context, keyNode, root *yaml.Node, idx 
 	ex.KeyNode = keyNode
 	ex.reference = low.Reference{}
 	ex.Reference = &ex.reference
-	ex.nodeStore = sync.Map{}
+	ex.nodeStore = low.NodeLines{}
 	ex.Nodes = &ex.nodeStore
 	ex.context = ctx
 	ex.index = idx

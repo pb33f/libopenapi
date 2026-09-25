@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/internal/jsonnode"
 	"github.com/pb33f/libopenapi/utils"
 
 	"go.yaml.in/yaml/v4"
@@ -307,7 +308,7 @@ func (f *RemoteFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 		return nil, fmt.Errorf("no data to parse for file: %s", f.fullPath)
 	}
 	var root yaml.Node
-	err := yaml.Unmarshal(f.data, &root)
+	err := jsonnode.Unmarshal(f.data, &root)
 
 	if err != nil {
 		return nil, err
