@@ -230,8 +230,10 @@ func (sp *SchemaProxy) Schema() *Schema {
 		// handle property merging for references with sibling properties
 		buildNode := sp.vn
 		if cfg != nil {
-			if docConfig := sp.getDocumentConfig(); docConfig != nil && docConfig.MergeReferencedProperties {
-				if mergedNode := sp.attemptPropertyMerging(buildNode, docConfig); mergedNode != nil {
+			// read the flag straight from the rolodex config: the document configuration is only built
+			// when merging is actually enabled.
+			if rolodexConfig := sp.rolodexConfig(); rolodexConfig != nil && rolodexConfig.MergeReferencedProperties {
+				if mergedNode := sp.attemptPropertyMerging(buildNode, rolodexConfig.ToDocumentConfiguration()); mergedNode != nil {
 					buildNode = mergedNode
 				}
 			}
@@ -418,16 +420,12 @@ type HasIndex interface {
 	GetIndex() *index.SpecIndex
 }
 
-// getDocumentConfig retrieves the document configuration from the index
-func (sp *SchemaProxy) getDocumentConfig() *datamodel.DocumentConfiguration {
+// rolodexConfig returns the index configuration of the rolodex this proxy's index belongs to, or nil.
+func (sp *SchemaProxy) rolodexConfig() *index.SpecIndexConfig {
 	if sp.idx == nil || sp.idx.GetRolodex() == nil {
 		return nil
 	}
-	rolodex := sp.idx.GetRolodex()
-	if config := rolodex.GetConfig(); config != nil {
-		return config.ToDocumentConfiguration()
-	}
-	return nil
+	return sp.idx.GetRolodex().GetConfig()
 }
 
 // attemptPropertyMerging attempts to merge properties for references with siblings

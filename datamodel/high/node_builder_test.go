@@ -1837,3 +1837,62 @@ func TestNewNodeBuilder_FalseBoolPointerOmitted(t *testing.T) {
 	assert.Empty(t, nb.Errors)
 	assert.Empty(t, parent.Content)
 }
+
+type emptyWithValueNode struct{}
+
+func (emptyWithValueNode) IsEmpty() bool            { return true }
+func (emptyWithValueNode) GetValueNode() *yaml.Node { return utils.CreateStringNode("held") }
+
+type emptyWithoutValueNode struct{}
+
+func (emptyWithoutValueNode) IsEmpty() bool            { return true }
+func (emptyWithoutValueNode) GetValueNode() *yaml.Node { return nil }
+
+type dynamicLowHigh struct {
+	Held string `yaml:"held,omitempty"`
+}
+
+type dynamicLowAny struct {
+	Held any
+}
+
+type dynamicLowPointer struct {
+	Held *any
+}
+
+// An interface-typed low field (or a pointer to one) can only be checked for content through the value
+// it holds at runtime, so a zero high value renders exactly when that value reports content.
+func TestNewNodeBuilder_DynamicLowFieldContent(t *testing.T) {
+	render := func(low any) string {
+		data, err := yaml.Marshal(NewNodeBuilder(&dynamicLowHigh{}, low).Render())
+		require.NoError(t, err)
+		return strings.TrimSpace(string(data))
+	}
+	held := func(v any) *any { return &v }
+
+	assert.Equal(t, "{}", render(&dynamicLowAny{}))
+	assert.Equal(t, `held: ""`, render(&dynamicLowAny{Held: nonEmptyExample{}}))
+	assert.Equal(t, `held: ""`, render(&dynamicLowAny{Held: emptyWithValueNode{}}))
+	assert.Equal(t, "{}", render(&dynamicLowAny{Held: emptyWithoutValueNode{}}))
+	assert.Equal(t, "{}", render(&dynamicLowAny{Held: struct{}{}}))
+
+	assert.Equal(t, "{}", render(&dynamicLowPointer{}))
+	assert.Equal(t, `held: ""`, render(&dynamicLowPointer{Held: held(nonEmptyExample{})}))
+	assert.Equal(t, "{}", render(&dynamicLowPointer{Held: held(struct{}{})}))
+}
+
+type namedString string
+
+// A field with a named string type renders its value as a plain string.
+func TestNewNodeBuilder_NamedStringType(t *testing.T) {
+	type test struct {
+		Name namedString `yaml:"name"`
+	}
+	nb := NewNodeBuilder(&test{Name: "chicken"}, nil)
+	require.Len(t, nb.Nodes, 1)
+	assert.Equal(t, "chicken", nb.Nodes[0].Value)
+
+	data, err := yaml.Marshal(nb.Render())
+	require.NoError(t, err)
+	assert.Equal(t, "name: chicken", strings.TrimSpace(string(data)))
+}
