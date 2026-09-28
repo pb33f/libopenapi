@@ -143,6 +143,55 @@ func TestInferComponentTypeFromSourcePath(t *testing.T) {
 			sourcePath: []string{"x-private", "thing"},
 			wantOK:     false,
 		},
+		// The index records no position for sequence items, so a $ref directly in a sequence item has the key
+		// holding the sequence as its last segment (https://github.com/pb33f/libopenapi/issues/644).
+		{
+			name:       "top-level allOf item",
+			sourcePath: []string{"allOf"},
+			wantType:   v3.SchemasLabel,
+			wantOK:     true,
+		},
+		{
+			name:       "top-level anyOf item",
+			sourcePath: []string{"anyOf"},
+			wantType:   v3.SchemasLabel,
+			wantOK:     true,
+		},
+		{
+			name:       "top-level oneOf item",
+			sourcePath: []string{"oneOf"},
+			wantType:   v3.SchemasLabel,
+			wantOK:     true,
+		},
+		{
+			name:       "top-level prefixItems item",
+			sourcePath: []string{"prefixItems"},
+			wantType:   v3.SchemasLabel,
+			wantOK:     true,
+		},
+		{
+			name:       "operation parameter list item",
+			sourcePath: []string{"paths", "~1pets", "get", "parameters"},
+			wantType:   v3.ParametersLabel,
+			wantOK:     true,
+		},
+		{
+			name:       "path item parameter list item",
+			sourcePath: []string{"paths", "~1pets", "parameters"},
+			wantType:   v3.ParametersLabel,
+			wantOK:     true,
+		},
+		{
+			name:       "components parameters map is not a list",
+			sourcePath: []string{"components", "parameters"},
+			wantOK:     false,
+		},
+		{
+			name:       "parameter component named like a schema keyword",
+			sourcePath: []string{"components", "parameters", "allOf"},
+			wantType:   v3.ParametersLabel,
+			wantOK:     true,
+		},
 	}
 
 	for _, tt := range tests {

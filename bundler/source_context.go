@@ -62,6 +62,12 @@ func inferComponentTypeFromSourcePath(sourcePath []string) (string, bool) {
 		if segment == v3.RequestBodyLabel {
 			return v3.RequestBodiesLabel, true
 		}
+
+		if i == len(sourcePath)-1 {
+			if componentType, ok := sequenceItemComponentType(segment, previous); ok {
+				return componentType, true
+			}
+		}
 	}
 
 	if pathContains(sourcePath, v3.CallbacksLabel) {
@@ -72,6 +78,24 @@ func inferComponentTypeFromSourcePath(sourcePath []string) (string, bool) {
 	}
 	if len(sourcePath) > 1 && sourcePath[0] == v3.ComponentsLabel && sourcePath[1] == v3.SchemasLabel {
 		return v3.SchemasLabel, true
+	}
+	return "", false
+}
+
+// sequenceItemComponentType classifies a $ref that sits directly in a sequence item. The index records no
+// position for sequence items, so the source path of such a ref ends with the key that holds the sequence:
+// a schema in an allOf is [..., allOf], and a parameter in an operation's list is [..., get, parameters].
+// Without this, the same file referenced from a sequence item and from a mapping slot gets two processed-ref
+// keys and is composed twice (https://github.com/pb33f/libopenapi/issues/644).
+func sequenceItemComponentType(segment, previous string) (string, bool) {
+	switch segment {
+	case "allOf", "anyOf", "oneOf", "prefixItems":
+		return v3.SchemasLabel, true
+	case v3.ParametersLabel:
+		// components/parameters is a map of named parameters, never a list.
+		if previous != v3.ComponentsLabel {
+			return v3.ParametersLabel, true
+		}
 	}
 	return "", false
 }
