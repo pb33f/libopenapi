@@ -6,8 +6,8 @@ package index
 import (
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestSpecIndex_TagCircularReferences_SimpleCircle(t *testing.T) {

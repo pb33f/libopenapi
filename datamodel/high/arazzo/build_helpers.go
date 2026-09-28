@@ -6,10 +6,10 @@ package arazzo
 import (
 	"context"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowarazzo "github.com/pb33f/libopenapi/datamodel/low/arazzo"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"go.yaml.in/yaml/v4"
 )
 
 // buildSlice converts a slice of low.ValueReference[L] to a slice of H using a conversion function.

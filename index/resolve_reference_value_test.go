@@ -3,8 +3,8 @@ package index
 import (
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestResolveReferenceValue_FromIndex(t *testing.T) {

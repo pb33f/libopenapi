@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/high/nodes"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 // untypedKey mirrors low.KeyReference: a struct key exposing its string through GetValueUntyped.

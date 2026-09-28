@@ -8,10 +8,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	libopenapi "github.com/pb33f/libopenapi"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 const arazzo10MatrixYAML = `arazzo: 1.0.1

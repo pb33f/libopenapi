@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"unicode"
 
+	"github.com/pb33f/go-yaml"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
-	"go.yaml.in/yaml/v4"
 )
 
 // xmlNameRegex matches characters that are NOT valid in XML names.

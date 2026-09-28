@@ -6,7 +6,7 @@ package model
 import (
 	"encoding/json"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/pb33f/go-yaml"
 )
 
 // Definitions of the possible changes between two items
