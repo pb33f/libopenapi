@@ -76,6 +76,7 @@ See all the documentation at https://pb33f.io/libopenapi/
 - [Parsing Code](https://pb33f.io/libopenapi/parsing-code/)
 - [FAQ](https://pb33f.io/libopenapi/faq/)
 - [About libopenapi](https://pb33f.io/libopenapi/about/)
+- [Migrating: breaking API changes by version](MIGRATING.md)
 
 ### Generating TypeScript models
 
