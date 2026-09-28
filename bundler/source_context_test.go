@@ -49,6 +49,24 @@ func TestInferComponentTypeFromSourcePath(t *testing.T) {
 			wantOK:     true,
 		},
 		{
+			name:       "operation parameter sequence",
+			sourcePath: []string{"paths", "/pets", "get", "parameters"},
+			wantType:   v3.ParametersLabel,
+			wantOK:     true,
+		},
+		{
+			name:       "path item parameter sequence",
+			sourcePath: []string{"paths", "/pets", "parameters"},
+			wantType:   v3.ParametersLabel,
+			wantOK:     true,
+		},
+		{
+			name:       "schema property named parameters",
+			sourcePath: []string{"components", "schemas", "Pet", "properties", "parameters"},
+			wantType:   v3.SchemasLabel,
+			wantOK:     true,
+		},
+		{
 			name:       "operation request body",
 			sourcePath: []string{"paths", "/pets", "post", "requestBody"},
 			wantType:   v3.RequestBodiesLabel,
@@ -117,6 +135,30 @@ func TestInferComponentTypeFromSourcePath(t *testing.T) {
 		{
 			name:       "schema property",
 			sourcePath: []string{"components", "schemas", "Pet", "properties", "owner"},
+			wantType:   v3.SchemasLabel,
+			wantOK:     true,
+		},
+		{
+			name:       "allOf sequence in external schema file",
+			sourcePath: []string{"allOf"},
+			wantType:   v3.SchemasLabel,
+			wantOK:     true,
+		},
+		{
+			name:       "oneOf sequence",
+			sourcePath: []string{"components", "schemas", "Pet", "oneOf"},
+			wantType:   v3.SchemasLabel,
+			wantOK:     true,
+		},
+		{
+			name:       "anyOf sequence",
+			sourcePath: []string{"properties", "owner", "anyOf"},
+			wantType:   v3.SchemasLabel,
+			wantOK:     true,
+		},
+		{
+			name:       "prefixItems sequence",
+			sourcePath: []string{"prefixItems"},
 			wantType:   v3.SchemasLabel,
 			wantOK:     true,
 		},

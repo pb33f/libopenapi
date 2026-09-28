@@ -62,6 +62,12 @@ func inferComponentTypeFromSourcePath(sourcePath []string) (string, bool) {
 		if segment == v3.RequestBodyLabel {
 			return v3.RequestBodiesLabel, true
 		}
+
+		// Operation and path item parameters are sequences; SourcePath carries no
+		// sequence position, so the ref's path ends at the parameters keyword.
+		if segment == v3.ParametersLabel && i == len(sourcePath)-1 && previous != v3.ComponentsLabel {
+			return v3.ParametersLabel, true
+		}
 	}
 
 	if pathContains(sourcePath, v3.CallbacksLabel) {
@@ -187,9 +193,12 @@ func isSchemaSourceSegment(sourcePath []string, index int) bool {
 		previous = sourcePath[index-1]
 	}
 
+	// The index does not record sequence positions in SourcePath, so a $ref inside
+	// an array-of-schemas keyword ends with the keyword itself (e.g. [..., "allOf"]).
 	switch segment {
 	case "schema", "items", "additionalProperties", "unevaluatedItems", "unevaluatedProperties",
-		"contains", "not", "if", "then", "else", "propertyNames":
+		"contains", "not", "if", "then", "else", "propertyNames",
+		"allOf", "anyOf", "oneOf", "prefixItems":
 		return true
 	}
 
