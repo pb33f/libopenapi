@@ -6,9 +6,9 @@ package model
 import (
 	"strings"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"go.yaml.in/yaml/v4"
 )
 
 // ExtensionChanges represents any changes to custom extensions defined for an OpenAPI object.

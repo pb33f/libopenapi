@@ -10,9 +10,9 @@ import (
 	"time"
 	"weak"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 // A document the caller has dropped must be reclaimable without ClearAllCaches: no process-wide cache may keep

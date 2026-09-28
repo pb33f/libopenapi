@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/pb33f/go-yaml"
 	low "github.com/pb33f/libopenapi/datamodel/low/arazzo"
-	"go.yaml.in/yaml/v4"
 )
 
 type outputValueVariant uint8

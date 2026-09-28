@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 // TestCheckDuplicateMappingKeys_MatchesDecoder is a differential test: every case is
-// run through both checkDuplicateMappingKeys and the yaml v4 decoder (the previous
+// run through both checkDuplicateMappingKeys and the yaml decoder (the previous
 // source of duplicate-key errors). The walker must agree with the decoder on whether
 // an error occurs AND on the exact construct error text.
 func TestCheckDuplicateMappingKeys_MatchesDecoder(t *testing.T) {

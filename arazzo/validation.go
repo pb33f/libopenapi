@@ -10,11 +10,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/arazzo/expression"
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	low "github.com/pb33f/libopenapi/datamodel/low/arazzo"
-	"go.yaml.in/yaml/v4"
 )
 
 // lowNodePos extracts line and column from a *yaml.Node, returning (0, 0) if nil.

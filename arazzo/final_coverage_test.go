@@ -15,11 +15,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/arazzo/expression"
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 // ---------------------------------------------------------------------------

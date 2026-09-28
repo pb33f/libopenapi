@@ -7,12 +7,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 // buildReferencedExample builds an Example whose low model is a reference to another example

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/pb33f/go-yaml"
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"

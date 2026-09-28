@@ -15,13 +15,13 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/arazzo/expression"
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 // ---------------------------------------------------------------------------
@@ -611,7 +611,7 @@ func TestResolveYAMLNodeValue_DecodeError(t *testing.T) {
 			// missing value node
 		},
 	}
-	// Note: yaml.v4 may or may not error on odd content. Let's use a different approach.
+	// Note: yaml may or may not error on odd content. Let's use a different approach.
 	// Use a node with invalid tag to cause decode error.
 	node2 := &yaml.Node{
 		Kind:  yaml.ScalarNode,
@@ -619,7 +619,7 @@ func TestResolveYAMLNodeValue_DecodeError(t *testing.T) {
 		Value: "not-an-int",
 	}
 	_, err := engine.resolveYAMLNodeValue(node2, exprCtx)
-	// yaml.v4 may decode "not-an-int" with !!int tag - this may or may not error
+	// yaml may decode "not-an-int" with !!int tag - this may or may not error
 	// Let's just verify the function returns something or an error; it exercises the decode path
 	_ = err
 	_ = node

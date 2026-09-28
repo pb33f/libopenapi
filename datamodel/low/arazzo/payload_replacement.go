@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"hash/maphash"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"go.yaml.in/yaml/v4"
 )
 
 // PayloadReplacement represents a low-level Arazzo Payload Replacement Object.

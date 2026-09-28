@@ -7,7 +7,7 @@ import (
 	"encoding/binary"
 	"sync"
 
-	"go.yaml.in/yaml/v4"
+	"github.com/pb33f/go-yaml"
 )
 
 // The node builder encodes raw values (enum lists, required lists, examples and extension values) with

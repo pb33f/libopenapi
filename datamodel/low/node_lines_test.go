@@ -7,8 +7,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 // writeLines applies the same writes to a NodeLines: a stored single node that a later add turns into a

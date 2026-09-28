@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi"
 	higharazzo "github.com/pb33f/libopenapi/datamodel/high/arazzo"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestPrepareArazzoFiniteOperation(t *testing.T) {

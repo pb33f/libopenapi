@@ -6,9 +6,9 @@ package golang
 import (
 	"strings"
 
+	"github.com/pb33f/go-yaml"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"go.yaml.in/yaml/v4"
 )
 
 func (g *Generator) irFromOpenAPI(name string, proxy *highbase.SchemaProxy, path string) (*SchemaIR, error) {

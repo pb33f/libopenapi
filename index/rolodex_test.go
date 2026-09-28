@@ -21,8 +21,8 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestRolodex_NewRolodex(t *testing.T) {

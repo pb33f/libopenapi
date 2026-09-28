@@ -11,9 +11,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pb33f/go-yaml"
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
-	"go.yaml.in/yaml/v4"
 )
 
 // CandidateDocumentProvider supplies application-owned source documents without I/O.

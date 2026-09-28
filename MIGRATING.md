@@ -46,8 +46,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi"
-	"go.yaml.in/yaml/v4"
 )
 
 const spec = `openapi: 3.1.0
