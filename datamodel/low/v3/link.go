@@ -122,29 +122,21 @@ func (l *Link) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 func (l *Link) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if l.Description.Value != "" {
-			h.WriteString(l.Description.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "description", l.Description.Value)
 		}
 		if l.OperationRef.Value != "" {
-			h.WriteString(l.OperationRef.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "operationRef", l.OperationRef.Value)
 		}
 		if l.OperationId.Value != "" {
-			h.WriteString(l.OperationId.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "operationId", l.OperationId.Value)
 		}
 		if l.RequestBody.Value != "" {
-			h.WriteString(l.RequestBody.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "requestBody", l.RequestBody.Value)
 		}
 		if l.Server.Value != nil {
-			h.WriteString(low.GenerateHashString(l.Server.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "server", low.GenerateHashString(l.Server.Value))
 		}
-		for v := range orderedmap.SortAlpha(l.Parameters.Value).ValuesFromOldest() {
-			h.WriteString(v.Value)
-			h.WriteByte(low.HASH_PIPE)
-		}
+		low.HashMap(h, "parameters", l.Parameters.Value)
 		for _, ext := range low.HashExtensions(l.Extensions) {
 			h.WriteString(ext)
 			h.WriteByte(low.HASH_PIPE)

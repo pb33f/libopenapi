@@ -119,16 +119,11 @@ func (d *Discriminator) FindMappingValue(key string) *low.ValueReference[string]
 func (d *Discriminator) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if d.PropertyName.Value != "" {
-			h.WriteString(d.PropertyName.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "propertyName", d.PropertyName.Value)
 		}
-		for v := range orderedmap.SortAlpha(d.Mapping.Value).ValuesFromOldest() {
-			h.WriteString(v.Value)
-			h.WriteByte(low.HASH_PIPE)
-		}
+		low.HashMap(h, "mapping", d.Mapping.Value)
 		if d.DefaultMapping.Value != "" {
-			h.WriteString(d.DefaultMapping.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "defaultMapping", d.DefaultMapping.Value)
 		}
 		return h.Sum64()
 	})

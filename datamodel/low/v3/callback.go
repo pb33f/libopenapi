@@ -103,10 +103,7 @@ func (cb *Callback) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 // Hash will return a consistent Hash of the Callback object
 func (cb *Callback) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
-		for v := range orderedmap.SortAlpha(cb.Expression).ValuesFromOldest() {
-			h.WriteString(low.GenerateHashString(v.Value))
-			h.WriteByte(low.HASH_PIPE)
-		}
+		low.HashMap(h, "expressions", cb.Expression)
 
 		for _, ext := range low.HashExtensions(cb.Extensions) {
 			h.WriteString(ext)

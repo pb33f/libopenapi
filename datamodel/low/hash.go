@@ -6,9 +6,11 @@ package low
 import (
 	"encoding/binary"
 	"hash/maphash"
+	"sort"
 	"sync"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/libopenapi/orderedmap"
 )
 
 // globalHashSeed ensures consistent hashes across all pooled instances.
@@ -90,3 +92,48 @@ func HashUint64(h *maphash.Hash, v uint64) {
 
 // HASH_PIPE is the separator byte used between hash fields. :)
 const HASH_PIPE = '|'
+
+// HashLabel writes the name of a field ahead of its value. Labelling every field that is only written when it is
+// set means two fields holding the same value, like minimum and maximum, can never produce the same hash.
+func HashLabel(h *maphash.Hash, label string) {
+	h.WriteString(label)
+	h.WriteByte(':')
+}
+
+// HashString writes a labelled string. The length goes ahead of the string, so a value that contains the separator
+// cannot run on into the field after it.
+func HashString(h *maphash.Hash, label, value string) {
+	HashLabel(h, label)
+	HashInt64(h, int64(len(value)))
+	h.WriteString(value)
+	h.WriteByte(HASH_PIPE)
+}
+
+// HashMap writes a labelled map as the key and value hash of every entry, in key order. Sorting keeps the order the
+// entries were declared in out of the hash, while writing the keys means renaming an entry changes it.
+func HashMap[V any](h *maphash.Hash, label string, m *orderedmap.Map[KeyReference[string], ValueReference[V]]) {
+	if m == nil || m.Len() == 0 {
+		return
+	}
+
+	type entry struct {
+		key   string
+		value V
+	}
+	entries := make([]entry, 0, m.Len())
+	for k, v := range m.FromOldest() {
+		entries = append(entries, entry{key: k.Value, value: v.Value})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].key < entries[j].key
+	})
+
+	HashLabel(h, label)
+	HashInt64(h, int64(len(entries)))
+	for _, e := range entries {
+		HashInt64(h, int64(len(e.key)))
+		h.WriteString(e.key)
+		h.WriteString(GenerateHashString(e.value))
+		h.WriteByte(HASH_PIPE)
+	}
+}

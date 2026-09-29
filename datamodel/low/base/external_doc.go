@@ -83,12 +83,10 @@ func (ex *ExternalDoc) GetExtensions() *orderedmap.Map[low.KeyReference[string],
 func (ex *ExternalDoc) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if ex.Description.Value != "" {
-			h.WriteString(ex.Description.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "description", ex.Description.Value)
 		}
 		if ex.URL.Value != "" {
-			h.WriteString(ex.URL.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "url", ex.URL.Value)
 		}
 		for _, ext := range low.HashExtensions(ex.Extensions) {
 			h.WriteString(ext)
