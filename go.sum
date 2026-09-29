@@ -6,8 +6,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/lucasjones/reggen v0.0.0-20200904144131-37ba4fa293bb h1:w1g9wNDIE/pHSTmAaUhv4TZQuPBS6GV3mMz5hkgziIU=
 github.com/lucasjones/reggen v0.0.0-20200904144131-37ba4fa293bb/go.mod h1:5ELEyG+X8f+meRWHuqUOewBOhvHkl7M76pdGEansxW4=
-github.com/pb33f/go-yaml v0.1.0 h1:zZ6Gg+ATbumXlXZNLMHIe7+zTkVqe20lx+TSYRrXEuY=
-github.com/pb33f/go-yaml v0.1.0/go.mod h1:QvWdkHP5VjFYAeHMQUkaPQqREaQnBNOXmWzAjNrnSdo=
+github.com/pb33f/go-yaml v0.1.1 h1:yWGmhVdwzionRnSc/hEJwcfq6PaZL2QdYzyReXBbX7Q=
+github.com/pb33f/go-yaml v0.1.1/go.mod h1:QvWdkHP5VjFYAeHMQUkaPQqREaQnBNOXmWzAjNrnSdo=
 github.com/pb33f/jsonpath v0.8.4 h1:Yx7fxsKl8scgERL22WhKDs2c6gYNNUonPSWEG8Y194s=
 github.com/pb33f/jsonpath v0.8.4/go.mod h1:eO6mgdhw5RgzCxm/bXTi75VUs0/cCYJzdGjMCCUEI6M=
 github.com/pb33f/ordered-map/v2 v2.3.2 h1:wDyaZ2Pv9QLh64X4utCeD5Zoi9nIv2aW3lwv172O5PQ=
