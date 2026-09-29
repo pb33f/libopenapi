@@ -193,29 +193,17 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 func (mt *MediaType) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if mt.Schema.Value != nil {
-			h.WriteString(low.GenerateHashString(mt.Schema.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "schema", low.GenerateHashString(mt.Schema.Value))
 		}
 		if mt.ItemSchema.Value != nil {
-			h.WriteString(low.GenerateHashString(mt.ItemSchema.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "itemSchema", low.GenerateHashString(mt.ItemSchema.Value))
 		}
 		if mt.Example.Value != nil && !mt.Example.Value.IsZero() {
-			h.WriteString(low.GenerateHashString(mt.Example.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "example", low.GenerateHashString(mt.Example.Value))
 		}
-		for v := range orderedmap.SortAlpha(mt.Examples.Value).ValuesFromOldest() {
-			h.WriteString(low.GenerateHashString(v.Value))
-			h.WriteByte(low.HASH_PIPE)
-		}
-		for v := range orderedmap.SortAlpha(mt.Encoding.Value).ValuesFromOldest() {
-			h.WriteString(low.GenerateHashString(v.Value))
-			h.WriteByte(low.HASH_PIPE)
-		}
-		for v := range orderedmap.SortAlpha(mt.ItemEncoding.Value).ValuesFromOldest() {
-			h.WriteString(low.GenerateHashString(v.Value))
-			h.WriteByte(low.HASH_PIPE)
-		}
+		low.HashMap(h, "examples", mt.Examples.Value)
+		low.HashMap(h, "encoding", mt.Encoding.Value)
+		low.HashMap(h, "itemEncoding", mt.ItemEncoding.Value)
 		for _, ext := range low.HashExtensions(mt.Extensions) {
 			h.WriteString(ext)
 			h.WriteByte(low.HASH_PIPE)

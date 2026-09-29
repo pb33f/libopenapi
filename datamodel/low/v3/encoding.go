@@ -62,16 +62,14 @@ func (en *Encoding) GetKeyNode() *yaml.Node {
 func (en *Encoding) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if en.ContentType.Value != "" {
-			h.WriteString(en.ContentType.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "contentType", en.ContentType.Value)
 		}
 		for k, v := range orderedmap.SortAlpha(en.Headers.Value).FromOldest() {
 			h.WriteString(fmt.Sprintf("%s-%x", k.Value, v.Value.Hash()))
 			h.WriteByte(low.HASH_PIPE)
 		}
 		if en.Style.Value != "" {
-			h.WriteString(en.Style.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "style", en.Style.Value)
 		}
 		low.HashBool(h, en.Explode.Value)
 		h.WriteByte(low.HASH_PIPE)

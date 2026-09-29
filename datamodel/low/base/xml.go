@@ -83,26 +83,24 @@ func (x *XML) GetIndex() *index.SpecIndex {
 func (x *XML) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if !x.Name.IsEmpty() {
-			h.WriteString(x.Name.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "name", x.Name.Value)
 		}
 		if !x.Namespace.IsEmpty() {
-			h.WriteString(x.Namespace.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "namespace", x.Namespace.Value)
 		}
 		if !x.Prefix.IsEmpty() {
-			h.WriteString(x.Prefix.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "prefix", x.Prefix.Value)
 		}
 		if !x.Attribute.IsEmpty() {
+			low.HashLabel(h, "attribute")
 			low.HashBool(h, x.Attribute.Value)
 			h.WriteByte(low.HASH_PIPE)
 		}
 		if !x.NodeType.IsEmpty() {
-			h.WriteString(x.NodeType.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "nodeType", x.NodeType.Value)
 		}
 		if !x.Wrapped.IsEmpty() {
+			low.HashLabel(h, "wrapped")
 			low.HashBool(h, x.Wrapped.Value)
 			h.WriteByte(low.HASH_PIPE)
 		}

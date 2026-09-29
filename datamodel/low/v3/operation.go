@@ -209,28 +209,22 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 func (o *Operation) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if !o.Summary.IsEmpty() {
-			h.WriteString(o.Summary.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "summary", o.Summary.Value)
 		}
 		if !o.Description.IsEmpty() {
-			h.WriteString(o.Description.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "description", o.Description.Value)
 		}
 		if !o.OperationId.IsEmpty() {
-			h.WriteString(o.OperationId.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "operationId", o.OperationId.Value)
 		}
 		if !o.RequestBody.IsEmpty() {
-			h.WriteString(low.GenerateHashString(o.RequestBody.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "requestBody", low.GenerateHashString(o.RequestBody.Value))
 		}
 		if !o.ExternalDocs.IsEmpty() {
-			h.WriteString(low.GenerateHashString(o.ExternalDocs.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "externalDocs", low.GenerateHashString(o.ExternalDocs.Value))
 		}
 		if !o.Responses.IsEmpty() {
-			h.WriteString(low.GenerateHashString(o.Responses.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "responses", low.GenerateHashString(o.Responses.Value))
 		}
 		if !o.Security.IsEmpty() {
 			// Pre-allocate keys for sorting
@@ -240,11 +234,11 @@ func (o *Operation) Hash() uint64 {
 			}
 			sort.Strings(secKeys)
 			for _, key := range secKeys {
-				h.WriteString(key)
-				h.WriteByte(low.HASH_PIPE)
+				low.HashString(h, "security", key)
 			}
 		}
 		if !o.Deprecated.IsEmpty() {
+			low.HashLabel(h, "deprecated")
 			low.HashBool(h, o.Deprecated.Value)
 			h.WriteByte(low.HASH_PIPE)
 		}
@@ -257,8 +251,7 @@ func (o *Operation) Hash() uint64 {
 			}
 			sort.Strings(tags)
 			for _, tag := range tags {
-				h.WriteString(tag)
-				h.WriteByte(low.HASH_PIPE)
+				low.HashString(h, "tags", tag)
 			}
 		}
 
@@ -270,8 +263,7 @@ func (o *Operation) Hash() uint64 {
 			}
 			sort.Strings(servers)
 			for _, server := range servers {
-				h.WriteString(server)
-				h.WriteByte(low.HASH_PIPE)
+				low.HashString(h, "servers", server)
 			}
 		}
 
@@ -283,16 +275,11 @@ func (o *Operation) Hash() uint64 {
 			}
 			sort.Strings(params)
 			for _, param := range params {
-				h.WriteString(param)
-				h.WriteByte(low.HASH_PIPE)
+				low.HashString(h, "parameters", param)
 			}
 		}
 
-		// Callbacks
-		for v := range orderedmap.SortAlpha(o.Callbacks.Value).ValuesFromOldest() {
-			h.WriteString(low.GenerateHashString(v.Value))
-			h.WriteByte(low.HASH_PIPE)
-		}
+		low.HashMap(h, "callbacks", o.Callbacks.Value)
 
 		// Extensions
 		for _, ext := range low.HashExtensions(o.Extensions) {

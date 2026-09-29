@@ -113,17 +113,14 @@ func (rb *RequestBody) Build(ctx context.Context, keyNode, root *yaml.Node, idx 
 func (rb *RequestBody) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if rb.Description.Value != "" {
-			h.WriteString(rb.Description.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "description", rb.Description.Value)
 		}
 		if !rb.Required.IsEmpty() {
+			low.HashLabel(h, "required")
 			low.HashBool(h, rb.Required.Value)
 			h.WriteByte(low.HASH_PIPE)
 		}
-		for v := range orderedmap.SortAlpha(rb.Content.Value).ValuesFromOldest() {
-			h.WriteString(low.GenerateHashString(v.Value))
-			h.WriteByte(low.HASH_PIPE)
-		}
+		low.HashMap(h, "content", rb.Content.Value)
 		for _, ext := range low.HashExtensions(rb.Extensions) {
 			h.WriteString(ext)
 			h.WriteByte(low.HASH_PIPE)
