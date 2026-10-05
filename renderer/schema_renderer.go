@@ -559,11 +559,16 @@ func (wr *SchemaRenderer) generatePatternString(pattern string, schemaMaxLength 
 	if hasSchemaMaxLength && schemaMaxLength > 0 && schemaMaxLength < int64(repeatBudget) {
 		repeatBudget = int(schemaMaxLength)
 	}
-	str, err := reggen.Generate(pattern, repeatBudget)
+	// reggen.Generate seeds a new generator from the clock on every call, which
+	// would make pattern-derived strings random even after SetSeed. Drawing the
+	// seed from wr.rand keeps them part of the renderer's own stream.
+	generator, err := reggen.NewGenerator(pattern)
 	if err != nil {
 		return "", err
 	}
-	return truncateStringBytes(str, options.MaxGeneratedStringBytes), nil
+	generator.SetSeed(wr.rand.Int63())
+
+	return truncateStringBytes(generator.Generate(repeatBudget), options.MaxGeneratedStringBytes), nil
 }
 
 func boundedGeneratedStringRange(minLength, maxLength int64, maxBytes int) (int64, int64) {

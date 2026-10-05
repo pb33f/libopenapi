@@ -553,6 +553,28 @@ properties:
 	assert.NotEqual(t, string(mock1), string(mock3))
 }
 
+func TestMockGenerator_SetSeed_DeterministicWithPattern(t *testing.T) {
+	patternSchema := `type: object
+properties:
+  code:
+    type: string
+    pattern: '^[A-Z]{2}[0-9]{4}$'
+  reference:
+    type: string
+    pattern: '^ref-[a-z]{8}$'`
+
+	generate := func(seed int64) string {
+		mg := NewMockGenerator(JSON)
+		mg.SetSeed(seed)
+		mock, err := mg.GenerateMock(createFakeMock(patternSchema, nil, nil), "")
+		assert.NoError(t, err)
+		return string(mock)
+	}
+
+	assert.Equal(t, generate(42), generate(42))
+	assert.NotEqual(t, generate(42), generate(123))
+}
+
 func TestMockGenerator_GenerateMock_PickNamedExample(t *testing.T) {
 	mg := NewMockGenerator(YAML)
 

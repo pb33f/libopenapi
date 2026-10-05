@@ -8,6 +8,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"regexp"
+	"sort"
 	"unicode"
 
 	"github.com/pb33f/go-yaml"
@@ -54,6 +55,33 @@ func resolveElementName(key string, propSchema *highbase.Schema) string {
 		return propSchema.XML.Name
 	}
 	return sanitizeXMLName(key)
+}
+
+// orderedMapKeys returns m's keys in the order the schema declares its properties,
+// with anything the schema does not mention following in sorted order. Ranging over
+// the map directly would emit child elements in a different order on every run.
+func orderedMapKeys(m map[string]any, schema *highbase.Schema) []string {
+	keys := make([]string, 0, len(m))
+	declared := make(map[string]bool, len(m))
+
+	if schema != nil && schema.Properties != nil {
+		for name := range schema.Properties.KeysFromOldest() {
+			if _, ok := m[name]; ok {
+				keys = append(keys, name)
+				declared[name] = true
+			}
+		}
+	}
+
+	rest := make([]string, 0, len(m)-len(keys))
+	for key := range m {
+		if !declared[key] {
+			rest = append(rest, key)
+		}
+	}
+	sort.Strings(rest)
+
+	return append(keys, rest...)
 }
 
 // getPropertySchema looks up the schema for a specific property name.
@@ -205,7 +233,8 @@ func (mg *MockGenerator) renderXMLMap(enc *xml.Encoder, start xml.StartElement, 
 	var textValues []any
 	var children []childEntry
 
-	for key, val := range m {
+	for _, key := range orderedMapKeys(m, schema) {
+		val := m[key]
 		propSchema := getPropertySchema(schema, key)
 		nodeType := resolveNodeType(propSchema)
 
