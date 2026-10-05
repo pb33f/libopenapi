@@ -13,6 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
@@ -67,6 +68,41 @@ func TestRenderXML_BasicMap_NoSchema(t *testing.T) {
 
 	// Verify it's valid XML
 	assertValidXML(t, result)
+}
+
+func TestRenderXML_ElementOrderFollowsTheSchema(t *testing.T) {
+	properties := orderedmap.New[string, *base.SchemaProxy]()
+	properties.Set("zebra", base.CreateSchemaProxy(&base.Schema{Type: []string{"string"}}))
+	properties.Set("apple", base.CreateSchemaProxy(&base.Schema{Type: []string{"string"}}))
+	properties.Set("mango", base.CreateSchemaProxy(&base.Schema{Type: []string{"string"}}))
+	schema := &base.Schema{Type: []string{"object"}, Properties: properties}
+
+	value := map[string]any{"apple": "a", "mango": "m", "zebra": "z"}
+
+	mg := NewMockGenerator(XML)
+	first := string(mg.RenderXML(value, schema))
+
+	assert.Less(t, strings.Index(first, "<zebra>"), strings.Index(first, "<apple>"),
+		"elements should follow the order the schema declares, not the map")
+	assert.Less(t, strings.Index(first, "<apple>"), strings.Index(first, "<mango>"))
+
+	for range 20 {
+		assert.Equal(t, first, string(mg.RenderXML(value, schema)))
+	}
+}
+
+func TestRenderXML_UndeclaredKeysAreSorted(t *testing.T) {
+	value := map[string]any{"charlie": "c", "alpha": "a", "bravo": "b"}
+
+	mg := NewMockGenerator(XML)
+	first := string(mg.RenderXML(value, nil))
+
+	assert.Less(t, strings.Index(first, "<alpha>"), strings.Index(first, "<bravo>"))
+	assert.Less(t, strings.Index(first, "<bravo>"), strings.Index(first, "<charlie>"))
+
+	for range 20 {
+		assert.Equal(t, first, string(mg.RenderXML(value, nil)))
+	}
 }
 
 func TestRenderXML_ScalarValues(t *testing.T) {
