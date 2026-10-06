@@ -337,10 +337,10 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			opRef.SetReference(opRefVal, opRefNode)
 		}
 
-		ops = append(ops, opRef)
 		opContexts[opRef.Value] = foundContext
 
 		if isStandardOp {
+			ops = append(ops, opRef)
 			switch currentNode.Value {
 			case GetLabel:
 				p.Get = opRef
