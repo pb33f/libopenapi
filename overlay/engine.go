@@ -47,7 +47,10 @@ func Apply(targetBytes []byte, overlay *highoverlay.Overlay) (*Result, error) {
 
 		actionWarnings, err := applyAction(&rootNode, action, parentIdx)
 		if err != nil {
-			return nil, &OverlayError{Action: action, Cause: err}
+			return nil, &OverlayError{Action: original, Cause: err}
+		}
+		for _, warning := range actionWarnings {
+			warning.Action = original
 		}
 		warnings = append(warnings, actionWarnings...)
 
@@ -99,7 +102,11 @@ func applyAction(root *yaml.Node, action *highoverlay.Action, parentIdx parentIn
 		return warnings, nil
 	}
 	if action.Update != nil && action.Copy != "" {
-		return warnings, nil
+		return append(warnings, &Warning{
+			Action:  action,
+			Target:  action.Target,
+			Message: "copy and update are both set; neither is applied. Split them into separate actions.",
+		}), nil
 	}
 	if action.Copy != "" {
 		return applyCopyAction(root, nodes, action.Copy)

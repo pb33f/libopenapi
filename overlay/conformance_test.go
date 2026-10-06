@@ -122,6 +122,42 @@ paths:
 	assert.False(t, effective.Remove)
 }
 
+func TestApply_ReusableDiagnosticsPreserveSourceAction(t *testing.T) {
+	for _, tc := range []struct {
+		name, target, fields, warning string
+		err                           error
+	}{
+		{name: "invalid target", target: "$..[[[[", fields: "update: new", err: ErrInvalidJSONPath},
+		{name: "incompatible update", target: "$.value", fields: "update: {}", err: ErrIncompatibleUpdate},
+		{name: "missing target", target: "$.missing", fields: "update: new", warning: "zero nodes"},
+		{name: "copy and update", target: "$.value", fields: "copy: '$..[[[[', update: new", warning: "copy and update"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ov := parseOverlay(t, "overlay: 1.2.0\ninfo: {title: Diagnostics, version: '1'}\ncomponents:\n  actions:\n    shared:\n      fields: {"+tc.fields+"}\nactions:\n  - $ref: '#/components/actions/shared'\n    target: '"+tc.target+"'\n")
+			original := ov.Actions[0]
+			result, err := Apply([]byte("value: old"), ov)
+			var reported *highoverlay.Action
+			if tc.err != nil {
+				require.ErrorIs(t, err, tc.err)
+				var actionErr *OverlayError
+				require.ErrorAs(t, err, &actionErr)
+				reported = actionErr.Action
+			} else {
+				require.NoError(t, err)
+				require.Len(t, result.Warnings, 1)
+				assert.Contains(t, result.Warnings[0].Message, tc.warning)
+				assert.Equal(t, tc.target, result.Warnings[0].Target)
+				assert.YAMLEq(t, "value: old", string(result.Bytes))
+				reported = result.Warnings[0].Action
+			}
+			require.Same(t, original, reported)
+			assert.Equal(t, 8, reported.GoLow().RootNode.Line)
+			require.NotNil(t, reported.GoLow().Target.KeyNode)
+			assert.Equal(t, 9, reported.GoLow().Target.KeyNode.Line)
+		})
+	}
+}
+
 func TestApply_ReusableOverrides(t *testing.T) {
 	for _, action := range []string{
 		"update: {title: Local}",
