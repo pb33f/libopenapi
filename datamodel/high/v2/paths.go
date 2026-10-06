@@ -4,12 +4,12 @@
 package v2
 
 import (
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"go.yaml.in/yaml/v4"
 )
 
 // Paths represents a high-level Swagger / OpenAPI Paths object, backed by a low-level one.

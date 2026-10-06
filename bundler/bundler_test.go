@@ -20,6 +20,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
@@ -28,7 +29,6 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 // Test helper functions to reduce duplication across DigitalOcean tests
@@ -37,6 +37,8 @@ const digitalOceanCommitID = "ed0958267922794ec8cf540e19131a2d9664bfc7"
 
 func checkoutDigitalOceanRepo(t *testing.T) string {
 	t.Helper()
+	requireNetworkTests(t)
+
 	tmp := t.TempDir()
 	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi.git", tmp)
 	if err := cmd.Run(); err != nil {

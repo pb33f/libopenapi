@@ -14,6 +14,7 @@ import (
 
 	"github.com/pb33f/libopenapi/utils"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -22,7 +23,6 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 // These tests require full documents to be tested properly. schemas are perhaps the most complex
@@ -4279,9 +4279,8 @@ func setSchemaProxyRendered(proxy *base.SchemaProxy, schema *base.Schema) {
 
 func markSchemaProxyBuilt(proxy *base.SchemaProxy) {
 	field := reflect.ValueOf(proxy).Elem().FieldByName("schemaOnce")
-	done := sync.Once{}
+	done := reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Interface().(*sync.Once)
 	done.Do(func() {})
-	reflect.NewAt(field.Type(), unsafe.Pointer(field.UnsafeAddr())).Elem().Set(reflect.ValueOf(done))
 }
 
 func TestSchemaCompositionEntryStableKey(t *testing.T) {

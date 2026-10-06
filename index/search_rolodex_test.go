@@ -13,10 +13,10 @@ import (
 	"testing"
 
 	"context"
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/jsonpath/pkg/jsonpath"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestRolodex_FindNodeOrigin_InRoot(t *testing.T) {

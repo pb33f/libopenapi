@@ -11,13 +11,13 @@ import (
 
 	"github.com/pb33f/libopenapi/utils"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestSchemaProxy_Build(t *testing.T) {
@@ -648,7 +648,7 @@ components:
 	assert.NotNil(t, schema)
 
 	sp.idx.SetRolodex(&index.Rolodex{}) // set a rolodex to avoid nil deref
-	assert.Nil(t, sp.getDocumentConfig())
+	assert.Nil(t, sp.rolodexConfig())
 }
 
 func TestSchemaProxy_attemptPropertyMerging_MergeError(t *testing.T) {

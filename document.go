@@ -21,6 +21,7 @@ import (
 
 	"github.com/pb33f/libopenapi/index"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
 	v2high "github.com/pb33f/libopenapi/datamodel/high/v2"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
@@ -29,7 +30,6 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	what_changed "github.com/pb33f/libopenapi/what-changed"
 	"github.com/pb33f/libopenapi/what-changed/model"
-	"go.yaml.in/yaml/v4"
 )
 
 // Document Represents an OpenAPI specification that can then be rendered into a model or serialized back into
@@ -344,6 +344,10 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], error) {
 
 	var docErr error
 	lowDoc, docErr = v3low.CreateDocumentFromConfig(d.info, d.config)
+	if lowDoc == nil {
+		// no openapi version tag was found, so there is nothing to extract.
+		return nil, docErr
+	}
 	d.rolodex = lowDoc.Rolodex
 
 	if docErr != nil {

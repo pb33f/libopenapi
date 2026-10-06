@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/arazzo"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 // buildHighFromYAML is a test helper that builds a full high-level Arazzo model from YAML.
@@ -1128,7 +1128,7 @@ func TestWorkflow_MarshalYAML_NilOutputs(t *testing.T) {
 func TestWorkflow_MarshalYAML_EmptyOutputs(t *testing.T) {
 	wf := &Workflow{
 		WorkflowId: "wf1",
-		Outputs:    orderedmap.New[string, string](),
+		Outputs:    orderedmap.New[string, *OutputValue](),
 	}
 
 	rendered, err := wf.Render()
@@ -1160,7 +1160,7 @@ func TestStep_MarshalYAML_EmptyOutputs(t *testing.T) {
 	step := &Step{
 		StepId:      "s1",
 		OperationId: "op1",
-		Outputs:     orderedmap.New[string, string](),
+		Outputs:     orderedmap.New[string, *OutputValue](),
 	}
 
 	rendered, err := step.Render()
@@ -1311,4 +1311,14 @@ func TestComponents_MarshalYAML_AllMaps(t *testing.T) {
 	assert.Contains(t, s, "parameters:")
 	assert.Contains(t, s, "successActions:")
 	assert.Contains(t, s, "failureActions:")
+}
+
+func TestSelectorFromNodeRejectsEmptyMemberAlias(t *testing.T) {
+	emptyAlias := &yaml.Node{Kind: yaml.AliasNode}
+	root := &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
+		{Kind: yaml.ScalarNode, Value: low.ContextLabel}, emptyAlias,
+		{Kind: yaml.ScalarNode, Value: low.SelectorLabel}, {Kind: yaml.ScalarNode, Value: "$.id"},
+		{Kind: yaml.ScalarNode, Value: low.TypeLabel}, {Kind: yaml.ScalarNode, Value: "jsonpath"},
+	}}
+	assert.Nil(t, selectorFromNode(root))
 }

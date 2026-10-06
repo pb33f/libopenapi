@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"context"
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestRolodexLoadsFilesCorrectly_NoErrors(t *testing.T) {
@@ -134,6 +134,40 @@ func TestRolodexLocalFS_ErrorOutWaiter(t *testing.T) {
 	f, e := lfs.Open("/test.yaml")
 	assert.Nil(t, f)
 	assert.Error(t, e)
+}
+
+// A caller that finds the file already being loaded waits for that load and
+// returns its result instead of reading the file again. A waiter is parked
+// before the call, so the waiting path runs every time rather than only when
+// two real loads happen to overlap.
+func TestRolodexLocalFS_WaitsForInFlightLoad(t *testing.T) {
+	lfs := &LocalFS{
+		fsConfig: &LocalFSConfig{},
+		logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	name, _ := filepath.Abs("in-flight.yaml")
+	waiter := &waiterLocal{f: name}
+	waiter.mu.Lock()
+	lfs.processingFiles.Store(name, waiter)
+
+	type result struct {
+		file fs.File
+		err  error
+	}
+	opened := make(chan result, 1)
+	go func() {
+		f, err := lfs.Open(name)
+		opened <- result{f, err}
+	}()
+
+	loaded := &LocalFile{filename: "in-flight.yaml"}
+	waiter.file = loaded
+	waiter.done = true
+	waiter.mu.Unlock()
+
+	got := <-opened
+	assert.NoError(t, got.err)
+	assert.Same(t, loaded, got.file)
 }
 
 func TestRolodexLocalFile_BadParse(t *testing.T) {

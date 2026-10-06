@@ -8,12 +8,12 @@ import (
 	"hash/maphash"
 	"sort"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"go.yaml.in/yaml/v4"
 )
 
 // Operation represents a low-level Swagger / OpenAPI 2 Operation object.
@@ -88,26 +88,22 @@ func (o *Operation) Build(ctx context.Context, _, root *yaml.Node, idx *index.Sp
 func (o *Operation) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if !o.Summary.IsEmpty() {
-			h.WriteString(o.Summary.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "summary", o.Summary.Value)
 		}
 		if !o.Description.IsEmpty() {
-			h.WriteString(o.Description.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "description", o.Description.Value)
 		}
 		if !o.OperationId.IsEmpty() {
-			h.WriteString(o.OperationId.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "operationId", o.OperationId.Value)
 		}
 		if !o.ExternalDocs.IsEmpty() {
-			h.WriteString(low.GenerateHashString(o.ExternalDocs.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "externalDocs", low.GenerateHashString(o.ExternalDocs.Value))
 		}
 		if !o.Responses.IsEmpty() {
-			h.WriteString(low.GenerateHashString(o.Responses.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "responses", low.GenerateHashString(o.Responses.Value))
 		}
 		if !o.Deprecated.IsEmpty() {
+			low.HashLabel(h, "deprecated")
 			low.HashBool(h, o.Deprecated.Value)
 			h.WriteByte(low.HASH_PIPE)
 		}
@@ -118,8 +114,7 @@ func (o *Operation) Hash() uint64 {
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			h.WriteString(key)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "tags", key)
 		}
 
 		keys = make([]string, len(o.Consumes.Value))
@@ -128,8 +123,7 @@ func (o *Operation) Hash() uint64 {
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			h.WriteString(key)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "consumes", key)
 		}
 
 		keys = make([]string, len(o.Produces.Value))
@@ -138,8 +132,7 @@ func (o *Operation) Hash() uint64 {
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			h.WriteString(key)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "produces", key)
 		}
 
 		keys = make([]string, len(o.Schemes.Value))
@@ -148,8 +141,7 @@ func (o *Operation) Hash() uint64 {
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			h.WriteString(key)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "schemes", key)
 		}
 
 		keys = make([]string, len(o.Parameters.Value))
@@ -158,8 +150,7 @@ func (o *Operation) Hash() uint64 {
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			h.WriteString(key)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "parameters", key)
 		}
 
 		keys = make([]string, len(o.Security.Value))
@@ -168,8 +159,7 @@ func (o *Operation) Hash() uint64 {
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			h.WriteString(key)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "security", key)
 		}
 		for _, ext := range low.HashExtensions(o.Extensions) {
 			h.WriteString(ext)

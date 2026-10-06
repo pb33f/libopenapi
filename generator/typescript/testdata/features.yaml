@@ -1,0 +1,254 @@
+openapi: 3.0.3
+info:
+  title: TypeScript generator features
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Account:
+      type: object
+      description: |-
+        An account.
+        Second line with a */ comment terminator.
+      required: [id, name, tags]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        seats:
+          type: integer
+          format: int64
+        score:
+          type: number
+          nullable: true
+        active:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        owner:
+          $ref: '#/components/schemas/Person'
+        status:
+          $ref: '#/components/schemas/Status'
+        legacyCode:
+          type: string
+          deprecated: true
+        content-type:
+          type: string
+        address:
+          type: object
+          required: [line1]
+          properties:
+            line1:
+              type: string
+            city:
+              type: string
+        history:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/Person'
+              - type: string
+    Person:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+    Status:
+      type: string
+      enum: [active, paused, closed]
+    NullableStatus:
+      type: string
+      nullable: true
+      enum: [on, off]
+    Priority:
+      type: integer
+      enum: [1, 2, 3]
+    Labels:
+      type: object
+      additionalProperties:
+        type: string
+    Extensible:
+      type: object
+      additionalProperties: true
+      required: [kind]
+      properties:
+        kind:
+          type: string
+    Opaque:
+      type: object
+    AnyValue: {}
+    Admin:
+      allOf:
+        - $ref: '#/components/schemas/Person'
+        - type: object
+          required: [level]
+          properties:
+            level:
+              type: integer
+    PersonAlias:
+      $ref: '#/components/schemas/Person'
+    Pet:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+        - $ref: '#/components/schemas/Dog'
+      discriminator:
+        propertyName: petType
+        mapping:
+          cat: '#/components/schemas/Cat'
+          kitten: '#/components/schemas/Cat'
+          dog: '#/components/schemas/Dog'
+    Cat:
+      type: object
+      required: [petType]
+      properties:
+        petType:
+          type: string
+        indoor:
+          type: boolean
+    Dog:
+      type: object
+      required: [petType]
+      properties:
+        petType:
+          type: string
+    Shape:
+      anyOf:
+        - $ref: '#/components/schemas/Person'
+        - $ref: '#/components/schemas/Labels'
+    MaybePerson:
+      oneOf:
+        - $ref: '#/components/schemas/Person'
+        - type: object
+          nullable: true
+          enum: [null]
+    Event:
+      oneOf:
+        - type: object
+          required: [type]
+          properties:
+            type:
+              type: string
+              enum: [created]
+            at:
+              type: string
+              format: date-time
+        - type: object
+          required: [type, reason]
+          properties:
+            type:
+              type: string
+              enum: [deleted]
+            reason:
+              type: string
+    Matrix:
+      type: array
+      items:
+        type: array
+        items:
+          type: number
+    AccountRef:
+      type: object
+      required: [id]
+      properties:
+        id:
+          $ref: '#/components/schemas/Account/properties/id'
+        score:
+          $ref: '#/components/schemas/Account/properties/score'
+        firstTag:
+          $ref: '#/components/schemas/Account/properties/tags/items'
+    Feedback:
+      type: object
+      description: Outer properties and required names apply to every variant.
+      additionalProperties: false
+      required: [verdict, idempotencyKey]
+      properties:
+        idempotencyKey:
+          type: string
+      oneOf:
+        - properties:
+            verdict:
+              enum: [up]
+        - properties:
+            verdict:
+              enum: [down]
+            reason:
+              type: string
+          required: [reason]
+    Versioned:
+      oneOf:
+        - $ref: '#/components/schemas/VersionOne'
+        - $ref: '#/components/schemas/VersionTwo'
+      discriminator:
+        propertyName: schemaVersion
+        mapping:
+          '1': '#/components/schemas/VersionOne'
+          '2': '#/components/schemas/VersionTwo'
+    VersionOne:
+      type: object
+      required: [schemaVersion]
+      properties:
+        schemaVersion:
+          type: integer
+          enum: [1]
+    VersionTwo:
+      type: object
+      required: [schemaVersion]
+      properties:
+        schemaVersion:
+          type: integer
+    Bare:
+      oneOf:
+        - $ref: '#/components/schemas/Cat'
+      discriminator:
+        propertyName: petType
+        mapping:
+          cat: Cat
+    Inherited:
+      oneOf:
+        - $ref: '#/components/schemas/Tabby'
+      discriminator:
+        propertyName: petType
+        mapping:
+          tabby: '#/components/schemas/Tabby'
+    Tabby:
+      allOf:
+        - $ref: '#/components/schemas/Cat'
+        - type: object
+          properties:
+            stripes:
+              type: integer
+    NullableHolder:
+      type: object
+      nullable: true
+      properties:
+        inner:
+          type: object
+          nullable: true
+          properties:
+            leaf:
+              type: string
+    Leaf:
+      $ref: '#/components/schemas/NullableHolder/properties/inner/properties/leaf'
+    Closed:
+      type: object
+      additionalProperties: false
+    Escapes:
+      type: string
+      enum: ['a<b', 'x&y', 'quote"d']
+    Array:
+      type: object
+      properties:
+        value:
+          type: string
+    my-type:
+      type: string
+    MyType:
+      type: number
+    default:
+      type: string

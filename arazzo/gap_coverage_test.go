@@ -16,6 +16,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/arazzo/expression"
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
@@ -24,7 +25,6 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 func gapState() *executionState {
@@ -273,8 +273,8 @@ func TestGap_CriterionCachesAndHelpers(t *testing.T) {
 	caches := newCriterionCaches()
 	_, _ = compileCriterionRegex(`^a+$`, caches)
 	_, _ = compileCriterionRegex(`^a+$`, caches)
-	_, _ = compileCriterionJSONPath(`$.a`, caches)
-	_, _ = compileCriterionJSONPath(`$.a`, caches)
+	_, _ = compileCriterionJSONPath(`$.a`, criterionJSONPathRFC9535, caches)
+	_, _ = compileCriterionJSONPath(`$.a`, criterionJSONPathRFC9535, caches)
 
 	caches.parseExpr = func(string) (expression.Expression, error) {
 		return expression.Expression{}, errors.New("parse failed")
@@ -560,7 +560,7 @@ func (gapRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
 }
 
 func TestGap_FetchHTTPSourceBytes_ReadError(t *testing.T) {
-	_, err := fetchHTTPSourceBytes("http://example.com", &ResolveConfig{
+	_, err := fetchHTTPSourceBytes(context.Background(), "http://example.com", &ResolveConfig{
 		Timeout:     time.Second,
 		MaxBodySize: 1024,
 		HTTPClient:  &http.Client{Transport: gapRoundTripper{}},

@@ -6,15 +6,14 @@ package v3
 import (
 	"context"
 	"fmt"
-	"sync"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 type componentRefCoverageBuildable struct {
@@ -273,7 +272,7 @@ components:
 	idx := index.NewSpecIndex(&idxNode)
 	_, _, compNode := utils.FindKeyNodeFullTop(ComponentsLabel, idxNode.Content[0].Content)
 
-	var nodeStore sync.Map
+	var nodeStore low.NodeLines
 	components := &Components{}
 	components.Nodes = &nodeStore
 

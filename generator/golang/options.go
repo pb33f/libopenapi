@@ -105,6 +105,17 @@ func WithNullableAsPointer(enabled bool) Option {
 	}
 }
 
+// WithOptionalNullableAsDoublePointer preserves all three JSON states for an
+// optional nullable scalar: a nil outer pointer omits the field, a non-nil
+// outer pointer containing nil writes null, and two non-nil pointers write the
+// value. It only applies when optional fields and nullable values are both
+// configured to use pointers.
+func WithOptionalNullableAsDoublePointer(enabled bool) Option {
+	return func(g *Generator) {
+		g.optionalNullableAsDoublePointer = enabled
+	}
+}
+
 // WithGenerateJSONTags controls generated json tags.
 func WithGenerateJSONTags(enabled bool) Option {
 	return func(g *Generator) {

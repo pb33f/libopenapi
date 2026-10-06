@@ -4,10 +4,10 @@
 package v2
 
 import (
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"go.yaml.in/yaml/v4"
 )
 
 // Header Represents a high-level Swagger / OpenAPI 2 Header object, backed by a low-level one.
@@ -45,7 +45,7 @@ func NewHeader(header *low.Header) *Header {
 		h.Type = header.Type.Value
 	}
 	if !header.Format.IsEmpty() {
-		h.Format = header.Type.Value
+		h.Format = header.Format.Value
 	}
 	if !header.Description.IsEmpty() {
 		h.Description = header.Description.Value
@@ -68,7 +68,7 @@ func NewHeader(header *low.Header) *Header {
 	if !header.Minimum.IsEmpty() {
 		h.Minimum = header.Minimum.Value
 	}
-	if !header.ExclusiveMinimum.Value {
+	if !header.ExclusiveMinimum.IsEmpty() {
 		h.ExclusiveMinimum = header.ExclusiveMinimum.Value
 	}
 	if !header.MaxLength.IsEmpty() {
@@ -87,7 +87,7 @@ func NewHeader(header *low.Header) *Header {
 		h.MaxItems = header.MaxItems.Value
 	}
 	if !header.UniqueItems.IsEmpty() {
-		h.UniqueItems = header.UniqueItems.IsEmpty()
+		h.UniqueItems = header.UniqueItems.Value
 	}
 	if !header.Enum.IsEmpty() {
 		var enums []any

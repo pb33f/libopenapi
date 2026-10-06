@@ -21,8 +21,8 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestRolodex_NewRolodex(t *testing.T) {
@@ -1387,6 +1387,8 @@ components:
 }
 
 func TestRolodex_IndexCircularLookup_LookupHttpNoBaseURL(t *testing.T) {
+	requireNetworkTests(t)
+
 	first := `openapi: 3.1.0
 components:
   schemas:
@@ -2999,4 +3001,51 @@ func TestRolodex_Release_ConcurrentSafe(t *testing.T) {
 	// GetIndexes also acquires indexLock, so this tests lock correctness.
 	_ = rolodex.GetIndexes()
 	<-done
+}
+
+// nilFileFS breaks the fs.FS contract by returning neither a file nor an error.
+type nilFileFS struct{}
+
+func (nilFileFS) Open(string) (fs.File, error) {
+	return nil, nil
+}
+
+func TestRolodex_Open_FileSystemReturnsNoFileAndNoError(t *testing.T) {
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddLocalFS(t.TempDir(), nilFileFS{})
+	rolo.AddRemoteFS("", nilFileFS{})
+
+	var rf RolodexFile
+	var err error
+	assert.NotPanics(t, func() {
+		rf, err = rolo.Open("https://example.com/spec.yaml")
+	})
+	assert.Nil(t, rf)
+	assert.EqualError(t, err, "file system returned no file and no error when opening 'https://example.com/spec.yaml'")
+
+	assert.NotPanics(t, func() {
+		rf, err = rolo.Open("spec.yaml")
+	})
+	assert.Nil(t, rf)
+	assert.EqualError(t, err, "file system returned no file and no error when opening 'spec.yaml'")
+}
+
+func TestRolodex_Open_HttpPrefixedLocationWithoutScheme(t *testing.T) {
+	cfg := CreateOpenAPIIndexConfig()
+	remoteFS, err := NewRemoteFSWithConfig(cfg)
+	assert.NoError(t, err)
+	remoteFS.RemoteHandlerFunc = func(u string) (*http.Response, error) {
+		t.Errorf("a location without a scheme must never be fetched: %s", u)
+		return nil, errors.New("unexpected fetch")
+	}
+	rolo := NewRolodex(cfg)
+	rolo.AddRemoteFS("", remoteFS)
+
+	// 'httpdocs/pet.yaml' is routed to the remote file system because it starts with 'http'.
+	var rf RolodexFile
+	assert.NotPanics(t, func() {
+		rf, err = rolo.Open("httpdocs/pet.yaml")
+	})
+	assert.Nil(t, rf)
+	assert.EqualError(t, err, "remote URL 'httpdocs/pet.yaml' has no scheme, unable to fetch it")
 }

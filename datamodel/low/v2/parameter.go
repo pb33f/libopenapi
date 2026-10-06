@@ -8,12 +8,12 @@ import (
 	"hash/maphash"
 	"sort"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"go.yaml.in/yaml/v4"
 )
 
 // Parameter represents a low-level Swagger / OpenAPI 2 Parameter object.
@@ -128,40 +128,32 @@ func (p *Parameter) Build(ctx context.Context, _, root *yaml.Node, idx *index.Sp
 func (p *Parameter) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if p.Name.Value != "" {
-			h.WriteString(p.Name.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "name", p.Name.Value)
 		}
 		if p.In.Value != "" {
-			h.WriteString(p.In.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "in", p.In.Value)
 		}
 		if p.Type.Value != "" {
-			h.WriteString(p.Type.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "type", p.Type.Value)
 		}
 		if p.Format.Value != "" {
-			h.WriteString(p.Format.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "format", p.Format.Value)
 		}
 		if p.Description.Value != "" {
-			h.WriteString(p.Description.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "description", p.Description.Value)
 		}
 		low.HashBool(h, p.Required.Value)
 		h.WriteByte(low.HASH_PIPE)
 		low.HashBool(h, p.AllowEmptyValue.Value)
 		h.WriteByte(low.HASH_PIPE)
 		if p.Schema.Value != nil {
-			h.WriteString(low.GenerateHashString(p.Schema.Value.Schema()))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "schema", low.GenerateHashString(p.Schema.Value.Schema()))
 		}
 		if p.CollectionFormat.Value != "" {
-			h.WriteString(p.CollectionFormat.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "collectionFormat", p.CollectionFormat.Value)
 		}
 		if p.Default.Value != nil && !p.Default.Value.IsZero() {
-			h.WriteString(low.GenerateHashString(p.Default.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "default", low.GenerateHashString(p.Default.Value))
 		}
 		low.HashInt64(h, int64(p.Maximum.Value))
 		h.WriteByte(low.HASH_PIPE)
@@ -184,18 +176,17 @@ func (p *Parameter) Hash() uint64 {
 		low.HashBool(h, p.UniqueItems.Value)
 		h.WriteByte(low.HASH_PIPE)
 		if p.Pattern.Value != "" {
-			h.WriteString(p.Pattern.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "pattern", p.Pattern.Value)
 		}
 
+		// hash each enum node rather than its text, so the tag counts and enum [1] is not enum ['1'].
 		keys := make([]string, len(p.Enum.Value))
 		for k := range p.Enum.Value {
-			keys[k] = low.ValueToString(p.Enum.Value[k].Value)
+			keys[k] = low.GenerateHashString(p.Enum.Value[k].Value)
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			h.WriteString(key)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "enum", key)
 		}
 
 		for _, ext := range low.HashExtensions(p.Extensions) {
@@ -203,6 +194,7 @@ func (p *Parameter) Hash() uint64 {
 			h.WriteByte(low.HASH_PIPE)
 		}
 		if p.Items.Value != nil {
+			low.HashLabel(h, "items")
 			low.HashUint64(h, p.Items.Value.Hash())
 			h.WriteByte(low.HASH_PIPE)
 		}

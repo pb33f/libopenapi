@@ -5,16 +5,17 @@ package model
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"go.yaml.in/yaml/v4"
 )
 
 // SchemaChanges represent all changes to a base.Schema OpenAPI object. These changes are represented
@@ -495,10 +496,15 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 		lSchema := l.Schema()
 		rSchema := r.Schema()
+		preserved := preservedObjectBranch(l, r, lSchema, rSchema)
+		if preserved != nil {
+			checkObjectCompositionAlternatives(lSchema, rSchema, preserved, &changes)
+			rSchema = preserved
+		}
 		comparisonLSchema := schemaComparisonViewForSimpleAllOfObject(l, lSchema)
 		comparisonRSchema := schemaComparisonViewForSimpleAllOfObject(r, rSchema)
 
-		if low.AreEqual(lSchema, rSchema) {
+		if low.AreEqual(lSchema, rSchema) && len(changes) == 0 {
 			// there is no point going on, we know nothing changed!
 			return nil
 		}
@@ -512,7 +518,8 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		skipSimpleScalarUnionDiff := schemasUseEquivalentSimpleScalarUnion(l, r)
 
 		// check schema core properties for changes.
-		checkSchemaPropertyChanges(comparisonLSchema, comparisonRSchema, l, r, &changes, sc, skipSimpleScalarUnionDiff)
+		checkSchemaPropertyChanges(comparisonLSchema, comparisonRSchema, l, r, &changes, sc,
+			skipSimpleScalarUnionDiff || preserved != nil)
 
 		// now for the confusing part, there is also a schema's 'properties' property to parse.
 		// inception, eat your heart out.
@@ -1828,7 +1835,7 @@ func mergeSimpleAllOfObjectSchemaView(schema *base.Schema) (*base.Schema, bool) 
 	if schema == nil {
 		return nil, false
 	}
-	merged := *schema
+	merged := copySchemaPublicFields(schema)
 
 	typeRef, ok := mergeSimpleAllOfObjectType(schema)
 	if !ok {
@@ -1858,7 +1865,22 @@ func mergeSimpleAllOfObjectSchemaView(schema *base.Schema) (*base.Schema, bool) 
 	merged.Properties = propertiesRef
 	merged.Required = requiredRef
 
-	return &merged, true
+	return merged, true
+}
+
+// copySchemaPublicFields creates a shallow comparison view without copying the
+// schema's internal sync.Map. Public model values intentionally retain their
+// existing pointers because the view is read-only.
+func copySchemaPublicFields(schema *base.Schema) *base.Schema {
+	source := reflect.ValueOf(schema).Elem()
+	destination := reflect.ValueOf(&base.Schema{}).Elem()
+	schemaType := source.Type()
+	for i := 0; i < source.NumField(); i++ {
+		if schemaType.Field(i).PkgPath == "" {
+			destination.Field(i).Set(source.Field(i))
+		}
+	}
+	return destination.Addr().Interface().(*base.Schema)
 }
 
 func mergeSimpleAllOfObjectType(schema *base.Schema) (low.NodeReference[base.SchemaDynamicValue[string, []low.ValueReference[string]]], bool) {

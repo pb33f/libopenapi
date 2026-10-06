@@ -7,10 +7,10 @@ import (
 	"context"
 	"hash/maphash"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"go.yaml.in/yaml/v4"
 )
 
 // Components represents a low-level Arazzo Components Object.
@@ -72,7 +72,11 @@ func (c *Components) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 	}, ctx, keyNode, root, idx)
 
 	// Extract inputs as raw node map (JSON Schema objects keyed by name)
-	c.Inputs = extractRawNodeMap(InputsLabel, root)
+	inputs, err := extractRawNodeMap(InputsLabel, root)
+	if err != nil {
+		return err
+	}
+	c.Inputs = inputs
 
 	// Extract parameters map
 	params, err := extractComponentsParametersMap(ctx, ParametersLabel, root, idx)

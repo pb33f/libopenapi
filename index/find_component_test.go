@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestSpecIndex_performExternalLookup(t *testing.T) {
@@ -210,6 +210,8 @@ func TestSpecIndex_FailFindComponentInRoot(t *testing.T) {
 }
 
 func TestSpecIndex_LocateRemoteDocsWithRemoteURLHandler(t *testing.T) {
+	requireNetworkTests(t)
+
 	// This test will push the index to do try and locate remote references that use relative references
 	spec := `openapi: 3.0.2
 info:

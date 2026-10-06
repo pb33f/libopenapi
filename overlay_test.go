@@ -4,11 +4,13 @@
 package libopenapi
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	v2 "github.com/pb33f/libopenapi/datamodel/high/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	lowoverlay "github.com/pb33f/libopenapi/datamodel/low/overlay"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/overlay"
 	"github.com/pb33f/testify/assert"
@@ -43,6 +45,26 @@ func TestNewOverlayDocument_EmptyDocument(t *testing.T) {
 	ov, err := NewOverlayDocument([]byte(``))
 	assert.ErrorIs(t, err, overlay.ErrInvalidOverlay)
 	assert.Nil(t, ov)
+}
+
+// Input that is not blank but holds no YAML content, such as a lone comment, is not an overlay.
+func TestNewOverlayDocument_CommentOnly(t *testing.T) {
+	ov, err := NewOverlayDocument([]byte("# nothing but a comment\n"))
+	assert.ErrorIs(t, err, overlay.ErrInvalidOverlay)
+	assert.Nil(t, ov)
+}
+
+func TestNewOverlayDocument_BuildModelError(t *testing.T) {
+	overlayYAML := []byte("overlay: 1.0.0\n")
+	_, err := NewOverlayDocument(overlayYAML) // seeds the BuildModel field cache for the overlay type
+	require.NoError(t, err)
+
+	forceBuildModelFieldError(t, reflect.TypeOf(lowoverlay.Overlay{}), "overlay")
+
+	ov, err := NewOverlayDocument(overlayYAML)
+	assert.Nil(t, ov)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unable to parse unsupported type")
 }
 
 func TestNewOverlayDocument_InvalidOverlay(t *testing.T) {

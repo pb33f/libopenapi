@@ -17,8 +17,8 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 
 	"context"
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestNewResolver(t *testing.T) {
@@ -916,6 +916,8 @@ func TestResolver_ExtractRelatives_HttpFullDefinition(t *testing.T) {
 }
 
 func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
+	requireNetworkTests(t)
+
 	mixedref, _ := os.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(mixedref, &rootNode)
@@ -1532,6 +1534,8 @@ func TestLocateRefEnd_WithResolve(t *testing.T) {
 }
 
 func TestResolveDoc_Issue195(t *testing.T) {
+	requireNetworkTests(t)
+
 	spec := `openapi: 3.0.1
 info:
   title: Some Example!

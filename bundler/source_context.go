@@ -6,8 +6,8 @@ package bundler
 import (
 	"strings"
 
+	"github.com/pb33f/go-yaml"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"go.yaml.in/yaml/v4"
 )
 
 // inferComponentTypeFromSourcePath returns the component bucket implied by the
@@ -61,6 +61,12 @@ func inferComponentTypeFromSourcePath(sourcePath []string) (string, bool) {
 
 		if segment == v3.RequestBodyLabel {
 			return v3.RequestBodiesLabel, true
+		}
+
+		// Operation and path item parameters are sequences; SourcePath carries no
+		// sequence position, so the ref's path ends at the parameters keyword.
+		if segment == v3.ParametersLabel && i == len(sourcePath)-1 && previous != v3.ComponentsLabel {
+			return v3.ParametersLabel, true
 		}
 	}
 
@@ -187,9 +193,12 @@ func isSchemaSourceSegment(sourcePath []string, index int) bool {
 		previous = sourcePath[index-1]
 	}
 
+	// The index does not record sequence positions in SourcePath, so a $ref inside
+	// an array-of-schemas keyword ends with the keyword itself (e.g. [..., "allOf"]).
 	switch segment {
 	case "schema", "items", "additionalProperties", "unevaluatedItems", "unevaluatedProperties",
-		"contains", "not", "if", "then", "else", "propertyNames":
+		"contains", "not", "if", "then", "else", "propertyNames",
+		"allOf", "anyOf", "oneOf", "prefixItems":
 		return true
 	}
 

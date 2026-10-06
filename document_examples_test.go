@@ -141,7 +141,6 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 	// running this through a change detection, will render out the entire model and
 	// any stage two rendering for the model will be caught.
 	what_changed.CompareOpenAPIDocuments(m.Model.GoLow(), m.Model.GoLow())
-	// Output: Digital Ocean spec built successfully
 }
 
 func ExampleNewDocument_fromSwaggerDocument() {

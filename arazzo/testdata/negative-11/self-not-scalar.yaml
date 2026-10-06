@@ -1,0 +1,12 @@
+# $self must be a scalar URI. A mapping is not a valid authored value.
+arazzo: 1.1.0
+info:
+  title: negative $self
+  version: 1.0.0
+$self:
+  not: a-scalar
+workflows:
+  - workflowId: wf
+    steps:
+      - stepId: s1
+        operationId: op

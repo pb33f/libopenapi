@@ -17,13 +17,13 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 var doc *Document
@@ -225,6 +225,8 @@ func TestRolodexLocalFileSystem_BadPath(t *testing.T) {
 }
 
 func TestRolodexRemoteFileSystem(t *testing.T) {
+	requireNetworkTests(t)
+
 	data, _ := os.ReadFile("../../../test_specs/first.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 

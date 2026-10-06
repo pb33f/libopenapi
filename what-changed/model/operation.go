@@ -8,11 +8,11 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"go.yaml.in/yaml/v4"
 )
 
 // OperationChanges represent changes made between two Swagger or OpenAPI Operation objects.
@@ -483,9 +483,8 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 				}
 				continue
 			}
-			lv[k].ValueNode.Value = lv[k].Value.URL.Value
 			CreateChange(&changes, ObjectRemoved, v3.ServersLabel,
-				lv[k].ValueNode, nil, BreakingRemoved(component, property), lv[k].Value,
+				keyedValueNode(lv[k].ValueNode, lv[k].Value.URL.Value), nil, BreakingRemoved(component, property), lv[k].Value,
 				nil)
 			sc := new(ServerChanges)
 			sc.PropertyChanges = NewPropertyChanges(changes)
@@ -497,9 +496,8 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 			if _, ok := lv[k]; !ok {
 
 				var changes []*Change
-				rv[k].ValueNode.Value = rv[k].Value.URL.Value
 				CreateChange(&changes, ObjectAdded, v3.ServersLabel,
-					nil, rv[k].ValueNode, BreakingAdded(component, property), nil,
+					nil, keyedValueNode(rv[k].ValueNode, rv[k].Value.URL.Value), BreakingAdded(component, property), nil,
 					rv[k].Value)
 
 				sc := new(ServerChanges)

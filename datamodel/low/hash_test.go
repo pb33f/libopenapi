@@ -7,8 +7,9 @@ import (
 	"hash/maphash"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestHashBool_True(t *testing.T) {
@@ -117,15 +118,72 @@ func TestGetPutVisitedMap_Reuse(t *testing.T) {
 }
 
 func TestClearNodePools(t *testing.T) {
-	// Ensure existing pool values are in use before replacing the pool.
 	initial := getVisitedMap()
 	initial[&yaml.Node{Value: "old"}] = true
 	putVisitedMap(initial)
 
+	// a deprecated no-op: maps are already cleared before they go back to the pool.
 	ClearNodePools()
 
 	fresh := getVisitedMap()
 	assert.NotNil(t, fresh)
 	assert.Empty(t, fresh)
 	putVisitedMap(fresh)
+}
+
+func hashWith(fn func(h *maphash.Hash)) uint64 {
+	return WithHasher(func(h *maphash.Hash) uint64 {
+		fn(h)
+		return h.Sum64()
+	})
+}
+
+func TestHashLabel_SeparatesFieldsWithTheSameValue(t *testing.T) {
+	minimum := hashWith(func(h *maphash.Hash) {
+		HashLabel(h, "minimum")
+		HashInt64(h, 5)
+	})
+	maximum := hashWith(func(h *maphash.Hash) {
+		HashLabel(h, "maximum")
+		HashInt64(h, 5)
+	})
+	assert.NotEqual(t, minimum, maximum)
+}
+
+func TestHashString(t *testing.T) {
+	title := hashWith(func(h *maphash.Hash) { HashString(h, "title", "same") })
+	description := hashWith(func(h *maphash.Hash) { HashString(h, "description", "same") })
+	assert.NotEqual(t, title, description)
+	assert.Equal(t, title, hashWith(func(h *maphash.Hash) { HashString(h, "title", "same") }))
+
+	// the length prefix stops a value holding the separator from passing for two fields.
+	joined := hashWith(func(h *maphash.Hash) { HashString(h, "title", "a|description:b") })
+	split := hashWith(func(h *maphash.Hash) {
+		HashString(h, "title", "a")
+		HashString(h, "description", "b")
+	})
+	assert.NotEqual(t, joined, split)
+}
+
+func TestHashMap(t *testing.T) {
+	build := func(entries ...string) *orderedmap.Map[KeyReference[string], ValueReference[string]] {
+		m := orderedmap.New[KeyReference[string], ValueReference[string]]()
+		for i := 0; i < len(entries); i += 2 {
+			m.Set(KeyReference[string]{Value: entries[i]}, ValueReference[string]{Value: entries[i+1]})
+		}
+		return m
+	}
+	hashMap := func(label string, m *orderedmap.Map[KeyReference[string], ValueReference[string]]) uint64 {
+		return hashWith(func(h *maphash.Hash) { HashMap(h, label, m) })
+	}
+
+	empty := hashWith(func(h *maphash.Hash) {})
+	assert.Equal(t, empty, hashMap("mapping", nil))
+	assert.Equal(t, empty, hashMap("mapping", build()))
+
+	ab := hashMap("mapping", build("a", "1", "b", "2"))
+	assert.Equal(t, ab, hashMap("mapping", build("b", "2", "a", "1")), "declaration order should not count")
+	assert.NotEqual(t, ab, hashMap("mapping", build("a", "1", "c", "2")), "renaming a key should count")
+	assert.NotEqual(t, ab, hashMap("mapping", build("a", "2", "b", "1")), "moving a value to another key should count")
+	assert.NotEqual(t, ab, hashMap("scopes", build("a", "1", "b", "2")), "the label should count")
 }

@@ -1,0 +1,6 @@
+Deep:
+  type: number
+  exclusiveMinimum: 3
+  properties:
+    deepProp:
+      type: string

@@ -4,6 +4,7 @@
 package libopenapi
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -12,19 +13,18 @@ import (
 )
 
 // ClearAllCaches resets every global in-process cache in libopenapi.
-// Call this between document lifecycles in long-running processes
-// (servers, CLI tools that process many specs) to release memory that
-// would otherwise accumulate and never be garbage-collected.
+//
+// Calling it is not required to release memory: caches keyed by YAML nodes or model objects hold them weakly,
+// so a document is reclaimed as soon as the caller drops it. Use it to force hashes to be recalculated after
+// YAML nodes or low-level models were modified in place, or to empty the content-keyed caches (compiled
+// JSONPath expressions, schema quick hashes, encoded values and remote content types). It is safe to call
+// while other goroutines parse, build or compare documents.
 func ClearAllCaches() {
-	low.ClearHashCache()              // hashCache + indexCollectionCache
+	low.ClearHashCache()              // model and YAML node hashes
 	lowbase.ClearSchemaQuickHashMap() // SchemaQuickHashMap
 	index.ClearHashCache()            // nodeHashCache
 	index.ClearContentDetectionCache()
 	highbase.ClearInlineRenderingTracker()
+	high.ClearEncodeCache()
 	utils.ClearJSONPathCache()
-
-	// Drain sync.Pool instances that hold *yaml.Node pointers.
-	// Pooled slices/maps keep the entire YAML parse tree alive.
-	index.ClearNodePools()
-	low.ClearNodePools()
 }

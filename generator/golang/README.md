@@ -26,6 +26,9 @@ fmt.Println(string(source))
 - `Types`: top-level generated type names and kinds.
 - `Diagnostics`: notable generator decisions.
 
+`Generator.SchemaIRs` builds the same language-neutral IR without rendering
+Go. Other language targets, such as `generator/typescript`, print from it.
+
 ## Go To OpenAPI
 
 Use `SchemaFromType` for one schema or `SchemasFromTypes` for a reusable component graph.

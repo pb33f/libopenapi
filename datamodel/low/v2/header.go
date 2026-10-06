@@ -8,11 +8,11 @@ import (
 	"hash/maphash"
 	"sort"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"go.yaml.in/yaml/v4"
 )
 
 // Header Represents a low-level Swagger / OpenAPI 2 Header object.
@@ -79,24 +79,19 @@ func (h *Header) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecI
 func (hdr *Header) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if hdr.Description.Value != "" {
-			h.WriteString(hdr.Description.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "description", hdr.Description.Value)
 		}
 		if hdr.Type.Value != "" {
-			h.WriteString(hdr.Type.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "type", hdr.Type.Value)
 		}
 		if hdr.Format.Value != "" {
-			h.WriteString(hdr.Format.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "format", hdr.Format.Value)
 		}
 		if hdr.CollectionFormat.Value != "" {
-			h.WriteString(hdr.CollectionFormat.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "collectionFormat", hdr.CollectionFormat.Value)
 		}
 		if hdr.Default.Value != nil && !hdr.Default.Value.IsZero() {
-			h.WriteString(low.GenerateHashString(hdr.Default.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "default", low.GenerateHashString(hdr.Default.Value))
 		}
 		low.HashInt64(h, int64(hdr.Maximum.Value))
 		h.WriteByte(low.HASH_PIPE)
@@ -119,27 +114,25 @@ func (hdr *Header) Hash() uint64 {
 		low.HashBool(h, hdr.UniqueItems.Value)
 		h.WriteByte(low.HASH_PIPE)
 		if hdr.Pattern.Value != "" {
-			h.WriteString(hdr.Pattern.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "pattern", hdr.Pattern.Value)
 		}
 		for _, ext := range low.HashExtensions(hdr.Extensions) {
 			h.WriteString(ext)
 			h.WriteByte(low.HASH_PIPE)
 		}
 
+		// hash each enum node rather than its text, so the tag counts and enum [1] is not enum ['1'].
 		keys := make([]string, len(hdr.Enum.Value))
 		for k := range hdr.Enum.Value {
-			keys[k] = low.ValueToString(hdr.Enum.Value[k].Value)
+			keys[k] = low.GenerateHashString(hdr.Enum.Value[k].Value)
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			h.WriteString(key)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "enum", key)
 		}
 
 		if hdr.Items.Value != nil {
-			h.WriteString(low.GenerateHashString(hdr.Items.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "items", low.GenerateHashString(hdr.Items.Value))
 		}
 		return h.Sum64()
 	})

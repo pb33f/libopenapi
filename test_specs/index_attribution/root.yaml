@@ -1,0 +1,18 @@
+openapi: 3.1.0
+info:
+  title: index attribution
+  version: 1.0.0
+paths:
+  /external:
+    $ref: './level1.yaml#/pathItems/PI'
+components:
+  schemas:
+    Direct:
+      $ref: './level1.yaml#/components/schemas/L1'
+    Local:
+      $ref: '#/components/schemas/Plain'
+    Plain:
+      type: object
+      properties:
+        localProp:
+          type: string

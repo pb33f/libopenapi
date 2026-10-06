@@ -1,0 +1,9 @@
+openapi: 3.0.3
+info:
+  title: 3.0 root referencing a 3.1 document
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Ext:
+      $ref: './ext31.yaml#/components/schemas/Num'

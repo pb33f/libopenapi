@@ -1,0 +1,10 @@
+components:
+  schemas:
+    A:
+      type: object
+      properties:
+        alpha:
+          type: string
+    B:
+      type: integer
+      minimum: 42

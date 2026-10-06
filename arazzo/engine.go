@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pb33f/libopenapi/arazzo/expression"
@@ -62,16 +63,32 @@ type EngineConfig struct {
 // Engine orchestrates the execution of Arazzo workflows.
 // An Engine is NOT safe for concurrent use from multiple goroutines.
 type Engine struct {
-	document         *high.Arazzo
-	executor         Executor
-	sources          map[string]*ResolvedSource
-	defaultSource    *ResolvedSource // cached for single-source fast path
-	sourceOrder      []string        // deterministic source ordering from document
-	workflows        map[string]*high.Workflow
-	config           *EngineConfig
+	document      *high.Arazzo
+	executor      Executor
+	sources       map[string]*ResolvedSource
+	defaultSource *ResolvedSource // cached for single-source fast path
+	sourceOrder   []string        // deterministic source ordering from document
+	workflows     map[string]*high.Workflow
+	config        *EngineConfig
+	// exprCache is keyed by expression text alone. That is safe only because
+	// exprVersion is written once in NewEngine and never mutated, so one engine
+	// always parses under a single grammar. Making the version mutable would
+	// require adding it to the cache key.
 	exprCache        map[string]expression.Expression
+	exprVersion      expression.SpecVersion // grammar selected from the document's arazzo version
 	criterionCaches  *criterionCaches
 	cachedComponents *expression.ComponentsContext // immutable component maps, built once
+}
+
+// expressionVersionForDocument selects the runtime-expression grammar matching the
+// document's declared Arazzo version. A 1.0 document may use the general
+// "$components." name production, which the 1.1 grammar no longer permits; anything
+// that is not 1.0.x (including an absent version) parses under 1.1.
+func expressionVersionForDocument(doc *high.Arazzo) expression.SpecVersion {
+	if doc != nil && strings.HasPrefix(doc.Arazzo, "1.0.") {
+		return expression.Arazzo10
+	}
+	return expression.Arazzo11
 }
 
 // NewEngine creates a new Engine for executing Arazzo workflows.
@@ -121,6 +138,7 @@ func NewEngine(doc *high.Arazzo, executor Executor, sources []*ResolvedSource) *
 		workflows:       workflowMap,
 		config:          &EngineConfig{},
 		exprCache:       make(map[string]expression.Expression),
+		exprVersion:     expressionVersionForDocument(doc),
 		criterionCaches: newCriterionCaches(),
 	}
 	e.criterionCaches.parseExpr = e.parseExpression
@@ -146,6 +164,9 @@ func (e *Engine) ClearCaches() {
 
 // RunWorkflow executes a single workflow by its ID.
 func (e *Engine) RunWorkflow(ctx context.Context, workflowId string, inputs map[string]any) (*WorkflowResult, error) {
+	if err := e.preflightExecution(workflowId); err != nil {
+		return nil, err
+	}
 	state := &executionState{
 		workflowResults:  make(map[string]*WorkflowResult),
 		workflowContexts: make(map[string]*expression.WorkflowContext),
@@ -158,6 +179,9 @@ func (e *Engine) RunWorkflow(ctx context.Context, workflowId string, inputs map[
 
 // RunAll executes all workflows in dependency order.
 func (e *Engine) RunAll(ctx context.Context, inputs map[string]map[string]any) (*RunResult, error) {
+	if err := e.preflightExecution(); err != nil {
+		return nil, err
+	}
 	start := time.Now()
 	result := &RunResult{
 		Success: true,
@@ -194,14 +218,14 @@ func (e *Engine) RunAll(ctx context.Context, inputs map[string]map[string]any) (
 			}
 		}
 
-			wfInputs := inputs[wfId]
-			wfResult, execErr := e.runWorkflow(ctx, wfId, wfInputs, state)
-			if failedResult := workflowExecutionFailureResult(wfId, wfInputs, execErr); failedResult != nil {
-				result.Success = false
-				state.workflowResults[wfId] = failedResult
-				result.Workflows = append(result.Workflows, failedResult)
-				continue
-			}
+		wfInputs := inputs[wfId]
+		wfResult, execErr := e.runWorkflow(ctx, wfId, wfInputs, state)
+		if failedResult := workflowExecutionFailureResult(wfId, wfInputs, execErr); failedResult != nil {
+			result.Success = false
+			state.workflowResults[wfId] = failedResult
+			result.Workflows = append(result.Workflows, failedResult)
+			continue
+		}
 		result.Workflows = append(result.Workflows, wfResult)
 		if !wfResult.Success {
 			result.Success = false
@@ -210,6 +234,173 @@ func (e *Engine) RunAll(ctx context.Context, inputs map[string]map[string]any) (
 
 	result.Duration = time.Since(start)
 	return result, nil
+}
+
+// preflightExecution rejects modeled 1.1 features whose execution semantics are
+// deferred before any workflow step can invoke the external executor. With no
+// roots it checks every workflow; otherwise it follows workflow-targeting steps
+// from the selected root.
+func (e *Engine) preflightExecution(roots ...string) error {
+	if e == nil {
+		return nil
+	}
+	if len(roots) == 0 {
+		roots = make([]string, 0, len(e.workflows))
+		if e.document != nil {
+			for _, workflow := range e.document.Workflows {
+				if workflow != nil {
+					roots = append(roots, workflow.WorkflowId)
+				}
+			}
+		}
+	}
+	seen := make(map[string]struct{}, len(e.workflows))
+	var visit func(string) error
+	unsupported := func(workflowId, stepId, field string) error {
+		return &UnsupportedExecutionFeatureError{
+			WorkflowId: workflowId,
+			StepId:     stepId,
+			Field:      field,
+		}
+	}
+	hasSelectorParameter := func(parameters []*high.Parameter) bool {
+		for _, parameter := range parameters {
+			if parameter != nil && parameter.IsSelector() {
+				return true
+			}
+		}
+		return false
+	}
+	// An action whose reusable reference cannot be resolved is skipped rather than
+	// reported. Reference integrity belongs to validation, and a broken onFailure
+	// reference is never resolved unless the step actually fails.
+	collectSuccessTargets := func(workflowId, stepId string, actions []*high.SuccessAction, targets *[]string) error {
+		for _, action := range actions {
+			resolved, err := e.resolveSuccessAction(action)
+			if err != nil || resolved == nil {
+				continue
+			}
+			if len(resolved.Parameters) > 0 {
+				return unsupported(workflowId, stepId, "successAction.parameters")
+			}
+			if resolved.Type == "goto" && resolved.WorkflowId != "" {
+				*targets = append(*targets, resolved.WorkflowId)
+			}
+		}
+		return nil
+	}
+	collectFailureTargets := func(workflowId, stepId string, actions []*high.FailureAction, targets *[]string) error {
+		for _, action := range actions {
+			resolved, err := e.resolveFailureAction(action)
+			if err != nil || resolved == nil {
+				continue
+			}
+			if len(resolved.Parameters) > 0 {
+				return unsupported(workflowId, stepId, "failureAction.parameters")
+			}
+			if resolved.Type == "goto" && resolved.WorkflowId != "" {
+				*targets = append(*targets, resolved.WorkflowId)
+			}
+		}
+		return nil
+	}
+	visit = func(workflowId string) error {
+		if _, ok := seen[workflowId]; ok {
+			return nil
+		}
+		seen[workflowId] = struct{}{}
+		workflow := e.workflows[workflowId]
+		if workflow == nil {
+			return nil
+		}
+		if workflow.Outputs != nil {
+			for name, output := range workflow.Outputs.FromOldest() {
+				if output != nil && output.IsSelector() {
+					return &UnsupportedSelectorOutputError{
+						WorkflowId: workflowId,
+						OutputName: name,
+					}
+				}
+			}
+		}
+		if hasSelectorParameter(workflow.Parameters) {
+			return unsupported(workflowId, "", "parameters.value")
+		}
+		var targets []string
+		if err := collectSuccessTargets(workflowId, "", workflow.SuccessActions, &targets); err != nil {
+			return err
+		}
+		if err := collectFailureTargets(workflowId, "", workflow.FailureActions, &targets); err != nil {
+			return err
+		}
+		for _, step := range workflow.Steps {
+			if step == nil {
+				continue
+			}
+			if step.Outputs != nil {
+				for name, output := range step.Outputs.FromOldest() {
+					if output != nil && output.IsSelector() {
+						return &UnsupportedSelectorOutputError{
+							WorkflowId: workflowId,
+							StepId:     step.StepId,
+							OutputName: name,
+						}
+					}
+				}
+			}
+			switch {
+			case step.ChannelPath != "":
+				return unsupported(workflowId, step.StepId, "channelPath")
+			case step.Action != "":
+				return unsupported(workflowId, step.StepId, "action")
+			case step.CorrelationId != "":
+				return unsupported(workflowId, step.StepId, "correlationId")
+			case step.Timeout != nil:
+				return unsupported(workflowId, step.StepId, "timeout")
+			case len(step.DependsOn) > 0:
+				return unsupported(workflowId, step.StepId, "dependsOn")
+			case hasSelectorParameter(step.Parameters):
+				return unsupported(workflowId, step.StepId, "parameters.value")
+			}
+			if step.RequestBody != nil {
+				if len(step.RequestBody.GetSelectors()) > 0 {
+					return unsupported(workflowId, step.StepId, "requestBody.payload")
+				}
+				for _, replacement := range step.RequestBody.Replacements {
+					if replacement == nil {
+						continue
+					}
+					if replacement.TargetSelectorType != "" || replacement.TargetSelectorExpressionType != nil {
+						return unsupported(workflowId, step.StepId, "requestBody.replacements.targetSelectorType")
+					}
+					if len(replacement.GetSelectors()) > 0 {
+						return unsupported(workflowId, step.StepId, "requestBody.replacements.value")
+					}
+				}
+			}
+			if err := collectSuccessTargets(workflowId, step.StepId, step.OnSuccess, &targets); err != nil {
+				return err
+			}
+			if err := collectFailureTargets(workflowId, step.StepId, step.OnFailure, &targets); err != nil {
+				return err
+			}
+			if step.WorkflowId != "" {
+				targets = append(targets, step.WorkflowId)
+			}
+		}
+		for _, target := range targets {
+			if err := visit(target); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	for _, root := range roots {
+		if err := visit(root); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type executionState struct {
@@ -312,20 +503,20 @@ func (e *Engine) runWorkflow(ctx context.Context, workflowId string, inputs map[
 			}
 			continue
 		}
-			if actionResult.endWorkflow {
-				result.Success = false
-				result.Error = stepFailureOrDefault(step.StepId, stepResult.Error)
-				break
-			}
+		if actionResult.endWorkflow {
+			result.Success = false
+			result.Error = stepFailureOrDefault(step.StepId, stepResult.Error)
+			break
+		}
 		if actionResult.jumpToStepIdx >= 0 {
 			stepIdx = actionResult.jumpToStepIdx
 			continue
 		}
 
-			result.Success = false
-			result.Error = stepFailureOrDefault(step.StepId, stepResult.Error)
-			break
-		}
+		result.Success = false
+		result.Error = stepFailureOrDefault(step.StepId, stepResult.Error)
+		break
+	}
 	if result.Success {
 		if err := e.populateWorkflowOutputs(wf, result, exprCtx); err != nil {
 			result.Success = false
@@ -456,7 +647,7 @@ func (e *Engine) parseExpression(input string) (expression.Expression, error) {
 	if cached, ok := e.exprCache[input]; ok {
 		return cached, nil
 	}
-	expr, err := expression.Parse(input)
+	expr, err := expression.ParseWithVersion(input, e.exprVersion)
 	if err != nil {
 		return expression.Expression{}, err
 	}
@@ -501,8 +692,16 @@ func (e *Engine) newExpressionContext(inputs map[string]any, state *executionSta
 		Workflows:   copyWorkflowContexts(state.workflowContexts),
 		SourceDescs: make(map[string]*expression.SourceDescContext),
 	}
+	if e.document != nil {
+		ctx.Self = e.document.Self
+		if e.document.Self != "" {
+			if origin := e.document.GetDocumentOrigin(); origin != nil && origin.ResolvedIdentity != "" {
+				ctx.Self = origin.ResolvedIdentity
+			}
+		}
+	}
 	for name, source := range e.sources {
-		ctx.SourceDescs[name] = &expression.SourceDescContext{URL: source.URL}
+		ctx.SourceDescs[name] = &expression.SourceDescContext{URL: source.URL, Type: source.Type}
 	}
 	if e.cachedComponents != nil {
 		components := &expression.ComponentsContext{

@@ -186,6 +186,19 @@ func TestResolveFilePath_RejectsSymlinkOutsideRoot(t *testing.T) {
 	assert.Contains(t, err.Error(), "outside configured roots")
 }
 
+func TestResolveFilePath_RejectsMissingFileUnderSymlinkOutsideRoot(t *testing.T) {
+	rootDir := t.TempDir()
+	outsideDir := t.TempDir()
+	symlinkDir := filepath.Join(rootDir, "escaped")
+	if err := os.Symlink(outsideDir, symlinkDir); err != nil {
+		t.Skipf("symlinks not supported: %v", err)
+	}
+
+	_, err := resolveFilePath(filepath.Join(symlinkDir, "missing.yaml"), []string{rootDir})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "outside configured roots")
+}
+
 func TestGetResolveHTTPClient_UsesConfigTimeout(t *testing.T) {
 	c1 := getResolveHTTPClient(&ResolveConfig{Timeout: 5 * time.Second})
 	require.Equal(t, 5*time.Second, c1.Timeout)

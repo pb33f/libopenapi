@@ -21,6 +21,7 @@ type Generator struct {
 	optionalFieldsAsPointers         bool
 	omitEmpty                        bool
 	nullableAsPointer                bool
+	optionalNullableAsDoublePointer  bool
 	jsonTags                         bool
 	yamlTags                         bool
 	enumConstants                    bool
@@ -54,7 +55,7 @@ type Generator struct {
 	openapiCache map[*highbase.SchemaProxy]*SchemaIR
 	reflectCache map[reflect.Type]*SchemaIR
 	reflectStack map[reflect.Type]bool
-	typeNames    *nameRegistry
+	typeNames    *NameRegistry
 
 	componentNames     map[string]struct{}
 	componentTypeNames map[string]string
@@ -99,8 +100,35 @@ type GeneratedSourceFile struct {
 
 // GeneratedType describes one top-level generated Go type.
 type GeneratedType struct {
-	Name string
-	Kind Kind
+	Name     string
+	Kind     Kind
+	Fields   []GeneratedField
+	Embedded []string
+}
+
+// GeneratedField describes one named field emitted for a generated type.
+type GeneratedField struct {
+	Name   string
+	Source string
+	Type   string
+}
+
+// ScalarType returns the Go type this generator renders for a scalar JSON
+// Schema type and format, including configured string format mappings. The
+// second result is false when jsonType is not a scalar. SDK emitters call it so
+// parameter types and model field types come from one mapping.
+func (g *Generator) ScalarType(jsonType, format string) (string, bool) {
+	kind := kindForJSONType(jsonType)
+	switch kind {
+	case KindString:
+		if mapping, ok := g.formatMappings[format]; ok {
+			return mapping.goType, true
+		}
+		return builtinScalarType(kind, format), true
+	case KindInteger, KindNumber, KindBoolean:
+		return builtinScalarType(kind, format), true
+	}
+	return "", false
 }
 
 // NewGenerator creates a Go model generator.
@@ -220,23 +248,56 @@ func (g *Generator) RenderSchemas(schemas *orderedmap.Map[string, *highbase.Sche
 	if schemas == nil {
 		return r.renderFile(nil)
 	}
-	r.typeNames = newNameRegistry()
-	r.componentTypeNames = r.resolveComponentTypeNames(schemas)
+	irs, err := r.componentIRs(schemas)
+	if err != nil {
+		return nil, err
+	}
+	return r.renderFile(irs)
+}
+
+// SchemaIRs builds the language-neutral IR for an ordered map of component
+// schemas without rendering Go. It returns one IR per schema, in input order,
+// and the diagnostics recorded while building them. Other language emitters
+// read the shaping fields (Kind, Properties, Items, AdditionalProperties,
+// AdditionalAllowed, Union, AllOf, Required, Nullable, Enum, Const) and ignore
+// the Go-specific naming of nested inline types. Configure a type-name
+// resolver to keep component names verbatim instead of Go-style.
+func (g *Generator) SchemaIRs(schemas *orderedmap.Map[string, *highbase.SchemaProxy]) ([]*SchemaIR, []Diagnostic, error) {
+	r := g.run()
+	if schemas == nil {
+		return nil, nil, nil
+	}
+	irs, err := r.componentIRs(schemas)
+	if err != nil {
+		return nil, nil, err
+	}
+	return irs, append([]Diagnostic(nil), r.diagnostics...), nil
+}
+
+func (g *Generator) componentIRs(schemas *orderedmap.Map[string, *highbase.SchemaProxy]) ([]*SchemaIR, error) {
+	g.typeNames = newNameRegistry()
+	g.componentTypeNames = g.resolveComponentTypeNames(schemas)
 	irs := make([]*SchemaIR, 0, schemas.Len())
 	for name, schema := range schemas.FromOldest() {
-		ir, err := r.irFromOpenAPI(name, schema, name)
+		ir, err := g.irFromOpenAPI(name, schema, name)
 		if err != nil {
 			return nil, err
 		}
+		if schema != nil && schema.IsReference() {
+			aliasName := g.componentTypeName(name)
+			if aliasName != ir.Name {
+				ir = &SchemaIR{Name: aliasName, Ref: schema.GetReference(), Kind: KindRef}
+			}
+		}
 		irs = append(irs, ir)
 	}
-	r.componentKinds = make(map[string]Kind, len(irs))
+	g.componentKinds = make(map[string]Kind, len(irs))
 	for _, ir := range irs {
 		if ir != nil && ir.Name != "" {
-			r.componentKinds[ir.Name] = ir.Kind
+			g.componentKinds[ir.Name] = ir.Kind
 		}
 	}
-	return r.renderFile(irs)
+	return irs, nil
 }
 
 func (g *Generator) resolveComponentTypeNames(schemas *orderedmap.Map[string, *highbase.SchemaProxy]) map[string]string {

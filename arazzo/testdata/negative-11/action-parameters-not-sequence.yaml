@@ -1,0 +1,15 @@
+# success/failure action parameters are a sequence of Parameter Objects.
+arazzo: 1.1.0
+info:
+  title: negative action parameters
+  version: 1.0.0
+workflows:
+  - workflowId: wf
+    steps:
+      - stepId: s1
+        operationId: op
+        onSuccess:
+          - name: go
+            type: goto
+            stepId: s1
+            parameters: not-a-sequence

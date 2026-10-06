@@ -8,11 +8,11 @@ import (
 	"hash/maphash"
 	"sort"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"go.yaml.in/yaml/v4"
 )
 
 // Items is a low-level representation of a Swagger / OpenAPI 2 Items object.
@@ -55,20 +55,16 @@ func (i *Items) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.Va
 func (itm *Items) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if itm.Type.Value != "" {
-			h.WriteString(itm.Type.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "type", itm.Type.Value)
 		}
 		if itm.Format.Value != "" {
-			h.WriteString(itm.Format.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "format", itm.Format.Value)
 		}
 		if itm.CollectionFormat.Value != "" {
-			h.WriteString(itm.CollectionFormat.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "collectionFormat", itm.CollectionFormat.Value)
 		}
 		if itm.Default.Value != nil && !itm.Default.Value.IsZero() {
-			h.WriteString(low.GenerateHashString(itm.Default.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "default", low.GenerateHashString(itm.Default.Value))
 		}
 		low.HashInt64(h, int64(itm.Maximum.Value))
 		h.WriteByte(low.HASH_PIPE)
@@ -91,22 +87,20 @@ func (itm *Items) Hash() uint64 {
 		low.HashBool(h, itm.UniqueItems.Value)
 		h.WriteByte(low.HASH_PIPE)
 		if itm.Pattern.Value != "" {
-			h.WriteString(itm.Pattern.Value)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "pattern", itm.Pattern.Value)
 		}
+		// hash each enum node rather than its text, so the tag counts and enum [1] is not enum ['1'].
 		keys := make([]string, len(itm.Enum.Value))
 		for k := range itm.Enum.Value {
-			keys[k] = low.ValueToString(itm.Enum.Value[k].Value)
+			keys[k] = low.GenerateHashString(itm.Enum.Value[k].Value)
 		}
 		sort.Strings(keys)
 		for _, key := range keys {
-			h.WriteString(key)
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "enum", key)
 		}
 
 		if itm.Items.Value != nil {
-			h.WriteString(low.GenerateHashString(itm.Items.Value))
-			h.WriteByte(low.HASH_PIPE)
+			low.HashString(h, "items", low.GenerateHashString(itm.Items.Value))
 		}
 		for _, ext := range low.HashExtensions(itm.Extensions) {
 			h.WriteString(ext)

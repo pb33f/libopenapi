@@ -1,0 +1,10 @@
+openapi: 3.1.0
+info:
+  title: external document declaring its own 3.1 version
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Num:
+      type: number
+      exclusiveMinimum: 5

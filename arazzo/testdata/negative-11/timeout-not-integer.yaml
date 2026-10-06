@@ -1,0 +1,11 @@
+# timeout is a millisecond integer; a string is not coercible.
+arazzo: 1.1.0
+info:
+  title: negative timeout
+  version: 1.0.0
+workflows:
+  - workflowId: wf
+    steps:
+      - stepId: s1
+        operationId: op
+        timeout: soon

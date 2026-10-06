@@ -8,12 +8,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/arazzo"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 // buildHighArazzo is a test helper that parses YAML, builds the low-level model, then creates
@@ -250,6 +250,18 @@ func TestArazzo_AddOpenAPISourceDocument_NilReceiver(t *testing.T) {
 	assert.Nil(t, h.GetOpenAPISourceDocuments())
 }
 
+// A live document with nothing attached returns nil rather than an empty slice. This is
+// a distinct path from the nil receiver, since reading the slice requires the lock.
+func TestArazzo_GetOpenAPISourceDocuments_NoneAttached(t *testing.T) {
+	h := &Arazzo{}
+	assert.Nil(t, h.GetOpenAPISourceDocuments())
+
+	// Attaching nothing must not change that.
+	h.AddOpenAPISourceDocument()
+	h.AddOpenAPISourceDocument(nil)
+	assert.Nil(t, h.GetOpenAPISourceDocuments())
+}
+
 func TestArazzo_MinimalDocument(t *testing.T) {
 	yml := `arazzo: 1.0.1
 info:
@@ -458,7 +470,9 @@ func TestWorkflow_Outputs(t *testing.T) {
 	require.NotNil(t, wf.Outputs)
 	val, ok := wf.Outputs.Get("createdPetId")
 	assert.True(t, ok)
-	assert.Equal(t, "$steps.addPet.outputs.petId", val)
+	expressionValue, ok := val.GetExpression()
+	require.True(t, ok)
+	assert.Equal(t, "$steps.addPet.outputs.petId", expressionValue)
 }
 
 // ---------------------------------------------------------------------------
@@ -516,7 +530,9 @@ func TestStep_Outputs(t *testing.T) {
 	require.NotNil(t, step.Outputs)
 	val, ok := step.Outputs.Get("petId")
 	assert.True(t, ok)
-	assert.Equal(t, "$response.body#/id", val)
+	expressionValue, ok := val.GetExpression()
+	require.True(t, ok)
+	assert.Equal(t, "$response.body#/id", expressionValue)
 }
 
 // ---------------------------------------------------------------------------

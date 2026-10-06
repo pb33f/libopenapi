@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -21,7 +22,6 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestSchemaProxy_MarshalYAML(t *testing.T) {
@@ -2508,4 +2508,114 @@ properties:
 	assert.Equal(t, int64(0), corrupted.Load(),
 		"rendering mutated the shared const scalar's tag (was cleared by desolve)")
 	assert.Equal(t, "!!str", constNode.Tag, "shared const scalar tag must survive rendering")
+}
+
+// buildWholeFileRefProxy indexes a root spec whose only schema is a whole-file reference to
+// ./other.yaml, registers loop as a circular reference on every index involved, and returns a
+// proxy for that reference.
+func buildWholeFileRefProxy(t *testing.T, loop *index.Reference) *SchemaProxy {
+	t.Helper()
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "other.yaml"), []byte("type: object\n"), 0o600))
+
+	config := index.CreateOpenAPIIndexConfig()
+	config.BasePath = dir
+	config.SpecFilePath = filepath.Join(dir, "root.yaml")
+	rolodex := index.NewRolodex(config)
+	fileFS, err := index.NewLocalFSWithConfig(&index.LocalFSConfig{BaseDirectory: dir, IndexConfig: config})
+	require.NoError(t, err)
+	rolodex.AddLocalFS(dir, fileFS)
+
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("components:\n  schemas:\n    Other:\n      $ref: './other.yaml'\n"), &rootNode))
+	rolodex.SetRootNode(&rootNode)
+	require.NoError(t, rolodex.IndexTheRolodex(context.Background()))
+
+	circular := []*index.CircularReferenceResult{{LoopPoint: loop}}
+	rolodex.GetRootIndex().SetCircularReferences(circular)
+	for _, idx := range rolodex.GetIndexes() {
+		idx.SetCircularReferences(circular)
+	}
+
+	refNode := rootNode.Content[0].Content[1].Content[1].Content[1]
+	lowProxy := new(lowbase.SchemaProxy)
+	require.NoError(t, lowProxy.Build(context.Background(), nil, refNode, rolodex.GetRootIndex()))
+	sp := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: lowProxy, ValueNode: refNode})
+	require.Equal(t, "./other.yaml", sp.GetReference())
+	return sp
+}
+
+// A whole-file reference carries no fragment, so a loop point is matched on the file path alone,
+// once the leading './' on the reference and any leading '/' on the loop point are normalised away.
+func TestSchemaProxy_MarshalYAMLInline_CircularReference_MatchesWholeFile(t *testing.T) {
+	sp := buildWholeFileRefProxy(t, &index.Reference{Definition: "other.yaml", FullDefinition: "other.yaml"})
+
+	rendered, err := sp.MarshalYAMLInline()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "circular reference: `other.yaml`")
+
+	node, ok := rendered.(*yaml.Node)
+	require.True(t, ok)
+	require.Len(t, node.Content, 2)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "./other.yaml", node.Content[1].Value)
+}
+
+// A different whole file is not the same loop, so the reference is rendered inline.
+func TestSchemaProxy_MarshalYAMLInline_CircularReference_OtherWholeFile(t *testing.T) {
+	sp := buildWholeFileRefProxy(t, &index.Reference{Definition: "another.yaml", FullDefinition: "another.yaml"})
+
+	rendered, err := sp.MarshalYAMLInline()
+	require.NoError(t, err)
+
+	out, err := yaml.Marshal(rendered)
+	require.NoError(t, err)
+	assert.Equal(t, "type: object\n", string(out))
+}
+
+// matchCircularReference walks every circular reference source in order and skips malformed entries,
+// in both identity modes, and reports no match when nothing closes a loop.
+func TestSchemaProxy_MatchCircularReference_NoMatch(t *testing.T) {
+	var idxNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("components:\n  schemas:\n    Ten:\n      type: object"), &idxNode))
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+	idx.SetAbsolutePath(filepath.Join(t.TempDir(), "spec.yaml"))
+	other := &index.Reference{Definition: "#/components/schemas/Other",
+		FullDefinition: idx.GetSpecAbsolutePath() + "#/components/schemas/Other"}
+	idx.SetCircularReferences([]*index.CircularReferenceResult{nil, {}, {LoopPoint: other}})
+
+	refNode := utils.CreateRefNode("#/components/schemas/Ten")
+	lowProxy := new(lowbase.SchemaProxy)
+	require.NoError(t, lowProxy.Build(context.Background(), nil, refNode, idx))
+	sp := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: lowProxy, ValueNode: refNode})
+
+	loose := NewInlineRenderContext()
+	_, found := sp.matchCircularReference(loose, idx)
+	assert.False(t, found)
+
+	strict := NewInlineRenderContext()
+	strict.StrictCircularReferenceIdentity = true
+	for range 2 { // the second pass answers the loop point identity from the context's cache
+		_, found = sp.matchCircularReference(strict, idx)
+		assert.False(t, found)
+	}
+
+	// a reference with no resolvable target identity cannot close a loop in strict mode.
+	programmatic := CreateSchemaProxyRef("external.yaml#/Thing")
+	_, found = programmatic.matchCircularReference(strict, idx)
+	assert.False(t, found)
+}
+
+// absoluteSpecPath resolves a relative spec path the way filepath.Abs does, once per render context,
+// and leaves absolute and remote paths alone.
+func TestInlineRenderContext_AbsoluteSpecPath(t *testing.T) {
+	ctx := NewInlineRenderContext()
+	want, err := filepath.Abs("spec.yaml")
+	require.NoError(t, err)
+	assert.Equal(t, want, ctx.absoluteSpecPath("spec.yaml"))
+	assert.Equal(t, want, ctx.absoluteSpecPath("spec.yaml"))
+
+	abs := filepath.Join(t.TempDir(), "spec.yaml")
+	assert.Equal(t, abs, ctx.absoluteSpecPath(abs))
+	assert.Equal(t, "https://example.com/spec.yaml", ctx.absoluteSpecPath("https://example.com/spec.yaml"))
 }

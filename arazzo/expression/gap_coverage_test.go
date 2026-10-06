@@ -6,9 +6,9 @@ package expression
 import (
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestResolveComponents_WithDeepTail(t *testing.T) {
@@ -24,7 +24,7 @@ func TestResolveComponents_WithDeepTail(t *testing.T) {
 		},
 	}
 
-	v, err := EvaluateString("$components.inputs.i1.inner.value", ctx)
+	v, err := Evaluate(Expression{Type: Components, Name: "inputs", Tail: "i1.inner.value"}, ctx)
 	require.NoError(t, err)
 	assert.Equal(t, "ok", v)
 }

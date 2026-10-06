@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
@@ -26,7 +27,6 @@ import (
 	"github.com/pb33f/libopenapi/what-changed/model"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestLoadDocument_Simple_V2(t *testing.T) {
@@ -314,7 +314,7 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 		tc := compReport.TotalChanges()
 		bc := compReport.TotalBreakingChanges()
 		assert.Equal(t, 0, bc)
-		assert.Equal(t, 9, tc)
+		assert.Equal(t, 0, tc)
 
 		// there should be no other changes besides descriptions.
 		assert.Equal(t, 0, len(filtered))
@@ -418,6 +418,33 @@ func TestDocument_RenderAndReload(t *testing.T) {
 
 	assert.Equal(t, "https://pb33f.io",
 		h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl)
+}
+
+func TestDocument_SetConfiguration(t *testing.T) {
+	doc, err := NewDocument([]byte("openapi: 3.1.0\n"))
+	require.NoError(t, err)
+	assert.Nil(t, doc.GetConfiguration())
+
+	config := datamodel.NewDocumentConfiguration()
+	doc.SetConfiguration(config)
+	assert.Same(t, config, doc.GetConfiguration())
+}
+
+// Clearing the version renders a document with an empty 'openapi' value, which cannot be reloaded.
+func TestDocument_RenderAndReload_UnreadableRender(t *testing.T) {
+	doc, err := NewDocument([]byte("openapi: 3.1.0\ninfo:\n  title: t\n  version: 1.0.0\n"))
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	m.Model.Version = ""
+
+	rendered, newDoc, newModel, err := doc.RenderAndReload()
+	assert.Nil(t, rendered)
+	assert.Nil(t, newDoc)
+	assert.Nil(t, newModel)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unable to extract version")
 }
 
 func TestDocument_RenderAndReload_WithErrors(t *testing.T) {
@@ -1624,6 +1651,8 @@ func TestDocument_TestNestedFiles(t *testing.T) {
 }
 
 func TestDocument_MinimalRemoteRefs(t *testing.T) {
+	requireNetworkTests(t)
+
 	newRemoteHandlerFunc := func() utils.RemoteURLHandler {
 		c := &http.Client{
 			Timeout: time.Second * 120,
@@ -1673,6 +1702,8 @@ func TestDocument_Issue264(t *testing.T) {
 }
 
 func TestDocument_Issue269(t *testing.T) {
+	requireNetworkTests(t)
+
 	spec := `openapi: "3.0.0"
 info:
   title: test
@@ -2556,4 +2587,16 @@ components:
 		require.NotNil(t, doc.GetRolodex().GetRootIndex())
 		assert.True(t, doc.GetRolodex().GetRootIndex().GetConfig().AllowRemoteLookup)
 	})
+}
+
+// A spec whose root node has no top-level `openapi` key leaves the low-level
+// document nil, which BuildV3Model used to dereference.
+func TestDocument_BuildV3Model_NoVersionNode(t *testing.T) {
+	doc, err := NewDocument([]byte("title: openapi\n"))
+	require.NoError(t, err)
+
+	m, buildErr := doc.BuildV3Model()
+	assert.Nil(t, m)
+	require.Error(t, buildErr)
+	assert.Contains(t, buildErr.Error(), "no openapi version/tag found")
 }

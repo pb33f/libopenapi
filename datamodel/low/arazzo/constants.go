@@ -7,6 +7,7 @@ package arazzo
 // https://spec.openapis.org/arazzo/v1.0.1
 const (
 	ArazzoLabel             = "arazzo"
+	SelfLabel               = "$self"
 	InfoLabel               = "info"
 	SourceDescriptionsLabel = "sourceDescriptions"
 	WorkflowsLabel          = "workflows"
@@ -29,6 +30,10 @@ const (
 	StepIdLabel             = "stepId"
 	OperationIdLabel        = "operationId"
 	OperationPathLabel      = "operationPath"
+	ChannelPathLabel        = "channelPath"
+	ActionLabel             = "action"
+	CorrelationIdLabel      = "correlationId"
+	TimeoutLabel            = "timeout"
 	RequestBodyLabel        = "requestBody"
 	SuccessCriteriaLabel    = "successCriteria"
 	OnSuccessLabel          = "onSuccess"
@@ -45,4 +50,6 @@ const (
 	PayloadLabel            = "payload"
 	ReplacementsLabel       = "replacements"
 	TargetLabel             = "target"
+	TargetSelectorTypeLabel = "targetSelectorType"
+	SelectorLabel           = "selector"
 )

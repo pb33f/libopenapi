@@ -3,10 +3,10 @@ package json_test
 import (
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/json"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
-	"go.yaml.in/yaml/v4"
 )
 
 func TestYAMLNodeToJSON(t *testing.T) {
@@ -196,24 +196,12 @@ func TestHandleMappingNode_NonStringKeyMarshalError(t *testing.T) {
 	assert.Contains(t, string(result), `"{\"nested\":\"key\"}": "value"`)
 }
 
-func TestHandleSequenceNode_DecodeError(t *testing.T) {
-	// Test edge case - the decode error path is difficult to trigger naturally
-	// This test exercises the error handling code path even if actual error is rare
+func TestHandleSequenceNode_Empty(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.SequenceNode}
 
-	// Create a sequence node with inconsistent internal structure
-	// The yaml library is quite robust, so triggering actual decode errors is difficult
-	node := &yaml.Node{
-		Kind: yaml.SequenceNode,
-		// Intentionally leave Content nil to potentially cause issues
-		Content: nil,
-	}
-
-	// This might not error but tests the code path
 	result, err := json.YAMLNodeToJSON(node, "  ")
-	// Either outcome is acceptable - we're testing for coverage
-	if err == nil {
-		assert.Equal(t, "[]", string(result))
-	}
+	require.NoError(t, err)
+	assert.Equal(t, "[]", string(result))
 }
 
 func TestHandleSequenceNode_HandleYAMLNodeError(t *testing.T) {
@@ -240,4 +228,71 @@ func TestHandleScalarNode_DecodeError(t *testing.T) {
 
 	_, err := json.YAMLNodeToJSON(node, "  ")
 	assert.Error(t, err)
+}
+
+// A non-string mapping key is marshalled to JSON so it can be used as an object key. NaN has
+// no JSON representation, so the marshal fails and the error must surface rather than produce
+// a malformed document. The branch is reachable, despite reading as defensive.
+func TestYAMLNodeToJSON_UnmarshalableMappingKey(t *testing.T) {
+	for _, src := range []string{"? .nan\n: value\n", "{.nan: value}"} {
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(src), &node))
+
+		out, err := json.YAMLNodeToJSON(&node, "  ")
+		require.Error(t, err, "input %q", src)
+		assert.Contains(t, err.Error(), "unsupported value: NaN")
+		assert.Nil(t, out)
+	}
+}
+
+// A numeric key that does have a JSON representation is stringified rather than rejected.
+func TestYAMLNodeToJSON_NumericMappingKey(t *testing.T) {
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("? 1.5\n: value\n"), &node))
+
+	out, err := json.YAMLNodeToJSON(&node, "")
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"1.5":"value"}`, string(out))
+}
+
+// A null key has no string form, so it is marshalled like any other non-string key.
+func TestYAMLNodeToJSON_NullMappingKey(t *testing.T) {
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("~: value\n"), &node))
+
+	out, err := json.YAMLNodeToJSON(&node, "")
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"null":"value"}`, string(out))
+}
+
+// An anchor that contains an alias to itself has no finite JSON form.
+func TestYAMLNodeToJSON_RecursiveAlias(t *testing.T) {
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("a: &x [1, *x]\n"), &node))
+
+	out, err := json.YAMLNodeToJSON(&node, "")
+	assert.Nil(t, out)
+	assert.EqualError(t, err, "recursive alias 'x' at line 1, column 11")
+}
+
+// The same anchor may be expanded any number of times, as long as it does not contain itself.
+func TestYAMLNodeToJSON_RepeatedAlias(t *testing.T) {
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("a: &x [1]\nb: [*x, *x]\n"), &node))
+
+	out, err := json.YAMLNodeToJSON(&node, "")
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"a":[1],"b":[[1],[1]]}`, string(out))
+}
+
+func TestYAMLNodeToJSON_EmptyDocument(t *testing.T) {
+	out, err := json.YAMLNodeToJSON(&yaml.Node{Kind: yaml.DocumentNode}, "")
+	assert.Nil(t, out)
+	assert.EqualError(t, err, "empty yaml document")
+}
+
+func TestYAMLNodeToJSON_AliasWithoutTarget(t *testing.T) {
+	out, err := json.YAMLNodeToJSON(&yaml.Node{Kind: yaml.AliasNode}, "")
+	assert.Nil(t, out)
+	assert.EqualError(t, err, "nil yaml node")
 }
