@@ -23,8 +23,11 @@ Run independent correctness and de-slop reviews before publication.
 ## Compatibility
 
 The existing public entry points and `Actions []*Action` remain available.
-Supported version strings are 1.0.x, 1.1.x, and 1.2.x. The engine uses the current
-merge rules for all supported versions. Previous behavior that disagreed with
+Version strings accept `1.<minor>` and `1.<minor>.<patch>`, including later minor
+versions. This preserves compatibility without claiming support for features
+introduced after 1.2. String fields retain YAML scalar spelling, including
+unquoted numeric versions; mappings and sequences are rejected. The engine uses
+the current merge rules for all accepted versions. Previous behavior that disagreed with
 the specification is corrected:
 
 - Primitive targets can be updated. The value and YAML type both change.
@@ -50,4 +53,7 @@ For a constructed reference that overrides removal with false, call
 `Overlay.ResolveExtends(baseURI)` resolves `extends` using `$self` and the supplied
 retrieval, encapsulating, or default base URI. It performs no I/O. Apply functions
 continue to use the target bytes supplied by the caller; they do not select or
-fetch documents based on `extends`. With no absolute base, `ResolveExtends` returns the unresolved `extends` value. Document identifiers cannot contain fragments.
+fetch documents based on `extends`, or validate unused document identifiers.
+With no absolute base, `ResolveExtends` returns the unresolved `extends` value.
+URI resolution rejects whitespace and fragments in document identifiers.
+Relative action references also require a valid absolute `$self`.

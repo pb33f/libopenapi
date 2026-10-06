@@ -11,7 +11,7 @@ import (
 	highoverlay "github.com/pb33f/libopenapi/datamodel/high/overlay"
 )
 
-var overlayVersion = regexp.MustCompile(`^1\.[012]\.[0-9]+$`)
+var overlayVersion = regexp.MustCompile(`^1\.[0-9]+(\.[0-9]+)?$`)
 
 // validateOverlay checks that the overlay has all required fields.
 func validateOverlay(overlay *highoverlay.Overlay) error {
@@ -27,9 +27,6 @@ func validateOverlay(overlay *highoverlay.Overlay) error {
 	if info := overlay.Info.GoLow(); info != nil &&
 		((info.Title.IsEmpty() && overlay.Info.Title == "") || (info.Version.IsEmpty() && overlay.Info.Version == "")) {
 		return ErrInvalidInfo
-	}
-	if _, err := overlay.ResolveExtends(""); err != nil {
-		return err
 	}
 	if len(overlay.Actions) == 0 {
 		return ErrEmptyActions

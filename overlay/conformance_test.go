@@ -155,6 +155,7 @@ func TestApply_InvalidReusableActions(t *testing.T) {
 		{"bad percent", "{}", "{$ref: '#/components/actions/%zz', target: '$'}", ErrInvalidActionReference},
 		{"nested pointer", "{}", "{$ref: '#/components/actions/a/fields', target: '$'}", ErrInvalidActionReference},
 		{"empty ref", "{}", "{$ref: '', target: '$'}", ErrInvalidActionReference},
+		{"scalar ref", "{}", "{$ref: false, target: '$'}", ErrInvalidActionReference},
 		{"missing target", "{a: {fields: {update: {}}}}", "{$ref: '#/components/actions/a'}", ErrMissingTarget},
 		{"forbidden target", "{a: {fields: {target: '', update: {}}}}", "{target: '$'}", ErrInvalidReusableAction},
 		{"nested reference", "{a: {fields: {$ref: '#/components/actions/a'}}}", "{target: '$'}", ErrInvalidReusableAction},
@@ -213,17 +214,27 @@ func TestApply_SameDocumentRelativeReference(t *testing.T) {
 	}
 }
 
+func TestApply_RejectInvalidSelfForRelativeActionReference(t *testing.T) {
+	for _, self := range []string{"https://example.com/my overlays/shared.yaml", "https://example.com/shared.yaml#fragment", "https://example.com/%zz"} {
+		t.Run(self, func(t *testing.T) {
+			ov := parseOverlay(t, "overlay: 1.2.0\n$self: '"+self+"'\ninfo: {title: Invalid base, version: '1'}\ncomponents: {actions: {a: {fields: {update: {title: Changed}}}}}\nactions: [{$ref: 'shared.yaml#/components/actions/a', target: '$.info'}]")
+			_, err := Apply([]byte("info: {title: Original}"), ov)
+			require.ErrorIs(t, err, ErrInvalidActionReference)
+		})
+	}
+}
+
 func TestApply_ValidationBoundaries(t *testing.T) {
 	valid := func() *highoverlay.Overlay {
 		return &highoverlay.Overlay{Overlay: "1.2.0", Info: &highoverlay.Info{Title: "Valid", Version: "1"}, Actions: []*highoverlay.Action{{Target: "$"}}}
 	}
-	for _, version := range []string{"1.2.8", "1.1.3", "1.0.99"} {
+	for _, version := range []string{"1.2.8", "1.1.3", "1.0.99", "1.3.0", "1.0", "1.2", "1.99.7"} {
 		ov := valid()
 		ov.Overlay = version
 		_, err := Apply([]byte("info: {}"), ov)
 		require.NoError(t, err)
 	}
-	for _, version := range []string{"1.3.0", "2.0.0", "1.2", "1.2.bad"} {
+	for _, version := range []string{"2.0.0", "0.9.0", "1", "1.2.bad", "1.2.3.4", "1.-2", "1.2."} {
 		ov := valid()
 		ov.Overlay = version
 		_, err := Apply([]byte("info: {}"), ov)
@@ -232,10 +243,6 @@ func TestApply_ValidationBoundaries(t *testing.T) {
 	ov := parseOverlay(t, "overlay: 1.2.0\ninfo: {version: '1'}\nactions: [{target: '$'}]")
 	_, err := Apply([]byte("info: {}"), ov)
 	require.ErrorIs(t, err, ErrInvalidInfo)
-	ov = valid()
-	ov.Self = "api.yaml#fragment"
-	_, err = Apply([]byte("info: {}"), ov)
-	require.Error(t, err)
 	ov = valid()
 	ov.Actions[0] = nil
 	_, err = Apply([]byte("info: {}"), ov)
