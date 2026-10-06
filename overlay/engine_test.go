@@ -1130,6 +1130,10 @@ actions:
 	result, err := Apply([]byte(targetYAML), overlay)
 	require.NoError(t, err)
 	assert.YAMLEq(t, targetYAML, string(result.Bytes))
+	require.Len(t, result.Warnings, 1)
+	assert.Same(t, overlay.Actions[0], result.Warnings[0].Action)
+	assert.Equal(t, "$.info.title", result.Warnings[0].Target)
+	assert.Contains(t, result.Warnings[0].Message, "copy and update")
 }
 
 func TestApply_CopyAndUpdateOnObjectNoOp(t *testing.T) {
@@ -1159,6 +1163,10 @@ actions:
 	result, err := Apply([]byte(targetYAML), overlay)
 	require.NoError(t, err)
 	assert.YAMLEq(t, targetYAML, string(result.Bytes))
+	require.Len(t, result.Warnings, 1)
+	assert.Same(t, overlay.Actions[0], result.Warnings[0].Action)
+	assert.Equal(t, "$.info.license", result.Warnings[0].Target)
+	assert.Contains(t, result.Warnings[0].Message, "copy and update")
 }
 
 func TestApply_RejectObjectUpdateOnPrimitiveWithoutCopy(t *testing.T) {

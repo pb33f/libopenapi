@@ -35,7 +35,8 @@ the specification is corrected:
 - Incompatible property types produce an error instead of replacing containers.
 - `remove: true` suppresses copy and update.
 - If both copy and update are present, neither changes the target, as stated by
-  the two field descriptions. Use separate actions to copy and then update.
+  the two field descriptions. A matched target produces a warning. Use separate
+  actions to copy and then update.
 - Every action needs a target. Malformed model structures produce errors.
 - Fixed fields use exact case. Info objects do not support `$ref`.
 - Required info strings may be empty; omission is distinct from an empty value.
@@ -44,6 +45,7 @@ the specification is corrected:
 
 Reusable actions are in `Components.Actions`, with their action content in
 `ReusableAction.Fields`. Set `Action.Ref` to `#/components/actions/name`.
+Errors and warnings retain the referencing action and its source location.
 JSON Pointer escapes and URI percent escapes are decoded. Same-document relative references are also supported when an absolute `$self`
 identifies the overlay. References to other documents are rejected. Reference fields override the corresponding reusable fields;
 the update payload is replaced, not merged with the reusable payload.
