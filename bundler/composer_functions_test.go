@@ -770,6 +770,21 @@ func TestResolveRefToComposed_UnresolvedRef_ReturnsOriginal(t *testing.T) {
 	assert.Equal(t, refValue, got)
 }
 
+func TestResolveRefToComposed_ExternalRefUsesCollisionNameWithoutLocation(t *testing.T) {
+	rootIdx, rolodex, _, idxB := buildMultiIndexResolveContext(t)
+	require.NotNil(t, idxB)
+
+	refValue := "./schemas/B.yaml#/components/schemas/BThing"
+	processed := orderedmap.New[string, *processRef]()
+	processed.Set(idxB.GetSpecAbsolutePath()+"#/components/schemas/BThing", &processRef{
+		name:       "BThing__shared",
+		wasRenamed: true,
+	})
+
+	got := resolveRefToComposed(refValue, rootIdx, processed, rolodex)
+	assert.Equal(t, "#/components/schemas/BThing__shared", got)
+}
+
 func TestResolveRefToComposed_FindsInOtherIndexes(t *testing.T) {
 	rootIdx, rolodex, idxA, idxB := buildMultiIndexResolveContext(t)
 	require.NotNil(t, rootIdx)
