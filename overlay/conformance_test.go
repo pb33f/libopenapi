@@ -317,3 +317,19 @@ func TestApply_ReferenceWithoutComponents(t *testing.T) {
 	_, err := Apply([]byte("info: {}"), ov)
 	require.ErrorIs(t, err, ErrInvalidActionReference)
 }
+
+func TestApply_RejectCyclicAliasMerge(t *testing.T) {
+	// A cyclic YAML alias cannot represent a JSON value. Reject it instead of
+	// silently leaving the old alias in place during a recursive object merge.
+	target := []byte("object: &original {self: *original}")
+	ov := parseOverlay(t, `overlay: 1.2.0
+info: {title: Cyclic input, version: '1'}
+actions:
+  - target: $.object
+    update: &replacement {self: *replacement}
+`)
+	result, err := Apply(target, ov)
+	require.ErrorIs(t, err, ErrIncompatibleUpdate)
+	require.Nil(t, result)
+	assert.Contains(t, err.Error(), `property "self"`)
+}
