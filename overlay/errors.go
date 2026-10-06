@@ -47,8 +47,16 @@ var (
 	ErrMissingActions      = errors.New("missing required 'actions' field")
 	ErrEmptyActions        = errors.New("actions array must contain at least one action")
 
+	ErrUnsupportedVersion     = errors.New("unsupported overlay version; supported versions are 1.0, 1.1 and 1.2")
+	ErrInvalidInfo            = errors.New("overlay info requires title and version")
+	ErrMissingTarget          = errors.New("action requires a target")
+	ErrInvalidActionReference = errors.New("invalid reusable action reference")
+	ErrInvalidReusableAction  = errors.New("reusable action fields must not contain target or $ref")
+	ErrIncompatibleUpdate     = errors.New("incompatible overlay update and target types")
+
 	// JSONPath errors
 	ErrInvalidJSONPath = errors.New("invalid JSONPath expression")
+	// Deprecated: primitive targets are supported. Incompatible updates return ErrIncompatibleUpdate.
 	ErrPrimitiveTarget = errors.New("JSONPath target resolved to primitive/null; must be object or array")
 
 	// Application errors
@@ -57,5 +65,5 @@ var (
 	// Copy action errors
 	ErrCopySourceNotFound = errors.New("copy source JSONPath matched zero nodes")
 	ErrCopySourceMultiple = errors.New("copy source JSONPath must match exactly one node")
-	ErrCopyTypeMismatch   = errors.New("copy source and target must be the same type")
+	ErrCopyTypeMismatch   = errors.New("copy source is incompatible with target")
 )

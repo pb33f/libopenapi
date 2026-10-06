@@ -94,7 +94,7 @@ func TestOverlay12MalformedModels(t *testing.T) {
 	for _, text := range []string{
 		"components: {actions: {a: {}, a: {}}}", "components: {actions: {? [a,b]: {}}}",
 		"overlay: []", "extends: {}", "info: {title: []}", "info: {version: []}", "info: {description: []}",
-		"actions: [{target: []}]", "actions: [{description: []}]", "actions: [{copy: []}]", "actions: [{remove: 'false'}]",
+		"actions: [{remove: !!bool invalid}]", "actions: [{target: []}]", "actions: [{description: []}]", "actions: [{copy: []}]", "actions: [{remove: 'false'}]",
 		"components: {actions: {a: {description: []}}}",
 		"[]", "null", "$self: {}", "components: []", "components: {actions: []}",
 		"components: {actions: {a: false}}", "components: {actions: {a: {fields: []}}}",

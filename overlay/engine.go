@@ -4,6 +4,7 @@
 package overlay
 
 import (
+	"fmt"
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/jsonpath/pkg/jsonpath"
 	"github.com/pb33f/jsonpath/pkg/jsonpath/config"
@@ -34,7 +35,11 @@ func Apply(targetBytes []byte, overlay *highoverlay.Overlay) (*Result, error) {
 	parentIdxStale := true
 
 	var warnings []*Warning
-	for _, action := range overlay.Actions {
+	for _, original := range overlay.Actions {
+		action, err := resolveAction(overlay, original)
+		if err != nil {
+			return nil, &OverlayError{Action: original, Cause: err}
+		}
 		if action.Remove && parentIdxStale {
 			parentIdx = newParentIndex(&rootNode)
 			parentIdxStale = false
@@ -53,6 +58,11 @@ func Apply(targetBytes []byte, overlay *highoverlay.Overlay) (*Result, error) {
 		}
 	}
 
+	// JSON input retains flow style. Render the root as block YAML so the
+	// public document parser does not mistake YAML flow syntax for JSON.
+	if len(rootNode.Content) > 0 {
+		rootNode.Content[0].Style &^= yaml.FlowStyle
+	}
 	resultBytes, err := yaml.Marshal(&rootNode)
 	if err != nil {
 		return nil, err
@@ -66,10 +76,6 @@ func Apply(targetBytes []byte, overlay *highoverlay.Overlay) (*Result, error) {
 
 func applyAction(root *yaml.Node, action *highoverlay.Action, parentIdx parentIndex) ([]*Warning, error) {
 	var warnings []*Warning
-
-	if action.Target == "" {
-		return warnings, nil
-	}
 
 	path, err := jsonpath.NewPath(action.Target, config.WithPropertyNameExtension(), config.WithLazyContextTracking())
 	if err != nil {
@@ -87,37 +93,24 @@ func applyAction(root *yaml.Node, action *highoverlay.Action, parentIdx parentIn
 		return warnings, nil
 	}
 
-	// Operation order per spec: copy → update → remove
-	// This allows:
-	// - Copy to populate the target first
-	// - Update to override copied values
-	// - Remove to clean up afterwards (move pattern)
-
-	// 1. Copy (if present)
-	if action.Copy != "" {
-		copyWarnings, err := applyCopyAction(root, nodes, action.Copy)
-		if err != nil {
-			return nil, err
-		}
-		warnings = append(warnings, copyWarnings...)
-	}
-
-	// 2. Update (if present)
-	// Validate targets for UPDATE actions (must be objects or arrays, not primitives).
-	// Validation happens AFTER copy because copy may change the target node type.
-	// REMOVE actions can target any node type.
-	if action.Update != nil {
-		for _, node := range nodes {
-			if err := validateTarget(node); err != nil {
-				return nil, err
-			}
-		}
-		applyUpdateAction(nodes, action.Update)
-	}
-
-	// 3. Remove (if present)
+	// Removal takes precedence. When copy and update coexist, neither applies.
 	if action.Remove {
 		applyRemoveAction(parentIdx, nodes)
+		return warnings, nil
+	}
+	if action.Update != nil && action.Copy != "" {
+		return warnings, nil
+	}
+	if action.Copy != "" {
+		return applyCopyAction(root, nodes, action.Copy)
+	}
+	if action.Update != nil && !action.Update.IsZero() {
+		if err := validateTargets(nodes); err != nil {
+			return nil, err
+		}
+		if err := applyUpdateAction(nodes, action.Update); err != nil {
+			return nil, err
+		}
 	}
 
 	return warnings, nil
@@ -141,15 +134,13 @@ func applyCopyAction(root *yaml.Node, targetNodes []*yaml.Node, copyPath string)
 		return nil, ErrCopySourceMultiple
 	}
 
-	sourceNode := sourceNodes[0]
-
-	// Type compatibility check per spec: "If the target expression and
-	// copy expression do not return the same type, an error MUST be reported"
-	for _, targetNode := range targetNodes {
-		if sourceNode.Kind != targetNode.Kind {
-			return nil, ErrCopyTypeMismatch
-		}
-		mergeNode(targetNode, sourceNode)
+	if err := validateTargets(targetNodes); err != nil {
+		return nil, err
+	}
+	// Freeze the source before any target changes; the source may also be a target.
+	sourceNode := utils.CloneYAMLNode(sourceNodes[0])
+	if err := applyUpdateAction(targetNodes, sourceNode); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrCopyTypeMismatch, err)
 	}
 
 	return warnings, nil
@@ -161,13 +152,17 @@ func applyRemoveAction(idx parentIndex, nodes []*yaml.Node) {
 	}
 }
 
-func applyUpdateAction(nodes []*yaml.Node, update *yaml.Node) {
-	if update.IsZero() {
-		return
-	}
+func applyUpdateAction(nodes []*yaml.Node, update *yaml.Node) error {
 	for _, node := range nodes {
-		mergeNode(node, update)
+		if node.Kind == yaml.SequenceNode && update.Kind != yaml.SequenceNode {
+			node.Content = append(node.Content, utils.CloneYAMLNode(update))
+			continue
+		}
+		if err := mergeNode(node, update); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 type parentIndex map[*yaml.Node]*yaml.Node
@@ -210,41 +205,68 @@ func removeNode(idx parentIndex, node *yaml.Node) {
 	}
 }
 
-func mergeNode(node *yaml.Node, merge *yaml.Node) {
+// mergeNode enforces recursive property compatibility. Array-item appends apply
+// only at action targets, not to properties inside an object merge.
+func mergeNode(node *yaml.Node, merge *yaml.Node) error {
 	if node.Kind != merge.Kind {
-		*node = *utils.CloneYAMLNode(merge)
-		return
+		return ErrIncompatibleUpdate
 	}
 	switch node.Kind {
-	default:
-		node.Value = merge.Value
 	case yaml.MappingNode:
-		mergeMappingNode(node, merge)
+		return mergeMappingNode(node, merge)
 	case yaml.SequenceNode:
 		mergeSequenceNode(node, merge)
+	case yaml.ScalarNode:
+		// The tag and style must follow the value (for example, string to boolean).
+		node.Value, node.Tag, node.Style = merge.Value, merge.Tag, merge.Style
+	default:
+		return ErrIncompatibleUpdate
 	}
+	return nil
 }
 
-func mergeMappingNode(node *yaml.Node, merge *yaml.Node) {
-NextKey:
-	for i := 0; i < len(merge.Content); i += 2 {
-		mergeKey := merge.Content[i].Value
-		mergeValue := merge.Content[i+1]
-
-		for j := 0; j < len(node.Content); j += 2 {
-			nodeKey := node.Content[j].Value
-			if nodeKey == mergeKey {
-				mergeNode(node.Content[j+1], mergeValue)
-				continue NextKey
+func mergeMappingNode(node *yaml.Node, merge *yaml.Node) error {
+	// Small objects and single-property updates are faster without a map.
+	// Index larger merges once to avoid quadratic scans across wide objects.
+	var properties map[string]*yaml.Node
+	const smallObjectProperties = 32
+	const smallUpdateProperties = 4
+	if (len(node.Content)/2 > smallObjectProperties || len(merge.Content)/2 > smallObjectProperties) && len(merge.Content)/2 > smallUpdateProperties {
+		capacity := max(len(node.Content), len(merge.Content)) / 2
+		properties = make(map[string]*yaml.Node, capacity)
+		for j := 0; j+1 < len(node.Content); j += 2 {
+			properties[node.Content[j].Value] = node.Content[j+1]
+		}
+	}
+	for i := 0; i+1 < len(merge.Content); i += 2 {
+		key, value := merge.Content[i], merge.Content[i+1]
+		var target *yaml.Node
+		if properties != nil {
+			target = properties[key.Value]
+		} else {
+			for j := 0; j+1 < len(node.Content); j += 2 {
+				if node.Content[j].Value == key.Value {
+					target = node.Content[j+1]
+					break
+				}
 			}
 		}
-
-		node.Content = append(node.Content, merge.Content[i], utils.CloneYAMLNode(mergeValue))
+		if target != nil {
+			if err := mergeNode(target, value); err != nil {
+				return fmt.Errorf("property %q: %w", key.Value, err)
+			}
+		} else {
+			cloned := utils.CloneYAMLNode(value)
+			node.Content = append(node.Content, utils.CloneYAMLNode(key), cloned)
+			if properties != nil {
+				properties[key.Value] = cloned
+			}
+		}
 	}
+	return nil
 }
 
 func mergeSequenceNode(node *yaml.Node, merge *yaml.Node) {
-	// clone each child individually to avoid wasteful intermediate allocation
 	for _, child := range merge.Content {
 		node.Content = append(node.Content, utils.CloneYAMLNode(child))
 	}
