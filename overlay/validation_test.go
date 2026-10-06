@@ -74,8 +74,8 @@ func TestValidateTarget_Scalar(t *testing.T) {
 		Value: "test",
 	}
 
-	err := validateTarget(node)
-	assert.ErrorIs(t, err, ErrPrimitiveTarget)
+	err := validateTargets([]*yaml.Node{node})
+	assert.NoError(t, err)
 }
 
 func TestValidateTarget_Mapping(t *testing.T) {
@@ -83,7 +83,7 @@ func TestValidateTarget_Mapping(t *testing.T) {
 		Kind: yaml.MappingNode,
 	}
 
-	err := validateTarget(node)
+	err := validateTargets([]*yaml.Node{node})
 	assert.NoError(t, err)
 }
 
@@ -92,7 +92,7 @@ func TestValidateTarget_Sequence(t *testing.T) {
 		Kind: yaml.SequenceNode,
 	}
 
-	err := validateTarget(node)
+	err := validateTargets([]*yaml.Node{node})
 	assert.NoError(t, err)
 }
 
@@ -101,6 +101,6 @@ func TestValidateTarget_Document(t *testing.T) {
 		Kind: yaml.DocumentNode,
 	}
 
-	err := validateTarget(node)
-	assert.NoError(t, err)
+	err := validateTargets([]*yaml.Node{node})
+	assert.ErrorIs(t, err, ErrIncompatibleUpdate)
 }

@@ -242,7 +242,7 @@ paths: {}`
 
 	result, err := Apply([]byte(targetYAML), overlay)
 	// $.info.title points to a scalar, which is invalid for update
-	assert.ErrorIs(t, err, ErrPrimitiveTarget)
+	assert.ErrorIs(t, err, ErrIncompatibleUpdate)
 	assert.Nil(t, result)
 }
 
@@ -283,8 +283,8 @@ info:
 	}
 
 	result, err := Apply([]byte(targetYAML), overlay)
-	require.NoError(t, err)
-	assert.NotNil(t, result)
+	require.ErrorIs(t, err, ErrMissingTarget)
+	assert.Nil(t, result)
 }
 
 func TestApply_DeepMerge(t *testing.T) {
@@ -366,9 +366,9 @@ func TestOverlayError_Error_NoAction(t *testing.T) {
 
 func TestOverlayError_Unwrap(t *testing.T) {
 	err := &OverlayError{
-		Cause: ErrPrimitiveTarget,
+		Cause: ErrIncompatibleUpdate,
 	}
-	assert.ErrorIs(t, err, ErrPrimitiveTarget)
+	assert.ErrorIs(t, err, ErrIncompatibleUpdate)
 }
 
 func TestApply_RemoveFromSequence(t *testing.T) {
@@ -504,11 +504,8 @@ info:
 	}
 
 	result, err := Apply([]byte(targetYAML), overlay)
-	require.NoError(t, err)
-	// When kinds differ, the entire node is replaced with a clone
-	assert.Contains(t, string(result.Bytes), "item1")
-	assert.Contains(t, string(result.Bytes), "item2")
-	assert.NotContains(t, string(result.Bytes), "John")
+	require.ErrorIs(t, err, ErrIncompatibleUpdate)
+	assert.Nil(t, result)
 }
 
 func TestApply_RemoveNonexistentParent(t *testing.T) {
@@ -789,7 +786,7 @@ paths:
 	assert.Nil(t, result)
 }
 
-func TestApply_CopyTypeMismatch_ObjectToArray(t *testing.T) {
+func TestApply_CopyObjectToArray(t *testing.T) {
 	targetYAML := `openapi: 3.0.0
 info:
   title: Test
@@ -814,8 +811,8 @@ paths:
 	}
 
 	result, err := Apply([]byte(targetYAML), overlay)
-	assert.ErrorIs(t, err, ErrCopyTypeMismatch)
-	assert.Nil(t, result)
+	require.NoError(t, err)
+	assert.Contains(t, string(result.Bytes), "- summary: Get")
 }
 
 func TestApply_CopyTypeMismatch_ArrayToObject(t *testing.T) {
@@ -909,12 +906,7 @@ actions:
 
 	result, err := Apply([]byte(targetYAML), overlay)
 	require.NoError(t, err)
-	resultStr := string(result.Bytes)
-	// Copy happens first, then update overrides
-	assert.Contains(t, resultStr, "Overridden Summary")
-	assert.Contains(t, resultStr, "Source Description")
-	// The target path should have Overridden Summary, not Target Summary
-	assert.NotContains(t, resultStr, "Target Summary")
+	assert.YAMLEq(t, targetYAML, string(result.Bytes))
 }
 
 func TestApply_CopyWithRemove_MovePattern(t *testing.T) {
@@ -1116,9 +1108,8 @@ actions:
 	assert.Contains(t, resultStr, "source-tag")
 }
 
-func TestApply_CopyPrimitiveWithUpdateFails(t *testing.T) {
-	// When copy source is a primitive and update is also present,
-	// the update validation should fail because you can't merge into a primitive
+func TestApply_CopyAndUpdateOnPrimitiveNoOp(t *testing.T) {
+	// Copy and update mutually suppress each other.
 	targetYAML := `openapi: 3.0.0
 info:
   title: Target Title
@@ -1136,15 +1127,13 @@ actions:
       should: fail`
 
 	overlay := parseOverlay(t, overlayYAML)
-
-	_, err := Apply([]byte(targetYAML), overlay)
-	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrPrimitiveTarget)
+	result, err := Apply([]byte(targetYAML), overlay)
+	require.NoError(t, err)
+	assert.YAMLEq(t, targetYAML, string(result.Bytes))
 }
 
-func TestApply_CopyObjectWithUpdateSucceeds(t *testing.T) {
-	// When copy source and target are both objects (same type),
-	// the copy merges content and then update can modify the result
+func TestApply_CopyAndUpdateOnObjectNoOp(t *testing.T) {
+	// Copy and update mutually suppress each other.
 	targetYAML := `openapi: 3.0.0
 info:
   title: Target Title
@@ -1169,12 +1158,7 @@ actions:
 
 	result, err := Apply([]byte(targetYAML), overlay)
 	require.NoError(t, err)
-	resultStr := string(result.Bytes)
-	// The license object was merged with contact (contact's name overwrites license's name),
-	// then updated with url
-	assert.Contains(t, resultStr, "Original Contact")
-	assert.Contains(t, resultStr, "original@example.com")
-	assert.Contains(t, resultStr, "https://example.com")
+	assert.YAMLEq(t, targetYAML, string(result.Bytes))
 }
 
 func TestApply_UpdateOnPrimitiveStillFailsWithoutCopy(t *testing.T) {
@@ -1198,5 +1182,5 @@ actions:
 
 	_, err := Apply([]byte(targetYAML), overlay)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrPrimitiveTarget)
+	assert.ErrorIs(t, err, ErrIncompatibleUpdate)
 }
