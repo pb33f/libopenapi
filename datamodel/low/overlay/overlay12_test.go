@@ -98,7 +98,7 @@ func TestOverlay12MalformedModels(t *testing.T) {
 		"components: {actions: {a: {description: []}}}",
 		"[]", "null", "$self: {}", "components: []", "components: {actions: []}",
 		"components: {actions: {a: false}}", "components: {actions: {a: {fields: []}}}",
-		"actions: [false]", "actions: [{$ref: {}}]", "actions: [{$ref: false}]", "info: []",
+		"actions: [false]", "actions: [{$ref: {}}]", "info: []",
 	} {
 		t.Run(text, func(t *testing.T) { _, err := buildOverlay12(t, text); require.Error(t, err) })
 	}

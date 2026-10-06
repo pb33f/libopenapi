@@ -35,7 +35,7 @@ func extractString(label string, root *yaml.Node) (low.NodeReference[string], er
 	if value == nil {
 		return low.NodeReference[string]{}, nil
 	}
-	if value.Kind != yaml.ScalarNode || value.Tag != "!!str" {
+	if value.Kind != yaml.ScalarNode {
 		return low.NodeReference[string]{}, fmt.Errorf("%s must be a string", label)
 	}
 	return low.NodeReference[string]{Value: value.Value, KeyNode: key, ValueNode: value}, nil

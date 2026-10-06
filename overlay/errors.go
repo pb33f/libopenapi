@@ -47,7 +47,7 @@ var (
 	ErrMissingActions      = errors.New("missing required 'actions' field")
 	ErrEmptyActions        = errors.New("actions array must contain at least one action")
 
-	ErrUnsupportedVersion     = errors.New("unsupported overlay version; supported versions are 1.0, 1.1 and 1.2")
+	ErrUnsupportedVersion     = errors.New("unsupported overlay version; expected 1.<minor> or 1.<minor>.<patch>")
 	ErrInvalidInfo            = errors.New("overlay info requires title and version")
 	ErrMissingTarget          = errors.New("action requires a target")
 	ErrInvalidActionReference = errors.New("invalid reusable action reference")

@@ -59,7 +59,7 @@ func actionReferenceKey(overlay *highoverlay.Overlay, ref string) (string, error
 		return "", ErrInvalidActionReference
 	}
 	self, err := url.Parse(overlay.Self)
-	if err != nil || !self.IsAbs() {
+	if err != nil || !self.IsAbs() || strings.ContainsAny(overlay.Self, "# \t\r\n") {
 		return "", ErrInvalidActionReference
 	}
 	resolved := self.ResolveReference(uri)

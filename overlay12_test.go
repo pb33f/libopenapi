@@ -1,6 +1,7 @@
 package libopenapi
 
 import (
+	"fmt"
 	"testing"
 
 	highoverlay "github.com/pb33f/libopenapi/datamodel/high/overlay"
@@ -8,6 +9,48 @@ import (
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
 )
+
+func TestOverlayScalarVersionCompatibility(t *testing.T) {
+	target := []byte("openapi: 3.1.0\ninfo: {title: Original, version: '1'}\npaths: {}")
+	for _, version := range []string{"1", "1.0", "'1.0'"} {
+		for _, dialect := range []string{"1.0", "'1.2'", "1.3.0", "1.99.7"} {
+			t.Run(dialect+"/"+version, func(t *testing.T) {
+				raw := []byte(fmt.Sprintf("overlay: %s\ninfo: {title: Compatibility, version: %s}\nactions: [{target: '$.info.title', update: Changed}]", dialect, version))
+				ov, err := NewOverlayDocument(raw)
+				require.NoError(t, err)
+				rendered, err := ov.Render()
+				require.NoError(t, err)
+				reparsed, err := NewOverlayDocument(rendered)
+				require.NoError(t, err)
+				assert.Equal(t, ov.Info.Version, reparsed.Info.Version)
+				assert.Equal(t, ov.Overlay, reparsed.Overlay)
+				for _, input := range [][]byte{raw, rendered} {
+					result, err := ApplyOverlayFromBytesToSpecBytes(target, input)
+					require.NoError(t, err)
+					assert.Contains(t, string(result.Bytes), "title: Changed")
+				}
+			})
+		}
+	}
+}
+
+func TestOverlayApplyDoesNotResolveUnusedDocumentURIs(t *testing.T) {
+	target := []byte("openapi: 3.1.0\ninfo: {title: Original, version: '1'}\npaths: {}")
+	for _, field := range []string{"extends", "$self"} {
+		for _, uri := range []string{"file:///C:/My Specs/api.yaml", "api.yaml#fragment", "%zz"} {
+			t.Run(field+"/"+uri, func(t *testing.T) {
+				raw := []byte(fmt.Sprintf("overlay: 1.2.0\n%s: '%s'\ninfo: {title: Compatibility, version: '1'}\nactions: [{target: '$.info.title', update: Changed}]", field, uri))
+				result, err := ApplyOverlayFromBytesToSpecBytes(target, raw)
+				require.NoError(t, err)
+				assert.Contains(t, string(result.Bytes), "title: Changed")
+				ov, err := NewOverlayDocument(raw)
+				require.NoError(t, err)
+				_, err = ov.ResolveExtends("")
+				require.Error(t, err)
+			})
+		}
+	}
+}
 
 func TestOverlay12PublicEntryPoints(t *testing.T) {
 	overlays := []string{
