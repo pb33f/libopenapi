@@ -11,8 +11,10 @@ import (
 )
 
 // Overlay represents a high-level OpenAPI Overlay document.
-// https://spec.openapis.org/overlay/v1.0.0
+// https://spec.openapis.org/overlay/v1.2.0
 type Overlay struct {
+	Self       string                              `json:"$self,omitempty" yaml:"$self,omitempty"`
+	Components *Components                         `json:"components,omitempty" yaml:"components,omitempty"`
 	Overlay    string                              `json:"overlay,omitempty" yaml:"overlay,omitempty"`
 	Info       *Info                               `json:"info,omitempty" yaml:"info,omitempty"`
 	Extends    string                              `json:"extends,omitempty" yaml:"extends,omitempty"`
@@ -25,6 +27,10 @@ type Overlay struct {
 func NewOverlay(overlay *low.Overlay) *Overlay {
 	o := new(Overlay)
 	o.low = overlay
+	o.Self = overlay.Self.Value
+	if overlay.Components.Value != nil {
+		o.Components = NewComponents(overlay.Components.Value)
+	}
 	if !overlay.Overlay.IsEmpty() {
 		o.Overlay = overlay.Overlay.Value
 	}
@@ -66,10 +72,16 @@ func (o *Overlay) MarshalYAML() (interface{}, error) {
 	if o.Overlay != "" {
 		m.Set("overlay", o.Overlay)
 	}
+	if o.Self != "" || (o.low != nil && o.low.Self.KeyNode != nil) {
+		m.Set(low.SelfLabel, o.Self)
+	}
+	if o.Components != nil {
+		m.Set(low.ComponentsLabel, o.Components)
+	}
 	if o.Info != nil {
 		m.Set("info", o.Info)
 	}
-	if o.Extends != "" {
+	if o.Extends != "" || (o.low != nil && o.low.Extends.KeyNode != nil) {
 		m.Set("extends", o.Extends)
 	}
 	if len(o.Actions) > 0 {

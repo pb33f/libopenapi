@@ -249,7 +249,7 @@ actions: not-a-sequence`
 	require.NoError(t, err)
 
 	err = overlay.Build(context.Background(), nil, node.Content[0], nil)
-	require.NoError(t, err)
+	require.Error(t, err)
 
 	// Actions should be empty since it's not a sequence
 	assert.True(t, overlay.Actions.IsEmpty() || len(overlay.Actions.Value) == 0)
@@ -399,8 +399,7 @@ info:
 
 	err = overlay.Build(context.Background(), nil, node.Content[0], nil)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "object extraction failed")
-	assert.Contains(t, err.Error(), "empty")
+	assert.Contains(t, err.Error(), "$ref")
 }
 
 // TestOverlay_Build_OddContentLengthExtractActions tests line 93 - break on odd content length
@@ -433,5 +432,5 @@ info:
 	// The loop will iterate: i=0 (overlay), i=2 (info), i=4 (orphan-key)
 	// At i=4, i+1=5 >= len(Content)=5, so break is executed
 	err = overlay.Build(context.Background(), nil, root, nil)
-	require.NoError(t, err) // Build should succeed, just skip the odd element
+	require.Error(t, err) // Build should succeed, just skip the odd element
 }

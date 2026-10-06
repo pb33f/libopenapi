@@ -5,6 +5,7 @@ package overlay
 
 import (
 	"context"
+	"fmt"
 	"hash/maphash"
 
 	"github.com/pb33f/go-yaml"
@@ -15,9 +16,11 @@ import (
 )
 
 // Overlay represents a low-level OpenAPI Overlay document.
-// https://spec.openapis.org/overlay/v1.0.0
+// https://spec.openapis.org/overlay/v1.2.0
 type Overlay struct {
 	Overlay    low.NodeReference[string]
+	Self       low.NodeReference[string]
+	Components low.NodeReference[*Components]
 	Info       low.NodeReference[*Info]
 	Extends    low.NodeReference[string]
 	Actions    low.NodeReference[[]low.ValueReference[*Action]]
@@ -57,6 +60,9 @@ func (o *Overlay) GetKeyNode() *yaml.Node {
 
 // Build will extract all properties of the Overlay document.
 func (o *Overlay) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	if err := requireMapping(root); err != nil {
+		return err
+	}
 	o.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	o.RootNode = root
@@ -68,52 +74,57 @@ func (o *Overlay) Build(ctx context.Context, keyNode, root *yaml.Node, idx *inde
 	o.context = ctx
 	low.ExtractExtensionNodes(ctx, o.Extensions, o.Nodes)
 
+	var err error
+	o.Overlay, err = extractString(OverlayLabel, root)
+	if err != nil {
+		return err
+	}
+	o.Extends, err = extractString(ExtendsLabel, root)
+	if err != nil {
+		return err
+	}
+	o.Self, err = extractString(SelfLabel, root)
+	if err != nil {
+		return err
+	}
+	o.Components, err = extractObject[*Components](ctx, ComponentsLabel, root, idx)
+	if err != nil {
+		return err
+	}
+
 	// Extract info object
-	info, err := low.ExtractObject[*Info](ctx, InfoLabel, root, idx)
+	info, err := extractObject[*Info](ctx, InfoLabel, root, idx)
 	if err != nil {
 		return err
 	}
 	o.Info = info
 
 	// Extract actions array
-	o.Actions = o.extractActions(ctx, root, idx)
-
-	return nil
+	o.Actions, err = o.extractActions(ctx, root, idx)
+	return err
 }
 
-func (o *Overlay) extractActions(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) low.NodeReference[[]low.ValueReference[*Action]] {
+func (o *Overlay) extractActions(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (low.NodeReference[[]low.ValueReference[*Action]], error) {
 	var result low.NodeReference[[]low.ValueReference[*Action]]
 
-	for i := 0; i < len(root.Content); i += 2 {
-		if i+1 >= len(root.Content) {
-			break
-		}
-		key := root.Content[i]
-		value := root.Content[i+1]
-
-		if key.Value == ActionsLabel {
-			result.KeyNode = key
-			result.ValueNode = value
-
-			if value.Kind != yaml.SequenceNode {
-				continue
-			}
-
-			actions := make([]low.ValueReference[*Action], 0, len(value.Content))
-			for _, actionNode := range value.Content {
-				action := &Action{}
-				_ = low.BuildModel(actionNode, action)
-				_ = action.Build(ctx, nil, actionNode, idx)
-				actions = append(actions, low.ValueReference[*Action]{
-					Value:     action,
-					ValueNode: actionNode,
-				})
-			}
-			result.Value = actions
-			break
-		}
+	key, value := findField(ActionsLabel, root)
+	if value == nil {
+		return result, nil
 	}
-	return result
+	result.KeyNode, result.ValueNode = key, value
+	if value.Kind != yaml.SequenceNode {
+		return result, fmt.Errorf("actions must be an array")
+	}
+	actions := make([]low.ValueReference[*Action], 0, len(value.Content))
+	for _, actionNode := range value.Content {
+		action := new(Action)
+		if err := action.Build(ctx, nil, actionNode, idx); err != nil {
+			return result, err
+		}
+		actions = append(actions, low.ValueReference[*Action]{Value: action, ValueNode: actionNode})
+	}
+	result.Value = actions
+	return result, nil
 }
 
 // GetExtensions returns all Overlay extensions and satisfies the low.HasExtensions interface.
@@ -126,6 +137,16 @@ func (o *Overlay) Hash() uint64 {
 	return low.WithHasher(func(h *maphash.Hash) uint64 {
 		if !o.Overlay.IsEmpty() {
 			h.WriteString(o.Overlay.Value)
+			h.WriteByte(low.HASH_PIPE)
+		}
+		if !o.Self.IsEmpty() {
+			h.WriteString(SelfLabel)
+			h.WriteString(o.Self.Value)
+			h.WriteByte(low.HASH_PIPE)
+		}
+		if !o.Components.IsEmpty() {
+			h.WriteString(ComponentsLabel)
+			h.WriteString(low.GenerateHashString(o.Components.Value))
 			h.WriteByte(low.HASH_PIPE)
 		}
 		if !o.Info.IsEmpty() {

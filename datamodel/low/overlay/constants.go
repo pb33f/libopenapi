@@ -4,9 +4,13 @@
 package overlay
 
 // Constants for labels used to look up values within OpenAPI Overlay specifications.
-// https://spec.openapis.org/overlay/v1.1.0
+// https://spec.openapis.org/overlay/v1.2.0
 const (
 	OverlayLabel     = "overlay"
+	SelfLabel        = "$self"
+	RefLabel         = "$ref"
+	ComponentsLabel  = "components"
+	FieldsLabel      = "fields"
 	InfoLabel        = "info"
 	ExtendsLabel     = "extends"
 	ActionsLabel     = "actions"
