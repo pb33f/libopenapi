@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	highoverlay "github.com/pb33f/libopenapi/datamodel/high/overlay"
+	"github.com/pb33f/libopenapi/overlay"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
 )
@@ -99,4 +100,21 @@ func TestOverlay12ConstructedModelsRender(t *testing.T) {
 	require.NotNil(t, parsed.Components)
 	assert.True(t, parsed.Actions[0].HasRemove())
 	assert.False(t, parsed.Actions[0].Remove)
+}
+
+func TestOverlay12EmptyAndAbsentInfo(t *testing.T) {
+	target := []byte("openapi: 3.1.0\ninfo: {title: Original, version: '1'}\npaths: {}")
+	for _, info := range []string{"{title: '', version: '1'}", "{title: Example, version: ''}", "{title: '', version: ''}"} {
+		ov, err := NewOverlayDocument([]byte("overlay: 1.2.0\ninfo: " + info + "\nactions: [{target: '$.info', update: {title: Changed}}]"))
+		require.NoError(t, err)
+		rendered, err := ov.Render()
+		require.NoError(t, err)
+		result, err := ApplyOverlayFromBytesToSpecBytes(target, rendered)
+		require.NoError(t, err)
+		assert.Contains(t, string(result.Bytes), "title: Changed")
+	}
+	for _, info := range []string{"{version: '1'}", "{title: Example}"} {
+		_, err := ApplyOverlayFromBytesToSpecBytes(target, []byte("overlay: 1.2.0\ninfo: "+info+"\nactions: [{target: '$'}]"))
+		require.ErrorIs(t, err, overlay.ErrInvalidInfo)
+	}
 }

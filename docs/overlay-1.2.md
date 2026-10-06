@@ -34,6 +34,10 @@ the specification is corrected:
 - If both copy and update are present, neither changes the target, as stated by
   the two field descriptions. Use separate actions to copy and then update.
 - Every action needs a target. Malformed model structures produce errors.
+- Fixed fields use exact case. Info objects do not support `$ref`.
+- Required info strings may be empty; omission is distinct from an empty value.
+- Application renders block YAML at the root, including for JSON input.
+- Explicit empty `extends` survives rendering and resolves to the base URI.
 
 Reusable actions are in `Components.Actions`, with their action content in
 `ReusableAction.Fields`. Set `Action.Ref` to `#/components/actions/name`.

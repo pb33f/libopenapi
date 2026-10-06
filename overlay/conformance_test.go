@@ -229,8 +229,7 @@ func TestApply_ValidationBoundaries(t *testing.T) {
 		_, err := Apply([]byte("info: {}"), ov)
 		require.ErrorIs(t, err, ErrUnsupportedVersion)
 	}
-	ov := valid()
-	ov.Info.Title = ""
+	ov := parseOverlay(t, "overlay: 1.2.0\ninfo: {version: '1'}\nactions: [{target: '$'}]")
 	_, err := Apply([]byte("info: {}"), ov)
 	require.ErrorIs(t, err, ErrInvalidInfo)
 	ov = valid()

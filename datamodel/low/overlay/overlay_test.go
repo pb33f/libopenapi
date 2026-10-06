@@ -383,7 +383,7 @@ x-custom: value`
 	assert.NotEqual(t, [32]byte{}, hash)
 }
 
-// TestOverlay_Build_InfoEmptyRef tests line 74 - error from ExtractObject when info has empty $ref
+// The Info Object does not support references.
 func TestOverlay_Build_InfoEmptyRef(t *testing.T) {
 	yml := `overlay: 1.0.0
 info:
@@ -402,7 +402,7 @@ info:
 	assert.Contains(t, err.Error(), "$ref")
 }
 
-// TestOverlay_Build_OddContentLengthExtractActions tests line 93 - break on odd content length
+// Reject malformed mapping nodes supplied directly by callers.
 func TestOverlay_Build_OddContentLengthExtractActions(t *testing.T) {
 	// Create an overlay WITHOUT actions - so extractActions iterates through all content
 	yml := `overlay: 1.0.0
@@ -428,9 +428,7 @@ info:
 	err = low.BuildModel(root, &overlay)
 	require.NoError(t, err)
 
-	// This should trigger the break at line 93 due to odd content length
-	// The loop will iterate: i=0 (overlay), i=2 (info), i=4 (orphan-key)
-	// At i=4, i+1=5 >= len(Content)=5, so break is executed
+	// The malformed mapping must produce an error.
 	err = overlay.Build(context.Background(), nil, root, nil)
-	require.Error(t, err) // Build should succeed, just skip the odd element
+	require.Error(t, err)
 }
