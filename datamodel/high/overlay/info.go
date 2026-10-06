@@ -55,13 +55,13 @@ func (i *Info) Render() ([]byte, error) {
 // MarshalYAML creates a ready to render YAML representation of the Info object.
 func (i *Info) MarshalYAML() (any, error) {
 	m := orderedmap.New[string, any]()
-	if i.Title != "" {
+	if i.Title != "" || i.low == nil || !i.low.Title.IsEmpty() {
 		m.Set("title", i.Title)
 	}
-	if i.Version != "" {
+	if i.Version != "" || i.low == nil || !i.low.Version.IsEmpty() {
 		m.Set("version", i.Version)
 	}
-	if i.Description != "" {
+	if i.Description != "" || (i.low != nil && !i.low.Description.IsEmpty()) {
 		m.Set("description", i.Description)
 	}
 	for pair := i.Extensions.First(); pair != nil; pair = pair.Next() {

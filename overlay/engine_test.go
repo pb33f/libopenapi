@@ -241,7 +241,7 @@ paths: {}`
 	}
 
 	result, err := Apply([]byte(targetYAML), overlay)
-	// $.info.title points to a scalar, which is invalid for update
+	// An object cannot replace a primitive.
 	assert.ErrorIs(t, err, ErrIncompatibleUpdate)
 	assert.Nil(t, result)
 }
@@ -475,7 +475,7 @@ actions:
 	assert.Contains(t, string(result.Bytes), "New Title")
 }
 
-func TestApply_ReplaceWithDifferentType(t *testing.T) {
+func TestApply_RejectIncompatibleType(t *testing.T) {
 	targetYAML := `openapi: 3.0.0
 info:
   title: Test
@@ -483,7 +483,7 @@ info:
   contact:
     name: John`
 
-	// Replace an object with a sequence (different node kinds)
+	// An object cannot be replaced by a sequence.
 	updateNode := &yaml.Node{
 		Kind: yaml.SequenceNode,
 		Content: []*yaml.Node{
@@ -1161,9 +1161,8 @@ actions:
 	assert.YAMLEq(t, targetYAML, string(result.Bytes))
 }
 
-func TestApply_UpdateOnPrimitiveStillFailsWithoutCopy(t *testing.T) {
-	// Verify that update on primitive target still fails when no copy is present
-	// (regression test for the validation logic)
+func TestApply_RejectObjectUpdateOnPrimitiveWithoutCopy(t *testing.T) {
+	// Primitive replacement requires a primitive update value.
 	targetYAML := `openapi: 3.0.0
 info:
   title: Test

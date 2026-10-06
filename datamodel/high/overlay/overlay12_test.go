@@ -104,3 +104,17 @@ func TestOverlay12EmptyReferenceAndTargetPreserved(t *testing.T) {
 	require.NoError(t, err)
 	assert.YAMLEq(t, text, string(raw))
 }
+
+func TestOverlay12EmptyInfoStrings(t *testing.T) {
+	for _, text := range []string{"info: {title: '', version: '1'}", "info: {title: Example, version: '', description: ''}"} {
+		ov := parseOverlay12(t, text)
+		rendered, err := ov.Render()
+		require.NoError(t, err)
+		assert.YAMLEq(t, text, string(rendered))
+		assert.Equal(t, ov.GoLow().Hash(), parseOverlay12(t, string(rendered)).GoLow().Hash())
+	}
+	info := &Info{}
+	raw, err := info.Render()
+	require.NoError(t, err)
+	assert.YAMLEq(t, "title: ''\nversion: ''", string(raw))
+}

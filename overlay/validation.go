@@ -5,9 +5,10 @@ package overlay
 
 import (
 	"fmt"
+	"regexp"
+
 	"github.com/pb33f/go-yaml"
 	highoverlay "github.com/pb33f/libopenapi/datamodel/high/overlay"
-	"regexp"
 )
 
 var overlayVersion = regexp.MustCompile(`^1\.[012]\.[0-9]+$`)
@@ -23,7 +24,8 @@ func validateOverlay(overlay *highoverlay.Overlay) error {
 	if overlay.Info == nil {
 		return ErrMissingInfo
 	}
-	if overlay.Info.Title == "" || overlay.Info.Version == "" {
+	if info := overlay.Info.GoLow(); info != nil &&
+		((info.Title.IsEmpty() && overlay.Info.Title == "") || (info.Version.IsEmpty() && overlay.Info.Version == "")) {
 		return ErrInvalidInfo
 	}
 	if _, err := overlay.ResolveExtends(""); err != nil {
