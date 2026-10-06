@@ -5,6 +5,8 @@ package v3
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/pb33f/go-yaml"
@@ -13,6 +15,7 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 func TestPathItem_Hash(t *testing.T) {
@@ -117,6 +120,115 @@ get:
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	assert.NotNil(t, n.RootNode)
+}
+
+func TestPathItem_Build_NullParameters_BuildsAllOperations(t *testing.T) {
+	yml := `post:
+  operationId: createThing
+  parameters:
+put:
+  operationId: replaceThing
+  parameters:
+delete:
+  operationId: deleteThing
+  parameters:`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	err := n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "input is not an array")
+
+	// Each failed operation initializes its reference and contributes an error.
+	joined, ok := err.(interface{ Unwrap() []error })
+	if assert.True(t, ok) {
+		assert.Len(t, joined.Unwrap(), 3)
+	}
+	assert.NotNil(t, n.Post.Value.Reference)
+	assert.NotNil(t, n.Put.Value.Reference)
+	assert.NotNil(t, n.Delete.Value.Reference)
+	assert.False(t, n.Put.Value.IsReference())
+}
+
+func TestPathItem_Build_ErrorPreservesValidSiblings(t *testing.T) {
+	// The larger case exercises the parallel additional-operation builder.
+	for _, tc := range []struct {
+		name   string
+		count  int
+		nested bool
+	}{
+		{"additional_operations", 2, true},
+		{"parallel_additional_operations", 18, true},
+		{"root_custom_operations", 2, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var spec strings.Builder
+			spec.WriteString(`get:
+  parameters:
+post:
+  responses:
+    '201':
+      description: created
+put:
+  parameters:
+`)
+			indent := ""
+			if tc.nested {
+				spec.WriteString("additionalOperations:\n")
+				indent = "  "
+			}
+			for i := 0; i < tc.count; i++ {
+				fmt.Fprintf(&spec, "%sMETHOD%d:\n", indent, i)
+				if i%2 == 0 {
+					fmt.Fprintf(&spec, "%s  parameters:\n", indent)
+				} else {
+					fmt.Fprintf(&spec, "%s  responses:\n%s    '200':\n%s      description: ok\n", indent, indent, indent)
+				}
+			}
+			var root yaml.Node
+			require.NoError(t, yaml.Unmarshal([]byte(spec.String()), &root))
+			idx := index.NewSpecIndex(&root)
+			var item PathItem
+			require.NoError(t, low.BuildModel(root.Content[0], &item))
+			err := item.Build(context.Background(), nil, root.Content[0], idx)
+			require.Error(t, err)
+			joined, ok := err.(interface{ Unwrap() []error })
+			require.True(t, ok)
+			require.Len(t, joined.Unwrap(), 2+tc.count/2)
+			for _, buildErr := range joined.Unwrap() {
+				assert.Contains(t, buildErr.Error(), "input is not an array")
+			}
+
+			require.NotNil(t, item.Post.Value.Responses.Value)
+			response := item.Post.Value.Responses.Value.FindResponseByCode("201")
+			require.NotNil(t, response)
+			assert.Equal(t, "created", response.Value.Description.Value)
+			require.NotNil(t, item.AdditionalOperations.Value)
+			require.Equal(t, tc.count, item.AdditionalOperations.Value.Len())
+			if tc.nested {
+				assert.Equal(t, AdditionalOperationsLabel, item.AdditionalOperations.KeyNode.Value)
+			} else {
+				assert.Equal(t, "METHOD0", item.AdditionalOperations.KeyNode.Value)
+			}
+			assert.NotNil(t, item.AdditionalOperations.ValueNode)
+			i := 0
+			for key, op := range item.AdditionalOperations.Value.FromOldest() {
+				require.NotNil(t, op.Value.Reference, key.Value)
+				if i%2 == 1 {
+					require.NotNil(t, op.Value.Responses.Value, key.Value)
+					response := op.Value.Responses.Value.FindResponseByCode("200")
+					require.NotNil(t, response, key.Value)
+					assert.Equal(t, "ok", response.Value.Description.Value)
+				}
+				i++
+			}
+		})
+	}
 }
 
 func TestPathItem_AdditionalOperations(t *testing.T) {
