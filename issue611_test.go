@@ -26,6 +26,7 @@ func TestIssue611CompareDocumentsObjectComposition(t *testing.T) {
 		{"overlapping oneOf", object, `{"oneOf":[` + object + `,{"type":"object"}]}`, true, true},
 		{"wrapper constraint", object, `{"anyOf":[` + object + `,{"type":"null"}],"maxProperties":0}`, true, true},
 		{"dropped string alternative", stringUnion, `{"anyOf":[` + object + `,{"type":"null"}]}`, true, true},
+		{"narrowed object enum", `{"type":"object","properties":{"id":{"type":"string"}},"enum":[{"id":"a"},{"id":"b"}]}`, `{"anyOf":[{"type":"object","properties":{"id":{"type":"string"}},"enum":[{"id":"a"}]},{"type":"null"}]}`, true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			left, err := NewDocument([]byte(fmt.Sprintf(spec, tc.old)))

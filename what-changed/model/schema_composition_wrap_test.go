@@ -46,6 +46,8 @@ func TestCompareSchemas_ObjectCompositionSafety(t *testing.T) {
 		{"added requirement", wrapObject, wrapAlternative("anyOf", strings.Replace(wrapObject, "required: [id]", "required: [id, name]", 1), "type: array")},
 		{"narrowed property", wrapObject + "\n    maxLength: 20", wrapAlternative("anyOf", wrapObject+"\n    maxLength: 3", "type: array")},
 		{"narrowed object", wrapObject + "\nmaxProperties: 20", wrapAlternative("anyOf", wrapObject+"\nmaxProperties: 1", "type: array")},
+		{"narrowed object enum", wrapObject + "\nenum: [{id: a}, {id: b}]", wrapAlternative("anyOf", wrapObject+"\nenum: [{id: a}]", "type: 'null'")},
+		{"changed object const", wrapObject + "\nconst: {id: a}", wrapAlternative("oneOf", wrapObject+"\nconst: {id: b}", "type: 'null'")},
 		{"reverse direction", wrapAlternative("anyOf", wrapObject, "type: array"), wrapObject},
 	}
 	for _, tc := range cases {

@@ -4,6 +4,7 @@
 package model
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 )
@@ -60,6 +61,12 @@ func preservedObjectBranch(l, r *base.SchemaProxy, old, wrapper *base.Schema) *b
 		}
 	}
 	if (oldNull || oneOf) && !hasNull {
+		return nil
+	}
+	// The structural comparison must remain when root value constraints change:
+	// the ordinary enum comparator cannot distinguish object-valued entries.
+	if selected != nil && (low.GenerateHashString(old.Enum.ValueNode) != low.GenerateHashString(selected.Enum.ValueNode) ||
+		low.GenerateHashString(old.Const.ValueNode) != low.GenerateHashString(selected.Const.ValueNode)) {
 		return nil
 	}
 	return selected
