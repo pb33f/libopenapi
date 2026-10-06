@@ -496,10 +496,15 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 		lSchema := l.Schema()
 		rSchema := r.Schema()
+		preserved := preservedObjectBranch(l, r, lSchema, rSchema)
+		if preserved != nil {
+			checkObjectCompositionAlternatives(lSchema, rSchema, preserved, &changes)
+			rSchema = preserved
+		}
 		comparisonLSchema := schemaComparisonViewForSimpleAllOfObject(l, lSchema)
 		comparisonRSchema := schemaComparisonViewForSimpleAllOfObject(r, rSchema)
 
-		if low.AreEqual(lSchema, rSchema) {
+		if low.AreEqual(lSchema, rSchema) && len(changes) == 0 {
 			// there is no point going on, we know nothing changed!
 			return nil
 		}
@@ -513,7 +518,8 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		skipSimpleScalarUnionDiff := schemasUseEquivalentSimpleScalarUnion(l, r)
 
 		// check schema core properties for changes.
-		checkSchemaPropertyChanges(comparisonLSchema, comparisonRSchema, l, r, &changes, sc, skipSimpleScalarUnionDiff)
+		checkSchemaPropertyChanges(comparisonLSchema, comparisonRSchema, l, r, &changes, sc,
+			skipSimpleScalarUnionDiff || preserved != nil)
 
 		// now for the confusing part, there is also a schema's 'properties' property to parse.
 		// inception, eat your heart out.
