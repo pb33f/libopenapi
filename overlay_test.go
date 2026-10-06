@@ -92,15 +92,13 @@ actions: []`
 }
 
 func TestNewOverlayDocument_SequenceRoot(t *testing.T) {
-	// Sequence at root - BuildModel is lenient and returns empty overlay
+	// An overlay document must be an object.
 	overlayYAML := `- item1
 - item2`
 
 	ov, err := NewOverlayDocument([]byte(overlayYAML))
-	// BuildModel is lenient and doesn't fail, but the overlay will be empty
-	require.NoError(t, err)
-	assert.NotNil(t, ov)
-	assert.Empty(t, ov.Overlay)
+	require.Error(t, err)
+	assert.Nil(t, ov)
 }
 
 func TestNewOverlayDocument_WithExtensions(t *testing.T) {

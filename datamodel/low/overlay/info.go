@@ -5,6 +5,7 @@ package overlay
 
 import (
 	"context"
+	"fmt"
 	"hash/maphash"
 
 	"github.com/pb33f/go-yaml"
@@ -15,7 +16,7 @@ import (
 )
 
 // Info represents a low-level Overlay Info Object.
-// https://spec.openapis.org/overlay/v1.1.0#info-object
+// https://spec.openapis.org/overlay/v1.2.0#info-object
 type Info struct {
 	Title       low.NodeReference[string]
 	Version     low.NodeReference[string]
@@ -56,17 +57,33 @@ func (i *Info) GetKeyNode() *yaml.Node {
 
 // Build will extract extensions for the Info object.
 func (i *Info) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	if err := requireMapping(root); err != nil {
+		return err
+	}
 	i.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	i.RootNode = root
 	utils.CheckForMergeNodes(root)
+	if _, ref := findField(RefLabel, root); ref != nil {
+		return fmt.Errorf("info does not support $ref")
+	}
 	i.Reference = new(low.Reference)
 	i.Nodes = low.ExtractNodes(ctx, root)
 	i.Extensions = low.ExtractExtensions(root)
 	i.index = idx
 	i.context = ctx
 	low.ExtractExtensionNodes(ctx, i.Extensions, i.Nodes)
-	return nil
+	var err error
+	i.Title, err = extractString(TitleLabel, root)
+	if err != nil {
+		return err
+	}
+	i.Version, err = extractString(VersionLabel, root)
+	if err != nil {
+		return err
+	}
+	i.Description, err = extractString(DescriptionLabel, root)
+	return err
 }
 
 // GetExtensions returns all Info extensions and satisfies the low.HasExtensions interface.

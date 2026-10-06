@@ -10,9 +10,11 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 )
 
-// Action represents a high-level Overlay Action Object.
-// https://spec.openapis.org/overlay/v1.1.0#action-object
+// Action represents an Overlay action or reusable action reference.
+// Ref identifies a reusable action; the other fields provide local overrides.
+// https://spec.openapis.org/overlay/v1.2.0#action-object
 type Action struct {
+	Ref         string                              `json:"$ref,omitempty" yaml:"$ref,omitempty"`
 	Target      string                              `json:"target,omitempty" yaml:"target,omitempty"`
 	Description string                              `json:"description,omitempty" yaml:"description,omitempty"`
 	Update      *yaml.Node                          `json:"update,omitempty" yaml:"update,omitempty"`
@@ -20,12 +22,15 @@ type Action struct {
 	Copy        string                              `json:"copy,omitempty" yaml:"copy,omitempty"`
 	Extensions  *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low         *low.Action
+	removeSet   bool
 }
 
 // NewAction creates a new high-level Action instance from a low-level one.
 func NewAction(action *low.Action) *Action {
 	a := new(Action)
 	a.low = action
+	a.Ref = action.Ref.Value
+	a.removeSet = action.Remove.KeyNode != nil
 	if !action.Target.IsEmpty() {
 		a.Target = action.Target.Value
 	}
@@ -63,19 +68,22 @@ func (a *Action) Render() ([]byte, error) {
 // MarshalYAML creates a ready to render YAML representation of the Action object.
 func (a *Action) MarshalYAML() (any, error) {
 	m := orderedmap.New[string, any]()
-	if a.Target != "" {
+	if a.Ref != "" || (a.low != nil && a.low.Ref.KeyNode != nil) {
+		m.Set(low.RefLabel, a.Ref)
+	}
+	if a.Target != "" || (a.low != nil && a.low.Target.KeyNode != nil) {
 		m.Set(low.TargetLabel, a.Target)
 	}
-	if a.Description != "" {
+	if a.Description != "" || (a.low != nil && a.low.Description.KeyNode != nil) {
 		m.Set(low.DescriptionLabel, a.Description)
 	}
-	if a.Copy != "" {
+	if a.Copy != "" || (a.low != nil && a.low.Copy.KeyNode != nil) {
 		m.Set(low.CopyLabel, a.Copy)
 	}
 	if a.Update != nil {
 		m.Set(low.UpdateLabel, a.Update)
 	}
-	if a.Remove {
+	if a.Remove || a.removeSet {
 		m.Set(low.RemoveLabel, a.Remove)
 	}
 	for pair := a.Extensions.First(); pair != nil; pair = pair.Next() {
@@ -83,3 +91,9 @@ func (a *Action) MarshalYAML() (any, error) {
 	}
 	return m, nil
 }
+
+// SetRemove sets remove and preserves an explicit false override when rendering or resolving a reusable action.
+func (a *Action) SetRemove(remove bool) { a.Remove = remove; a.removeSet = true }
+
+// HasRemove reports whether remove is explicitly set, including a false override.
+func (a *Action) HasRemove() bool { return a.Remove || a.removeSet }
