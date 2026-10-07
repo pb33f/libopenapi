@@ -102,11 +102,12 @@ func prepareOperation(document *highv3.Document, documentServers []string, item 
 		resource = override.Resource
 	}
 	name := methodSeed(operation.OperationId, resource)
-	if strings.TrimSpace(override.Method) != "" {
+	named := strings.TrimSpace(override.Method) != ""
+	if named {
 		name = override.Method
 	}
 	prepared := &Operation{
-		ID: operation.OperationId, Method: method, Path: path, Resource: resource, Name: name,
+		ID: operation.OperationId, Method: method, Path: path, Resource: resource, Name: name, Named: named,
 		Summary: operation.Summary, Description: operation.Description,
 		Parameters:  mergeParameters(item.Parameters, operation.Parameters),
 		RequestBody: prepareRequestBody(operation.RequestBody),

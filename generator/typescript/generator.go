@@ -104,7 +104,7 @@ func (g *Generator) RenderSchemas(schemas *orderedmap.Map[string, *highbase.Sche
 	if err != nil {
 		return nil, err
 	}
-	r := &render{names: make(map[string]string), components: make(map[string]*golang.SchemaIR), siblings: make(map[*golang.SchemaIR]*orderedmap.Map[string, *golang.SchemaIR])}
+	r := &render{names: make(map[string]string), components: make(map[string]*golang.SchemaIR)}
 	r.forwardChildSchemaDiagnostics(irDiagnostics)
 	var componentNames []string
 	if schemas != nil {
@@ -188,7 +188,6 @@ func verbatim(name string) string { return name }
 type render struct {
 	names       map[string]string
 	components  map[string]*golang.SchemaIR
-	siblings    map[*golang.SchemaIR]*orderedmap.Map[string, *golang.SchemaIR]
 	diagnostics []Diagnostic
 }
 
@@ -321,7 +320,7 @@ func (r *render) pointerTarget(ir *golang.SchemaIR, segments []string) (*golang.
 				return nil, false
 			}
 			i++
-			ir, _ = r.properties(ir).Get(segments[i])
+			ir, _ = properties(ir).Get(segments[i])
 		case "items":
 			ir = ir.Items
 		case "additionalProperties":
@@ -407,7 +406,7 @@ func (r *render) arrayExpr(ir *golang.SchemaIR, indent string) string {
 // object literal but not through Record, so recursive maps such as a JSON value
 // type would not compile.
 func (r *render) objectExpr(ir *golang.SchemaIR, indent string) string {
-	if r.properties(ir).Len() > 0 || len(ir.Required) > 0 {
+	if properties(ir).Len() > 0 || len(ir.Required) > 0 {
 		return r.objectBody(ir, indent, false)
 	}
 	switch {
@@ -421,38 +420,13 @@ func (r *render) objectExpr(ir *golang.SchemaIR, indent string) string {
 	return "{ [key: string]: unknown }"
 }
 
-// properties returns the declared properties of ir. For an object built from
-// allOf that also declares properties beside it, the shared IR keeps only the
-// members' properties, so the sibling ones are built here and appended.
-func (r *render) properties(ir *golang.SchemaIR) *orderedmap.Map[string, *golang.SchemaIR] {
-	if cached, ok := r.siblings[ir]; ok {
-		return cached
+// properties returns the declared properties of ir, including those declared
+// beside allOf, which the shared IR gathers with its members' properties.
+func properties(ir *golang.SchemaIR) *orderedmap.Map[string, *golang.SchemaIR] {
+	if ir.Properties == nil {
+		return orderedmap.New[string, *golang.SchemaIR]()
 	}
-	props := orderedmap.New[string, *golang.SchemaIR]()
-	if ir.Properties != nil {
-		for name, prop := range ir.Properties.FromOldest() {
-			props.Set(name, prop)
-		}
-	}
-	if schema := ir.SourceSchema; schema != nil && len(schema.AllOf) > 0 && schema.Properties != nil && schema.Properties.Len() > 0 {
-		siblings, diagnostics, err := golang.NewGenerator(golang.WithTypeNameResolver(verbatim)).SchemaIRs(schema.Properties)
-		r.forwardChildSchemaDiagnostics(diagnostics)
-		if err != nil {
-			r.diagnostics = append(r.diagnostics, Diagnostic{
-				Code:    golang.DiagnosticChildSchema,
-				Path:    ir.Name,
-				Message: "properties declared beside allOf could not be built and were left out: " + err.Error(),
-			})
-			siblings = nil
-		}
-		for i, name := range slices.Collect(schema.Properties.KeysFromOldest()) {
-			if _, declared := props.Get(name); !declared && i < len(siblings) {
-				props.Set(name, siblings[i])
-			}
-		}
-	}
-	r.siblings[ir] = props
-	return props
+	return ir.Properties
 }
 
 func hasPatternProperties(ir *golang.SchemaIR) bool {
@@ -473,7 +447,7 @@ func (r *render) objectBody(ir *golang.SchemaIR, indent string, unionSiblings bo
 	var b strings.Builder
 	b.WriteString("{\n")
 	declared := make(map[string]struct{})
-	for name, prop := range r.properties(ir).FromOldest() {
+	for name, prop := range properties(ir).FromOldest() {
 		declared[name] = struct{}{}
 		writeDoc(&b, prop, inner)
 		b.WriteString(inner + propertyKey(name))
@@ -523,7 +497,7 @@ func (r *render) allOfExpr(ir *golang.SchemaIR, indent string) string {
 		}
 		parts = append(parts, parenthesizeUnion(part))
 	}
-	if r.properties(ir).Len() > 0 || len(ir.Required) > 0 {
+	if properties(ir).Len() > 0 || len(ir.Required) > 0 {
 		parts = append(parts, r.objectBody(ir, indent, true))
 	}
 	if len(parts) == 0 {

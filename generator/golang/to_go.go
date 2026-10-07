@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/generator/internal/gocomment"
 )
 
 var formatSource = format.Source
@@ -28,6 +29,7 @@ func (g *Generator) renderFile(irs []*SchemaIR) (*GeneratedFile, error) {
 		if ir == nil {
 			continue
 		}
+		_, g.decodeOnly = g.decodeOnlyNames[ir.Name]
 		fields := g.renderDecl(ir)
 		generatedType := &GeneratedType{Name: ir.Name, Kind: ir.Kind, Fields: fields}
 		for _, embedded := range ir.AllOf {
@@ -143,7 +145,7 @@ func (g *Generator) renderDecl(ir *SchemaIR) []GeneratedField {
 	case KindUnion:
 		g.renderUnionDecl(ir)
 	case KindObject, KindAllOf:
-		if shouldRenderObjectAlias(ir) {
+		if g.shouldRenderObjectAlias(ir) {
 			g.renderAliasDecl(ir)
 			return nil
 		}
@@ -191,28 +193,25 @@ func (g *Generator) renderObjectDecl(ir *SchemaIR) []GeneratedField {
 	b.WriteString("type ")
 	b.WriteString(ir.Name)
 	b.WriteString(" struct {\n")
-	fields := newNameRegistry()
 	var generatedFields []GeneratedField
 	additionalFieldName := "AdditionalProperties"
-	if ir.AllOf != nil {
-		for _, embed := range ir.AllOf {
-			if embed != nil && embed.Kind == KindRef {
-				b.WriteByte('\t')
-				b.WriteString(g.goType(embed, true, false))
-				b.WriteByte('\n')
-			}
+	var embedded []string
+	for _, embed := range ir.AllOf {
+		if embed != nil && embed.Kind == KindRef {
+			embedded = append(embedded, g.goType(embed, true, false))
+			b.WriteByte('\t')
+			b.WriteString(embedded[len(embedded)-1])
+			b.WriteByte('\n')
 		}
 	}
+	fieldNames, fields := g.structFieldNames(ir, embedded)
 	if ir.Properties != nil {
 		for propName, prop := range ir.Properties.FromOldest() {
 			required := isRequired(ir, propName)
-			fieldName, collision := fields.resolve(propName, g.fieldName(propName))
-			if collision {
-				g.addDiagnostic(DiagnosticFieldNameCollision, ir.Name+"."+propName, "field name collision resolved as "+fieldName)
-			}
+			fieldName := fieldNames[propName]
 			fieldType := g.goType(prop, required, true)
 			generatedFields = append(generatedFields, GeneratedField{Name: fieldName, Source: propName, Type: fieldType})
-			writeFieldComments(&b, fieldName, prop)
+			writeFieldComments(&b, prop)
 			b.WriteByte('\t')
 			b.WriteString(fieldName)
 			b.WriteByte(' ')
@@ -248,6 +247,81 @@ func (g *Generator) renderObjectDecl(ir *SchemaIR) []GeneratedField {
 	return generatedFields
 }
 
+// structFieldNames assigns a Go field name to each property of ir. The names
+// of embedded types are claimed first so no property can shadow them. Under
+// NameStyleIdiomatic, plain property names claim their Go names before names
+// with a leading symbol, which then spell the symbol out: with both "_id" and
+// "id", id is ID and _id is UnderscoreID.
+func (g *Generator) structFieldNames(ir *SchemaIR, embedded []string) (map[string]string, *NameRegistry) {
+	names := make(map[string]string)
+	if g.nameStyle != NameStyleIdiomatic {
+		fields := NewNameRegistry(embedded...)
+		for propName := range ir.Properties.FromOldest() {
+			names[propName] = g.claimFieldName(fields, ir, propName, g.fieldName(propName))
+		}
+		return names, fields
+	}
+	fields := NewIdiomaticNameRegistry(embedded...)
+	var sources []string
+	for propName := range ir.Properties.FromOldest() {
+		sources = append(sources, propName)
+	}
+	resolved := distinctFieldNames(fields, sources, g.fieldName, func(propName, fieldName string) {
+		g.addDiagnostic(DiagnosticFieldNameCollision, ir.Name+"."+propName, "field name collision resolved as "+fieldName)
+	})
+	for index, propName := range sources {
+		names[propName] = resolved[index]
+	}
+	return names, fields
+}
+
+func (g *Generator) claimFieldName(fields *NameRegistry, ir *SchemaIR, propName string, candidates ...string) string {
+	fieldName, collision := fields.ResolveFirst(propName, candidates...)
+	if collision {
+		g.addDiagnostic(DiagnosticFieldNameCollision, ir.Name+"."+propName, "field name collision resolved as "+fieldName)
+	}
+	return fieldName
+}
+
+// FieldNames returns a distinct exported Go field name for each JSON name,
+// in order, avoiding reserved names. Collisions are resolved as
+// NameStyleIdiomatic resolves struct fields: plain names claim their Go names
+// first, a leading symbol is spelled out (_id is UnderscoreID), and any
+// remaining collision takes a numeric suffix.
+func FieldNames(sources []string, reserved ...string) []string {
+	return distinctFieldNames(NewIdiomaticNameRegistry(reserved...), sources, toPublicName, func(string, string) {})
+}
+
+// distinctFieldNames claims one field name per source from fields. Sources
+// with a leading symbol claim after plain ones so the plain spelling keeps
+// the base name. numbered is told about each name that needed a number.
+func distinctFieldNames(fields *NameRegistry, sources []string, base func(string) string, numbered func(source, name string)) []string {
+	names := make([]string, len(sources))
+	claim := func(index int, candidates ...string) {
+		// Sources may repeat, as parameters with one name in two locations do,
+		// so each claim is owned by its position.
+		name, collision := fields.ResolveFirst(sources[index]+"\x00"+intString(index), candidates...)
+		if collision {
+			numbered(sources[index], name)
+		}
+		names[index] = name
+	}
+	var symbolic []int
+	for index, source := range sources {
+		if _, ok := symbolPrefixedName(source, ""); ok {
+			symbolic = append(symbolic, index)
+			continue
+		}
+		claim(index, base(source))
+	}
+	for _, index := range symbolic {
+		name := base(sources[index])
+		spelled, _ := symbolPrefixedName(sources[index], name)
+		claim(index, name, spelled)
+	}
+	return names
+}
+
 func (g *Generator) renderChildren(ir *SchemaIR) {
 	if ir.Properties != nil {
 		for _, prop := range ir.Properties.FromOldest() {
@@ -259,11 +333,9 @@ func (g *Generator) renderChildren(ir *SchemaIR) {
 			g.renderNested(prop)
 		}
 	}
-	if ir.Items != nil {
+	// Tuples render as untyped slices, so prefixItems need no declarations.
+	if ir.Items != nil && len(ir.PrefixItems) == 0 {
 		g.renderNested(ir.Items)
-	}
-	for _, item := range ir.PrefixItems {
-		g.renderNested(item)
 	}
 	if ir.AdditionalProperties != nil {
 		g.renderNested(ir.AdditionalProperties)
@@ -278,7 +350,15 @@ func (g *Generator) renderNested(ir *SchemaIR) {
 		return
 	}
 	switch ir.Kind {
-	case KindObject, KindAllOf, KindUnion, KindEnum:
+	case KindObject, KindAllOf:
+		// An object that renders inline as a map has no declaration of its
+		// own, but the types its values use still need theirs.
+		if g.goType(ir, true, false) != ir.Name {
+			g.renderChildren(ir)
+			return
+		}
+		g.renderDecl(ir)
+	case KindUnion, KindEnum:
 		if ir.Name != "" {
 			g.renderDecl(ir)
 		}
@@ -299,20 +379,43 @@ func (g *Generator) renderAliasDecl(ir *SchemaIR) {
 	b.WriteString("type ")
 	b.WriteString(ir.Name)
 	b.WriteByte(' ')
-	b.WriteString(g.goType(ir, true, false))
+	typ := g.goType(ir, true, false)
+	// json.RawMessage carries its JSON methods only through an alias.
+	if typ == rawMessageGoType {
+		b.WriteString("= ")
+	}
+	b.WriteString(typ)
 	b.WriteByte('\n')
 	g.decls = append(g.decls, b.String())
 	g.recordSchemaMetadata(ir.Name, ir.SourceSchema)
 }
 
-func shouldRenderObjectAlias(ir *SchemaIR) bool {
-	return ir != nil &&
-		ir.Kind == KindObject &&
-		(ir.Properties == nil || ir.Properties.Len() == 0) &&
+func (g *Generator) shouldRenderObjectAlias(ir *SchemaIR) bool {
+	return ir.Kind == KindObject &&
 		(ir.PatternProperties == nil || ir.PatternProperties.Len() == 0) &&
-		len(ir.AllOf) == 0 &&
-		ir.AdditionalProperties == nil &&
+		g.untypedObject(ir)
+}
+
+// untypedObject reports whether an object schema leaves its members
+// unconstrained: no properties, no allOf, and additional properties that are
+// allowed but not described. Values described only as {} count as not
+// described when untyped schemas render as json.RawMessage.
+func (g *Generator) untypedObject(ir *SchemaIR) bool {
+	open := ir.AdditionalProperties == nil || (g.untypedAsRawMessage && ir.AdditionalProperties.Kind == KindAny)
+	return (ir.Properties == nil || ir.Properties.Len() == 0) &&
+		len(ir.AllOf) == 0 && open &&
 		(ir.AdditionalAllowed == nil || *ir.AdditionalAllowed)
+}
+
+const rawMessageGoType = "json.RawMessage"
+
+// untypedType is the Go type for JSON whose shape a schema does not describe.
+func (g *Generator) untypedType() string {
+	if g.untypedAsRawMessage {
+		g.addImport("encoding/json")
+		return rawMessageGoType
+	}
+	return "any"
 }
 
 func (g *Generator) renderEnumDecl(ir *SchemaIR) {
@@ -336,7 +439,7 @@ func (g *Generator) renderEnumDecl(ir *SchemaIR) {
 			if literal == "" {
 				continue
 			}
-			name := uniqueName(ir.Name+g.enumValueName(node.Value), used)
+			name := g.enumConstantName(ir.Name+g.enumValueName(node.Value), used)
 			b.WriteByte('\t')
 			b.WriteString(name)
 			b.WriteByte(' ')
@@ -349,6 +452,16 @@ func (g *Generator) renderEnumDecl(ir *SchemaIR) {
 	}
 	g.decls = append(g.decls, b.String())
 	g.recordSchemaMetadata(ir.Name, ir.SourceSchema)
+}
+
+// enumConstantName names one enum constant. Under NameStyleIdiomatic the name
+// is claimed from the type registry, so a constant never takes the name of a
+// type or of a reserved declaration.
+func (g *Generator) enumConstantName(candidate string, used map[string]struct{}) string {
+	if g.nameStyle == NameStyleIdiomatic {
+		return g.typeNames.ClaimFirst(candidate)
+	}
+	return uniqueName(candidate, used)
 }
 
 func writeAdditionalPropertiesMethods(b *strings.Builder, ir *SchemaIR, fieldName, valueType string) {
@@ -387,7 +500,7 @@ func writeAdditionalPropertiesMethods(b *strings.Builder, ir *SchemaIR, fieldNam
 
 func (g *Generator) goType(ir *SchemaIR, required bool, field bool) string {
 	if ir == nil {
-		return "any"
+		return g.untypedType()
 	}
 	var typ string
 	switch ir.Kind {
@@ -404,6 +517,8 @@ func (g *Generator) goType(ir *SchemaIR, required bool, field bool) string {
 			typ = ir.Name
 		} else if ir.AdditionalAllowed != nil && !*ir.AdditionalAllowed && ir.Name != "" {
 			typ = ir.Name
+		} else if g.untypedAsRawMessage && g.untypedObject(ir) {
+			typ = g.untypedType()
 		} else if ir.AdditionalProperties != nil {
 			typ = "map[string]" + g.goType(ir.AdditionalProperties, true, false)
 		} else {
@@ -411,7 +526,7 @@ func (g *Generator) goType(ir *SchemaIR, required bool, field bool) string {
 		}
 	case KindArray:
 		if len(ir.PrefixItems) > 0 {
-			typ = "[]any"
+			typ = "[]" + g.untypedType()
 		} else {
 			typ = "[]" + g.goType(ir.Items, true, false)
 		}
@@ -430,10 +545,10 @@ func (g *Generator) goType(ir *SchemaIR, required bool, field bool) string {
 	case KindUnion:
 		typ = ir.Name + "Union"
 	default:
-		typ = "any"
+		typ = g.untypedType()
 	}
 	if field {
-		depth := pointerDepth(typ, ir, required, g.optionalFieldsAsPointers, g.nullableAsPointer, g.optionalNullableAsDoublePointer)
+		depth := pointerDepth(typ, ir, required, g.optionalFieldsAsPointers, g.nullableAsPointer, g.optionalNullableAsDoublePointer && !g.decodeOnly)
 		return strings.Repeat("*", depth) + typ
 	}
 	return typ
@@ -472,6 +587,10 @@ func builtinScalarType(kind Kind, format string) string {
 }
 
 func pointerDepth(typ string, ir *SchemaIR, required, optionalPointers, nullablePointer, optionalNullableDoublePointer bool) int {
+	// Raw JSON already distinguishes absent (nil) from null ("null").
+	if typ == rawMessageGoType {
+		return 0
+	}
 	compound := typ == "any" || strings.HasPrefix(typ, "[]") || strings.HasPrefix(typ, "map[")
 	nullable := ir != nil && ir.Nullable && nullablePointer
 	optional := !required && optionalPointers
@@ -490,39 +609,59 @@ func pointerDepth(typ string, ir *SchemaIR, required, optionalPointers, nullable
 	return 0
 }
 
-func writeComment(b *strings.Builder, name, text string) {
-	if text == "" {
-		return
+// docLines returns the comment for a declaration or struct field: the
+// schema's description, or its title when it has none, followed by one
+// paragraph per note. A declaration's comment starts with its name, as Go doc
+// comments do; a field's comment is the description alone. Read-only and
+// write-only notes describe how a property is used, so only fields carry
+// them; a deprecation applies to both.
+func docLines(name string, ir *SchemaIR) []string {
+	description := ir.Description
+	if description == "" {
+		description = ir.Title
 	}
-	writeLineComment(b, name+" "+strings.TrimSpace(strings.Split(text, "\n")[0]))
+	lines := gocomment.Lines(description)
+	if name != "" && lines != nil {
+		lines = gocomment.Lines(name + " " + declarationSentence(description))
+	}
+	var notes []string
+	if name == "" && ir.ReadOnly {
+		notes = append(notes, "Read-only: the API returns this value; requests should not send it.")
+	}
+	if name == "" && ir.WriteOnly {
+		notes = append(notes, "Write-only: requests send this value; the API does not return it.")
+	}
+	notes = append(notes, ir.Comments...)
+	if ir.Deprecated {
+		notes = append(notes, "Deprecated: the API marks this as deprecated.")
+	}
+	for _, note := range notes {
+		if lines != nil {
+			lines = append(lines, "")
+		}
+		lines = append(lines, gocomment.Lines(note)...)
+	}
+	return lines
+}
+
+// declarationSentence continues a declaration's name with its description.
+// A description that opens with an article becomes a sentence about the
+// name: "A booking." documents Booking as "Booking is a booking."
+func declarationSentence(description string) string {
+	for _, article := range []string{"A ", "An ", "The "} {
+		if strings.HasPrefix(description, article) {
+			return "is " + strings.ToLower(article[:1]) + description[1:]
+		}
+	}
+	return description
 }
 
 func writeIRComments(b *strings.Builder, ir *SchemaIR) {
-	if ir == nil {
-		return
-	}
-	description := ir.Description
-	if description == "" {
-		description = ir.Title
-	}
-	writeComment(b, ir.Name, description)
-	for _, comment := range ir.Comments {
-		writeLineComment(b, ir.Name+" "+comment)
-	}
+	gocomment.Write(b, "", docLines(ir.Name, ir))
 }
 
-func writeFieldComments(b *strings.Builder, fieldName string, ir *SchemaIR) {
-	if ir == nil {
-		return
-	}
-	description := ir.Description
-	if description == "" {
-		description = ir.Title
-	}
-	writeComment(b, fieldName, description)
-	for _, comment := range ir.Comments {
-		writeLineComment(b, fieldName+" "+comment)
-	}
+func writeFieldComments(b *strings.Builder, ir *SchemaIR) {
+	gocomment.Write(b, "", docLines("", ir))
 }
 
 func writeLineCommentBlock(b *strings.Builder, text string) {

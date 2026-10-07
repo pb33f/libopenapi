@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"go/format"
 	"go/token"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	highv3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	modelgen "github.com/pb33f/libopenapi/generator/golang"
+	"github.com/pb33f/libopenapi/generator/internal/gocomment"
 	"github.com/pb33f/libopenapi/generator/sdk"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -36,8 +38,7 @@ var resourcesTemplateSource string
 var workflowsTemplateSource string
 
 var templateFunctions = template.FuncMap{
-	"quote":   strconv.Quote,
-	"comment": commentLine,
+	"quote": strconv.Quote,
 }
 
 var clientTemplate = template.Must(template.New("client").Funcs(templateFunctions).Parse(clientTemplateSource))
@@ -70,21 +71,30 @@ func GenerateContract(contract *sdk.Contract, options Options) (*sdk.Result, err
 	if !token.IsIdentifier(packageName) || token.Lookup(packageName).IsKeyword() {
 		return nil, fmt.Errorf("gosdk: invalid package name %q", packageName)
 	}
-	var sdkEmitter *emitter
-	modelOptions := append([]modelgen.Option(nil), options.Models...)
+	sdkEmitter := newEmitter(contract, packageName, options.Workflows, modelgen.NewGenerator(options.Models...))
+	view, err := sdkEmitter.prepareView()
+	if err != nil {
+		return nil, err
+	}
+	// SDK defaults come first so options.Models can change them; the package,
+	// pointer shape and names the SDK runtime depends on come last.
+	modelOptions := []modelgen.Option{
+		modelgen.WithNameStyle(modelgen.NameStyleIdiomatic),
+		modelgen.WithUntypedAsRawMessage(true),
+		modelgen.WithEnumConstants(true),
+	}
+	modelOptions = append(modelOptions, options.Models...)
 	modelOptions = append(modelOptions,
 		modelgen.WithPackageName(packageName),
 		modelgen.WithGeneratedComment(true),
 		modelgen.WithOptionalNullableAsDoublePointer(true),
 		modelgen.WithTypeNameResolver(func(name string) string { return sdkEmitter.typeNames[name] }),
+		modelgen.WithInlineRoots(sdkEmitter.inlineRoots...),
+		modelgen.WithDecodeOnlyRoots(sdkEmitter.decodeOnlyRoots()...),
+		modelgen.WithFallbackDescriptions(sdkEmitter.descriptions),
+		modelgen.WithReservedTypeNames(sdkEmitter.reserved...),
 	)
-	modelsGenerator := modelgen.NewGenerator(modelOptions...)
-	sdkEmitter = newEmitter(contract, packageName, options.Workflows, modelsGenerator)
-	view, err := sdkEmitter.prepareView()
-	if err != nil {
-		return nil, err
-	}
-	models, err := modelsGenerator.RenderSchemas(sdkEmitter.schemas)
+	models, err := modelgen.NewGenerator(modelOptions...).RenderSchemas(sdkEmitter.schemas)
 	if err != nil {
 		return nil, fmt.Errorf("gosdk: generate models: %w", err)
 	}
@@ -138,22 +148,33 @@ type emitter struct {
 	schemas             *orderedmap.Map[string, *highbase.SchemaProxy]
 	typeNames           map[string]string
 	names               *modelgen.NameRegistry
+	reserved            []string
+	inlineRoots         []string
+	inlineTypes         map[*highbase.SchemaProxy]string
+	responseRoots       []string
+	roles               map[string]string
+	descriptions        map[string]string
 	collectedComponents map[string]struct{}
 	reachableComponents map[string]struct{}
 	visitedSchemas      map[*highbase.SchemaProxy]struct{}
 	collectErr          error
 	workflows           []*sdk.Workflow
-	models              *modelgen.Generator
+	scalars             *modelgen.Generator
 }
 
-func newEmitter(contract *sdk.Contract, packageName string, workflows []*sdk.Workflow, models *modelgen.Generator) *emitter {
+// inlineSchemaKey prefixes the model key of a schema declared inline in an
+// operation or workflow. OpenAPI component keys cannot contain "#" or "/", so
+// these keys never meet a component's.
+const inlineSchemaKey = "#/inline/"
+
+func newEmitter(contract *sdk.Contract, packageName string, workflows []*sdk.Workflow, scalars *modelgen.Generator) *emitter {
 	reserved := []string{
 		"APIError", "APIKey", "BasicAuth", "BearerToken", "Client", "Credential", "CredentialFunc",
 		"DefaultServer", "File", "HTTPDoer", "MutualTLS", "NewClient", "Null", "NullableValue",
 		"Option", "RequestOption", "Response", "ResponseDecodeError", "SecurityScheme",
 		"WithCredential", "WithDefaultHeader", "WithHTTPClient", "WithMaxResponseBody", "WithRequestHeader", "WithTimeout",
 	}
-	names := modelgen.NewNameRegistry(reserved...)
+	names := modelgen.NewIdiomaticNameRegistry(reserved...)
 	components := contract.Schemas
 	if components == nil {
 		components = orderedmap.New[string, *highbase.SchemaProxy]()
@@ -161,9 +182,11 @@ func newEmitter(contract *sdk.Contract, packageName string, workflows []*sdk.Wor
 	emitter := &emitter{
 		contract: contract, packageName: packageName, componentSchemas: components,
 		schemas: orderedmap.New[string, *highbase.SchemaProxy](), typeNames: make(map[string]string),
-		names: names, collectedComponents: make(map[string]struct{}),
+		names: names, reserved: reserved, inlineTypes: make(map[*highbase.SchemaProxy]string),
+		roles: make(map[string]string), descriptions: make(map[string]string),
+		collectedComponents: make(map[string]struct{}),
 		reachableComponents: make(map[string]struct{}), visitedSchemas: make(map[*highbase.SchemaProxy]struct{}),
-		workflows: workflows, models: models,
+		workflows: workflows, scalars: scalars,
 	}
 	emitter.findReachableComponents()
 	for name := range components.FromOldest() {
@@ -238,8 +261,16 @@ func componentSchemaRefName(ref string) (string, bool) {
 	return modelgen.RefName(ref), true
 }
 
+// claim reserves a name for an SDK declaration that is not a model, so the
+// model generator keeps clear of it.
+func (e *emitter) claim(candidates ...string) string {
+	name := e.names.ClaimFirst(candidates...)
+	e.reserved = append(e.reserved, name)
+	return name
+}
+
 func (e *emitter) prepareView() (*clientView, error) {
-	view := &clientView{PackageName: e.packageName}
+	view := &clientView{PackageName: e.packageName, Uses: make(map[string]bool)}
 	if len(e.contract.Servers) > 0 {
 		view.DefaultServer = e.contract.Servers[0]
 	}
@@ -285,21 +316,21 @@ func (e *emitter) prepareView() (*clientView, error) {
 			resourceIndex = len(view.Resources)
 			resourceIndexes[resourceName] = resourceIndex
 			resourceMethods[resourceName] = make(map[string]string)
-			view.Resources = append(view.Resources, resourceView{Name: resourceName, TypeName: e.names.Claim(resourceName+"Resource", "Resource")})
+			view.Resources = append(view.Resources, resourceView{Name: resourceName, TypeName: e.claim(resourceName + "Resource")})
 		}
 		methodName := modelgen.PublicName(operation.Name)
 		if prior, exists := resourceMethods[resourceName][methodName]; exists {
 			return nil, fmt.Errorf("gosdk: operations %q and %q both map to %s.%s", prior, operation.ID, resourceName, methodName)
 		}
 		resourceMethods[resourceName][methodName] = operation.ID
-		operationView, err := e.prepareOperation(operation, methodName)
+		operationView, err := e.prepareOperation(operation, view.Resources[resourceIndex], methodName)
 		if err != nil {
 			return nil, err
 		}
-		operationView.ResourceName = resourceName
 		if operationView.HasQueryParams {
 			view.HasQueryParams = true
 		}
+		recordUses(view.Uses, operationView)
 		view.Resources[resourceIndex].Operations = append(view.Resources[resourceIndex].Operations, operationView)
 	}
 	operationViews := make(map[string]*operationView, len(e.contract.Operations))
@@ -322,14 +353,25 @@ func (e *emitter) prepareView() (*clientView, error) {
 	return view, nil
 }
 
-func (e *emitter) prepareOperation(operation *sdk.Operation, methodName string) (operationView, error) {
+// typeBase is the prefix of every type generated for an operation. A caller
+// who names the operation (People.Match) names its types (PeopleMatchParams);
+// otherwise the operationId does (PeopleEnrichmentParams).
+func typeBase(operation *sdk.Operation, resourceName, methodName string) string {
+	if operation.Named {
+		return resourceName + methodName
+	}
+	return modelgen.PublicName(operation.ID)
+}
+
+func (e *emitter) prepareOperation(operation *sdk.Operation, resource resourceView, methodName string) (operationView, error) {
+	base := typeBase(operation, resource.Name, methodName)
+	method := "[" + resource.TypeName + "." + methodName + "]"
 	view := operationView{
-		ID: operation.ID, MethodName: methodName,
-		ParamsType: e.names.Claim(modelgen.PublicName(operation.ID)+"Params", "Params"),
-		Summary:    operation.Summary,
+		ID: operation.ID, ResourceName: resource.Name, ResourceType: resource.TypeName, MethodName: methodName,
+		ParamsType: e.claim(base + "Params"),
 		HTTPMethod: operation.Method, Path: operation.Path,
 	}
-	fieldNames := make(map[string]string)
+	var sources []string
 	for _, parameter := range operation.Parameters {
 		if parameter == nil {
 			continue
@@ -352,43 +394,37 @@ func (e *emitter) prepareOperation(operation *sdk.Operation, methodName string) 
 		if !supportedStyle(parameter.In, parameter.Style) {
 			return view, fmt.Errorf("gosdk: operation %q parameter %q uses unsupported %s style %q", operation.ID, parameter.Name, parameter.In, parameter.Style)
 		}
-		typeName, err := e.schemaType(parameter.Schema, operation.ID+modelgen.PublicName(parameter.Name)+"Parameter")
+		typeName, err := e.describedType(parameter.Schema, base+modelgen.PublicName(parameter.Name), "The "+parameter.Name+" parameter of "+method+".")
 		if err != nil {
 			return view, fmt.Errorf("gosdk: operation %q parameter %q: %w", operation.ID, parameter.Name, err)
 		}
 		if !parameter.Required {
 			typeName = "*" + typeName
 		}
-		fieldName := modelgen.PublicName(parameter.Name)
-		if prior, ok := fieldNames[fieldName]; ok {
-			return view, fmt.Errorf("gosdk: operation %q parameters %q and %q have the same Go field name %q", operation.ID, prior, parameter.Name, fieldName)
-		}
-		fieldNames[fieldName] = parameter.Name
 		encoder, array, err := e.parameterEncoder(parameter.Schema)
 		if err != nil {
 			return view, fmt.Errorf("gosdk: operation %q parameter %q: %w", operation.ID, parameter.Name, err)
 		}
 		view.Parameters = append(view.Parameters, parameterView{
-			Name: parameter.Name, FieldName: fieldName, Type: typeName, In: parameter.In,
+			Name: parameter.Name, Type: typeName, In: parameter.In,
 			Required: parameter.Required, Explode: parameter.Explode, Description: parameter.Description,
 			Encoder: encoder, Array: array,
 		})
-		if parameter.In == "query" {
-			view.HasQueryParams = true
-		}
+		sources = append(sources, parameter.Name)
+		view.HasQueryParams = view.HasQueryParams || parameter.In == "query"
+		view.HasPathParams = view.HasPathParams || parameter.In == "path"
 	}
+	var reserved []string
 	if operation.RequestBody != nil {
-		if prior, exists := fieldNames["Body"]; exists {
-			return view, fmt.Errorf("gosdk: operation %q parameter %q collides with request body field Body", operation.ID, prior)
-		}
-		mediaType, schema, err := jsonMedia(operation.RequestBody.Content)
+		reserved = append(reserved, "Body")
+		mediaType, schema, err := requireJSONMedia(operation.RequestBody.Content)
 		if err != nil {
 			return view, fmt.Errorf("gosdk: operation %q request body: %w", operation.ID, err)
 		}
 		if schema == nil {
 			return view, fmt.Errorf("gosdk: operation %q request body has no schema", operation.ID)
 		}
-		typeName, err := e.schemaType(schema, operation.ID+"Request")
+		typeName, err := e.describedType(schema, base+"Request", "The request body of "+method+".")
 		if err != nil {
 			return view, fmt.Errorf("gosdk: operation %q request body: %w", operation.ID, err)
 		}
@@ -398,30 +434,24 @@ func (e *emitter) prepareOperation(operation *sdk.Operation, methodName string) 
 		}
 		view.Body = &bodyView{Type: typeName, FieldType: fieldType, Required: operation.RequestBody.Required, ContentType: mediaType, Description: operation.RequestBody.Description}
 	}
-	view.HasParameters = len(view.Parameters) > 0 || view.Body != nil
-	responseType, successes, decodedSuccesses, errorResponses, err := e.prepareResponses(operation)
-	if err != nil {
+	for index, fieldName := range modelgen.FieldNames(sources, reserved...) {
+		view.Parameters[index].FieldName = fieldName
+		view.Fields = append(view.Fields, fieldView{Name: fieldName, Type: view.Parameters[index].Type, Doc: view.Parameters[index].Description})
+	}
+	if view.Body != nil {
+		view.Fields = append(view.Fields, fieldView{Name: "Body", Type: view.Body.FieldType, Doc: view.Body.Description})
+	}
+	for index := range view.Fields {
+		view.Fields[index].Comment = goComment("\t", gocomment.Lines(view.Fields[index].Doc))
+		// A documented field after the first stands apart, as hand-written
+		// structs do, so each comment reads with its own field.
+		view.Fields[index].Spaced = index > 0 && view.Fields[index].Comment != ""
+	}
+	view.HasParameters = len(view.Fields) > 0
+	if err := e.prepareResponses(operation, base, method, &view); err != nil {
 		return view, err
 	}
-	view.ResponseType = responseType
-	view.SuccessStatuses = successes
-	if len(decodedSuccesses) > 0 {
-		view.DecodeCondition, err = decodeStatusCondition(decodedSuccesses, successes)
-		if err != nil {
-			return view, fmt.Errorf("gosdk: operation %q JSON success responses: %w", operation.ID, err)
-		}
-	}
-	view.SuccessCondition, err = statusCondition(successes)
-	if err != nil {
-		return view, fmt.Errorf("gosdk: operation %q success responses: %w", operation.ID, err)
-	}
-	for index := range errorResponses {
-		errorResponses[index].Condition, err = statusCondition([]string{errorResponses[index].Status})
-		if err != nil {
-			return view, fmt.Errorf("gosdk: operation %q error response %s: %w", operation.ID, errorResponses[index].Status, err)
-		}
-	}
-	view.ErrorResponses = errorResponses
+	view.Comment = methodComment(view, operation.Summary)
 	for _, alternative := range operation.Security {
 		if alternative == nil {
 			view.Security = append(view.Security, nil)
@@ -447,9 +477,8 @@ func (e *emitter) prepareWorkflow(workflow *sdk.Workflow, operations map[string]
 		return workflowView{}, fmt.Errorf("gosdk: workflow %q operation %q is not generated", workflow.ID, workflow.Operation.ID)
 	}
 	view := workflowView{
-		ID: workflow.ID, MethodName: e.names.Claim(modelgen.PublicName(workflow.ID), "Workflow"),
-		InputType:    e.names.Claim(modelgen.PublicName(workflow.ID)+"Input", "Input"),
-		Summary:      workflow.Summary,
+		ID: workflow.ID, MethodName: e.names.ClaimFirst(modelgen.PublicName(workflow.ID), modelgen.PublicName(workflow.ID)+"Workflow"),
+		InputType:    e.names.ClaimFirst(modelgen.PublicName(workflow.ID) + "Input"),
 		ResourceName: operation.ResourceName, OperationMethod: operation.MethodName,
 		OperationParams: operation.ParamsType, HasParameters: operation.HasParameters,
 		ResponseType: operation.ResponseType,
@@ -458,9 +487,12 @@ func (e *emitter) prepareWorkflow(workflow *sdk.Workflow, operations map[string]
 	if err != nil {
 		return workflowView{}, fmt.Errorf("gosdk: workflow %q inputs: %w", workflow.ID, err)
 	}
-	inputKey := "__workflow_" + view.InputType
+	view.Comment = goComment("", workflowDoc(view.MethodName, workflow))
+	inputKey := inlineSchemaKey + view.InputType
+	e.descriptions[inputKey] = "The input of [Client." + view.MethodName + "]."
 	e.schemas.Set(inputKey, inputSchema)
 	e.typeNames[inputKey] = view.InputType
+	e.inlineRoots = append(e.inlineRoots, inputKey)
 	e.collectSchema(inputSchema)
 	view.SuccessCondition, err = statusCondition(workflow.SuccessStatuses)
 	if err != nil {
@@ -613,49 +645,162 @@ func generatedField(types map[string]*modelgen.GeneratedType, generatedType *mod
 	return modelgen.GeneratedField{}, false
 }
 
-func (e *emitter) prepareResponses(operation *sdk.Operation) (string, []string, []string, []errorResponseView, error) {
-	responseType := "struct{}"
+// prepareResponses names and classifies an operation's responses. Every 2xx
+// response shares one success type. Each other response with a JSON body is
+// decoded into its own type, named for its status (PeopleMatchBadRequest);
+// a response with any other body keeps it raw in APIError.Body.
+func (e *emitter) prepareResponses(operation *sdk.Operation, base, method string, view *operationView) error {
 	var selectedType string
-	var successes []string
 	var decodedSuccesses []string
-	var errorResponses []errorResponseView
+	var errorCases []errorResponseView
 	for _, response := range operation.Responses {
 		if response == nil {
 			continue
 		}
 		status := normalizeStatus(response.Status)
 		isSuccess := statusIsSuccess(status)
-		_, schema, err := jsonMedia(response.Content)
+		var schema *highbase.SchemaProxy
+		var err error
+		if isSuccess {
+			_, schema, err = requireJSONMedia(response.Content)
+		} else {
+			_, schema, err = jsonMedia(response.Content)
+		}
 		if err != nil {
-			return "", nil, nil, nil, fmt.Errorf("gosdk: operation %q response %s: %w", operation.ID, status, err)
+			return fmt.Errorf("gosdk: operation %q response %s: %w", operation.ID, status, err)
 		}
 		typeName := ""
 		if schema != nil {
-			typeName, err = e.schemaType(schema, operation.ID+statusName(status)+"Response")
-			if err != nil {
-				return "", nil, nil, nil, fmt.Errorf("gosdk: operation %q response %s: %w", operation.ID, status, err)
+			hint := base + "Response"
+			if !isSuccess {
+				hint = base + statusTypeName(status)
 			}
+			// Every model declared while typing a response body is only decoded.
+			declared := len(e.inlineRoots)
+			typeName, err = e.describedType(schema, hint, "The "+status+" response body of "+method+".")
+			if err != nil {
+				return fmt.Errorf("gosdk: operation %q response %s: %w", operation.ID, status, err)
+			}
+			e.responseRoots = append(e.responseRoots, e.inlineRoots[declared:]...)
 		}
 		if isSuccess {
-			successes = append(successes, status)
+			view.SuccessStatuses = append(view.SuccessStatuses, status)
 			if typeName != "" {
 				decodedSuccesses = append(decodedSuccesses, status)
 				if selectedType != "" && selectedType != typeName {
-					return "", nil, nil, nil, fmt.Errorf("gosdk: operation %q has incompatible success response types %s and %s", operation.ID, selectedType, typeName)
+					return fmt.Errorf("gosdk: operation %q has incompatible success response types %s and %s", operation.ID, selectedType, typeName)
 				}
 				selectedType = typeName
 			}
 			continue
 		}
-		errorResponses = append(errorResponses, errorResponseView{Status: status, Type: typeName})
+		if _, err := statusCondition([]string{status}); err != nil {
+			return fmt.Errorf("gosdk: operation %q error response %s: %w", operation.ID, status, err)
+		}
+		if typeName != "" {
+			errorCases = append(errorCases, errorResponseView{Statuses: []string{status}, Type: typeName})
+		}
 	}
-	if len(successes) == 0 {
-		return "", nil, nil, nil, fmt.Errorf("gosdk: operation %q has no declared 2xx response", operation.ID)
+	if len(view.SuccessStatuses) == 0 {
+		return fmt.Errorf("gosdk: operation %q has no declared 2xx response", operation.ID)
 	}
+	var err error
+	view.ResponseType = "struct{}"
 	if selectedType != "" {
-		responseType = selectedType
+		view.ResponseType = selectedType
+		view.DecodeCondition, err = decodeStatusCondition(decodedSuccesses, view.SuccessStatuses)
+		if err != nil {
+			return fmt.Errorf("gosdk: operation %q JSON success responses: %w", operation.ID, err)
+		}
 	}
-	return responseType, successes, decodedSuccesses, errorResponses, nil
+	view.SuccessCondition, err = statusCondition(view.SuccessStatuses)
+	if err != nil {
+		return fmt.Errorf("gosdk: operation %q success responses: %w", operation.ID, err)
+	}
+	view.DecodeAll = view.DecodeCondition == view.SuccessCondition
+	view.ErrorCases, view.ErrorSwitch = errorSwitch(errorCases)
+	for _, errorCase := range view.ErrorCases {
+		statuses := strings.Join(errorCase.Statuses, ", ")
+		if errorCase.Default {
+			statuses = "default"
+		}
+		view.ErrorDoc = append(view.ErrorDoc, "*"+errorCase.Type+" ("+statuses+")")
+	}
+	return nil
+}
+
+// errorSwitch orders typed error responses the way OpenAPI resolves them:
+// exact codes, then ranges, then default. Codes and ranges sharing a type
+// share a case, and cases list their statuses in ascending order. With no
+// ranges the switch is on the status code itself.
+func errorSwitch(responses []errorResponseView) ([]errorResponseView, string) {
+	var exact, ranges, fallback []errorResponseView
+	group := func(cases []errorResponseView, response errorResponseView) []errorResponseView {
+		for index := range cases {
+			if cases[index].Type == response.Type {
+				cases[index].Statuses = append(cases[index].Statuses, response.Statuses...)
+				return cases
+			}
+		}
+		return append(cases, response)
+	}
+	for _, response := range responses {
+		switch status := response.Statuses[0]; {
+		case status == "default":
+			fallback = []errorResponseView{{Type: response.Type, Default: true}}
+		case strings.HasSuffix(status, "XX"):
+			ranges = group(ranges, response)
+		default:
+			exact = group(exact, response)
+		}
+	}
+	for _, cases := range [][]errorResponseView{exact, ranges} {
+		for index := range cases {
+			sort.Strings(cases[index].Statuses)
+		}
+		sort.Slice(cases, func(left, right int) bool { return cases[left].Statuses[0] < cases[right].Statuses[0] })
+	}
+	tagged := len(ranges) == 0
+	cases := append(append(exact, ranges...), fallback...)
+	for index := range cases {
+		var conditions []string
+		for _, status := range cases[index].Statuses {
+			// prepareResponses has already rejected invalid statuses.
+			condition, _ := statusCondition([]string{status})
+			if tagged {
+				condition = status
+			}
+			conditions = append(conditions, condition)
+		}
+		cases[index].Case = strings.Join(conditions, ", ")
+	}
+	if tagged {
+		return cases, "response.StatusCode"
+	}
+	return cases, ""
+}
+
+// statusTypeName names an error response type for its status: the HTTP
+// status text for a code (BadRequest), the class for a range (ClientError),
+// and Error for the default response.
+func statusTypeName(status string) string {
+	switch status {
+	case "default":
+		return "Error"
+	case "1XX":
+		return "Informational"
+	case "3XX":
+		return "Redirect"
+	case "4XX":
+		return "ClientError"
+	case "5XX":
+		return "ServerError"
+	}
+	code, _ := strconv.Atoi(status)
+	if text := http.StatusText(code); text != "" {
+		return modelgen.PublicName(text)
+	}
+	return "Status" + status
 }
 
 func (e *emitter) schemaType(proxy *highbase.SchemaProxy, hint string) (string, error) {
@@ -686,7 +831,7 @@ func (e *emitter) schemaType(proxy *highbase.SchemaProxy, hint string) (string, 
 		}
 	}
 	if len(types) == 1 {
-		if goType, scalar := e.models.ScalarType(types[0], schema.Format); scalar {
+		if goType, scalar := e.scalars.ScalarType(types[0], schema.Format); scalar {
 			// A string format mapped to a named Go type is emitted as a model so
 			// models.gen.go owns the import.
 			if types[0] == "string" && goType != "string" {
@@ -697,7 +842,7 @@ func (e *emitter) schemaType(proxy *highbase.SchemaProxy, hint string) (string, 
 		switch types[0] {
 		case "array":
 			if schema.Items == nil || !schema.Items.IsA() {
-				return "[]any", nil
+				return e.addInlineSchema(hint, proxy), nil
 			}
 			itemType, err := e.schemaType(schema.Items.A, hint+"Item")
 			if err != nil {
@@ -708,29 +853,42 @@ func (e *emitter) schemaType(proxy *highbase.SchemaProxy, hint string) (string, 
 			return e.addInlineSchema(hint, proxy), nil
 		}
 	}
-	if schema.Properties != nil || len(schema.AllOf) > 0 || len(schema.OneOf) > 0 || len(schema.AnyOf) > 0 {
-		name := e.addInlineSchema(hint, proxy)
-		if len(schema.OneOf) > 0 || len(schema.AnyOf) > 0 {
-			name += "Union"
-		}
-		return name, nil
+	name := e.addInlineSchema(hint, proxy)
+	if len(schema.OneOf) > 0 || len(schema.AnyOf) > 0 {
+		name += "Union"
 	}
-	return "any", nil
+	// Anything else, including a schema that leaves its JSON undescribed, is
+	// a model too, so the model generator decides its Go shape.
+	return name, nil
 }
 
-func (e *emitter) addInlineSchema(hint string, proxy *highbase.SchemaProxy) string {
-	key := hint
-	for suffix := 2; ; suffix++ {
-		_, generated := e.schemas.Get(key)
-		_, component := e.reachableComponents[key]
-		if !generated && !component {
-			break
-		}
-		key = fmt.Sprintf("%s%d", hint, suffix)
+// describedType returns the Go type for one of an operation's schemas. role
+// says what the schema is, such as "The 200 response body of
+// [PeopleResource.Match].", and documents a model declared for it that has no
+// description of its own.
+func (e *emitter) describedType(proxy *highbase.SchemaProxy, name, role string) (string, error) {
+	e.roles[name] = role
+	defer delete(e.roles, name)
+	return e.schemaType(proxy, name)
+}
+
+// addInlineSchema declares a model for a schema written inline in an
+// operation, named from typeName or a numbered form of it when taken. A schema
+// reached twice, as through a YAML anchor, is one model.
+func (e *emitter) addInlineSchema(typeName string, proxy *highbase.SchemaProxy) string {
+	if declared, ok := e.inlineTypes[proxy]; ok {
+		return declared
+	}
+	role, described := e.roles[typeName]
+	typeName = e.names.ClaimFirst(typeName)
+	key := inlineSchemaKey + typeName
+	if described {
+		e.descriptions[key] = role
 	}
 	e.schemas.Set(key, proxy)
-	typeName := e.names.Claim(modelgen.PublicName(key), "Model")
 	e.typeNames[key] = typeName
+	e.inlineTypes[proxy] = typeName
+	e.inlineRoots = append(e.inlineRoots, key)
 	e.collectSchema(proxy)
 	return typeName
 }
@@ -812,8 +970,10 @@ func forEachShapeChild(schema *highbase.Schema, visit func(*highbase.SchemaProxy
 	}
 }
 
+// jsonMedia returns the first JSON media type in content and its schema. It
+// returns no media type when content declares no JSON media.
 func jsonMedia(content *orderedmap.Map[string, *highv3.MediaType]) (string, *highbase.SchemaProxy, error) {
-	if content == nil || content.Len() == 0 {
+	if content == nil {
 		return "", nil, nil
 	}
 	for mediaType, value := range content.FromOldest() {
@@ -823,6 +983,16 @@ func jsonMedia(content *orderedmap.Map[string, *highv3.MediaType]) (string, *hig
 			}
 			return mediaType, value.Schema, nil
 		}
+	}
+	return "", nil, nil
+}
+
+// requireJSONMedia is jsonMedia for bodies the SDK must encode or decode:
+// content that declares only other media types is unsupported.
+func requireJSONMedia(content *orderedmap.Map[string, *highv3.MediaType]) (string, *highbase.SchemaProxy, error) {
+	mediaType, schema, err := jsonMedia(content)
+	if err != nil || mediaType != "" || content == nil || content.Len() == 0 {
+		return mediaType, schema, err
 	}
 	keys := make([]string, 0, content.Len())
 	for mediaType := range content.FromOldest() {
@@ -888,7 +1058,7 @@ func (e *emitter) parameterEncoder(proxy *highbase.SchemaProxy) (string, bool, e
 	}
 	switch nonNullType {
 	case "string":
-		if mapped, _ := e.models.ScalarType("string", schema.Format); mapped != "string" {
+		if mapped, _ := e.scalars.ScalarType("string", schema.Format); mapped != "string" {
 			return "", false, fmt.Errorf("custom scalar format %q maps to %s and is not supported for parameter serialization", schema.Format, mapped)
 		}
 		return "encodeString", false, nil
@@ -982,17 +1152,93 @@ func normalizeStatus(status string) string {
 	return status
 }
 
-func statusName(status string) string {
-	if status == "default" {
-		return "Default"
+// decodeOnlyRoots returns the model keys of schemas that responses decode and
+// requests never encode: inline response bodies, and components that only
+// responses reach.
+func (e *emitter) decodeOnlyRoots() []string {
+	encoded := make(map[string]struct{})
+	var walk func(*highbase.SchemaProxy)
+	walk = func(proxy *highbase.SchemaProxy) {
+		if proxy == nil {
+			return
+		}
+		if name, component := componentSchemaRefName(proxy.GetReference()); component {
+			if _, seen := encoded[name]; seen {
+				return
+			}
+			encoded[name] = struct{}{}
+			proxy, _ = e.componentSchemas.Get(name)
+		}
+		if schema := proxy.Schema(); schema != nil {
+			forEachShapeChild(schema, walk)
+		}
 	}
-	return "Status" + strings.ToUpper(status)
+	for _, operation := range e.contract.Operations {
+		if operation != nil && operation.RequestBody != nil {
+			_, schema, _ := jsonMedia(operation.RequestBody.Content)
+			walk(schema)
+		}
+	}
+	roots := append([]string(nil), e.responseRoots...)
+	for name := range e.collectedComponents {
+		if _, written := encoded[name]; !written {
+			roots = append(roots, name)
+		}
+	}
+	return roots
 }
 
-func commentLine(value string) string {
-	value = strings.TrimSpace(strings.Split(value, "\n")[0])
-	if value == "" {
-		return ""
+// goComment renders comment lines as Go line comments, each starting with
+// indent.
+func goComment(indent string, lines []string) string {
+	var b strings.Builder
+	gocomment.Write(&b, indent, lines)
+	return b.String()
+}
+
+// methodComment documents a resource method: the request it sends, the
+// operation summary, and the typed values a declared error carries.
+func methodComment(view operationView, summary string) string {
+	lines := gocomment.Lines(view.MethodName + " calls " + view.HTTPMethod + " " + view.Path + " (" + view.ID + ").")
+	if summary := gocomment.Lines(summary); summary != nil {
+		lines = append(append(lines, ""), summary...)
 	}
-	return strings.ReplaceAll(value, "*/", "* /")
+	if len(view.ErrorDoc) > 0 {
+		values := view.ErrorDoc[0]
+		if count := len(view.ErrorDoc); count > 1 {
+			values = strings.Join(view.ErrorDoc[:count-1], ", ") + " or " + view.ErrorDoc[count-1]
+		}
+		lines = append(append(lines, ""), gocomment.Lines("A declared error response returns an [APIError] whose Value is "+values+".")...)
+	}
+	return goComment("", lines)
+}
+
+// workflowDoc documents a workflow method with its summary, or with the
+// workflow it runs when it has none.
+func workflowDoc(methodName string, workflow *sdk.Workflow) []string {
+	if workflow.Summary == "" {
+		return gocomment.Lines(methodName + " runs the " + workflow.ID + " workflow.")
+	}
+	return gocomment.Lines(methodName + " runs the " + workflow.ID + " workflow: " + workflow.Summary)
+}
+
+// recordUses notes the runtime helpers an operation's code calls, so the
+// client declares only those.
+func recordUses(uses map[string]bool, operation operationView) {
+	for _, parameter := range operation.Parameters {
+		uses[parameter.Encoder] = true
+		switch {
+		case parameter.In == "path" && parameter.Array:
+			uses["encodePathArray"] = true
+		case parameter.In == "path":
+			uses["encodePathParameter"] = true
+		case parameter.In == "query" && parameter.Array && parameter.Explode:
+			uses["addExplodedQueryParameter"] = true
+		case parameter.Array:
+			uses["encodeArray"] = true
+		}
+	}
+	uses["replacePathParameter"] = uses["replacePathParameter"] || operation.HasPathParams
+	uses["decodeResponse"] = uses["decodeResponse"] || operation.ResponseType != "struct{}"
+	uses["decodeErrorValue"] = uses["decodeErrorValue"] || len(operation.ErrorCases) > 0
 }

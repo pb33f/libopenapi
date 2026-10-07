@@ -1,0 +1,799 @@
+# The people-enrichment operation (POST /people/match) and the components it
+# uses, extracted from a public vendor OpenAPI document retrieved 2026-10-07
+# (sha256 e23f64e8016d2ff56a112eccd4cb37aec2322c705b4c8db3d2451cc1fe89ae41).
+# The document is a real-world, imperfect specification: nullable inside
+# OpenAPI 3.1, inline schemas throughout, empty schemas, schema examples that do
+# not match their schemas, and a text/plain 401 response. Everything is kept as
+# published except the response-level examples blocks, which generation never
+# reads and which made up most of the size.
+openapi: 3.1.0
+info:
+  title: apollo-rest-api
+  version: '1.0'
+servers:
+- url: https://api.apollo.io/api/v1
+security:
+- apiKey: []
+- bearerAuth: []
+paths:
+  /people/match:
+    post:
+      summary: People enrichment
+      description: |-
+        ## Endpoint essentials
+
+        **API key access:** `api/v1/people/match` or `Master API key`
+
+        **OAuth scopes:** `people_match`
+
+        **Free account access:** Requires an Apollo account registered with a work email address. Additional account eligibility requirements may apply. Paid accounts aren't affected.
+
+        **Credit usage:** `1–9 credits per person` without waterfall enrichment
+
+        Credits are charged only if credit-consuming data is found: 1 credit for demographics or email, plus 8 credits if a mobile phone is returned. If no credit-consuming data is found, the request consumes 0 credits. Demographic credit usage depends on `match_confidence`. Apollo doesn't charge a demographic credit when `match_confidence` is `none`. Email and mobile phone credit usage isn't determined by `match_confidence`. Learn more about [API pricing and credits](https://docs.apollo.io/docs/api-pricing).
+
+        If waterfall enrichment is used for phone or email, credit usage depends on the returned data and the vendors included in your [waterfall enrichment configuration](https://knowledge.apollo.io/hc/en-us/articles/34071121664781-Use-Waterfall-Enrichment); some vendors consume credits per lookup even when no data is found.
+
+        <a href="https://knowledge.apollo.io/hc/en-us/articles/33699917233293-Enrichment-Overview" target="_blank">Enrichment</a> is when you refresh existing records so your prospecting data is up-to-date.<br><br>Use the people enrichment endpoint to enrich data for one person. To enrich data for up to ten people with a single API call, use the <a href="https://docs.apollo.io/reference/bulk-people-enrichment">bulk people enrichment endpoint</a> instead.<br><br>Apollo relies on the information you pass via the endpoint's parameters to identify the correct person to enrich. If you provide more information about a person, Apollo is more likely to find a match within its database. If you only provide general information, such as a name without a domain or email address, you might receive a `200` response, but the response indicates that no records have been enriched. Check `match_confidence` in the response to understand how confidently Apollo matched the submitted information:
+
+        - `high`: Apollo matched the information to a person record.
+        - `medium`: Apollo identified a likely person using additional contact data.
+        - `low`: Apollo couldn't match a complete person record, but returned person data assembled from available contact data.
+        - `none`: Apollo couldn't identify a matching person.<br><br>By default, this endpoint doesn't return personal emails or phone numbers. Use the `reveal_personal_emails` and `reveal_phone_number` parameters to retrieve emails and phone numbers.<br><br>When you use `reveal_phone_number`, a valid `webhook_url` is required so Apollo can deliver the completed phone enrichment results. Apollo returns the main enrichment response synchronously, then sends the requested phone numbers to the webhook asynchronously. [See webhook details](#webhook-details).<br><br>You can also use the `run_waterfall_email` and `run_waterfall_phone` parameters to run waterfall enrichment via this endpoint. [Waterfall enrichment](https://knowledge.apollo.io/hc/en-us/articles/34071089002509-Waterfall-Enrichment-Overview) gives you broader data coverage by checking connected third-party data sources for contact emails and phone numbers.<br><br>When you call this endpoint and include at least one waterfall parameter, a valid `webhook_url` is required so Apollo can deliver the completed waterfall enrichment results. Apollo returns an immediate synchronous response with demographic and firmographic data, along with a waterfall enrichment request status. Apollo then delivers enriched emails or phone numbers asynchronously to the configured webhook.
+
+        ### Webhook Details
+
+        - When using Apollo enrichment for phone number reveal, the webhook response follows: [Native webhook response details](doc:retrieve-mobile-phone-numbers-for-contacts#webhook-response).
+
+        - When using waterfall enrichment, the webhook response follows: [Waterfall webhook response details](doc:enrich-phone-and-email-using-data-waterfall#asynchronous-webhook-response-1).
+
+        - You can poll webhook results with the [poll webhook result](ref:poll-webhook-result) endpoint by passing the <code>request_id</code> from the people enrichment response.
+
+        ### Webhook Requirements
+
+        - **HTTPS Required:** Your endpoint must be publicly accessible over HTTPS.
+
+        - **Rate Limiting:** Ensure your webhook endpoint can handle the volume of webhook traffic sent by Apollo.
+
+        - **Idempotency:** Apollo may retry webhook calls; your endpoint should be idempotent to handle duplicate payloads safely.
+      tags:
+      - Enrichment
+      operationId: people-enrichment
+      parameters:
+      - name: first_name
+        in: query
+        description: 'The first name of the person. This is typically used in combination with the `last_name` parameter. <br><br>Example: `jordan`'
+        schema:
+          type: string
+      - name: last_name
+        in: query
+        description: 'The last name of the person. This is typically used in combination with the `first_name` parameter. <br><br>Example: `blake`'
+        schema:
+          type: string
+      - name: name
+        in: query
+        description: 'The full name of the person. This will typically be a first name and last name separated by a space.  If you use this parameter, you do not need to use the `first_name` and `last_name` parameters. <br><br>Example: `jordan blake`'
+        schema:
+          type: string
+      - name: email
+        in: query
+        description: 'The email address of the person. <br><br>Example: `jordan@ymail.org`'
+        schema:
+          type: string
+      - name: hashed_email
+        in: query
+        description: 'The hashed email of the person. The email should adhere to either the MD5 or SHA-256 hash format. <br><br>Example: `8d935115b9ff4489f2d1f9249503cadf` (MD5) or `97817c0c49994eb500ad0a5e7e2d8aed51977b26424d508f66e4e8887746a152` (SHA-256)'
+        schema:
+          type: string
+      - name: organization_name
+        in: query
+        description: 'The name of the person''s employer. This can be the current employer or a previous employer. <br><br>Example: `northstar analytics`'
+        schema:
+          type: string
+      - name: domain
+        in: query
+        description: 'The domain name for the person''s employer. This can be the current employer or a previous employer. Do not include `www.`, the `@` symbol, or similar. <br><br>Example: `apollo.io` or `microsoft.com`'
+        schema:
+          type: string
+      - name: id
+        in: query
+        description: 'The Apollo ID for the person. Each person in the Apollo database is assigned a unique ID. <br><br>To find IDs, call the <a href="https://docs.apollo.io/reference/people-api-search" target="_blank">people API search endpoint</a> and identify the values for `person_id`. <br><br>Example: `587cf802f65125cad923a266`'
+        schema:
+          type: string
+      - name: linkedin_url
+        in: query
+        description: 'The URL for the person''s LinkedIn profile. <br><br>Example: `https://www.linkedin.com/in/jordan-blake-4a7c21`'
+        schema:
+          type: string
+      - name: run_waterfall_email
+        in: query
+        description: Set to true to enable email waterfall enrichment
+        schema:
+          type: boolean
+          default: false
+      - name: run_waterfall_phone
+        in: query
+        description: Set to true to enable phone waterfall enrichment
+        schema:
+          type: boolean
+          default: false
+      - name: reveal_personal_emails
+        in: query
+        description: Set to `true` if you want to enrich the person's data with personal emails. This potentially consumes credits as part of your <a href="https://docs.apollo.io/docs/api-pricing" target="_blank">Apollo pricing plan</a>. The default value is `false`. <br><br>If a person resides in a <a href="https://knowledge.apollo.io/hc/en-us/articles/4409141087757" target="_blank">GDPR</a>-compliant region, Apollo will not reveal their personal email.
+        schema:
+          type: boolean
+          default: false
+      - name: reveal_phone_number
+        in: query
+        description: Set to `true` if you want to enrich the person's data with all available phone numbers, including mobile phone numbers. This potentially consumes credits as part of your <a href="https://docs.apollo.io/docs/api-pricing" target="_blank">Apollo pricing plan</a>. The default value is `false`. <br><br>If this parameter is set to `true`, you must enter a webhook URL for the `webhook_url` parameter. Apollo will asynchronously verify phone numbers for you, then send a JSON response that includes only details about the person's phone numbers to the webhook URL you provide. It can take several minutes for the phone numbers to be delivered.
+        schema:
+          type: boolean
+          default: false
+      - name: webhook_url
+        in: query
+        description: 'If you set the `reveal_phone_number` parameter to `true`, this parameter becomes mandatory. Otherwise, do not use this parameter. <br><br>Enter the webhook URL that specifies where Apollo should send a JSON response that includes the phone number you requested. Apollo suggests testing this flow to ensure you receive the separate response with the phone number. <br><br>If phone numbers are not delivered to the webhook URL, try applying UTF-8 encoding to the webhook URL. <br><br>Example: `https://webhook.site/11f2643a-b1b4-c6be-8e6a-6c7da2c12610`; `https%3A%2F%2Fwebhook.site%2F11f2643a-b1b4-c6be-8e6a-6c7da2c12610`<br><br>Do not use this parameter together with `poll_only=true`.'
+        schema:
+          type: string
+      - name: poll_only
+        in: query
+        description: Set to `true` to receive phone or waterfall enrichment results by polling instead of a webhook. When `poll_only` is `true`, omit `webhook_url` — Apollo returns a `request_id` you can pass to the <a href="https://docs.apollo.io/reference/poll-webhook-result">poll webhook result</a> endpoint to retrieve the result. <br><br>Passing `poll_only=true` together with `webhook_url` returns a `400` error (`WEBHOOK_URL_WITH_POLL_ONLY`). The default value is `false`.
+        schema:
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: '200'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id:
+                    type: integer
+                    example: 1039995589705121900
+                    description: The request ID for the enrichment request. Save this ID to map this request with the corresponding webhook result.
+                  person:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: 672c91d4a7be42000184f2c9
+                      first_name:
+                        type: string
+                        example: Jordan
+                      last_name:
+                        type: string
+                        example: Blake
+                      name:
+                        type: string
+                        example: Jordan Blake
+                      linkedin_url:
+                        type: string
+                        example: http://www.linkedin.com/in/jordan-blake-4a7c21
+                      title:
+                        type: string
+                        example: Founder & CEO
+                      email_status:
+                        type: string
+                        example: verified
+                      photo_url:
+                        type: string
+                        example: https://media.licdn.com/dms/image/v2/D5603AQH9vR4tY2wP7k/profile-displayphoto-shrink_200_200
+                      twitter_url: {}
+                      github_url: {}
+                      facebook_url: {}
+                      extrapolated_email_confidence:
+                        type: number
+                        nullable: true
+                      headline:
+                        type: string
+                        example: Founder & CEO at Northstar Analytics
+                      email:
+                        type: string
+                        example: jordan.blake@northstaranalytics.io
+                      organization_id:
+                        type: string
+                        example: 61f2d5a8c40b7200019e4f31
+                      match_confidence:
+                        type: string
+                        enum:
+                        - high
+                        - medium
+                        - low
+                        - none
+                        example: high
+                      employment_history:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            _id:
+                              type: string
+                              example: 672c93a1b8df4e0001f732a1
+                            created_at: {}
+                            current:
+                              type: boolean
+                              example: true
+                              default: true
+                            degree: {}
+                            description: {}
+                            emails: {}
+                            end_date: {}
+                            grade_level: {}
+                            kind: {}
+                            major: {}
+                            organization_id:
+                              type: string
+                              example: 61f2d5a8c40b7200019e4f31
+                            organization_name:
+                              type: string
+                              example: Northstar Analytics
+                            raw_address: {}
+                            start_date:
+                              type: string
+                              example: '2016-01-01'
+                            title:
+                              type: string
+                              example: Founder & CEO
+                            updated_at: {}
+                            id:
+                              type: string
+                              example: 672c93a1b8df4e0001f732a1
+                            key:
+                              type: string
+                              example: 672c93a1b8df4e0001f732a1
+                      state:
+                        type: string
+                        example: California
+                      city:
+                        type: string
+                        example: San Francisco
+                      country:
+                        type: string
+                        example: United States
+                      contact_id:
+                        type: string
+                        example: 672c95e2d2f1140001aa4c18
+                      contact:
+                        type: object
+                        properties:
+                          contact_roles:
+                            type: array
+                          id:
+                            type: string
+                            example: 672c95e2d2f1140001aa4c18
+                          first_name:
+                            type: string
+                            example: Casey
+                          last_name:
+                            type: string
+                            example: Morgan
+                          name:
+                            type: string
+                            example: Casey Morgan
+                          linkedin_url:
+                            type: string
+                            example: http://www.linkedin.com/in/jordan-blake-4a7c21
+                          title:
+                            type: string
+                            example: President
+                          contact_stage_id:
+                            type: string
+                            example: 61f2da03c40b7200019e4f50
+                          owner_id: {}
+                          creator_id:
+                            type: string
+                            example: 672c9613d2f1140001aa4c22
+                          person_id:
+                            type: string
+                            example: 672c91d4a7be42000184f2c9
+                          email_needs_tickling: {}
+                          organization_name:
+                            type: string
+                            example: Northstar Analytics
+                          source:
+                            type: string
+                            example: crm
+                          original_source:
+                            type: string
+                            example: crm
+                          organization_id:
+                            type: string
+                            example: 61f2d5a8c40b7200019e4f31
+                          headline:
+                            type: string
+                            example: President at Northstar Analytics
+                          photo_url: {}
+                          present_raw_address:
+                            type: string
+                            example: New York, New York, United States
+                          linkedin_uid: {}
+                          extrapolated_email_confidence:
+                            type: number
+                            nullable: true
+                          salesforce_id: {}
+                          salesforce_lead_id: {}
+                          salesforce_contact_id: {}
+                          salesforce_account_id: {}
+                          crm_owner_id: {}
+                          created_at:
+                            type: string
+                            example: '2024-05-23T20:00:28.527Z'
+                          emailer_campaign_ids:
+                            type: array
+                          direct_dial_status: {}
+                          direct_dial_enrichment_failed_at: {}
+                          email_status:
+                            type: string
+                            example: verified
+                          email_source: {}
+                          account_id:
+                            type: string
+                            example: 672c964bd2f1140001aa4c2f
+                          last_activity_date: {}
+                          hubspot_vid: {}
+                          hubspot_company_id: {}
+                          crm_id: {}
+                          sanitized_phone:
+                            type: string
+                            example: '+14155550158'
+                          merged_crm_ids: {}
+                          updated_at:
+                            type: string
+                            example: '2024-06-02T08:53:51.266Z'
+                          queued_for_crm_push: {}
+                          suggested_from_rule_engine_config_id: {}
+                          email_unsubscribed: {}
+                          label_ids:
+                            type: array
+                          has_pending_email_arcgate_request:
+                            type: boolean
+                            example: false
+                            default: true
+                          has_email_arcgate_request:
+                            type: boolean
+                            example: false
+                            default: true
+                          existence_level:
+                            type: string
+                            example: invisible
+                          email:
+                            type: string
+                            example: casey.morgan@northstaranalytics.io
+                          email_from_customer:
+                            type: boolean
+                            example: true
+                            default: true
+                          typed_custom_fields:
+                            type: object
+                            properties: {}
+                          custom_field_errors: {}
+                          crm_record_url: {}
+                          email_status_unavailable_reason: {}
+                          email_true_status:
+                            type: string
+                            example: Verified
+                          updated_email_true_status:
+                            type: boolean
+                            example: false
+                            default: true
+                          contact_rule_config_statuses:
+                            type: array
+                          source_display_name:
+                            type: string
+                            example: Imported from CRM
+                          contact_emails:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                email:
+                                  type: string
+                                  example: casey.morgan@northstaranalytics.io
+                                email_md5:
+                                  type: string
+                                  example: 9f3b7c2d481a5e6f0d4c8b1a2e7f9c30
+                                email_sha256:
+                                  type: string
+                                  example: a6c79e4f2b310d9581f67ac3e4d89b20174f5c6a9d3e2b810f7c4a56e93d128b
+                                email_status:
+                                  type: string
+                                  example: verified
+                                email_source: {}
+                                extrapolated_email_confidence:
+                                  type: number
+                                  nullable: true
+                                position:
+                                  type: integer
+                                  example: 0
+                                  default: 0
+                                email_from_customer: {}
+                                free_domain:
+                                  type: boolean
+                                  example: false
+                                  default: true
+                          time_zone:
+                            type: string
+                            example: America/Los_Angeles
+                          phone_numbers:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                raw_number:
+                                  type: string
+                                  example: (415) 555-0158
+                                sanitized_number:
+                                  type: string
+                                  example: '+14155550158'
+                                type: {}
+                                position:
+                                  type: integer
+                                  example: 0
+                                  default: 0
+                                status:
+                                  type: string
+                                  example: valid_number
+                                dnc_status: {}
+                                dnc_other_info: {}
+                                dialer_flags: {}
+                          account_phone_note: {}
+                          free_domain:
+                            type: boolean
+                            example: false
+                            default: true
+                          is_likely_to_engage:
+                            type: boolean
+                            example: false
+                            default: true
+                      revealed_for_current_team:
+                        type: boolean
+                        example: true
+                        default: true
+                      organization:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            example: 61f2d5a8c40b7200019e4f31
+                          name:
+                            type: string
+                            example: Northstar Analytics
+                          website_url:
+                            type: string
+                            example: https://www.northstaranalytics.io
+                          blog_url: {}
+                          angellist_url: {}
+                          linkedin_url:
+                            type: string
+                            example: https://www.linkedin.com/company/apolloio
+                          twitter_url:
+                            type: string
+                            example: https://x.com/useapolloio
+                          facebook_url:
+                            type: string
+                            example: https://www.facebook.com/example-company
+                          primary_phone:
+                            type: object
+                            properties: {}
+                          languages:
+                            type: array
+                          alexa_ranking:
+                            type: integer
+                            example: 3514
+                            default: 0
+                          phone: {}
+                          linkedin_uid:
+                            type: string
+                            example: '18511550'
+                          founded_year:
+                            type: integer
+                            example: 2015
+                            default: 0
+                          publicly_traded_symbol: {}
+                          publicly_traded_exchange: {}
+                          logo_url:
+                            type: string
+                            example: https://zenprospect-production.s3.amazonaws.com/uploads/pictures/84acb173f920c1e65a47d920/picture
+                          crunchbase_url: {}
+                          primary_domain:
+                            type: string
+                            example: northstaranalytics.io
+                          industry:
+                            type: string
+                            example: information technology & services
+                          keywords:
+                            type: array
+                            items:
+                              type: string
+                              example: sales engagement
+                          estimated_num_employees:
+                            type: integer
+                            example: 850
+                            default: 0
+                          industries:
+                            type: array
+                            items:
+                              type: string
+                              example: information technology & services
+                          secondary_industries:
+                            type: array
+                          snippets_loaded:
+                            type: boolean
+                            example: true
+                            default: true
+                          industry_tag_id:
+                            type: string
+                            example: 61f2dbc2c40b7200019e4f61
+                          industry_tag_hash:
+                            type: object
+                            properties:
+                              information technology & services:
+                                type: string
+                                example: 61f2dbc2c40b7200019e4f61
+                          retail_location_count:
+                            type: integer
+                            example: 0
+                            default: 0
+                          raw_address:
+                            type: string
+                            example: 220 Market St, Floor 12, San Francisco, California 94105, US
+                          street_address:
+                            type: string
+                            example: 415 Mission St
+                          city:
+                            type: string
+                            example: San Francisco
+                          state:
+                            type: string
+                            example: California
+                          postal_code:
+                            type: string
+                            example: 94105-2301
+                          country:
+                            type: string
+                            example: United States
+                          owned_by_organization_id: {}
+                          seo_description:
+                            type: string
+                            example: Northstar Analytics provides sales intelligence and engagement software for modern revenue teams.
+                          short_description:
+                            type: string
+                            example: |-
+                              Northstar Analytics combines business data, sales engagement, and automation tools in one platform. Revenue teams use Northstar Analytics to identify prospective buyers, personalize outreach, and manage sales workflows at scale.
+
+                              The company serves customers across software, financial services, and professional services.
+                          suborganizations:
+                            type: array
+                          num_suborganizations:
+                            type: integer
+                            example: 0
+                            default: 0
+                          annual_revenue_printed:
+                            type: string
+                            example: 85M
+                          annual_revenue:
+                            type: integer
+                            example: 85000000
+                            default: 0
+                          total_funding:
+                            type: integer
+                            example: 142000000
+                            default: 0
+                          total_funding_printed:
+                            type: string
+                            example: 142M
+                          latest_funding_round_date:
+                            type: string
+                            example: '2023-08-01T00:00:00.000+00:00'
+                          latest_funding_stage:
+                            type: string
+                            example: Series D
+                          funding_events:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  example: 672c978cd2f1140001aa4c51
+                                date:
+                                  type: string
+                                  example: '2023-08-01T00:00:00.000+00:00'
+                                news_url: {}
+                                type:
+                                  type: string
+                                  example: Series D
+                                investors:
+                                  type: string
+                                  example: Crestline Ventures, Summit Ridge Capital, Harbor Peak Ventures, Northgate Ventures
+                                amount:
+                                  type: string
+                                  example: 85M
+                                currency:
+                                  type: string
+                                  example: $
+                          technology_names:
+                            type: array
+                            items:
+                              type: string
+                              example: AI
+                          current_technologies:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                uid:
+                                  type: string
+                                  example: ai
+                                name:
+                                  type: string
+                                  example: AI
+                                category:
+                                  type: string
+                                  example: Other
+                          org_chart_root_people_ids:
+                            type: array
+                            items:
+                              type: string
+                              example: 672c9709d2f1140001aa4c41
+                          org_chart_sector:
+                            type: string
+                            example: OrgChart::SectorHierarchy::Rules::IT
+                          org_chart_removed:
+                            type: boolean
+                            example: false
+                            default: true
+                          org_chart_show_department_filter:
+                            type: boolean
+                            example: true
+                            default: true
+                      is_likely_to_engage:
+                        type: boolean
+                        example: true
+                        default: true
+                      show_intent:
+                        type: boolean
+                        example: false
+                        default: true
+                      departments:
+                        type: array
+                        items:
+                          type: string
+                          example: c_suite
+                      subdepartments:
+                        type: array
+                        items:
+                          type: string
+                          example: executive
+                      functions:
+                        type: array
+                        items:
+                          type: string
+                          example: entrepreneurship
+                      seniority:
+                        type: string
+                        example: founder
+        '400':
+          description: '400'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    deprecated: true
+                    description: Legacy error field. Removed on 2027-02-16, after which `error_details` is the only error payload.
+                    type: string
+                    example: Do not pass 'webhook_url' with poll_only=true
+                  error_details:
+                    type: object
+                    properties:
+                      code:
+                        type: string
+                        example: SEARCH.VALIDATION.WEBHOOK_URL_WITH_POLL_ONLY
+                      message:
+                        type: string
+                      suggestions:
+                        type: array
+                        items:
+                          type: object
+                      context:
+                        type: object
+        '401':
+          description: '401'
+          content:
+            text/plain: {}
+        '429':
+          description: '429'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_details:
+                    $ref: '#/components/schemas/ErrorDetails'
+                  message:
+                    deprecated: true
+                    description: Legacy error field. Removed on 2027-02-16, after which `error_details` is the only error payload.
+                    type: string
+                    example: The maximum number of api calls allowed for api/v1/people/match is 600 times per hour. Please upgrade your plan from https://app.apollo.io/#/settings/plans/upgrade.
+      deprecated: false
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: |-
+        [Recommended] API key, passed in the `x-api-key` request header.
+        See [Create API Keys](https://docs.apollo.io/docs/create-api-key).
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |-
+        OAuth 2.0 access token, used by Apollo partners building integrations.
+        See the [OAuth 2.0 authorization flow](https://docs.apollo.io/docs/use-oauth-20-authorization-flow-to-access-apollo-user-information-partners).
+  schemas:
+    ErrorDetails:
+      type: object
+      description: Machine-readable detail for an error that uses the new format, returned alongside the endpoint's existing error fields. The legacy error fields at the root level (`error`, `error_code`, `message`, etc) are removed on 2027-02-16, after which `error_details` is the only error payload. Some errors already return `error_details` on its own.
+      properties:
+        code:
+          type: string
+          description: Stable identifier in the form `DOMAIN.CATEGORY.REASON`. Branch on this value; the human-readable `message` can change.
+          example: AUTH.AUTHENTICATION.CREDENTIALS_MISSING
+        message:
+          type: string
+          description: Human-readable explanation of what went wrong.
+          example: This request carried no credential Apollo could authenticate.
+        suggestions:
+          type: array
+          description: Ordered, actionable next steps. Each entry carries a `label`, and where relevant the `parameter`, `header`, or `url` it refers to.
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+                example: Send your API key in the X-Api-Key header
+              url:
+                type: string
+                example: https://docs.apollo.io/reference/authentication
+              parameter:
+                type: string
+                example: webhook_url
+              parameters:
+                type: array
+                description: Several parameters, any one of which satisfies the requirement.
+                items:
+                  type: string
+                example:
+                - name
+                - domain
+                - website_url
+                - linkedin_url
+              header:
+                type: string
+                example: X-Api-Key
+              example:
+                type: string
+                description: A valid sample value for the parameter named above.
+              retry_after_seconds:
+                type: integer
+                description: On a rate-limit refusal, how long to wait before retrying.
+                example: 60
+        context:
+          type: object
+          description: Values from your request that explain the refusal. Each entry is an object rather than a bare value, so read `context.<key>.value`. Absent when the error needs no context.
+          additionalProperties:
+            type: object
+            properties:
+              value:
+                type: string
+              description:
+                type: string
+          example:
+            window:
+              value: hourly
+              description: The rate-limit window your request exceeded

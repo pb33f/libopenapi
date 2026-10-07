@@ -27,14 +27,44 @@ func TestPrepareInheritanceSelectionAndSecurity(t *testing.T) {
 		t.Fatalf("got %d operations", len(contract.Operations))
 	}
 	operation := contract.Operations[0]
-	if operation.Resource != "Widgets" || operation.Name != "list" {
-		t.Fatalf("unexpected public name: %s.%s", operation.Resource, operation.Name)
+	if operation.Resource != "Widgets" || operation.Name != "list" || operation.Named {
+		t.Fatalf("unexpected public name: %s.%s named=%v", operation.Resource, operation.Name, operation.Named)
 	}
 	if len(operation.Parameters) != 2 || operation.Parameters[0].Name != "tenantId" || operation.Parameters[1].Name != "limit" {
 		t.Fatalf("unexpected effective parameters: %#v", operation.Parameters)
 	}
 	if len(operation.Security) != 1 || len(operation.Security[0].Schemes) != 2 || operation.Security[0].Schemes[0].Name != "bearerAuth" {
 		t.Fatalf("security AND requirement was not preserved: %#v", operation.Security)
+	}
+}
+
+func TestPrepareRecordsCallerChosenMethodNames(t *testing.T) {
+	document, err := libopenapi.NewDocument([]byte(prepareFixture))
+	if err != nil {
+		t.Fatal(err)
+	}
+	model, err := document.BuildV3Model()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name  OperationName
+		named bool
+	}{
+		{OperationName{Resource: "Inventory"}, false},
+		{OperationName{Method: "Browse"}, true},
+		{OperationName{Resource: "Inventory", Method: " "}, false},
+	} {
+		contract, err := Prepare(&model.Model, PrepareOptions{
+			Operations: []string{"listWidgets"},
+			Names:      map[string]OperationName{"listWidgets": test.name},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := contract.Operations[0].Named; got != test.named {
+			t.Fatalf("%#v: Named = %v, want %v", test.name, got, test.named)
+		}
 	}
 }
 

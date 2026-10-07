@@ -11,11 +11,25 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 )
 
-func (g *Generator) irFromOpenAPI(name string, proxy *highbase.SchemaProxy, path string) (*SchemaIR, error) {
-	return g.irFromOpenAPIName(name, false, proxy, path)
+// nameSeed carries what a schema's Go name is derived from. A root seed holds
+// the schema's key. A nested seed holds the default candidate name and, for
+// NameStyleIdiomatic, the nearest declared ancestor (owner), the name of the
+// path below it (leaf), whether leaf is a document-given name that may stand
+// alone (short), and the candidates to try in order.
+type nameSeed struct {
+	name       string
+	nested     bool
+	owner      string
+	leaf       string
+	short      bool
+	candidates []string
 }
 
-func (g *Generator) irFromOpenAPIName(name string, nameResolved bool, proxy *highbase.SchemaProxy, path string) (*SchemaIR, error) {
+func (g *Generator) irFromOpenAPI(name string, proxy *highbase.SchemaProxy, path string) (*SchemaIR, error) {
+	return g.irFromOpenAPIName(nameSeed{name: name}, proxy, path)
+}
+
+func (g *Generator) irFromOpenAPIName(seed nameSeed, proxy *highbase.SchemaProxy, path string) (*SchemaIR, error) {
 	if proxy == nil {
 		return nil, wrapPath(ErrNilSchema, path)
 	}
@@ -27,7 +41,7 @@ func (g *Generator) irFromOpenAPIName(name string, nameResolved bool, proxy *hig
 		if err != nil {
 			return nil, wrapPath(err, path)
 		}
-		ir := g.irFromSchema(name, nameResolved, schema, path)
+		ir := g.irFromSchema(seed, schema, path)
 		g.openapiCache[proxy] = ir
 		return ir, nil
 	}
@@ -49,7 +63,7 @@ func (g *Generator) irFromOpenAPIName(name string, nameResolved bool, proxy *hig
 	if schema == nil {
 		return nil, wrapPath(ErrNilSchema, path)
 	}
-	ir := g.irFromSchema(name, nameResolved, schema, path)
+	ir := g.irFromSchema(seed, schema, path)
 	g.openapiCache[proxy] = ir
 	return ir, nil
 }
@@ -57,16 +71,54 @@ func (g *Generator) irFromOpenAPIName(name string, nameResolved bool, proxy *hig
 // childIR builds a nested schema. If the nested schema cannot be built it
 // records a diagnostic and falls back to an any-typed shape so the surrounding
 // field, item, or variant is preserved rather than silently dropped.
-func (g *Generator) childIR(name string, proxy *highbase.SchemaProxy, path string) *SchemaIR {
-	ir, err := g.irFromOpenAPIName(name, true, proxy, path)
+func (g *Generator) childIR(seed nameSeed, proxy *highbase.SchemaProxy, path string) *SchemaIR {
+	ir, err := g.irFromOpenAPIName(seed, proxy, path)
 	if err != nil {
 		g.addDiagnostic(DiagnosticChildSchema, path, "nested schema could not be built and was rendered as any: "+err.Error())
-		return &SchemaIR{Name: name, Kind: KindAny}
+		return &SchemaIR{Name: seed.name, Kind: KindAny}
 	}
 	return ir
 }
 
-func (g *Generator) irFromSchema(name string, nameResolved bool, schema *highbase.Schema, path string) *SchemaIR {
+// childSeed names a nested schema of parent. segment is the child's name
+// segment under NameStyleQualified. Under NameStyleIdiomatic, leaf names the
+// child below parent and short reports whether leaf is a document-given name
+// that can stand alone. A parent without its own declaration is transparent:
+// the child continues its parent's owner and leaf.
+func (g *Generator) childSeed(parent *SchemaIR, segment, leaf string, short bool) nameSeed {
+	if g.nameStyle != NameStyleIdiomatic {
+		return nameSeed{name: g.nestedTypeName(parent.Name, segment), nested: true}
+	}
+	if !parent.declared {
+		return g.idiomaticSeed(parent.seed.owner, parent.seed.leaf+leaf, parent.seed.short)
+	}
+	return g.idiomaticSeed(parent.Name, leaf, short)
+}
+
+// itemSeed names the element schema of array. Under NameStyleIdiomatic an
+// element takes the singular of the array's name.
+func (g *Generator) itemSeed(array *SchemaIR) nameSeed {
+	if g.nameStyle != NameStyleIdiomatic {
+		return nameSeed{name: g.nestedTypeName(array.Name, "Item"), nested: true}
+	}
+	if !array.declared {
+		return g.idiomaticSeed(array.seed.owner, itemName(array.seed.leaf), array.seed.short)
+	}
+	seed := g.idiomaticSeed(array.Name, "Item", false)
+	seed.candidates = append([]string{itemName(array.Name)}, seed.candidates...)
+	return seed
+}
+
+func (g *Generator) idiomaticSeed(owner, leaf string, short bool) nameSeed {
+	seed := nameSeed{name: joinTypeName(owner, leaf), nested: true, owner: owner, leaf: leaf, short: short}
+	if short && g.inlineRoot {
+		seed.candidates = append(seed.candidates, leaf)
+	}
+	seed.candidates = append(seed.candidates, seed.name)
+	return seed
+}
+
+func (g *Generator) irFromSchema(seed nameSeed, schema *highbase.Schema, path string) *SchemaIR {
 	g.collectShapeDiagnostics(path, schema)
 	if schema.DynamicRef != "" && schemaHasOnlyDynamicRefShape(schema) {
 		nullable := schema.Nullable != nil && *schema.Nullable
@@ -83,9 +135,11 @@ func (g *Generator) irFromSchema(name string, nameResolved bool, schema *highbas
 			SourceSchema: schema,
 		}
 	}
-	typeName := g.openapiSchemaTypeName(name, nameResolved, schema, path)
+	typeName, declared := g.openapiSchemaTypeName(seed, schema, path)
 	ir := &SchemaIR{
 		Name:         typeName,
+		seed:         seed,
+		declared:     declared,
 		Format:       schema.Format,
 		Description:  schema.Description,
 		Title:        schema.Title,
@@ -98,25 +152,13 @@ func (g *Generator) irFromSchema(name string, nameResolved bool, schema *highbas
 	}
 	if schema.Nullable != nil && *schema.Nullable {
 		ir.Nullable = true
+		if declaredInOpenAPI31(schema) {
+			g.addDiagnostic(DiagnosticNullableKeyword, path, "nullable is an OpenAPI 3.0 keyword that OpenAPI 3.1 ignores; the schema was generated as nullable as the document intends, and should use type: [..., \"null\"]")
+		}
 	}
-	if schema.ReadOnly != nil && *schema.ReadOnly {
-		ir.ReadOnly = true
-		ir.Comments = append(ir.Comments, "readOnly")
-	}
-	if schema.WriteOnly != nil && *schema.WriteOnly {
-		ir.WriteOnly = true
-		ir.Comments = append(ir.Comments, "writeOnly")
-	}
-	if schema.Deprecated != nil && *schema.Deprecated {
-		ir.Deprecated = true
-		ir.Comments = append(ir.Comments, "Deprecated.")
-	}
-	if schema.Default != nil {
-		ir.Comments = append(ir.Comments, "default value is defined in the OpenAPI schema")
-	}
-	if schema.Example != nil || len(schema.Examples) > 0 {
-		ir.Comments = append(ir.Comments, "example value is defined in the OpenAPI schema")
-	}
+	ir.ReadOnly = schema.ReadOnly != nil && *schema.ReadOnly
+	ir.WriteOnly = schema.WriteOnly != nil && *schema.WriteOnly
+	ir.Deprecated = schema.Deprecated != nil && *schema.Deprecated
 	for _, t := range schema.Type {
 		if t == "null" {
 			ir.Nullable = true
@@ -132,8 +174,11 @@ func (g *Generator) irFromSchema(name string, nameResolved bool, schema *highbas
 	if len(schema.AllOf) > 0 {
 		ir.Kind = KindAllOf
 		for i, child := range schema.AllOf {
-			ir.AllOf = append(ir.AllOf, g.childIR(g.nestedTypeName(ir.Name, "AllOf"+intString(i+1)), child, path+".allOf"))
+			segment := "AllOf" + intString(i+1)
+			ir.AllOf = append(ir.AllOf, g.childIR(g.childSeed(ir, segment, segment, false), child, path+".allOf"))
 		}
+		// Members declared beside allOf apply alongside its subschemas.
+		g.populateObjectMembers(ir, schema, path)
 		g.mergeAllOf(ir)
 		return ir
 	}
@@ -176,18 +221,23 @@ func (g *Generator) irFromSchema(name string, nameResolved bool, schema *highbas
 	return ir
 }
 
-func (g *Generator) openapiSchemaTypeName(name string, nameResolved bool, schema *highbase.Schema, path string) string {
-	if !nameResolved && g.componentTypeNames != nil {
-		return g.componentTypeName(name)
+// openapiSchemaTypeName returns the Go name for a schema and whether the
+// schema gets its own declaration. A nested schema that renders inline, such
+// as an array or a map, keeps an unclaimed name its children build on.
+func (g *Generator) openapiSchemaTypeName(seed nameSeed, schema *highbase.Schema, path string) (string, bool) {
+	if !seed.nested {
+		if g.componentTypeNames != nil {
+			return g.componentTypeName(seed.name), true
+		}
+		return g.resolveTypeName(path, path, g.publicName(seed.name)), true
 	}
-	candidate := name
-	if !nameResolved {
-		candidate = g.publicName(name)
+	if !schemaDeclaresType(schema) {
+		return seed.name, false
 	}
-	if !nameResolved || schemaDeclaresType(schema) {
-		return g.resolveTypeName(path, candidate, path)
+	if seed.candidates == nil {
+		return g.resolveTypeName(path, path, seed.name), true
 	}
-	return candidate
+	return g.resolveTypeName(path, path, seed.candidates...), true
 }
 
 func schemaDeclaresType(schema *highbase.Schema) bool {
@@ -204,9 +254,10 @@ func schemaDeclaresType(schema *highbase.Schema) bool {
 	if typ != "object" {
 		return false
 	}
+	// An object without properties renders as a map unless it forbids
+	// additional properties, which keeps it a named empty struct.
 	return (schema.Properties != nil && schema.Properties.Len() > 0) ||
-		schema.AdditionalProperties != nil ||
-		(schema.PatternProperties != nil && schema.PatternProperties.Len() > 0)
+		(schema.AdditionalProperties != nil && schema.AdditionalProperties.IsB() && !schema.AdditionalProperties.B)
 }
 
 func (g *Generator) populateSchemaShape(ir *SchemaIR, schema *highbase.Schema, path string) {
@@ -229,12 +280,13 @@ func (g *Generator) populateSchemaShape(ir *SchemaIR, schema *highbase.Schema, p
 	case "array":
 		ir.Kind = KindArray
 		if schema.Items != nil && schema.Items.IsA() {
-			ir.Items = g.childIR(g.nestedTypeName(ir.Name, "Item"), schema.Items.A, path+".items")
+			ir.Items = g.childIR(g.itemSeed(ir), schema.Items.A, path+".items")
 		} else if schema.Items != nil && schema.Items.IsB() && !schema.Items.B {
 			g.addDiagnostic(DiagnosticBooleanItems, path, "items: false constrains array length but generated Go model uses []any")
 		}
 		for i, prefixItem := range schema.PrefixItems {
-			ir.PrefixItems = append(ir.PrefixItems, g.childIR(g.nestedTypeName(ir.Name, "Tuple"+intString(i+1)), prefixItem, path+".prefixItems"))
+			segment := "Tuple" + intString(i+1)
+			ir.PrefixItems = append(ir.PrefixItems, g.childIR(g.childSeed(ir, segment, segment, false), prefixItem, path+".prefixItems"))
 		}
 		if len(ir.PrefixItems) > 0 {
 			g.addDiagnostic(DiagnosticPrefixItems, path, "prefixItems tuple shape rendered as []any")
@@ -275,20 +327,20 @@ func (g *Generator) populateObjectMembers(ir *SchemaIR, schema *highbase.Schema,
 	ir.Properties = orderedProperties()
 	if schema.Properties != nil {
 		for propName, propSchema := range schema.Properties.FromOldest() {
-			ir.Properties.Set(propName, g.childIR(g.nestedTypeName(ir.Name, propName), propSchema, path+"."+propName))
+			ir.Properties.Set(propName, g.childIR(g.childSeed(ir, propName, g.publicName(propName), true), propSchema, path+"."+propName))
 		}
 	}
 	if schema.PatternProperties != nil && schema.PatternProperties.Len() > 0 {
 		ir.PatternProperties = orderedProperties()
 		for pattern, propSchema := range schema.PatternProperties.FromOldest() {
-			ir.PatternProperties.Set(pattern, g.childIR(g.nestedTypeName(ir.Name, "PatternProperty"), propSchema, path+".patternProperties"))
+			ir.PatternProperties.Set(pattern, g.childIR(g.childSeed(ir, "PatternProperty", "PatternProperty", false), propSchema, path+".patternProperties"))
 		}
 		g.addDiagnostic(DiagnosticPatternProperties, path, "patternProperties cannot be represented directly as Go struct fields")
 	}
 	if schema.AdditionalProperties != nil {
 		switch {
 		case schema.AdditionalProperties.IsA():
-			ir.AdditionalProperties = g.childIR(g.nestedTypeName(ir.Name, "AdditionalProperty"), schema.AdditionalProperties.A, path+".additionalProperties")
+			ir.AdditionalProperties = g.childIR(g.childSeed(ir, "AdditionalProperty", "Value", false), schema.AdditionalProperties.A, path+".additionalProperties")
 		case schema.AdditionalProperties.IsB():
 			allowed := schema.AdditionalProperties.B
 			ir.AdditionalAllowed = &allowed
@@ -353,11 +405,12 @@ func (g *Generator) populateUnion(ir *SchemaIR, schema *highbase.Schema, path st
 	}
 	variants := make([]*SchemaIR, 0, len(children))
 	for i, child := range children {
-		variantName := g.nestedTypeName(ir.Name, "Variant"+intString(i+1))
+		segment := "Variant" + intString(i+1)
+		seed := g.childSeed(ir, segment, segment, false)
 		if built, err := child.BuildSchema(); err == nil && built != nil && built.Title != "" {
-			variantName = g.nestedTypeName(ir.Name, built.Title)
+			seed = g.childSeed(ir, built.Title, g.publicName(built.Title), true)
 		}
-		variants = append(variants, g.childIR(variantName, child, path+".union"))
+		variants = append(variants, g.childIR(seed, child, path+".union"))
 	}
 	// A oneOf/anyOf whose non-null variants are all scalar consts is an
 	// OpenAPI 3.1 const-based enum, not a structural union: fold it before
@@ -415,6 +468,8 @@ func (g *Generator) mergeAllOf(ir *SchemaIR) {
 	merged.ExactSource = ir.ExactSource
 	merged.Comments = append([]string(nil), ir.Comments...)
 	merged.SourceSchema = ir.SourceSchema
+	merged.seed = ir.seed
+	merged.declared = ir.declared
 	for req := range ir.Required {
 		merged.Required[req] = struct{}{}
 	}
@@ -437,6 +492,12 @@ func (g *Generator) mergeAllOf(ir *SchemaIR) {
 		}
 		merged.AllOf = append(merged.AllOf, child)
 	}
+	for name, prop := range ir.Properties.FromOldest() {
+		merged.Properties.Set(name, prop)
+	}
+	merged.PatternProperties = ir.PatternProperties
+	merged.AdditionalProperties = ir.AdditionalProperties
+	merged.AdditionalAllowed = ir.AdditionalAllowed
 	*ir = *merged
 }
 
@@ -498,6 +559,17 @@ func kindForJSONType(typ string) Kind {
 	default:
 		return KindAny
 	}
+}
+
+// declaredInOpenAPI31 reports whether schema belongs to an OpenAPI 3.1 or
+// later document, where JSON Schema 2020-12 replaces the nullable keyword.
+func declaredInOpenAPI31(schema *highbase.Schema) bool {
+	low := schema.GoLow()
+	if low == nil {
+		return false
+	}
+	version, known := low.Index.ResolveDocumentVersion()
+	return known && version >= 3.1
 }
 
 func schemaHasOnlyDynamicRefShape(schema *highbase.Schema) bool {

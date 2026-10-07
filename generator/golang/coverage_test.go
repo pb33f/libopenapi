@@ -5,7 +5,6 @@ package golang
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/pb33f/go-yaml"
@@ -277,13 +276,17 @@ func TestInternalBranchCoverage(t *testing.T) {
 	if pointerDepth("string", &SchemaIR{Nullable: true}, true, true, true, false) == 0 {
 		t.Fatal("nullable should pointer")
 	}
-	var comment strings.Builder
-	writeComment(&comment, "Thing", "")
-	writeComment(&comment, "Thing", "\n")
-	writeComment(&comment, "Thing", "already.")
-	writeComment(&comment, "Thing", "missing")
-	if !strings.Contains(comment.String(), "already.") || !strings.Contains(comment.String(), "missing.") {
-		t.Fatal("comment not written")
+	if lines := docLines("Thing", &SchemaIR{Description: "\n"}); lines != nil {
+		t.Fatalf("blank description wrote comment lines %q", lines)
+	}
+	if lines := docLines("Thing", &SchemaIR{Title: "missing"}); len(lines) != 1 || lines[0] != "Thing missing." {
+		t.Fatalf("title comment = %q", lines)
+	}
+	if lines := docLines("", &SchemaIR{Comments: []string{"Encoded as a JSON string."}}); len(lines) != 1 || lines[0] != "Encoded as a JSON string." {
+		t.Fatalf("note-only comment = %q", lines)
+	}
+	if lines := docLines("Thing", &SchemaIR{ReadOnly: true, WriteOnly: true, Deprecated: true}); len(lines) != 1 || lines[0] != "Deprecated: the API marks this as deprecated." {
+		t.Fatalf("declaration notes = %q", lines)
 	}
 	if gen.stringEncodedIR(nil, "nil") != nil {
 		t.Fatal("nil string encoded IR should stay nil")

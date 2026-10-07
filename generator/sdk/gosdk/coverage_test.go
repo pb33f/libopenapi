@@ -5,6 +5,7 @@ package gosdk
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 	"text/template"
@@ -179,7 +180,6 @@ func TestPrepareOperationRejectsUnsupportedParametersAndBodies(t *testing.T) {
 		{name: "unknown location", parameter: &sdk.Parameter{Name: "id", In: "matrix", Style: "simple", Schema: stringSchema}, want: "unsupported location"},
 		{name: "allow reserved", parameter: &sdk.Parameter{Name: "q", In: "query", Style: "form", AllowReserved: true, Schema: stringSchema}, want: "allowReserved"},
 		{name: "unsupported style", parameter: &sdk.Parameter{Name: "q", In: "query", Style: "spaceDelimited", Schema: stringSchema}, want: "unsupported query style"},
-		{name: "body field collision", parameter: &sdk.Parameter{Name: "body", In: "query", Style: "form", Schema: stringSchema}, body: jsonBody(stringSchema), want: "collides with request body"},
 		{name: "unsupported body media", body: &sdk.RequestBody{Content: unsupportedMedia}, want: "unsupported media types"},
 		{name: "body media without schema", body: &sdk.RequestBody{Content: mediaWithoutSchema}, want: "request body has no schema"},
 	}
@@ -191,7 +191,7 @@ func TestPrepareOperationRejectsUnsupportedParametersAndBodies(t *testing.T) {
 			}
 			operation.RequestBody = test.body
 			emitter := newTestEmitter(contractWith(operation), "client", nil)
-			_, err := emitter.prepareOperation(operation, "Probe")
+			_, err := emitter.prepareOperation(operation, things, "Probe")
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("expected error containing %q, got %v", test.want, err)
 			}
@@ -207,18 +207,30 @@ func TestPrepareOperationCoversOptionalAndSchemaFailureBranches(t *testing.T) {
 	}
 	operation.RequestBody = &sdk.RequestBody{Required: false, Content: jsonContent(schema("string", ""))}
 	emitter := newTestEmitter(contractWith(operation), "client", nil)
-	view, err := emitter.prepareOperation(operation, "Probe")
+	view, err := emitter.prepareOperation(operation, things, "Probe")
 	if err != nil || view.Parameters[0].Type != "*string" || view.Body.FieldType != "*string" {
 		t.Fatalf("unexpected optional types: %#v, %v", view, err)
 	}
 
 	duplicate := operationWithSuccess("duplicate")
 	duplicate.Parameters = []*sdk.Parameter{
+		{Name: "_id", In: "query", Style: "form", Schema: schema("string", "")},
 		{Name: "user-id", In: "query", Style: "form", Schema: schema("string", "")},
 		{Name: "user_id", In: "query", Style: "form", Schema: schema("string", "")},
+		{Name: "body", In: "query", Style: "form", Schema: schema("string", "")},
+		{Name: "id", In: "query", Style: "form", Schema: schema("string", "")},
 	}
-	if _, err := newTestEmitter(contractWith(duplicate), "client", nil).prepareOperation(duplicate, "Duplicate"); err == nil || !strings.Contains(err.Error(), "same Go field name") {
-		t.Fatalf("expected field collision, got %v", err)
+	duplicate.RequestBody = jsonBody(schema("string", ""))
+	view, err = newTestEmitter(contractWith(duplicate), "client", nil).prepareOperation(duplicate, things, "Duplicate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields []string
+	for _, field := range view.Fields {
+		fields = append(fields, field.Name)
+	}
+	if want := []string{"UnderscoreID", "UserID", "UserID2", "Body2", "ID", "Body"}; !reflect.DeepEqual(fields, want) {
+		t.Fatalf("parameter fields = %q, want %q", fields, want)
 	}
 
 	for _, test := range []struct {
@@ -242,7 +254,7 @@ func TestPrepareOperationCoversOptionalAndSchemaFailureBranches(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			operation := operationWithSuccess("broken")
 			test.set(operation)
-			_, err := newTestEmitter(contractWith(operation), "client", nil).prepareOperation(operation, "Broken")
+			_, err := newTestEmitter(contractWith(operation), "client", nil).prepareOperation(operation, things, "Broken")
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("expected error containing %q, got %v", test.want, err)
 			}
@@ -263,9 +275,9 @@ func TestPrepareOperationCoversScalarArrayAndInlineTypes(t *testing.T) {
 		{name: "float", schema: schema("number", "float"), want: "float32"},
 		{name: "number", schema: schema("number", ""), want: "float64"},
 		{name: "boolean", schema: schema("boolean", ""), want: "bool"},
-		{name: "untyped array", schema: schema("array", ""), want: "[]any"},
+		{name: "untyped array", schema: schema("array", ""), want: "Payload"},
 		{name: "typed array", schema: arraySchema(schema("string", "")), want: "[]string"},
-		{name: "unknown", schema: highbase.CreateSchemaProxy(&highbase.Schema{}), want: "any"},
+		{name: "unknown", schema: highbase.CreateSchemaProxy(&highbase.Schema{}), want: "Payload"},
 	}
 	for _, test := range types {
 		t.Run(test.name, func(t *testing.T) {
@@ -292,6 +304,8 @@ func TestPrepareOperationCoversScalarArrayAndInlineTypes(t *testing.T) {
 
 func TestPrepareResponsesContracts(t *testing.T) {
 	emitter := newTestEmitter(&sdk.Contract{}, "client", nil)
+	undefinedMedia := orderedmap.New[string, *highv3.MediaType]()
+	undefinedMedia.Set("application/json", nil)
 	tests := []struct {
 		name      string
 		responses []*sdk.Response
@@ -303,28 +317,73 @@ func TestPrepareResponsesContracts(t *testing.T) {
 			{Status: "201", Content: jsonContent(schema("integer", ""))},
 		}, want: "incompatible success response types"},
 		{name: "unsupported response media", responses: []*sdk.Response{{Status: "200", Content: media("text/plain", schema("string", ""))}}, want: "unsupported media types"},
+		{name: "undefined error media", responses: []*sdk.Response{{Status: "200"}, {Status: "400", Content: undefinedMedia}}, want: "has no definition"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			operation := &sdk.Operation{ID: "read", Responses: test.responses}
-			_, _, _, _, err := emitter.prepareResponses(operation)
+			err := emitter.prepareResponses(operation, "Read", "[ThingsResource.Read]", &operationView{})
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("expected error containing %q, got %v", test.want, err)
 			}
 		})
 	}
 
-	responseType, successes, decodedSuccesses, failures, err := emitter.prepareResponses(&sdk.Operation{ID: "read", Responses: []*sdk.Response{
+	var view operationView
+	err := emitter.prepareResponses(&sdk.Operation{ID: "read", Responses: []*sdk.Response{
 		nil,
 		{Status: "200", Content: jsonContent(schema("string", ""))},
+		{Status: "401", Content: media("text/plain", schema("string", ""))},
 		{Status: "default", Content: jsonContent(schema("object", ""))},
-	}})
-	if err != nil || responseType != "string" || len(successes) != 1 || len(decodedSuccesses) != 1 || decodedSuccesses[0] != "200" || len(failures) != 1 || failures[0].Status != "default" {
-		t.Fatalf("unexpected prepared responses: %q %#v %#v %#v %v", responseType, successes, decodedSuccesses, failures, err)
+	}}, "Read", "[ThingsResource.Read]", &view)
+	if err != nil || view.ResponseType != "string" || !reflect.DeepEqual(view.SuccessStatuses, []string{"200"}) || !view.DecodeAll ||
+		len(view.ErrorCases) != 1 || !view.ErrorCases[0].Default || view.ErrorCases[0].Type != "ReadError" || view.ErrorSwitch != "response.StatusCode" {
+		t.Fatalf("unexpected prepared responses: %#v %v", view, err)
 	}
-	_, successes, _, _, err = emitter.prepareResponses(&sdk.Operation{ID: "wildcard", Responses: []*sdk.Response{{Status: "2xx"}}})
-	if err != nil || len(successes) != 1 || successes[0] != "2XX" {
-		t.Fatalf("lowercase wildcard was not normalized: %#v, %v", successes, err)
+	view = operationView{}
+	err = emitter.prepareResponses(&sdk.Operation{ID: "wildcard", Responses: []*sdk.Response{{Status: "2xx"}}}, "Wildcard", "[ThingsResource.Wildcard]", &view)
+	if err != nil || !reflect.DeepEqual(view.SuccessStatuses, []string{"2XX"}) || view.ResponseType != "struct{}" {
+		t.Fatalf("lowercase wildcard was not normalized: %#v, %v", view, err)
+	}
+}
+
+func TestErrorSwitchOrdersAndGroupsCases(t *testing.T) {
+	responses := []errorResponseView{
+		{Statuses: []string{"default"}, Type: "Problem"},
+		{Statuses: []string{"4XX"}, Type: "ClientProblem"},
+		{Statuses: []string{"409"}, Type: "Conflict"},
+		{Statuses: []string{"404"}, Type: "Problem"},
+		{Statuses: []string{"5XX"}, Type: "ClientProblem"},
+		{Statuses: []string{"400"}, Type: "Problem"},
+	}
+	cases, tag := errorSwitch(responses)
+	var got []string
+	for _, errorCase := range cases {
+		got = append(got, errorCase.Case+"="+errorCase.Type)
+	}
+	want := []string{
+		"response.StatusCode == 400, response.StatusCode == 404=Problem",
+		"response.StatusCode == 409=Conflict",
+		"response.StatusCode/100 == 4, response.StatusCode/100 == 5=ClientProblem",
+		"=Problem",
+	}
+	if tag != "" || !reflect.DeepEqual(got, want) || !cases[3].Default {
+		t.Fatalf("errorSwitch() = %q %q, want %q", tag, got, want)
+	}
+	cases, tag = errorSwitch(responses[3:4])
+	if tag != "response.StatusCode" || cases[0].Case != "404" {
+		t.Fatalf("exact codes should switch on the status: %q %#v", tag, cases)
+	}
+}
+
+func TestStatusTypeNames(t *testing.T) {
+	for status, want := range map[string]string{
+		"default": "Error", "1XX": "Informational", "3XX": "Redirect", "4XX": "ClientError", "5XX": "ServerError",
+		"400": "BadRequest", "429": "TooManyRequests", "500": "InternalServerError", "599": "Status599",
+	} {
+		if got := statusTypeName(status); got != want {
+			t.Fatalf("statusTypeName(%q) = %q, want %q", status, got, want)
+		}
 	}
 }
 
@@ -685,14 +744,8 @@ func TestHelpersCoverEdgeContracts(t *testing.T) {
 			t.Fatalf("supportedStyle(%q, %q) = %t", test.location, test.style, got)
 		}
 	}
-	if statusName("default") != "Default" || statusName("2xx") != "Status2XX" {
-		t.Fatal("unexpected status names")
-	}
-	if commentLine("  first line\nsecond */ line") != "first line" || commentLine(" \n") != "" {
-		t.Fatal("unexpected comment sanitization")
-	}
-	if commentLine("unsafe */ suffix") != "unsafe * / suffix" {
-		t.Fatal("comment terminator was not sanitized")
+	if _, _, err := requireJSONMedia(nil); err != nil {
+		t.Fatalf("absent content is not unsupported media: %v", err)
 	}
 	registry := modelgen.NewNameRegistry("Value", "Thing", "ThingModel", "Thing__2")
 	if got := registry.Claim("", ""); got != "Value__2" {
@@ -755,7 +808,7 @@ func TestPrepareOperationRejectsInvalidResponseStatuses(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			operation := operationWithSuccess("read")
 			operation.Responses = test.responses
-			_, err := newTestEmitter(contractWith(operation), "client", nil).prepareOperation(operation, "Things")
+			_, err := newTestEmitter(contractWith(operation), "client", nil).prepareOperation(operation, things, "Read")
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("expected %q error, got %v", test.want, err)
 			}
@@ -945,6 +998,8 @@ func contractWith(operations ...*sdk.Operation) *sdk.Contract {
 	return &sdk.Contract{Operations: operations, Schemas: orderedmap.New[string, *highbase.SchemaProxy]()}
 }
 
+var things = resourceView{Name: "Things", TypeName: "ThingsResource"}
+
 func newTestEmitter(contract *sdk.Contract, packageName string, workflows []*sdk.Workflow) *emitter {
 	return newEmitter(contract, packageName, workflows, modelgen.NewGenerator())
 }
@@ -956,4 +1011,45 @@ func workflowInputs(t *testing.T, source string) *yaml.Node {
 		t.Fatal(err)
 	}
 	return node.Content[0]
+}
+
+func TestDecodeOnlyRootsExcludeWhatRequestsEncode(t *testing.T) {
+	components := orderedmap.New[string, *highbase.SchemaProxy]()
+	sharedProperties := orderedmap.New[string, *highbase.SchemaProxy]()
+	sharedProperties.Set("self", highbase.CreateSchemaProxyRef("#/components/schemas/Shared"))
+	components.Set("Shared", highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{"object"}, Properties: sharedProperties}))
+	components.Set("Received", schema("string", ""))
+	operation := operationWithSuccess("write")
+	operation.RequestBody = jsonBody(highbase.CreateSchemaProxy(&highbase.Schema{AllOf: []*highbase.SchemaProxy{
+		nil, highbase.CreateSchemaProxyRef("#/components/schemas/Shared"),
+	}}))
+	operation.Responses = []*sdk.Response{{Status: "200", Content: jsonContent(highbase.CreateSchemaProxyRef("#/components/schemas/Received"))}}
+	contract := contractWith(operation)
+	contract.Schemas = components
+	emitter := newTestEmitter(contract, "client", nil)
+	if _, err := emitter.prepareView(); err != nil {
+		t.Fatal(err)
+	}
+	if got := emitter.decodeOnlyRoots(); !reflect.DeepEqual(got, []string{"Received"}) {
+		t.Fatalf("decodeOnlyRoots() = %q", got)
+	}
+}
+
+func TestInlineSchemaReachedTwiceIsOneModel(t *testing.T) {
+	properties := orderedmap.New[string, *highbase.SchemaProxy]()
+	properties.Set("id", schema("string", ""))
+	shared := highbase.CreateSchemaProxy(&highbase.Schema{Type: []string{"object"}, Properties: properties})
+	operation := operationWithSuccess("upsert")
+	operation.Responses = []*sdk.Response{
+		{Status: "200", Content: jsonContent(shared)},
+		{Status: "201", Content: jsonContent(shared)},
+	}
+	result, err := GenerateContract(contractWith(operation), Options{PackageName: "anchors"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if models := string(result.Files[0].Content); strings.Count(models, "struct {") != 1 || !strings.Contains(models, "type UpsertResponse struct") {
+		t.Fatalf("shared inline schema was not one model:\n%s", models)
+	}
+	compileGeneratedFiles(t, result.Files)
 }

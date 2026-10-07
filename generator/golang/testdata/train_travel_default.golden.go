@@ -2,7 +2,7 @@ package models
 
 import "encoding/json"
 
-// Station A train station.
+// Station is a train station.
 type Station struct {
 	ID          string  `json:"id"`
 	Name        string  `json:"name"`
@@ -11,7 +11,7 @@ type Station struct {
 	Timezone    *string `json:"timezone,omitempty"`
 }
 
-// Trip A train trip.
+// Trip is a train trip.
 type Trip struct {
 	ID              *string  `json:"id,omitempty"`
 	Origin          *string  `json:"origin,omitempty"`
@@ -23,9 +23,9 @@ type Trip struct {
 	DogsAllowed     *bool    `json:"dogs_allowed,omitempty"`
 }
 
-// Booking A booking for a train trip.
+// Booking is a booking for a train trip.
 type Booking struct {
-	// ID readOnly.
+	// Read-only: the API returns this value; requests should not send it.
 	ID            *string `json:"id,omitempty"`
 	TripID        *string `json:"trip_id,omitempty"`
 	PassengerName *string `json:"passenger_name,omitempty"`
@@ -59,17 +59,16 @@ func (u BookingPayment_SourceUnion) Bytes() []byte {
 	return append([]byte(nil), u.Raw...)
 }
 
-// BookingPayment_Status readOnly.
 type BookingPayment_Status string
 
-// BookingPayment A payment for a booking.
+// BookingPayment is a payment for a booking.
 type BookingPayment struct {
-	// ID readOnly.
+	// Read-only: the API returns this value; requests should not send it.
 	ID       *string                  `json:"id,omitempty"`
 	Amount   *float64                 `json:"amount,omitempty"`
 	Currency *BookingPayment_Currency `json:"currency,omitempty"`
-	// Source The payment source to take the payment from.
+	// The payment source to take the payment from.
 	Source *BookingPayment_SourceUnion `json:"source,omitempty"`
-	// Status readOnly.
+	// Read-only: the API returns this value; requests should not send it.
 	Status *BookingPayment_Status `json:"status,omitempty"`
 }

@@ -47,6 +47,7 @@ const (
 	DiagnosticMultiTypeSchema            = "multiTypeSchema"
 	DiagnosticNotSchema                  = "notSchema"
 	DiagnosticNullEnum                   = "nullEnum"
+	DiagnosticNullableKeyword            = "nullableKeyword"
 	DiagnosticOptionalConstDiscriminator = "optionalConstDiscriminator"
 	DiagnosticPatternProperties          = "patternProperties"
 	DiagnosticPrefixItems                = "prefixItems"
@@ -58,6 +59,26 @@ const (
 	DiagnosticRootNameCollision          = "rootNameCollision"
 	DiagnosticUnevaluatedProperties      = "unevaluatedProperties"
 	DiagnosticValidationKeyword          = "validationKeyword"
+)
+
+// NameStyle selects how the generator names inline schemas and resolves name
+// collisions.
+type NameStyle int
+
+const (
+	// NameStyleQualified joins each inline schema's name to its parent's with
+	// the nested type name delimiter (Parent_Child, Parent_Items_Item) and
+	// resolves collisions with "__N" suffixes. It is the default.
+	NameStyleQualified NameStyle = iota
+	// NameStyleIdiomatic names inline schemas the way a Go author would. A
+	// child is named after its nearest declared ancestor and its property
+	// (AccountStatus), array elements take the singular property name
+	// (OrganizationFundingEvent), and map values end in Value. Under a root
+	// marked with WithInlineRoots, a child takes its bare property name
+	// (Person) when it is free. Struct fields whose JSON names differ only by
+	// a leading symbol are told apart with words (_id is UnderscoreID), and any
+	// remaining collision takes a plain numeric suffix.
+	NameStyleIdiomatic
 )
 
 type formatMapping struct {
@@ -239,6 +260,72 @@ func WithAdditionalPropertiesMethods(enabled bool) Option {
 func WithNestedTypeNameDelimiter(delimiter string) Option {
 	return func(g *Generator) {
 		g.nestedTypeNameDelimiter = delimiter
+	}
+}
+
+// WithNameStyle sets how inline schemas are named and collisions resolved.
+func WithNameStyle(style NameStyle) Option {
+	return func(g *Generator) {
+		g.nameStyle = style
+	}
+}
+
+// WithInlineRoots marks top-level schemas, by their key in the rendered map,
+// that a document declared inline, such as an operation's response body,
+// rather than as named components. The document gives the parts of such a
+// schema no names except their property names, so with NameStyleIdiomatic
+// their nested types are named for the property alone when that name is free.
+func WithInlineRoots(keys ...string) Option {
+	return func(g *Generator) {
+		if g.inlineRoots == nil {
+			g.inlineRoots = make(map[string]struct{}, len(keys))
+		}
+		for _, key := range keys {
+			g.inlineRoots[key] = struct{}{}
+		}
+	}
+}
+
+// WithDecodeOnlyRoots marks top-level schemas, by their key in the rendered
+// map, that are only ever decoded, such as response bodies. Decoding cannot
+// tell a JSON null from an absent field, so optional nullable fields under
+// these schemas keep a single pointer even with
+// WithOptionalNullableAsDoublePointer.
+func WithDecodeOnlyRoots(keys ...string) Option {
+	return func(g *Generator) {
+		if g.decodeOnlyRoots == nil {
+			g.decodeOnlyRoots = make(map[string]struct{}, len(keys))
+		}
+		for _, key := range keys {
+			g.decodeOnlyRoots[key] = struct{}{}
+		}
+	}
+}
+
+// WithFallbackDescriptions documents top-level schemas, by their key in the
+// rendered map, that carry no description or title of their own.
+func WithFallbackDescriptions(descriptions map[string]string) Option {
+	return func(g *Generator) {
+		g.fallbackDescriptions = descriptions
+	}
+}
+
+// WithReservedTypeNames keeps generated type names clear of names that other
+// code in the same package declares.
+func WithReservedTypeNames(names ...string) Option {
+	return func(g *Generator) {
+		g.reservedTypeNames = append(g.reservedTypeNames, names...)
+	}
+}
+
+// WithUntypedAsRawMessage renders schemas that do not describe their JSON
+// shape as json.RawMessage instead of any or map[string]any. This covers
+// empty schemas, objects without declared properties, and arrays without
+// items (rendered as []json.RawMessage). The raw bytes are kept exactly as
+// received, and callers decode them into types they own.
+func WithUntypedAsRawMessage(enabled bool) Option {
+	return func(g *Generator) {
+		g.untypedAsRawMessage = enabled
 	}
 }
 

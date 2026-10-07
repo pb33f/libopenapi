@@ -784,7 +784,7 @@ func TestGeneratedClient(t *testing.T) {
 	if page.Value.Items[0].ID != "a-1" || page.Header.Get("X-Page") != "one" { t.Fatalf("unexpected page: %#v", page) }
 	widget, err := client.Widgets.GetWidget(context.Background(), &GetWidgetParams{TenantID: "tenant-1", WidgetID: "widget/1"})
 	if err != nil || widget.Value.ID != "widget/1" { t.Fatalf("unexpected widget: %#v %v", widget, err) }
-	segments, err := client.Segments.Inspect(context.Background(), &InspectSegmentsParams{TenantID: "tenant-1", Parts: []string{"alpha/one", "beta two"}})
+	segments, err := client.Segments.Inspect(context.Background(), &SegmentsInspectParams{TenantID: "tenant-1", Parts: []string{"alpha/one", "beta two"}})
 	if err != nil || segments.StatusCode != http.StatusNoContent { t.Fatalf("unexpected segments response: %#v %v", segments, err) }
 	run, err := client.StartJob(context.Background(), &StartJobInput{Tenant: "tenant-1", TaskID: "task-1", IdempotencyKey: "i-1"})
 	if err != nil || run.StatusCode != http.StatusCreated || run.Value.ID != "run-1" { t.Fatalf("unexpected run: %#v %v", run, err) }
