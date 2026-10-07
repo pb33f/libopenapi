@@ -177,12 +177,11 @@ properties:
 	assertContains(t, src, "// schema generated.")
 	assertContains(t, src, "// Package models contains generated models.")
 	assertContains(t, src, "// ShapeProbe Shape Probe.")
-	assertContains(t, src, "// ID readOnly.")
-	assertContains(t, src, "// ID default value is defined in the OpenAPI schema.")
-	assertContains(t, src, "// ID example value is defined in the OpenAPI schema.")
-	assertContains(t, src, "// Secret writeOnly.")
-	assertContains(t, src, "// Secret Deprecated.")
-	assertContains(t, src, "// Titled Display title.")
+	assertContains(t, src, "// Read-only: the API returns this value; requests should not send it.\n\tID")
+	assertNotContains(t, src, "default value is defined")
+	assertNotContains(t, src, "example value is defined")
+	assertContains(t, src, "// Write-only: requests send this value; the API does not return it.\n\t//\n\t// Deprecated: the API marks this as deprecated.\n\tSecret")
+	assertContains(t, src, "// Display title.\n\tTitled")
 	assertContains(t, src, "Tuple")
 	assertContains(t, src, "[]any")
 	assertContains(t, src, "`json:\"tuple,omitempty\"`")
@@ -301,8 +300,6 @@ func TestPhaseTwoCommentAndShapeHelpers(t *testing.T) {
 	}
 
 	var b strings.Builder
-	writeIRComments(&b, nil)
-	writeFieldComments(&b, "Field", nil)
 	writeLineComment(&b, "")
 	writeLineCommentBlock(&b, "first\nsecond")
 	if got := b.String(); !strings.Contains(got, "// first.") || !strings.Contains(got, "// second.") {

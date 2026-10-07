@@ -104,7 +104,7 @@ func TestSchemaShapesFromReview(t *testing.T) {
 func TestPointerTargetRejectsPathsTheIRCannotFollow(t *testing.T) {
 	object := &golang.SchemaIR{Kind: golang.KindObject, Properties: orderedmap.New[string, *golang.SchemaIR]()}
 	object.Properties.Set("name", &golang.SchemaIR{Kind: golang.KindString})
-	r := &render{siblings: map[*golang.SchemaIR]*orderedmap.Map[string, *golang.SchemaIR]{}}
+	r := &render{}
 	for name, tc := range map[string]struct {
 		ir       *golang.SchemaIR
 		segments []string

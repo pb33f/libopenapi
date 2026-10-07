@@ -92,6 +92,12 @@ type SchemaIR struct {
 	ExactSource          bool
 	Comments             []string
 	SourceSchema         *highbase.Schema
+
+	// seed records what Name was derived from, and declared reports whether
+	// Name was claimed for a declaration of its own. Nested schemas build
+	// their names from these.
+	seed     nameSeed
+	declared bool
 }
 
 type UnionIR struct {

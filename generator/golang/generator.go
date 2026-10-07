@@ -30,7 +30,13 @@ type Generator struct {
 	generatedComment                 bool
 	openapiTags                      bool
 	schemaMetadataSidecar            bool
+	untypedAsRawMessage              bool
 	nestedTypeNameDelimiter          string
+	nameStyle                        NameStyle
+	inlineRoots                      map[string]struct{}
+	decodeOnlyRoots                  map[string]struct{}
+	fallbackDescriptions             map[string]string
+	reservedTypeNames                []string
 
 	nameResolver          NameResolver
 	typeNameResolver      NameResolver
@@ -61,6 +67,9 @@ type Generator struct {
 	componentTypeNames map[string]string
 	componentKinds     map[string]Kind
 	currentComponent   string
+	inlineRoot         bool
+	decodeOnlyNames    map[string]struct{}
+	decodeOnly         bool
 
 	oneOfRegistrations         map[reflect.Type][]reflect.Type
 	discriminatorRegistrations map[reflect.Type]discriminatorRegistration
@@ -178,7 +187,19 @@ func (g *Generator) run() *Generator {
 	r.componentTypeNames = nil
 	r.componentKinds = nil
 	r.currentComponent = ""
+	r.inlineRoot = false
+	r.decodeOnlyNames = nil
+	r.decodeOnly = false
 	return &r
+}
+
+// newTypeRegistry creates the registry that type names are claimed from,
+// numbering collisions in the configured name style.
+func (g *Generator) newTypeRegistry() *NameRegistry {
+	if g.nameStyle == NameStyleIdiomatic {
+		return NewIdiomaticNameRegistry(g.reservedTypeNames...)
+	}
+	return NewNameRegistry(g.reservedTypeNames...)
 }
 
 // RenderSchema renders a single OpenAPI schema as Go source.
@@ -226,7 +247,7 @@ func (g *Generator) RenderSchema(name string, schema *highbase.SchemaProxy) ([]b
 		return nil, wrapPath(ErrNilSchema, name)
 	}
 	r := g.run()
-	r.typeNames = newNameRegistry()
+	r.typeNames = r.newTypeRegistry()
 	ir, err := r.irFromOpenAPI(name, schema, name)
 	if err != nil {
 		return nil, err
@@ -275,13 +296,21 @@ func (g *Generator) SchemaIRs(schemas *orderedmap.Map[string, *highbase.SchemaPr
 }
 
 func (g *Generator) componentIRs(schemas *orderedmap.Map[string, *highbase.SchemaProxy]) ([]*SchemaIR, error) {
-	g.typeNames = newNameRegistry()
+	g.typeNames = g.newTypeRegistry()
 	g.componentTypeNames = g.resolveComponentTypeNames(schemas)
 	irs := make([]*SchemaIR, 0, schemas.Len())
+	g.decodeOnlyNames = make(map[string]struct{})
 	for name, schema := range schemas.FromOldest() {
+		_, g.inlineRoot = g.inlineRoots[name]
 		ir, err := g.irFromOpenAPI(name, schema, name)
 		if err != nil {
 			return nil, err
+		}
+		if _, decodeOnly := g.decodeOnlyRoots[name]; decodeOnly {
+			g.decodeOnlyNames[ir.Name] = struct{}{}
+		}
+		if description, ok := g.fallbackDescriptions[name]; ok && ir.Description == "" && ir.Title == "" {
+			ir.Description = description
 		}
 		if schema != nil && schema.IsReference() {
 			aliasName := g.componentTypeName(name)
@@ -319,11 +348,14 @@ func (g *Generator) resolveComponentTypeNames(schemas *orderedmap.Map[string, *h
 	return names
 }
 
-func (g *Generator) resolveTypeName(original, candidate, path string) string {
+// resolveTypeName claims the first free candidate for original. Without a
+// registry, as when building shapes Go does not render, it returns the last
+// candidate unclaimed.
+func (g *Generator) resolveTypeName(original, path string, candidates ...string) string {
 	if g.typeNames == nil {
-		return candidate
+		return candidates[len(candidates)-1]
 	}
-	resolved, collision := g.typeNames.resolve(original, candidate)
+	resolved, collision := g.typeNames.ResolveFirst(original, candidates...)
 	if collision {
 		g.addDiagnostic(DiagnosticTypeNameCollision, path, "type name collision resolved as "+resolved)
 	}

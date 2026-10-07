@@ -8,8 +8,7 @@ import (
 )
 
 {{range .Workflows}}
-// {{.MethodName}} {{if .Summary}}{{comment .Summary}}{{else}}executes the {{.ID}} workflow.{{end}}
-func (client *Client) {{.MethodName}}(ctx context.Context, input *{{.InputType}}, requestOptions ...RequestOption) (*Response[{{.ResponseType}}], error) {
+{{.Comment}}func (client *Client) {{.MethodName}}(ctx context.Context, input *{{.InputType}}, requestOptions ...RequestOption) (*Response[{{.ResponseType}}], error) {
 	if client == nil {
 		return nil, fmt.Errorf("{{.ID}}: client is required")
 	}

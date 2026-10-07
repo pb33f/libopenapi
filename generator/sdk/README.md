@@ -38,6 +38,39 @@ Unsupported selected wire behavior returns an error naming the operation and
 feature; the emitter does not silently drop parameters, bodies, responses, or
 security requirements.
 
+## Generated names
+
+Types generated for an operation take the public name chosen in
+`PrepareOptions.Names`. Without a chosen method name they take the
+operationId. For `people-enrichment` named `People.Match`:
+
+- parameters: `PeopleMatchParams`;
+- request body: `PeopleMatchRequest`;
+- success body: `PeopleMatchResponse`;
+- error bodies: the HTTP status text, such as `PeopleMatchBadRequest` and
+  `PeopleMatchTooManyRequests`; ranges are `ClientError`, `ServerError`,
+  `Redirect`, and `Informational`; the default response is `PeopleMatchError`.
+
+Inline schemas inside an operation's bodies are named for their property when
+no other type has that name (`Person`, `Organization`, `EmploymentHistoryItem`),
+and are qualified by their parent otherwise. Inline schemas inside components
+are always qualified by their parent (`AccountStatus`). Names never contain
+underscores, and parameter fields that collide are told apart readably
+(`_id` is `UnderscoreID`). Enums declare a constant for each value.
+
+Schema descriptions become Go doc comments: Markdown and inline HTML become
+plain text and paragraphs wrap. Types that the SDK names get a comment saying
+what they are, such as `PeopleMatchResponse is the 200 response body of
+[PeopleResource.Match].` Each method comment names its request and lists the
+typed values a declared error can carry.
+
+Schemas that do not describe their JSON shape, such as `{}` or an object
+without properties, are `json.RawMessage`: the bytes arrive as sent and the
+caller decodes them into its own types. Pass
+`modelgen.WithUntypedAsRawMessage(false)` in `Options.Models` to use `any` and
+`map[string]any` instead. The other model defaults, the idiomatic name style
+and enum constants, can be changed the same way.
+
 ## Generated runtime
 
 The generated client accepts an absolute server URL, an injected `HTTPDoer`,
@@ -56,18 +89,25 @@ its redirect and TLS policy.
 
 The initial wire surface supports JSON request and response bodies, scalar and
 array path/query/header parameters using their standard styles, explicit 2xx
-statuses, declared JSON errors, cancellation, and bounded response buffering.
-Cookie parameters, object/deep-object parameters, `allowReserved`, form and
-multipart bodies, binary downloads, and streaming produce generation errors
-until their dedicated runtime paths land.
+statuses, declared errors, cancellation, and bounded response buffering. A
+declared error with a JSON body is decoded into `APIError.Value`; a declared
+error with any other body, such as `text/plain`, keeps it raw in
+`APIError.Body`. Cookie parameters, object/deep-object parameters,
+`allowReserved`, form and multipart bodies, non-JSON success bodies, binary
+downloads, and streaming produce generation errors until their dedicated
+runtime paths land.
 
-Optional nullable generated model fields use an opt-in double-pointer shape:
+Optional nullable fields of models that requests encode use a double-pointer
+shape:
 
 - `nil` outer pointer: omit the field;
 - non-nil outer pointer containing `nil`: encode JSON `null`;
 - two non-nil pointers: encode the value, including its zero value.
 
 The generated runtime provides `Null[T]` and `NullableValue[T]` helpers.
+Decoding cannot tell `null` from an absent field, so models that only
+responses use keep a single pointer. The client declares only the unexported
+encoding and decoding helpers that the generated operations call.
 
 ## Finite Arazzo workflows
 

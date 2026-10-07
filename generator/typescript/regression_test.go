@@ -178,22 +178,21 @@ func TestRegressionShapes(t *testing.T) {
 			t.Errorf("missing %q in:\n%s", want, source)
 		}
 	}
-	// Nested build failures are reported for component properties and for
-	// properties declared beside allOf; a sibling set that cannot be built
-	// at all is reported and left out.
+	// Nested build failures are reported and render as unknown, whether the
+	// property belongs to an object or is declared beside allOf.
 	paths := map[string]bool{}
 	for _, d := range file.Diagnostics {
 		if d.Code == golang.DiagnosticChildSchema {
 			paths[d.Path] = true
 		}
 	}
-	for _, want := range []string{"Broken.c", "extra.c", "Unbuildable"} {
+	for _, want := range []string{"Broken.c", "Extended.extra.c", "Unbuildable.missing"} {
 		if !paths[want] {
 			t.Errorf("missing %s diagnostic for %s: %+v", golang.DiagnosticChildSchema, want, file.Diagnostics)
 		}
 	}
-	if strings.Contains(source, "missing?:") {
-		t.Errorf("unbuildable sibling property rendered:\n%s", source)
+	if !strings.Contains(source, "export type Unbuildable = Base & {\n  missing?: unknown;\n};") {
+		t.Errorf("unbuildable sibling property was not rendered as unknown:\n%s", source)
 	}
 }
 

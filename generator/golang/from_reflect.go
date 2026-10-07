@@ -313,7 +313,7 @@ func (g *Generator) irFromFieldSchema(fieldType reflect.Type, name, path string,
 		nullable = true
 		fieldType = fieldType.Elem()
 	}
-	ir, err := g.irFromOpenAPIName(name, true, schema, path)
+	ir, err := g.irFromOpenAPIName(nameSeed{name: name, nested: true, leaf: name}, schema, path)
 	if err != nil {
 		return nil, err
 	}

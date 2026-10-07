@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// Station A train station.
+// Station is a train station.
 type Station struct {
 	ID          string  `json:"id"`
 	Name        string  `json:"name"`
@@ -14,7 +14,7 @@ type Station struct {
 	Timezone    *string `json:"timezone,omitempty"`
 }
 
-// Trip A train trip.
+// Trip is a train trip.
 type Trip struct {
 	ID              *string  `json:"id,omitempty"`
 	Origin          *string  `json:"origin,omitempty"`
@@ -26,9 +26,9 @@ type Trip struct {
 	DogsAllowed     *bool    `json:"dogs_allowed,omitempty"`
 }
 
-// Booking A booking for a train trip.
+// Booking is a booking for a train trip.
 type Booking struct {
-	// ID readOnly.
+	// Read-only: the API returns this value; requests should not send it.
 	ID            *string `json:"id,omitempty"`
 	TripID        *string `json:"trip_id,omitempty"`
 	PassengerName *string `json:"passenger_name,omitempty"`
@@ -38,12 +38,12 @@ type Booking struct {
 
 type BookingPayment_Currency string
 
-// BookingPayment_Source_Card A card to take payment from.
+// BookingPayment_Source_Card is a card to take payment from.
 type BookingPayment_Source_Card struct {
 	Object *string `json:"object,omitempty"`
 	Name   string  `json:"name"`
 	Number string  `json:"number"`
-	// CVC writeOnly.
+	// Write-only: requests send this value; the API does not return it.
 	CVC            string `json:"cvc"`
 	ExpMonth       int64  `json:"exp_month"`
 	ExpYear        int64  `json:"exp_year"`
@@ -52,7 +52,7 @@ type BookingPayment_Source_Card struct {
 
 type BookingPayment_Source_BankAccount_AccountType string
 
-// BookingPayment_Source_BankAccount A bank account to take payment from.
+// BookingPayment_Source_BankAccount is a bank account to take payment from.
 type BookingPayment_Source_BankAccount struct {
 	Object      *string                                       `json:"object,omitempty"`
 	Name        string                                        `json:"name"`
@@ -111,17 +111,16 @@ func (u *BookingPayment_SourceUnion) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// BookingPayment_Status readOnly.
 type BookingPayment_Status string
 
-// BookingPayment A payment for a booking.
+// BookingPayment is a payment for a booking.
 type BookingPayment struct {
-	// ID readOnly.
+	// Read-only: the API returns this value; requests should not send it.
 	ID       *string                  `json:"id,omitempty"`
 	Amount   *float64                 `json:"amount,omitempty"`
 	Currency *BookingPayment_Currency `json:"currency,omitempty"`
-	// Source The payment source to take the payment from.
+	// The payment source to take the payment from.
 	Source *BookingPayment_SourceUnion `json:"source,omitempty"`
-	// Status readOnly.
+	// Read-only: the API returns this value; requests should not send it.
 	Status *BookingPayment_Status `json:"status,omitempty"`
 }

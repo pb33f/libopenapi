@@ -145,6 +145,7 @@ Current diagnostic codes:
 - `DiagnosticMultiTypeSchema`
 - `DiagnosticNotSchema`
 - `DiagnosticNullEnum`
+- `DiagnosticNullableKeyword`
 - `DiagnosticOptionalConstDiscriminator`
 - `DiagnosticPatternProperties`
 - `DiagnosticPrefixItems`
@@ -161,11 +162,36 @@ Diagnostics are intentionally not validation errors. They report lossy model-sha
 
 ## Naming
 
-The default naming path handles common Go initialisms such as `ID`, `URL`, `UUID`, `CVC`, `IBAN`, and `JWT`.
+The default naming path handles common Go initialisms such as `ID`, `URL`, `UUID`, `CVC`, `IBAN`, `JWT`, `MD5`, and `SHA256`, their plurals (`label_ids` is `LabelIDs`), and word breaks after digits (`base64Encoded` is `Base64Encoded`).
 
 Inline/nested schema type names use `_` as the default parent/child delimiter, for example `Order_PaymentSource`. Use `WithNestedTypeNameDelimiter` to change it; pass an empty string to produce compact names such as `OrderPaymentSource`.
 
 Component names are resolved through a collision registry before refs are rendered, so colliding OpenAPI component keys such as `user-id`, `user_id`, and `UserID` produce stable Go names like `UserID`, `UserID__2`, and `UserID__3`, and local `$ref` fields point at the resolved names. The double underscore is reserved for collision suffixes, not ordinary nesting.
+
+`WithNameStyle(NameStyleIdiomatic)` names inline schemas the way a Go author would and never uses underscores:
+
+- A child is named after its nearest declared ancestor and its property: `AccountStatus`. Words shared by both are written once, so `Contact` and `contact_email` give `ContactEmail`.
+- Array elements take the singular of the property name (`funding_events` gives `OrganizationFundingEvent`), or `Item` when the name is not a plural the generator can reduce (`EmploymentHistoryItem`).
+- Map values end in `Value`: `ErrorDetailsContextValue`.
+- Struct fields whose JSON names differ only by a leading symbol keep the plain spelling for the plain name and spell the symbol out for the other: `id` is `ID` and `_id` is `UnderscoreID`.
+- Remaining collisions take a plain number (`UserID2`), or a letter after a name that ends in a digit (`PlaybookV2B`).
+- With `WithEnumConstants(true)`, enum constant names are claimed from the same registry, so a constant never takes a type's name.
+
+`WithInlineRoots` marks top-level schemas that a document declared inline, such as an operation's response body. Their parts have no names in the document except their property names, so with the idiomatic style a nested schema takes its bare property name (`Person`) when no other type has it, and its qualified name otherwise. `WithReservedTypeNames` keeps generated types clear of names that other code in the package declares.
+
+## Comments
+
+Schema descriptions render as Go doc comments: Markdown links and inline HTML become plain text, paragraphs wrap at 76 columns, and multi-paragraph descriptions are kept whole. A declaration's comment starts with its name (`Booking is a booking for a train trip.`); a field's comment is the description alone. Fields marked `readOnly` or `writeOnly` gain a note saying so, and deprecated schemas gain a `Deprecated:` paragraph that Go tooling recognizes. `WithFallbackDescriptions` documents top-level schemas that have no description of their own.
+
+## Untyped JSON
+
+A schema that does not describe its JSON shape renders as `any`, or `map[string]any` for an object without properties. `WithUntypedAsRawMessage(true)` renders these as `json.RawMessage` (and arrays without `items` as `[]json.RawMessage`) instead. The raw bytes are kept exactly as received, including an explicit `null`, and callers decode them into types they own.
+
+## Nullability
+
+`nullable: true` makes a schema nullable in every OpenAPI version. OpenAPI 3.1 replaced the keyword with `type: [..., "null"]` and validators ignore it, but documents still use it, so the generator honours the author's intent and reports `DiagnosticNullableKeyword` for each occurrence in a 3.1 or later document.
+
+`WithOptionalNullableAsDoublePointer` gives optional nullable fields a three-state `**T` so encoding can send an explicit `null`. Decoding cannot tell `null` from an absent field, so `WithDecodeOnlyRoots` keeps a single pointer under schemas that are only ever decoded, such as response bodies.
 
 Use resolvers when project-specific naming is required:
 
@@ -178,5 +204,5 @@ Use resolvers when project-specific naming is required:
 
 - Validation behavior belongs in `libopenapi-validator`, not generated models.
 - External `$ref` values render as Go type names and emit diagnostics; this package does not load or generate external dependency packages.
-- Tuple-like `prefixItems` render as `[]any`.
+- Tuple-like `prefixItems` render as `[]any` (`[]json.RawMessage` with `WithUntypedAsRawMessage`).
 - `patternProperties`, conditional schemas, `not`, `propertyNames`, and dependent schemas are reported as diagnostics because they do not map cleanly to plain Go model fields.

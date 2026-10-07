@@ -30,10 +30,10 @@ func (u TortureDocument_MultiValueUnion) Bytes() []byte {
 }
 
 type TortureDocument struct {
-	// ID readOnly.
+	// Read-only: the API returns this value; requests should not send it.
 	ID   string `json:"id"`
 	Kind string `json:"kind"`
-	// MultiValue A nullable multi-type value.
+	// A nullable multi-type value.
 	MultiValue     *TortureDocument_MultiValueUnion `json:"multi_value,omitempty"`
 	NullableStatus *NullableStatus                  `json:"nullable_status,omitempty"`
 	MixedEnum      *MixedEnum                       `json:"mixed_enum,omitempty"`
@@ -183,7 +183,7 @@ func (u *PaymentSourceUnion) UnmarshalJSON(data []byte) error {
 type CardSource struct {
 	Object string `json:"object"`
 	Number string `json:"number"`
-	// CVC writeOnly.
+	// Write-only: requests send this value; the API does not return it.
 	CVC string `json:"cvc"`
 }
 

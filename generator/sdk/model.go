@@ -51,12 +51,16 @@ type PayloadBinding struct {
 }
 
 // Operation is one effective OpenAPI operation after path-level inheritance.
+// Resource and Name are the public resource and method names. Named reports
+// that the caller chose the method name through PrepareOptions.Names, so
+// emitters may name generated types after it instead of the operationId.
 type Operation struct {
 	ID          string
 	Method      string
 	Path        string
 	Resource    string
 	Name        string
+	Named       bool
 	Summary     string
 	Description string
 	Servers     []string

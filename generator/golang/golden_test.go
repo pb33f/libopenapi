@@ -41,6 +41,13 @@ func TestNameCollisionsGoldenCompactDelimiter(t *testing.T) {
 	).Source)
 }
 
+func TestNameCollisionsGoldenIdiomatic(t *testing.T) {
+	assertGolden(t, "testdata/name_collisions_idiomatic.golden.go", renderNameCollisions(t,
+		WithNameStyle(NameStyleIdiomatic),
+		WithEnumConstants(true),
+	).Source)
+}
+
 func assertGolden(t *testing.T, path string, got []byte) {
 	t.Helper()
 	if os.Getenv("LIBOPENAPI_GENERATOR_UPDATE_GOLDENS") == "true" {

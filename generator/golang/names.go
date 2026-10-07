@@ -14,10 +14,28 @@ var initialisms = map[string]string{
 	"API": "API", "ASCII": "ASCII", "CPU": "CPU", "CSS": "CSS", "DNS": "DNS", "EOF": "EOF",
 	"BIC": "BIC", "CVC": "CVC", "CVV": "CVV", "GUID": "GUID", "HTML": "HTML", "HTTP": "HTTP",
 	"HTTPS": "HTTPS", "IBAN": "IBAN", "ID": "ID", "IP": "IP", "JSON": "JSON", "JWT": "JWT",
-	"QPS": "QPS", "RAM": "RAM", "RPC": "RPC", "SLA": "SLA", "SMTP": "SMTP",
+	"MD5": "MD5", "QPS": "QPS", "RAM": "RAM", "RPC": "RPC", "SHA1": "SHA1", "SHA256": "SHA256",
+	"SHA512": "SHA512", "SLA": "SLA", "SMTP": "SMTP",
 	"SQL": "SQL", "SSH": "SSH", "TCP": "TCP", "TLS": "TLS", "TTL": "TTL", "UDP": "UDP",
 	"UI": "UI", "UID": "UID", "URI": "URI", "URL": "URL", "UTF8": "UTF8", "UUID": "UUID",
 	"VM": "VM", "XML": "XML", "XMPP": "XMPP", "XSRF": "XSRF", "XSS": "XSS",
+}
+
+// symbolWords names the leading symbols that distinguish JSON property names
+// such as "_id" and "@type" from their plain spellings.
+var symbolWords = map[rune]string{
+	'_': "Underscore", '$': "Dollar", '@': "At", '#': "Hash",
+	'+': "Plus", '-': "Minus", '.': "Dot", '~': "Tilde",
+}
+
+// irregularPlurals holds plurals that the suffix rules in singular would get
+// wrong. An empty value marks a word that has no distinct singular.
+var irregularPlurals = map[string]string{
+	"aliases": "alias", "analyses": "analysis", "analytics": "", "caches": "cache",
+	"children": "child", "cookies": "cookie", "criteria": "criterion", "data": "",
+	"indices": "index", "matrices": "matrix", "media": "", "men": "man", "movies": "movie",
+	"news": "", "people": "person", "series": "", "species": "", "statuses": "status",
+	"vertices": "vertex", "women": "woman",
 }
 
 func (g *Generator) publicName(name string) string {
@@ -99,6 +117,12 @@ func toPublicName(name string) string {
 			b.WriteString(v)
 			continue
 		}
+		// A plural initialism such as IDS reaches here only with its S removed.
+		if v, ok := initialisms[strings.TrimSuffix(upper, "S")]; ok {
+			b.WriteString(v)
+			b.WriteByte('s')
+			continue
+		}
 		rs := []rune(strings.ToLower(p))
 		rs[0] = unicode.ToUpper(rs[0])
 		b.WriteString(string(rs))
@@ -164,8 +188,9 @@ func splitCamel(value string) []string {
 		if i+1 < len(rs) {
 			next = rs[i+1]
 		}
-		lowerToUpper := unicode.IsLower(prev) && unicode.IsUpper(cur)
-		acronymToWord := unicode.IsUpper(prev) && unicode.IsUpper(cur) && next != 0 && unicode.IsLower(next)
+		lowerToUpper := (unicode.IsLower(prev) || unicode.IsDigit(prev)) && unicode.IsUpper(cur)
+		acronymToWord := unicode.IsUpper(prev) && unicode.IsUpper(cur) && next != 0 && unicode.IsLower(next) &&
+			!pluralAcronym(rs, i+1)
 		if lowerToUpper || acronymToWord {
 			parts = append(parts, string(rs[start:i]))
 			start = i
@@ -173,6 +198,80 @@ func splitCamel(value string) []string {
 	}
 	parts = append(parts, string(rs[start:]))
 	return parts
+}
+
+// joinTypeName qualifies leaf with owner. Words that end owner and also begin
+// leaf are written once, so Contact and ContactEmail join as ContactEmail.
+func joinTypeName(owner, leaf string) string {
+	ownerWords, leafWords := splitCamel(owner), splitCamel(leaf)
+	for overlap := min(len(ownerWords), len(leafWords)-1); overlap > 0; overlap-- {
+		if strings.Join(ownerWords[len(ownerWords)-overlap:], "") == strings.Join(leafWords[:overlap], "") {
+			return owner + strings.Join(leafWords[overlap:], "")
+		}
+	}
+	return owner + leaf
+}
+
+// itemName names the element type of an array from the array's Go name.
+// A plural final word becomes singular (FundingEvents is FundingEvent);
+// otherwise Item is appended (EmploymentHistory is EmploymentHistoryItem).
+func itemName(name string) string {
+	words := splitCamel(name)
+	last := words[len(words)-1]
+	if singular, ok := singular(last); ok {
+		return strings.Join(words[:len(words)-1], "") + singular
+	}
+	return name + "Item"
+}
+
+// singular returns the singular Go word for an English plural, or false when
+// word is not a plural it can confidently reduce.
+func singular(word string) (string, bool) {
+	if initialism, ok := initialisms[strings.ToUpper(strings.TrimSuffix(word, "s"))]; ok && strings.HasSuffix(word, "s") {
+		return initialism, true
+	}
+	lower := strings.ToLower(word)
+	if irregular, ok := irregularPlurals[lower]; ok {
+		return toPublicName(irregular), irregular != ""
+	}
+	switch {
+	case strings.HasSuffix(lower, "ies") && len(lower) > 4:
+		lower = strings.TrimSuffix(lower, "ies") + "y"
+	case strings.HasSuffix(lower, "sses"), strings.HasSuffix(lower, "xes"),
+		strings.HasSuffix(lower, "ches"), strings.HasSuffix(lower, "shes"), strings.HasSuffix(lower, "zzes"):
+		lower = strings.TrimSuffix(lower, "es")
+	case strings.HasSuffix(lower, "ss"), strings.HasSuffix(lower, "us"), strings.HasSuffix(lower, "is"):
+		return "", false
+	case strings.HasSuffix(lower, "s") && len(lower) > 3:
+		lower = strings.TrimSuffix(lower, "s")
+	default:
+		return "", false
+	}
+	return toPublicName(lower), true
+}
+
+// symbolPrefixedName spells out the leading symbols of a JSON property name
+// before its base Go name, so "_id" becomes UnderscoreID. The result is false
+// when the name has no leading symbol with a word.
+func symbolPrefixedName(source, base string) (string, bool) {
+	var prefix strings.Builder
+	for _, r := range source {
+		word, ok := symbolWords[r]
+		if !ok {
+			break
+		}
+		prefix.WriteString(word)
+	}
+	if prefix.Len() == 0 {
+		return "", false
+	}
+	return prefix.String() + base, true
+}
+
+// pluralAcronym reports whether the lowercase s at rs[at] pluralizes the
+// acronym before it, as in IDs or URLsFor, rather than starting a word.
+func pluralAcronym(rs []rune, at int) bool {
+	return rs[at] == 's' && (at+1 == len(rs) || !unicode.IsLower(rs[at+1]))
 }
 
 // RefName returns the RFC 6901-decoded final path segment of ref.
