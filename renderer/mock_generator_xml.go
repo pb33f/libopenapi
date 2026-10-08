@@ -255,8 +255,8 @@ func (mg *MockGenerator) renderXMLMap(enc *xml.Encoder, start xml.StartElement, 
 		case "none":
 			// Skip the node itself, include sub-properties directly
 			if subMap, ok := val.(map[string]any); ok {
-				for sk, sv := range subMap {
-					children = append(children, childEntry{key: sk, value: sv, schema: getPropertySchema(propSchema, sk)})
+				for _, sk := range orderedMapKeys(subMap, propSchema) {
+					children = append(children, childEntry{key: sk, value: subMap[sk], schema: getPropertySchema(propSchema, sk)})
 				}
 			} else {
 				children = append(children, childEntry{key: key, value: val, schema: propSchema})

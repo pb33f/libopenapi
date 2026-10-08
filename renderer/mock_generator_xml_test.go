@@ -569,6 +569,41 @@ properties:
 	assertValidXML(t, result)
 }
 
+func TestRenderXML_NodeTypeNoneChildrenFollowTheSchema(t *testing.T) {
+	schema := createSchemaFromYAML(t, `
+type: object
+xml:
+  name: person
+properties:
+  profile:
+    type: object
+    xml:
+      nodeType: none
+    properties:
+      zebra:
+        type: string
+      apple:
+        type: string
+      mango:
+        type: string
+`)
+
+	value := map[string]any{
+		"profile": map[string]any{"apple": "a", "mango": "m", "zebra": "z"},
+	}
+
+	mg := NewMockGenerator(XML)
+	first := string(mg.RenderXML(value, schema))
+
+	assert.Less(t, strings.Index(first, "<zebra>"), strings.Index(first, "<apple>"),
+		"flattened children should follow the order the schema declares, not the map")
+	assert.Less(t, strings.Index(first, "<apple>"), strings.Index(first, "<mango>"))
+
+	for range 20 {
+		assert.Equal(t, first, string(mg.RenderXML(value, schema)))
+	}
+}
+
 func TestRenderXML_NodeTypeNoneScalarFallsBackToElement(t *testing.T) {
 	mg := NewMockGenerator(XML)
 

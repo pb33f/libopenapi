@@ -64,11 +64,11 @@ func (wr *SchemaRenderer) renderMockStringValue(schema *base.Schema, key string,
 
 	switch schema.Format {
 	case dateTimeType:
-		return limitGeneratedString(time.Now().Format(time.RFC3339))
+		return limitGeneratedString(wr.now().Format(time.RFC3339))
 	case dateType:
-		return limitGeneratedString(time.Now().Format("2006-01-02"))
+		return limitGeneratedString(wr.now().Format("2006-01-02"))
 	case timeType:
-		return limitGeneratedString(time.Now().Format("15:04:05"))
+		return limitGeneratedString(wr.now().Format("15:04:05"))
 	case emailType:
 		return limitGeneratedString(fmt.Sprintf("%s@%s.com", randomWord(), randomWord()))
 	case hostnameType:

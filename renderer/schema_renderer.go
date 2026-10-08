@@ -4,7 +4,6 @@
 package renderer
 
 import (
-	cryptoRand "crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -91,9 +90,14 @@ type SchemaRenderer struct {
 	words           []string
 	disableRequired bool
 	rand            *rand.Rand
+	seeded          bool
 	onUnresolvedRef UnresolvedRefHandler
 	mockOptions     MockGenerationOptions
 }
+
+// seededTime is the instant a seeded renderer renders date and time formats from, so they
+// stay the same between runs. It is in UTC so the output does not depend on the host's zone.
+var seededTime = time.Date(2025, time.January, 1, 12, 0, 0, 0, time.UTC)
 
 // MockGenerationBudgetError describes which mock generation budget was exceeded.
 type MockGenerationBudgetError struct {
@@ -222,8 +226,18 @@ func (wr *SchemaRenderer) DisableRequiredCheck() {
 
 // SetSeed sets a specific seed for the random number generator used by this renderer.
 // This is useful for generating deterministic mocks for testing purposes.
+//
+// Once a seed is set, date and time formats render from a fixed instant instead of the clock.
 func (wr *SchemaRenderer) SetSeed(seed int64) {
 	wr.rand = rand.New(rand.NewSource(seed))
+	wr.seeded = true
+}
+
+func (wr *SchemaRenderer) now() time.Time {
+	if wr.seeded {
+		return seededTime
+	}
+	return time.Now()
 }
 
 // DiveIntoSchema renders a schema into structure at key.
@@ -672,6 +686,6 @@ func (wr *SchemaRenderer) RandomFloat64() float64 {
 // PseudoUUID returns a UUID-shaped random value for mock data.
 func (wr *SchemaRenderer) PseudoUUID() string {
 	b := make([]byte, 16)
-	_, _ = cryptoRand.Read(b)
+	_, _ = wr.rand.Read(b)
 	return strings.ToLower(fmt.Sprintf("%X-%X-%X-%X-%X", b[0:4], b[4:6], b[6:8], b[8:10], b[10:]))
 }
