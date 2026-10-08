@@ -575,6 +575,46 @@ properties:
 	assert.NotEqual(t, generate(42), generate(123))
 }
 
+func TestMockGenerator_SetSeed_DeterministicDatesAndTimes(t *testing.T) {
+	dateSchema := `type: object
+properties:
+  createdAt:
+    type: string
+    format: date-time
+  birthday:
+    type: string
+    format: date
+  opensAt:
+    type: string
+    format: time`
+
+	mg := NewMockGenerator(JSON)
+	mg.SetSeed(42)
+	mock, err := mg.GenerateMock(createFakeMock(dateSchema, nil, nil), "")
+	assert.NoError(t, err)
+
+	assert.JSONEq(t, `{"createdAt":"2025-01-01T12:00:00Z","birthday":"2025-01-01","opensAt":"12:00:00"}`, string(mock))
+}
+
+func TestMockGenerator_SetSeed_DeterministicUUID(t *testing.T) {
+	uuidSchema := `type: object
+properties:
+  id:
+    type: string
+    format: uuid`
+
+	generate := func(seed int64) string {
+		mg := NewMockGenerator(JSON)
+		mg.SetSeed(seed)
+		mock, err := mg.GenerateMock(createFakeMock(uuidSchema, nil, nil), "")
+		assert.NoError(t, err)
+		return string(mock)
+	}
+
+	assert.Equal(t, generate(42), generate(42))
+	assert.NotEqual(t, generate(42), generate(123))
+}
+
 func TestMockGenerator_GenerateMock_PickNamedExample(t *testing.T) {
 	mg := NewMockGenerator(YAML)
 

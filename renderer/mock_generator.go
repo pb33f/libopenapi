@@ -98,6 +98,8 @@ func (mg *MockGenerator) SetMockGenerationOptions(options MockGenerationOptions)
 
 // SetSeed sets a specific seed for the random number generator used by this mock generator.
 // This is useful for generating deterministic mocks for testing purposes.
+//
+// Once a seed is set, date and time formats render from a fixed instant instead of the clock.
 func (mg *MockGenerator) SetSeed(seed int64) {
 	mg.renderer.SetSeed(seed)
 }
