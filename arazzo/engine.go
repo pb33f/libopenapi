@@ -240,6 +240,12 @@ func (e *Engine) runWorkflow(ctx context.Context, workflowId string, inputs map[
 		state.depth--
 	}()
 
+	// Run dependsOn in this execution so later steps can read $workflows.<id>.outputs.
+	// RunAll schedules dependencies first and records them on state; those are skipped.
+	if err := e.runUnsatisfiedDependencies(ctx, wf, inputs, state); err != nil {
+		return nil, err
+	}
+
 	start := time.Now()
 	result := &WorkflowResult{
 		WorkflowId: workflowId,
@@ -404,6 +410,26 @@ func (e *Engine) topologicalSort() ([]string, error) {
 	}
 
 	return order, nil
+}
+
+// runUnsatisfiedDependencies executes each dependsOn workflow that has not
+// already finished in this execution, passing the caller's inputs. A failed
+// dependency aborts before the dependent workflow's steps run.
+func (e *Engine) runUnsatisfiedDependencies(ctx context.Context, wf *high.Workflow, inputs map[string]any, state *executionState) error {
+	if wf == nil {
+		return nil
+	}
+	for _, depID := range wf.DependsOn {
+		if _, done := state.workflowResults[depID]; !done {
+			if _, err := e.runWorkflow(ctx, depID, inputs, state); err != nil {
+				return err
+			}
+		}
+		if err := dependencyExecutionError(&high.Workflow{DependsOn: []string{depID}}, state.workflowResults); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func dependencyExecutionError(wf *high.Workflow, workflowResults map[string]*WorkflowResult) error {

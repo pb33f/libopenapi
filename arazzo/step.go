@@ -325,8 +325,16 @@ func (e *Engine) applyPayloadReplacements(payload any, replacements []*high.Payl
 		if err != nil {
 			return nil, fmt.Errorf("failed to evaluate replacement value for target %q in step %q: %w", rep.Target, stepId, err)
 		}
-		if err := setJSONPointerValue(root, rep.Target, value); err != nil {
-			return nil, fmt.Errorf("failed to apply replacement at %q in step %q: %w", rep.Target, stepId, err)
+		target, err := e.evaluateStringValue(rep.Target, exprCtx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to evaluate replacement target %q in step %q: %w", rep.Target, stepId, err)
+		}
+		targetStr, ok := target.(string)
+		if !ok {
+			return nil, fmt.Errorf("replacement target %q in step %q evaluated to %T, want string", rep.Target, stepId, target)
+		}
+		if err := setJSONPointerValue(root, targetStr, value); err != nil {
+			return nil, fmt.Errorf("failed to apply replacement at %q in step %q: %w", targetStr, stepId, err)
 		}
 	}
 	return root, nil
