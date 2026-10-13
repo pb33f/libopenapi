@@ -37,8 +37,7 @@ func (s *Scopes) FindScope(scope string) *low.ValueReference[string] {
 
 // Build will extract scope values and extensions from node.
 func (s *Scopes) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecIndex) error {
-	root = utils.NodeAlias(root)
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	s.Extensions = low.ExtractExtensions(root)
 	valueMap := orderedmap.New[low.KeyReference[string], low.ValueReference[string]]()
 	if utils.IsNodeMap(root) {

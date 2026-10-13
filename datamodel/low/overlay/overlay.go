@@ -64,9 +64,8 @@ func (o *Overlay) Build(ctx context.Context, keyNode, root *yaml.Node, idx *inde
 		return err
 	}
 	o.KeyNode = keyNode
-	root = utils.NodeAlias(root)
+	root = utils.ResolveMergeNodes(root)
 	o.RootNode = root
-	utils.CheckForMergeNodes(root)
 	o.Reference = new(low.Reference)
 	o.Nodes = low.ExtractNodes(ctx, root)
 	o.Extensions = low.ExtractExtensions(root)

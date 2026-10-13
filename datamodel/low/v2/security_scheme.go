@@ -39,8 +39,7 @@ func (ss *SecurityScheme) GetExtensions() *orderedmap.Map[low.KeyReference[strin
 
 // Build will extract extensions and scopes from the node.
 func (ss *SecurityScheme) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
-	root = utils.NodeAlias(root)
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	ss.Extensions = low.ExtractExtensions(root)
 
 	scopes, sErr := low.ExtractObject[*Scopes](ctx, ScopesLabel, root, idx)

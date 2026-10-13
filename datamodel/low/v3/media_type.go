@@ -86,9 +86,8 @@ func (mt *MediaType) GetKeyNode() *yaml.Node {
 // Build will extract examples, extensions, schema and encoding from node.
 func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	mt.KeyNode = keyNode
-	root = utils.NodeAlias(root)
+	root = utils.ResolveMergeNodes(root)
 	mt.RootNode = root
-	utils.CheckForMergeNodes(root)
 	mt.reference = low.Reference{}
 	mt.Reference = &mt.reference
 	mt.nodeStore = low.NodeLines{}

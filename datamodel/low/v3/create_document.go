@@ -49,7 +49,7 @@ func selectDocumentNode(root *yaml.Node, preferred documentTopLevelNode, label s
 	if root == nil {
 		return documentTopLevelNode{}
 	}
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	if topOnly {
 		_, key, value := utils.FindKeyNodeFullTop(label, root.Content)
 		return documentTopLevelNode{key: key, value: value}
@@ -64,7 +64,7 @@ func collectDocumentTopLevelNodes(root *yaml.Node) documentTopLevelNodes {
 	if root == nil {
 		return nodes
 	}
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 
 	content := root.Content
 	for i := 0; i+1 < len(content); i += 2 {
@@ -135,7 +135,7 @@ func CreateDocumentFromConfig(info *datamodel.SpecInfo, config *datamodel.Docume
 }
 
 func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Document, error) {
-	rootNode := utils.NodeAlias(info.RootNode.Content[0])
+	rootNode := utils.ResolveMergeNodes(info.RootNode.Content[0])
 	topNodes := collectDocumentTopLevelNodes(rootNode)
 	versionNodeRef := selectDocumentNode(rootNode, topNodes.version, OpenAPILabel, false)
 	labelNode, versionNode := versionNodeRef.key, versionNodeRef.value

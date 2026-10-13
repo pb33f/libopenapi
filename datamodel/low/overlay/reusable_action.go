@@ -59,9 +59,8 @@ func (i *ReusableAction) Build(ctx context.Context, keyNode, root *yaml.Node, id
 		return err
 	}
 	i.KeyNode = keyNode
-	root = utils.NodeAlias(root)
+	root = utils.ResolveMergeNodes(root)
 	i.RootNode = root
-	utils.CheckForMergeNodes(root)
 	i.Reference = new(low.Reference)
 	i.Nodes = low.ExtractNodes(ctx, root)
 	i.Extensions = low.ExtractExtensions(root)

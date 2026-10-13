@@ -53,8 +53,7 @@ func (h *Header) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.V
 
 // Build will build out items, extensions and default value from the supplied node.
 func (h *Header) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
-	root = utils.NodeAlias(root)
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	h.Extensions = low.ExtractExtensions(root)
 	items, err := low.ExtractObject[*Items](ctx, ItemsLabel, root, idx)
 	if err != nil {

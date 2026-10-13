@@ -1921,7 +1921,7 @@ func TestNodeMerge_FallbackToFirstNode(t *testing.T) {
 }
 
 func TestResolvedMergeNode_DefensivePaths(t *testing.T) {
-	assert.Nil(t, resolvedMergeNode(nil))
+	assert.Nil(t, ResolveMergeNodes(nil))
 
 	plain := &yaml.Node{
 		Kind: yaml.MappingNode,
@@ -1931,7 +1931,7 @@ func TestResolvedMergeNode_DefensivePaths(t *testing.T) {
 			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "value"},
 		},
 	}
-	assert.Same(t, plain, resolvedMergeNode(plain))
+	assert.Same(t, plain, ResolveMergeNodes(plain))
 
 	bareMerge := &yaml.Node{
 		Kind: yaml.MappingNode,
@@ -1940,7 +1940,7 @@ func TestResolvedMergeNode_DefensivePaths(t *testing.T) {
 			{Kind: yaml.ScalarNode, Tag: "!!merge", Value: "<<"},
 		},
 	}
-	assert.Same(t, bareMerge, resolvedMergeNode(bareMerge))
+	assert.Same(t, bareMerge, ResolveMergeNodes(bareMerge))
 }
 
 func TestCheckForMergeNodes_BareMergeNodeDoesNotPanic(t *testing.T) {

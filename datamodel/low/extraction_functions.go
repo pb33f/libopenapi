@@ -746,8 +746,7 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 ) (*orderedmap.Map[KeyReference[string], ValueReference[PT]], error) {
 	valueMap := orderedmap.New[KeyReference[string], ValueReference[PT]]()
 	var circError error
-	root = utils.NodeAlias(root)
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	if utils.IsNodeMap(root) {
 		var currentKey *yaml.Node
 		skip := false

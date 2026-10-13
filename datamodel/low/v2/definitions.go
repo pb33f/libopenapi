@@ -75,8 +75,7 @@ func (s *SecurityDefinitions) FindSecurityDefinition(securityDef string) *low.Va
 
 // Build will extract all definitions into SchemaProxy instances.
 func (d *Definitions) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
-	root = utils.NodeAlias(root)
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	type buildInput struct {
 		label *yaml.Node
 		value *yaml.Node

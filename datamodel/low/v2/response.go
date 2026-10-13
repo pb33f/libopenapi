@@ -44,8 +44,7 @@ func (r *Response) FindHeader(hType string) *low.ValueReference[*Header] {
 
 // Build will extract schema, extensions, examples and headers from node
 func (r *Response) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
-	root = utils.NodeAlias(root)
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	r.Extensions = low.ExtractExtensions(root)
 	s, err := base.ExtractSchema(ctx, root, idx)
 	if err != nil {

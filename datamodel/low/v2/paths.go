@@ -57,8 +57,7 @@ func (p *Paths) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 
 // Build will extract extensions and paths from node.
 func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
-	root = utils.NodeAlias(root)
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	p.Extensions = low.ExtractExtensions(root)
 
 	// Translate YAML nodes to pathsMap using `TranslatePipeline`.

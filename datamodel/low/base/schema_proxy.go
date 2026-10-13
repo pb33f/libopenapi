@@ -240,7 +240,6 @@ func (sp *SchemaProxy) Schema() *Schema {
 		}
 
 		schema := new(Schema)
-		utils.CheckForMergeNodes(buildNode)
 		err := schema.Build(sp.ctx, buildNode, sp.idx)
 		if err != nil {
 			sp.buildError = err
