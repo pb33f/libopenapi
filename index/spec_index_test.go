@@ -3068,3 +3068,49 @@ paths:
 	assert.Equal(t, 1, len(errors), "should have 1 error for duplicate at path level")
 	assert.Contains(t, errors[0].Error(), "index 1 has a duplicate name `id` and `in` type")
 }
+
+func TestSpecIndex_GetAllParametersFromOperations_RefWithSiblingBeforeIt(t *testing.T) {
+	// OpenAPI 3.1 allows `summary` and `description` next to a `$ref`, and YAML
+	// key order carries no meaning, so a `$ref` that is not the first key must
+	// still be treated as a reference.
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /things/{id}:
+    parameters:
+      - description: Thing ID
+        $ref: '#/components/parameters/ID'
+    get:
+      parameters:
+        - description: Page number
+          $ref: '#/components/parameters/Page'
+      responses:
+        '200':
+          description: OK
+components:
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+
+	assert.Empty(t, index.GetOperationParametersIndexErrors())
+
+	refs := index.GetOperationParameterReferences()["/things/{id}"]
+	assert.Len(t, refs["top"]["#/components/parameters/ID"], 1)
+	assert.Len(t, refs["get"]["#/components/parameters/Page"], 1)
+}
