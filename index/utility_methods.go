@@ -424,14 +424,14 @@ func formatParameterPath(pathValue, method string, index int) string {
 
 func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathItemNode *yaml.Node, method string) {
 	for i, param := range params {
-		// param is ref
-		if len(param.Content) > 0 && param.Content[0].Value == "$ref" {
+		// param is ref ($ref may have siblings in OA 3.1, so it is not always the first key)
+		if refValueNode := utils.GetRefValueNode(param); refValueNode != nil {
 
-			paramRefName := param.Content[1].Value
+			paramRefName := refValueNode.Value
 			paramRef := index.allMappedRefs[paramRefName]
 			if paramRef == nil {
 				// could be in the rolodex
-				searchInIndex := findIndex(index, param.Content[1])
+				searchInIndex := findIndex(index, refValueNode)
 				ctx := context.WithValue(context.Background(), CurrentPathKey, searchInIndex.specAbsolutePath)
 				ctx = context.WithValue(ctx, RootIndexKey, searchInIndex)
 				ref := seekRefEnd(ctx, searchInIndex, paramRefName)
