@@ -61,9 +61,8 @@ func (i *Info) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 		return err
 	}
 	i.KeyNode = keyNode
-	root = utils.NodeAlias(root)
+	root = utils.ResolveMergeNodes(root)
 	i.RootNode = root
-	utils.CheckForMergeNodes(root)
 	if _, ref := findField(RefLabel, root); ref != nil {
 		return fmt.Errorf("info does not support $ref")
 	}

@@ -112,8 +112,7 @@ func (itm *Items) Hash() uint64 {
 
 // Build will build out items and default value.
 func (i *Items) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
-	root = utils.NodeAlias(root)
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	i.Extensions = low.ExtractExtensions(root)
 	items, iErr := low.ExtractObject[*Items](ctx, ItemsLabel, root, idx)
 	if iErr != nil {

@@ -28,8 +28,7 @@ func (e *Examples) FindExample(name string) *low.ValueReference[*yaml.Node] {
 
 // Build will extract all examples and will attempt to unmarshal content into a map or slice based on type.
 func (e *Examples) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecIndex) error {
-	root = utils.NodeAlias(root)
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	var keyNode, currNode *yaml.Node
 	e.Values = orderedmap.New[low.KeyReference[string], low.ValueReference[*yaml.Node]]()
 	for i := range root.Content {

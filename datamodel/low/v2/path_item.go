@@ -51,8 +51,7 @@ func (p *PathItem) GetExtensions() *orderedmap.Map[low.KeyReference[string], low
 // Build will extract extensions, parameters and operations for all methods. Every method is handled
 // asynchronously, in order to keep things moving quickly for complex operations.
 func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
-	root = utils.NodeAlias(root)
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	p.Extensions = low.ExtractExtensions(root)
 	skip := false
 	var currentNode *yaml.Node

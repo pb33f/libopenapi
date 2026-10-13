@@ -38,8 +38,7 @@ type Operation struct {
 
 // Build will extract external docs, extensions, parameters, responses and security requirements.
 func (o *Operation) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
-	root = utils.NodeAlias(root)
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	o.Extensions = low.ExtractExtensions(root)
 
 	// extract externalDocs

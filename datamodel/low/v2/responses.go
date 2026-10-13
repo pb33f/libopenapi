@@ -30,8 +30,7 @@ func (r *Responses) GetExtensions() *orderedmap.Map[low.KeyReference[string], lo
 
 // Build will extract default value and extensions from node.
 func (r *Responses) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
-	root = utils.NodeAlias(root)
-	utils.CheckForMergeNodes(root)
+	root = utils.ResolveMergeNodes(root)
 	r.Extensions = low.ExtractExtensions(root)
 
 	if utils.IsNodeMap(root) {

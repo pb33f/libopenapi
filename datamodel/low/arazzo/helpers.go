@@ -32,9 +32,8 @@ type arazzoBase struct {
 // It returns the resolved root node (after alias/merge processing) for further extraction.
 func initBuild(b *arazzoBase, ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) *yaml.Node {
 	*b.KeyNode = keyNode
-	root = utils.NodeAlias(root)
+	root = utils.ResolveMergeNodes(root)
 	*b.RootNode = root
-	utils.CheckForMergeNodes(root)
 	*b.Reference = new(low.Reference)
 	b.NodeMap.Nodes = low.ExtractNodes(ctx, root)
 	ext := low.ExtractExtensions(root)

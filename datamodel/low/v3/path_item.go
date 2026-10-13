@@ -205,8 +205,8 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 	}
 	root = utils.NodeAlias(root)
 	p.KeyNode = keyNode
+	root = utils.ResolveMergeNodes(root)
 	p.RootNode = root
-	utils.CheckForMergeNodes(root)
 	p.nodeStore = low.NodeLines{}
 	p.Nodes = &p.nodeStore
 	if len(root.Content) > 0 {

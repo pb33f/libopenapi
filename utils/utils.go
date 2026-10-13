@@ -690,17 +690,24 @@ func NodeMerge(nodes []*yaml.Node) *yaml.Node {
 	for i, v := range nodes {
 		if v.Tag == "!!merge" {
 			if i+1 < len(nodes) {
-				return resolvedMergeNode(nodes[i+1])
+				return ResolveMergeNodes(nodes[i+1])
 			}
 		}
 	}
 	if len(nodes) > 0 {
-		return resolvedMergeNode(nodes[0])
+		return ResolveMergeNodes(nodes[0])
 	}
 	return nil
 }
 
-func resolvedMergeNode(node *yaml.Node) *yaml.Node {
+// ResolveMergeNodes returns a read-only view of a mapping with YAML merges expanded.
+// Local keys take precedence over merged keys, and earlier merge sources take
+// precedence over later sources. Aliases are resolved before expansion.
+// A merged mapping is shallow-copied: source nodes are not modified, and original
+// key/value nodes and their location/comment metadata are retained. Mappings
+// without merges retain their identity. Callers must not mutate shared children
+// while readers or model builders use them.
+func ResolveMergeNodes(node *yaml.Node) *yaml.Node {
 	node = NodeAlias(node)
 	if node == nil {
 		return nil

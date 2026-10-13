@@ -82,9 +82,8 @@ func (en *Encoding) Hash() uint64 {
 // Build will extract all Header objects from supplied node.
 func (en *Encoding) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	en.KeyNode = keyNode
-	root = utils.NodeAlias(root)
+	root = utils.ResolveMergeNodes(root)
 	en.RootNode = root
-	utils.CheckForMergeNodes(root)
 	en.nodeStore = low.NodeLines{}
 	en.Nodes = &en.nodeStore
 	if len(root.Content) > 0 {
