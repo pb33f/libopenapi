@@ -158,6 +158,30 @@ func (nm *NodeMap) GetNodes() map[int][]*yaml.Node {
 	return composed
 }
 
+// GetNodeLines returns an owned snapshot of the line numbers in GetNodes, in
+// unspecified order. Only *yaml.Node and []*yaml.Node values contribute lines,
+// including typed nil values. If no such values exist, the result is []int{0}.
+// Later writes to Nodes do not change the returned slice.
+func (nm *NodeMap) GetNodeLines() []int {
+	if nm.Nodes == nil {
+		return []int{0}
+	}
+	nm.Nodes.mu.Lock()
+	defer nm.Nodes.mu.Unlock()
+	index := nm.Nodes.index()
+	lines := make([]int, 0, len(index))
+	for line, value := range index {
+		switch value.(type) {
+		case *yaml.Node, []*yaml.Node:
+			lines = append(lines, line)
+		}
+	}
+	if len(lines) == 0 {
+		lines = append(lines, 0)
+	}
+	return lines
+}
+
 // ExtractNodes will iterate over a *yaml.Node and extract all nodes with a line number into a map
 func (nm *NodeMap) ExtractNodes(node *yaml.Node, recurse bool) {
 	if node == nil {
