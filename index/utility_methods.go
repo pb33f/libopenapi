@@ -735,6 +735,16 @@ func HashNode(n *yaml.Node) string {
 	h.Reset()
 	defer hasherPool.Put(h)
 
+	// a leaf cannot revisit a node, so it needs no traversal storage.
+	// keep this after the cache lookup: callers invalidate cached nodes explicitly.
+	if len(n.Content) == 0 {
+		h.WriteString(n.Tag)
+		writeIntToHash(h, n.Line)
+		writeIntToHash(h, n.Column)
+		h.WriteString(n.Value)
+		return strconv.FormatUint(h.Sum64(), 16)
+	}
+
 	// get stack from pool, reset length but keep capacity
 	stackPtr := stackPool.Get().(*[]*yaml.Node)
 	stack := (*stackPtr)[:0]
@@ -744,9 +754,8 @@ func HashNode(n *yaml.Node) string {
 		stackPool.Put(stackPtr)
 	}()
 
-	// get visited map from pool, clear entries
+	// every map is emptied before it is returned to this private pool.
 	visited := visitedPool.Get().(map[*yaml.Node]struct{})
-	clear(visited)
 	defer func() {
 		clear(visited)
 		visitedPool.Put(visited)

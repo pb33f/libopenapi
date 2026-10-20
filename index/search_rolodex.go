@@ -25,6 +25,10 @@ func (r *Rolodex) FindNodeOriginWithValue(key, value, refNode *yaml.Node, refVal
 			if refNode != nil && refValue != "" {
 				return keyOrigin
 			}
+			// keep the first hash for cache population, but identical nodes need no second hash.
+			if valueOrigin != nil && valueOrigin.Node == value {
+				return keyOrigin
+			}
 			origin, done := checkOrigin(originCheck{
 				valueOrigin: valueOrigin,
 				valueHash:   valueHash,
@@ -53,9 +57,7 @@ func (r *Rolodex) FindNodeOriginWithValue(key, value, refNode *yaml.Node, refVal
 					}
 
 					valueHash = HashNode(value)
-					nHash := HashNode(n.Node)
-
-					if valueHash == nHash {
+					if n.Node == value || valueHash == HashNode(n.Node) {
 						if keyOrigin.AbsoluteLocation != n.AbsoluteLocation {
 							if refNode == nil && refValue == "" {
 								keyOrigin.AbsoluteLocationValue = n.AbsoluteLocation
