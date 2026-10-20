@@ -1,0 +1,26 @@
+openapi: 3.1.0
+info:
+  title: Cross file circular references
+  version: 1.0.0
+paths:
+  /nodes:
+    get:
+      responses:
+        "200":
+          description: A node
+          content:
+            application/json:
+              schema:
+                $ref: a.yaml#/A
+  /pets:
+    get:
+      responses:
+        "200":
+          description: A pet
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: integer

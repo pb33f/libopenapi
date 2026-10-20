@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -7420,4 +7421,101 @@ components:
 	assert.True(t, changes.VocabularyChanges[0].Breaking)
 	// TotalBreakingChanges should count the vocabulary change
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+// https://github.com/pb33f/libopenapi/issues/662
+func TestCompareSchemas_RefToInline_UnrelatedCircularReference(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+    Owner:
+      type: object
+      properties:
+        pet:
+          $ref: '#/components/schemas/Pet'
+    A:
+      type: object
+      properties:
+        b:
+          $ref: '#/components/schemas/B'
+    B:
+      type: object
+      properties:
+        a:
+          $ref: '#/components/schemas/A'`
+
+	right := strings.Replace(left, `        pet:
+          $ref: '#/components/schemas/Pet'`, `        pet:
+          type: object
+          properties:
+            name:
+              type: string
+          required: [name]`, 1)
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Owner").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Owner").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	petChanges := changes.SchemaPropertyChanges["pet"]
+	assert.NotNil(t, petChanges)
+	assert.Equal(t, v3.RefLabel, petChanges.Changes[0].Property)
+	assert.Equal(t, "#/components/schemas/Pet", petChanges.Changes[0].OriginalObject)
+}
+
+// https://github.com/pb33f/libopenapi/issues/662
+func TestCheckSchemaProxyForCircularRefs_OnlyLoopMembers(t *testing.T) {
+	low.ClearHashCache()
+	spec := `openapi: 3.0
+components:
+  schemas:
+    Pet:
+      type: object
+    Owner:
+      type: object
+      properties:
+        pet:
+          $ref: '#/components/schemas/Pet'
+        start:
+          $ref: '#/components/schemas/Start'
+    Start:
+      type: object
+      properties:
+        a:
+          $ref: '#/components/schemas/A'
+    A:
+      type: object
+      properties:
+        b:
+          $ref: '#/components/schemas/B'
+    B:
+      type: object
+      properties:
+        a:
+          $ref: '#/components/schemas/A'`
+
+	doc, _ := test_BuildDoc(spec, spec)
+	property := func(schema, name string) *base.SchemaProxy {
+		return doc.Components.Value.FindSchema(schema).Value.Schema().FindProperty(name).Value
+	}
+
+	// on the loop
+	assert.True(t, base.CheckSchemaProxyForCircularRefs(property("A", "b")))
+	assert.True(t, base.CheckSchemaProxyForCircularRefs(property("B", "a")))
+	assert.True(t, base.CheckSchemaProxyForCircularRefs(property("Start", "a")))
+
+	// not on the loop: unrelated, or only on the way into it
+	assert.False(t, base.CheckSchemaProxyForCircularRefs(property("Owner", "pet")))
+	assert.False(t, base.CheckSchemaProxyForCircularRefs(property("Owner", "start")))
+
+	// inline schemas are not references
+	assert.False(t, base.CheckSchemaProxyForCircularRefs(doc.Components.Value.FindSchema("Owner").Value))
 }

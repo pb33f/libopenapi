@@ -6,12 +6,14 @@ package what_changed
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 func TestCompareOpenAPIDocuments(t *testing.T) {
@@ -310,4 +312,79 @@ func TestCheckExplodedFileCheck_IdenticalRefNames(t *testing.T) {
 	allChanges := changes.GetAllChanges()
 	assert.Len(t, allChanges, 1)
 
+}
+
+// https://github.com/pb33f/libopenapi/issues/662
+func TestCompareOpenAPIDocuments_UnrelatedCircularReference(t *testing.T) {
+	original := `openapi: 3.0.3
+info:
+  title: Pets
+  version: "1"
+paths: {}
+components:
+  schemas:
+    Owner:
+      type: object
+      properties:
+        pet:
+          type: object
+          properties:
+            name:
+              type: string
+    A:
+      type: object
+      properties:
+        b:
+          $ref: '#/components/schemas/B'
+        c:
+          $ref: '#/components/schemas/C'
+    B:
+      type: object
+      properties:
+        a:
+          $ref: '#/components/schemas/A'
+    C:
+      type: object
+      properties:
+        a:
+          $ref: '#/components/schemas/A'`
+	modified := strings.Replace(original, "name:\n              type: string", "name:\n              type: integer", 1)
+
+	config := datamodel.NewDocumentConfiguration()
+	config.UseSchemaQuickHash = true
+	infoOrig, _ := datamodel.ExtractSpecInfo([]byte(original))
+	infoMod, _ := datamodel.ExtractSpecInfo([]byte(modified))
+	origDoc, err := v3.CreateDocumentFromConfig(infoOrig, config)
+	require.NoError(t, err)
+	modDoc, err := v3.CreateDocumentFromConfig(infoMod, config)
+	require.NoError(t, err)
+
+	// two loops share A, and only one of them is recorded: hashing C still stops at A.
+	changes := CompareOpenAPIDocuments(origDoc, modDoc)
+	require.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+// https://github.com/pb33f/libopenapi/issues/662
+func TestCompareOpenAPIDocuments_CrossFileCircularReference(t *testing.T) {
+	load := func(dir string) *v3.Document {
+		spec, err := os.ReadFile(dir + "/root.yaml")
+		require.NoError(t, err)
+		info, err := datamodel.ExtractSpecInfo(spec)
+		require.NoError(t, err)
+		doc, err := v3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+			BasePath:            dir,
+			AllowFileReferences: true,
+			UseSchemaQuickHash:  true,
+		})
+		require.NoError(t, err)
+		return doc
+	}
+
+	// hashing has to stop at the loop, although the relative references don't match the journey as written.
+	changes := CompareOpenAPIDocuments(load("../test_specs/circular_cross_file/orig"), load("../test_specs/circular_cross_file/mod"))
+	require.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
 }
