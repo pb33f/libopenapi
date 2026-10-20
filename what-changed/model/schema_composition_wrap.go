@@ -10,9 +10,10 @@ import (
 )
 
 // preservedObjectBranch returns a comparison view for an object moved into a
-// composition. Uncertain wrappers retain the normal structural comparison.
+// composition. Uncertain wrappers retain the normal structural comparison. The
+// old object may be a reference, which is compared as the schema it resolves to.
 func preservedObjectBranch(l, r *base.SchemaProxy, old, wrapper *base.Schema) *base.Schema {
-	if l.IsReference() || r.IsReference() || old == nil || wrapper == nil ||
+	if r.IsReference() || old == nil || wrapper == nil ||
 		old.Properties.Value == nil || old.Properties.Value.Len() == 0 || hasObjectComposition(old) {
 		return nil
 	}
