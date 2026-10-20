@@ -1,0 +1,5 @@
+A:
+  type: object
+  properties:
+    b:
+      $ref: b.yaml#/B
