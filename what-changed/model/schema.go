@@ -16,6 +16,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 )
 
 // SchemaChanges represent all changes to a base.Schema OpenAPI object. These changes are represented
@@ -396,6 +397,24 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
 	return t
 }
 
+// canCompareBehindRefChange reports whether the schemas either side of a changed $ref can be compared like any
+// other two schemas. Both must resolve, and neither may be on a reference loop, which can only be known once the
+// document has been checked for circular references. A 3.1 $ref with sibling keywords is held in an internal allOf
+// form that doesn't line up with the referenced schema field by field, so it stops at the $ref change too.
+func canCompareBehindRefChange(l, r *base.SchemaProxy) bool {
+	for _, proxy := range []*base.SchemaProxy{l, r} {
+		if proxy.Schema() == nil || proxy.IsTransformedRefWithSiblings() {
+			return false
+		}
+		idx := proxy.GetIndex()
+		if idx == nil || idx.GetRolodex() == nil || !idx.GetRolodex().HasCheckedForCircularReferences() ||
+			base.CheckSchemaProxyForCircularRefs(proxy) {
+			return false
+		}
+	}
+	return true
+}
+
 // CompareSchemas accepts a left and right SchemaProxy and checks for changes. If anything is found, returns
 // a pointer to SchemaChanges, otherwise returns nil
 func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
@@ -439,18 +458,15 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 				// continue on because the external references are the same and we need to check things going forward.
 
 			} else {
-				// references are different, that's all we care to know.
+				// the reference points somewhere else: record that, then compare the schema it now points to.
 				CreateChange(&changes, Modified, v3.RefLabel,
 					l.GetValueNode().Content[1], r.GetValueNode().Content[1], BreakingModified(CompSchema, PropRef), l.GetReference(),
 					r.GetReference())
-				sc.PropertyChanges = NewPropertyChanges(changes)
 
-				// check if this is a circular ref.
-				if base.CheckSchemaProxyForCircularRefs(l) || base.CheckSchemaProxyForCircularRefs(r) {
-					// if we have a circular reference, we can't do any more work here.
-					return nil
+				if !canCompareBehindRefChange(l, r) || low.AreEqual(l.Schema(), r.Schema()) {
+					sc.PropertyChanges = NewPropertyChanges(changes)
+					return sc
 				}
-				return sc
 			}
 		}
 
@@ -463,14 +479,11 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			if lHash != rHash {
 				CreateChange(&changes, Modified, v3.RefLabel,
 					l.GetValueNode(), r.GetValueNode().Content[1], BreakingModified(CompSchema, PropRef), l, r.GetReference())
-				sc.PropertyChanges = NewPropertyChanges(changes)
 
-				// check if this is a circular ref.
-				if base.CheckSchemaProxyForCircularRefs(r) {
-					// if we have a circular reference, we can't do any more work here.
-					return nil
+				if !canCompareBehindRefChange(l, r) {
+					sc.PropertyChanges = NewPropertyChanges(changes)
+					return sc
 				}
-				return sc
 			}
 		}
 
@@ -483,14 +496,11 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			if lHash != rHash {
 				CreateChange(&changes, Modified, v3.RefLabel,
 					l.GetValueNode().Content[1], r.GetValueNode(), BreakingModified(CompSchema, PropRef), l.GetReference(), r)
-				sc.PropertyChanges = NewPropertyChanges(changes)
 
-				// check if this is a circular ref.
-				if base.CheckSchemaProxyForCircularRefs(l) {
-					// if we have a circular reference, we can't do any more work here.
-					return nil
+				if !canCompareBehindRefChange(l, r) {
+					sc.PropertyChanges = NewPropertyChanges(changes)
+					return sc
 				}
-				return sc
 			}
 		}
 
@@ -1804,7 +1814,7 @@ func schemaComparisonViewForSimpleAllOfObject(proxy *base.SchemaProxy, schema *b
 }
 
 func isSimpleAllOfObjectSchema(proxy *base.SchemaProxy, schema *base.Schema) bool {
-	if proxy == nil || schema == nil || proxy.IsReference() || len(schema.AllOf.Value) == 0 {
+	if proxy == nil || schema == nil || len(schema.AllOf.Value) == 0 {
 		return false
 	}
 	if len(schema.OneOf.Value) > 0 || len(schema.AnyOf.Value) > 0 || len(schema.PrefixItems.Value) > 0 || schema.Not.Value != nil {
@@ -2049,19 +2059,35 @@ func schemaPairUsesEquivalentSimpleScalarUnion(typeProxy, anyOfProxy *base.Schem
 }
 
 func isPureTypeArraySchema(proxy *base.SchemaProxy) bool {
-	if proxy == nil || proxy.IsReference() || !schemaNodeHasSingleKey(proxy.GetValueNode(), v3.TypeLabel) {
+	node := schemaDefinitionNode(proxy)
+	if !schemaNodeHasSingleKey(node, v3.TypeLabel) {
 		return false
 	}
-	typeNode := proxy.GetValueNode().Content[1]
+	typeNode := node.Content[1]
 	return typeNode.Kind == yaml.SequenceNode && len(typeNode.Content) > 0
 }
 
 func isPureAnyOfUnionSchema(proxy *base.SchemaProxy) bool {
-	if proxy == nil || proxy.IsReference() || !schemaNodeHasSingleKey(proxy.GetValueNode(), v3.AnyOfLabel) {
+	if !schemaNodeHasSingleKey(schemaDefinitionNode(proxy), v3.AnyOfLabel) {
 		return false
 	}
 	schema := proxy.Schema()
 	return schema != nil && len(schema.AnyOf.Value) > 0
+}
+
+// schemaDefinitionNode returns the node a schema is defined by, following a reference to the schema it points to.
+func schemaDefinitionNode(proxy *base.SchemaProxy) *yaml.Node {
+	if proxy == nil {
+		return nil
+	}
+	node := proxy.GetValueNode()
+	if isRef, _, _ := utils.IsNodeRefValue(node); isRef {
+		if proxy.GetIndex() == nil {
+			return nil
+		}
+		node, _, _, _ = low.LocateRefNodeWithContext(proxy.GetContext(), node, proxy.GetIndex())
+	}
+	return node
 }
 
 func schemaNodeHasSingleKey(node *yaml.Node, key string) bool {
@@ -2081,10 +2107,11 @@ func schemaNodeHasOnlyAllowedKeys(node *yaml.Node, allowed map[string]struct{}) 
 }
 
 func extractTypeArraySet(proxy *base.SchemaProxy) (map[string]struct{}, bool) {
-	if proxy == nil || proxy.IsReference() || !schemaNodeHasSingleKey(proxy.GetValueNode(), v3.TypeLabel) {
+	node := schemaDefinitionNode(proxy)
+	if !schemaNodeHasSingleKey(node, v3.TypeLabel) {
 		return nil, false
 	}
-	typeNode := proxy.GetValueNode().Content[1]
+	typeNode := node.Content[1]
 	if typeNode.Kind != yaml.SequenceNode || len(typeNode.Content) == 0 {
 		return nil, false
 	}

@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
@@ -497,4 +498,62 @@ components:
 	assert.NotPanics(t, func() {
 		CompareSchemas(lSchemaProxy, rSchemaProxy)
 	})
+}
+
+// https://github.com/pb33f/libopenapi/issues/663
+// A referenced object moved into a nullable composition is reported like the same inline refactor, plus the
+// non-breaking $ref change.
+func TestCompareSchemas_ReferencedObjectWrappedMatchesInline(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Thing:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+    Entry:
+      $ref: '#/components/schemas/Thing'
+    Inline:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Thing:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+    Entry:
+      anyOf:
+        - $ref: '#/components/schemas/Thing'
+        - type: 'null'
+    Inline:
+      anyOf:
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: string
+        - type: 'null'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	find := func(doc *v3.Document, name string) *base.SchemaProxy {
+		return doc.Components.Value.FindSchema(name).Value
+	}
+
+	changes := CompareSchemas(find(leftDoc, "Entry"), find(rightDoc, "Entry"))
+	inline := CompareSchemas(find(leftDoc, "Inline"), find(rightDoc, "Inline"))
+	require.NotNil(t, changes)
+	require.NotNil(t, inline)
+	assert.Zero(t, changes.TotalBreakingChanges())
+	assert.Equal(t, inline.TotalChanges()+1, changes.TotalChanges())
+	assert.Equal(t, changesOtherThanRef(inline), changesOtherThanRef(changes))
 }

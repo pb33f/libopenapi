@@ -247,6 +247,11 @@ func (r *Rolodex) GetIndexingDuration() time.Duration {
 	return r.indexingDuration
 }
 
+// HasCheckedForCircularReferences returns true once the rolodex has been checked for circular references.
+func (r *Rolodex) HasCheckedForCircularReferences() bool {
+	return r.circChecked
+}
+
 // GetRootIndex returns the root index of the rolodex (the entry point, the main document)
 func (r *Rolodex) GetRootIndex() *SpecIndex {
 	return r.rootIndex
