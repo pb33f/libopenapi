@@ -745,48 +745,96 @@ func HashNode(n *yaml.Node) string {
 		return strconv.FormatUint(h.Sum64(), 16)
 	}
 
-	// get stack from pool, reset length but keep capacity
-	stackPtr := stackPool.Get().(*[]*yaml.Node)
-	stack := (*stackPtr)[:0]
-	stack = append(stack, n)
+	// small subtrees use local storage; pooled state is acquired only on overflow.
+	// keep pooledStack separate so the local array never escapes through the pool.
+	var localStack [16]*yaml.Node
+	localStack[0] = n
+	pending := 1
+	var stackPtr *[]*yaml.Node
+	var pooledStack []*yaml.Node
+	var localVisited [16]*yaml.Node
+	visitedCount := 0
+	var visited map[*yaml.Node]struct{}
 	defer func() {
-		*stackPtr = stack[:0]
-		stackPool.Put(stackPtr)
+		if stackPtr != nil {
+			clear(pooledStack)
+			*stackPtr = pooledStack[:0]
+			stackPool.Put(stackPtr)
+		}
+		if visited != nil {
+			clear(visited)
+			visitedPool.Put(visited)
+		}
 	}()
 
-	// every map is emptied before it is returned to this private pool.
-	visited := visitedPool.Get().(map[*yaml.Node]struct{})
-	defer func() {
-		clear(visited)
-		visitedPool.Put(visited)
-	}()
-
-	for len(stack) > 0 {
-		// pop from stack
-		// clear the slot so the pooled slice never keeps a popped node alive.
-		node := stack[len(stack)-1]
-		stack[len(stack)-1] = nil
-		stack = stack[:len(stack)-1]
-
+	for pending > 0 || len(pooledStack) > 0 {
+		var node *yaml.Node
+		if stackPtr == nil {
+			pending--
+			node = localStack[pending]
+			localStack[pending] = nil
+		} else {
+			last := len(pooledStack) - 1
+			node = pooledStack[last]
+			pooledStack[last] = nil
+			pooledStack = pooledStack[:last]
+		}
 		if node == nil {
 			continue
 		}
 
-		// skip already visited nodes (handles circular references)
-		if _, seen := visited[node]; seen {
-			continue
+		// visited-once semantics apply to shared children as well as cycles.
+		if visited == nil {
+			seen := false
+			for i := 0; i < visitedCount; i++ {
+				if localVisited[i] == node {
+					seen = true
+					break
+				}
+			}
+			if seen {
+				continue
+			}
+			if visitedCount < len(localVisited) {
+				localVisited[visitedCount] = node
+				visitedCount++
+			} else {
+				// every pooled map is emptied before it is returned.
+				visited = visitedPool.Get().(map[*yaml.Node]struct{})
+				for _, previous := range localVisited {
+					visited[previous] = struct{}{}
+				}
+				clear(localVisited[:])
+				visited[node] = struct{}{}
+			}
+		} else {
+			if _, seen := visited[node]; seen {
+				continue
+			}
+			visited[node] = struct{}{}
 		}
-		visited[node] = struct{}{}
 
-		// hash node content - WriteString for strings, writeIntToHash for ints (zero allocations)
 		h.WriteString(node.Tag)
 		writeIntToHash(h, node.Line)
 		writeIntToHash(h, node.Column)
 		h.WriteString(node.Value)
 
-		// push children in reverse order for correct traversal order
-		for i := len(node.Content) - 1; i >= 0; i-- {
-			stack = append(stack, node.Content[i])
+		// preserve pending entries and reverse child order when storage grows.
+		if stackPtr == nil && len(node.Content) > len(localStack)-pending {
+			stackPtr = stackPool.Get().(*[]*yaml.Node)
+			pooledStack = append((*stackPtr)[:0], localStack[:pending]...)
+			clear(localStack[:pending])
+			pending = 0
+		}
+		if stackPtr == nil {
+			for i := len(node.Content) - 1; i >= 0; i-- {
+				localStack[pending] = node.Content[i]
+				pending++
+			}
+		} else {
+			for i := len(node.Content) - 1; i >= 0; i-- {
+				pooledStack = append(pooledStack, node.Content[i])
+			}
 		}
 	}
 
