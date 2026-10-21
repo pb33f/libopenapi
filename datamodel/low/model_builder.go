@@ -4,7 +4,9 @@
 package low
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -273,13 +275,14 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 		if utils.IsNodeIntValue(valueNode) || utils.IsNodeFloatValue(valueNode) {
 			if field.CanSet() {
-				fv, _ := strconv.ParseInt(valueNode.Value, 10, 64)
-				nr := NodeReference[int64]{
-					Value:     fv,
-					ValueNode: valueNode,
-					KeyNode:   keyNode,
+				if fv, ok := parseInt64Node(valueNode.Value); ok {
+					nr := NodeReference[int64]{
+						Value:     fv,
+						ValueNode: valueNode,
+						KeyNode:   keyNode,
+					}
+					field.Set(reflect.ValueOf(nr))
 				}
-				field.Set(reflect.ValueOf(nr))
 			}
 		}
 
@@ -380,7 +383,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 			if field.CanSet() {
 				items := make([]NodeReference[int64], 0, len(content))
 				for _, sliceItem := range content {
-					iv, _ := strconv.ParseInt(sliceItem.Value, 10, 64)
+					iv, _ := parseInt64Node(sliceItem.Value)
 					items = append(items, NodeReference[int64]{
 						Value:     iv,
 						ValueNode: sliceItem,
@@ -519,6 +522,38 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 		// we want to ignore everything else, each model handles its own complex types.
 		break
 	}
+}
+
+// parseInt64Node parses the text of an int or float YAML node as an int64.
+//
+// Integers use strconv.ParseInt, so out-of-range values clamp to math.MaxInt64 / math.MinInt64.
+// Floats with a whole-number value are converted (2.0 -> 2, 1e3 -> 1000), and floats at or beyond
+// ±2^63 (including YAML .inf / -.inf) clamp the same way. Fractions and NaN return false.
+func parseInt64Node(value string) (int64, bool) {
+	i, err := strconv.ParseInt(value, 10, 64)
+	if err == nil || errors.Is(err, strconv.ErrRange) {
+		return i, true
+	}
+	// YAML spells infinity with a leading dot (.inf, +.inf, -.inf), which strconv does not accept.
+	// .nan fails to parse and is rejected below.
+	switch strings.ToLower(strings.TrimPrefix(value, "+")) {
+	case ".inf":
+		return math.MaxInt64, true
+	case "-.inf":
+		return math.MinInt64, true
+	}
+	f, err := strconv.ParseFloat(value, 64)
+	switch {
+	case err != nil || math.IsNaN(f):
+		return 0, false
+	case f >= math.MaxInt64:
+		return math.MaxInt64, true
+	case f <= math.MinInt64:
+		return math.MinInt64, true
+	case f != math.Trunc(f):
+		return 0, false
+	}
+	return int64(f), true
 }
 
 // BuildModelAsync is a convenience function for calling BuildModel from a goroutine, requires a sync.WaitGroup
