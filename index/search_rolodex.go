@@ -21,12 +21,15 @@ func (r *Rolodex) FindNodeOriginWithValue(key, value, refNode *yaml.Node, refVal
 	if value != nil {
 		if keyOrigin != nil && keyOrigin.AbsoluteLocation == r.GetRootIndex().specAbsolutePath {
 			valueOrigin = r.GetRootIndex().FindNodeOrigin(value)
-			valueHash = HashNode(value)
-			if refNode != nil && refValue != "" {
+			if valueOrigin != nil && valueOrigin.Node == value {
+				// only cache-eligible nodes benefit from warming an identity match.
+				if len(value.Content) >= hashCacheThreshold {
+					HashNode(value)
+				}
 				return keyOrigin
 			}
-			// keep the first hash for cache population, but identical nodes need no second hash.
-			if valueOrigin != nil && valueOrigin.Node == value {
+			valueHash = HashNode(value)
+			if refNode != nil && refValue != "" {
 				return keyOrigin
 			}
 			origin, done := checkOrigin(originCheck{
@@ -56,7 +59,9 @@ func (r *Rolodex) FindNodeOriginWithValue(key, value, refNode *yaml.Node, refVal
 						return keyOrigin
 					}
 
-					valueHash = HashNode(value)
+					if n.Node != value || len(value.Content) >= hashCacheThreshold {
+						valueHash = HashNode(value)
+					}
 					if n.Node == value || valueHash == HashNode(n.Node) {
 						if keyOrigin.AbsoluteLocation != n.AbsoluteLocation {
 							if refNode == nil && refValue == "" {

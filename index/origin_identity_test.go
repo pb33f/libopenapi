@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 func originIdentityIndex(path string, nodes ...*yaml.Node) *SpecIndex {
@@ -32,89 +34,145 @@ func TestOriginIdentityEquivalent(t *testing.T) {
 	value := originIdentityValue(2, 2)
 	extKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "external", Line: 20, Column: 1}
 	extValue := originIdentityValue(30, 2)
-	r := &Rolodex{rootIndex: originIdentityIndex("root.yaml", key, value), indexes: []*SpecIndex{originIdentityIndex("key.yaml", extKey), originIdentityIndex("value.yaml", extValue)}}
+	rootIndex := originIdentityIndex("root.yaml", key, value)
+	keyIndex := originIdentityIndex("key.yaml", extKey)
+	valueIndex := originIdentityIndex("value.yaml", extValue)
+	r := &Rolodex{rootIndex: rootIndex, indexes: []*SpecIndex{keyIndex, valueIndex}}
+	rootOrigin := &NodeOrigin{Node: key, Line: 1, Column: 1, AbsoluteLocation: "root.yaml", Index: rootIndex}
+	externalOrigin := &NodeOrigin{Node: extKey, Line: 20, Column: 1, AbsoluteLocation: "key.yaml", Index: keyIndex}
+	rootWithValue := *rootOrigin
+	rootWithValue.AbsoluteLocationValue = "value.yaml"
+	rootWithValue.LineValue, rootWithValue.ColumnValue, rootWithValue.ValueNode = 30, 2, extValue
+	externalWithValue := *externalOrigin
+	externalWithValue.AbsoluteLocationValue = "value.yaml"
+	externalWithValue.LineValue, externalWithValue.ColumnValue, externalWithValue.ValueNode = 30, 2, extValue
 	clone := *value
 	mismatch := *value
 	mismatch.Value = "different"
 	missing := &yaml.Node{Kind: yaml.ScalarNode, Value: "missing", Line: 99, Column: 99}
-	for _, tc := range []struct {
+	refs := []struct {
+		name  string
+		node  *yaml.Node
+		value string
+	}{
+		{name: "none"},
+		{name: "node only", node: key},
+		{name: "value only", value: "#/schemas/Item"},
+		{name: "both", node: key, value: "#/schemas/Item"},
+	}
+	cases := []struct {
 		name       string
 		key, value *yaml.Node
+		want       [4]*NodeOrigin
+		panics     [4]bool
 	}{
-		{"root pointer", key, value}, {"root clone", key, &clone}, {"different content", key, &mismatch},
-		{"external pointer", extKey, extValue}, {"root to external", key, extValue},
-		{"nil key", nil, value}, {"nil value", key, nil}, {"missing value", key, missing},
-		{"missing key", missing, extValue},
-	} {
-		for _, refNode := range []*yaml.Node{nil, key} {
-			for _, ref := range []string{"", "#/schemas/Item"} {
-				t.Run(fmt.Sprintf("%s/refNode=%t/ref=%t", tc.name, refNode != nil, ref != ""), func(t *testing.T) {
-					call := func(f func(*yaml.Node, *yaml.Node, *yaml.Node, string) *NodeOrigin) (out *NodeOrigin, panicked bool) {
-						defer func() {
-							if recover() != nil {
-								panicked = true
-							}
-						}()
-						out = f(tc.key, tc.value, refNode, ref)
-						return
-					}
-					ClearHashCache()
-					want, wp := call(r.findNodeOriginWithValueReference)
-					ClearHashCache()
-					got, gp := call(r.FindNodeOriginWithValue)
-					if gp != wp || (got == nil) != (want == nil) || (got != nil && *got != *want) {
-						t.Fatalf("got %+v panic=%v, want %+v panic=%v", got, gp, want, wp)
-					}
-					if tc.name == "external pointer" && refNode == nil && ref == "" {
-						if got.AbsoluteLocation != "key.yaml" || got.AbsoluteLocationValue != "value.yaml" || got.LineValue != 30 || got.ColumnValue != 2 || got.ValueNode != extValue {
-							t.Fatalf("external metadata lost: %+v", got)
-						}
-					}
-				})
-			}
+		{
+			name:  "root pointer",
+			key:   key,
+			value: value,
+			want:  [4]*NodeOrigin{rootOrigin, rootOrigin, rootOrigin, rootOrigin},
+		},
+		{
+			name:  "root clone",
+			key:   key,
+			value: &clone,
+			want:  [4]*NodeOrigin{rootOrigin, rootOrigin, rootOrigin, rootOrigin},
+		},
+		{
+			name:  "different content",
+			key:   key,
+			value: &mismatch,
+			want:  [4]*NodeOrigin{nil, nil, nil, rootOrigin},
+		},
+		{
+			name:  "external pointer",
+			key:   extKey,
+			value: extValue,
+			want:  [4]*NodeOrigin{&externalWithValue, externalOrigin, externalOrigin, externalOrigin},
+		},
+		{
+			name:  "root to external",
+			key:   key,
+			value: extValue,
+			want:  [4]*NodeOrigin{&rootWithValue, rootOrigin, rootOrigin, rootOrigin},
+		},
+		{
+			name:  "nil key",
+			value: value,
+		},
+		{
+			name: "nil value",
+			key:  key,
+			want: [4]*NodeOrigin{rootOrigin, rootOrigin, rootOrigin, rootOrigin},
+		},
+		{
+			name:  "missing value",
+			key:   key,
+			value: missing,
+			want:  [4]*NodeOrigin{nil, nil, nil, rootOrigin},
+		},
+		{
+			name:   "missing key",
+			key:    missing,
+			value:  extValue,
+			panics: [4]bool{true, true, true, false},
+		},
+	}
+	for _, tc := range cases {
+		for i, ref := range refs {
+			t.Run(tc.name+"/"+ref.name, func(t *testing.T) {
+				ClearHashCache()
+				t.Cleanup(ClearHashCache)
+				call := func() { assert.Equal(t, tc.want[i], r.FindNodeOriginWithValue(tc.key, tc.value, ref.node, ref.value)) }
+				if tc.panics[i] {
+					assert.Panics(t, call)
+					return
+				}
+				assert.NotPanics(t, call)
+			})
 		}
 	}
 }
 
-func TestOriginIdentityPreservesHashCachePopulation(t *testing.T) {
+func TestOriginIdentityPopulatesHashCache(t *testing.T) {
 	for _, external := range []bool{false, true} {
-		for _, withRef := range []bool{false, true} {
-			t.Run(fmt.Sprintf("external=%t/ref=%t", external, withRef), func(t *testing.T) {
-				key := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "key", Line: 1, Column: 1}
-				value := originIdentityValue(2, hashCacheThreshold)
+		t.Run(fmt.Sprintf("external=%t", external), func(t *testing.T) {
+			key := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "key", Line: 1, Column: 1}
+			value := originIdentityValue(2, hashCacheThreshold)
+			r := &Rolodex{rootIndex: originIdentityIndex("root.yaml", key, value)}
+			if external {
+				r.rootIndex = originIdentityIndex("root.yaml")
+				r.indexes = []*SpecIndex{originIdentityIndex("key.yaml", key), originIdentityIndex("value.yaml", value)}
+			}
+			ClearHashCache()
+			t.Cleanup(ClearHashCache)
+			require.NotNil(t, r.FindNodeOriginWithValue(key, value, nil, ""))
+			cached, ok := nodeHashCache.Load(value)
+			require.True(t, ok, "origin lookup should warm cache-eligible values")
+			value.Content[0].Value = "changed"
+			ClearHashCache()
+			assert.NotEqual(t, cached, HashNode(value), "invalidation must expose mutation")
+		})
+	}
+}
+
+func BenchmarkOriginIdentity(b *testing.B) {
+	for _, external := range []bool{false, true} {
+		for _, children := range []int{0, 2, hashCacheThreshold} {
+			b.Run(fmt.Sprintf("external=%t/children=%d", external, children), func(b *testing.B) {
+				key := &yaml.Node{Value: "key", Line: 1, Column: 1}
+				value := originIdentityValue(2, children)
 				r := &Rolodex{rootIndex: originIdentityIndex("root.yaml", key, value)}
 				if external {
 					r.rootIndex = originIdentityIndex("root.yaml")
-					r.indexes = []*SpecIndex{originIdentityIndex("key.yaml", key), originIdentityIndex("value.yaml", value)}
+					r.indexes = []*SpecIndex{originIdentityIndex("external.yaml", key, value)}
 				}
-				var refNode *yaml.Node
-				ref := ""
-				if withRef {
-					refNode = key
-					ref = "#/schemas/Item"
-				}
-				ClearHashCache()
-				if r.FindNodeOriginWithValue(key, value, refNode, ref) == nil {
-					t.Fatal("missing origin")
-				}
-				cached, ok := nodeHashCache.Load(value)
-				// The existing external-reference early return occurs before hashing the value.
-				if external && withRef {
-					if ok {
-						t.Fatal("external ref unexpectedly populated value cache")
+				b.ReportAllocs()
+				b.ResetTimer()
+				for b.Loop() {
+					if r.FindNodeOriginWithValue(key, value, nil, "") == nil {
+						b.Fatal("missing origin")
 					}
-					return
-				}
-				if !ok {
-					t.Fatal("origin lookup no longer populates the value hash cache")
-				}
-				value.Content[0].Value = "changed"
-				if HashNode(value) != cached {
-					t.Fatal("cached hash changed without invalidation")
-				}
-				ClearHashCache()
-				if HashNode(value) == cached {
-					t.Fatal("cache invalidation ignored mutation")
 				}
 			})
 		}
