@@ -1,6 +1,7 @@
 package low
 
 import (
+	"math"
 	"sync"
 	"testing"
 
@@ -436,4 +437,71 @@ func TestBuildModelAsync_HandlesError(t *testing.T) {
 	wg.Add(1)
 	BuildModelAsync(utils.CreateStringNode("cake"), "cake", &wg, &errs)
 	assert.NotEmpty(t, errs)
+}
+
+func TestBuildModel_Int64FromFloatAndRange(t *testing.T) {
+	type holder struct {
+		MaxLength NodeReference[int64]
+	}
+
+	tests := []struct {
+		name    string
+		yml     string
+		want    int64
+		wantSet bool
+	}{
+		{name: "integer", yml: "maxLength: 5", want: 5, wantSet: true},
+		{name: "whole float", yml: "maxLength: 2.0", want: 2, wantSet: true},
+		{name: "scientific", yml: "maxLength: 1e3", want: 1000, wantSet: true},
+		{name: "max float64", yml: "maxLength: 1.7976931348623157E+308", want: math.MaxInt64, wantSet: true},
+		{name: "positive inf", yml: "maxLength: .inf", want: math.MaxInt64, wantSet: true},
+		{name: "negative inf", yml: "maxLength: -.inf", want: math.MinInt64, wantSet: true},
+		{name: "upper case inf", yml: "maxLength: +.INF", want: math.MaxInt64, wantSet: true},
+		{name: "parseint range", yml: "maxLength: 9223372036854775808", want: math.MaxInt64, wantSet: true},
+		{name: "negative parseint range", yml: "maxLength: -9223372036854775809", want: math.MinInt64, wantSet: true},
+		{name: "negative whole float", yml: "maxLength: -2.0", want: -2, wantSet: true},
+		{name: "negative huge float", yml: "maxLength: -1e20", want: math.MinInt64, wantSet: true},
+		{name: "zero float", yml: "maxLength: 0.0", want: 0, wantSet: true},
+		{name: "fractional", yml: "maxLength: 2.5", wantSet: false},
+		{name: "nan", yml: "maxLength: .nan", wantSet: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var rootNode yaml.Node
+			mErr := yaml.Unmarshal([]byte(tc.yml), &rootNode)
+			assert.NoError(t, mErr)
+
+			h := holder{}
+			cErr := BuildModel(rootNode.Content[0], &h)
+			assert.NoError(t, cErr)
+			if tc.wantSet {
+				assert.False(t, h.MaxLength.IsEmpty())
+				assert.Equal(t, tc.want, h.MaxLength.Value)
+			} else {
+				assert.True(t, h.MaxLength.IsEmpty())
+			}
+		})
+	}
+}
+
+func TestBuildModel_Int64SliceFromFloat(t *testing.T) {
+	type holder struct {
+		HighTemps []NodeReference[int64]
+	}
+
+	yml := `highTemps: [2.0, 2.5, 1e3, .nan]`
+
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	h := holder{}
+	cErr := BuildModel(rootNode.Content[0], &h)
+	assert.NoError(t, cErr)
+	assert.Len(t, h.HighTemps, 4)
+	assert.Equal(t, int64(2), h.HighTemps[0].Value)
+	assert.Equal(t, int64(0), h.HighTemps[1].Value)
+	assert.Equal(t, int64(1000), h.HighTemps[2].Value)
+	assert.Equal(t, int64(0), h.HighTemps[3].Value)
 }
