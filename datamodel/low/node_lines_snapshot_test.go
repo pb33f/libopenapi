@@ -2,11 +2,13 @@ package low
 
 import (
 	"fmt"
-	"github.com/pb33f/go-yaml"
-	"reflect"
 	"slices"
 	"sync"
 	"testing"
+
+	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 func TestNodeMapGetNodeLines(t *testing.T) {
@@ -14,9 +16,22 @@ func TestNodeMapGetNodeLines(t *testing.T) {
 		name   string
 		values map[int]any
 	}{
-		{"nil nodes", nil}, {"empty", map[int]any{}}, {"single", map[int]any{4: &yaml.Node{}}},
-		{"mixed", map[int]any{-2: &yaml.Node{}, 0: []*yaml.Node{{}, {}}, 7: (*yaml.Node)(nil), 9: []*yaml.Node(nil), 11: []*yaml.Node{}, 13: "ignored", 14: nil}},
-		{"invalid only", map[int]any{5: "invalid", 9: 42}},
+		{name: "nil nodes"},
+		{name: "empty", values: map[int]any{}},
+		{name: "single", values: map[int]any{4: &yaml.Node{}}},
+		{
+			name: "mixed",
+			values: map[int]any{
+				-2: &yaml.Node{},
+				0:  []*yaml.Node{{}, {}},
+				7:  (*yaml.Node)(nil),
+				9:  []*yaml.Node(nil),
+				11: []*yaml.Node{},
+				13: "ignored",
+				14: nil,
+			},
+		},
+		{name: "invalid only", values: map[int]any{5: "invalid", 9: 42}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -34,15 +49,12 @@ func TestNodeMapGetNodeLines(t *testing.T) {
 			}
 			slices.Sort(got)
 			slices.Sort(want)
-			if !reflect.DeepEqual(got, want) {
-				t.Fatalf("got %v want %v", got, want)
-			}
+			assert.Equal(t, want, got)
+			require.NotEmpty(t, got)
 			got[0] = 999
 			fresh := nm.GetNodeLines()
 			slices.Sort(fresh)
-			if !reflect.DeepEqual(fresh, want) {
-				t.Fatalf("snapshot aliases storage: %v", fresh)
-			}
+			assert.Equal(t, want, fresh, "snapshot must not alias storage")
 		})
 	}
 }
@@ -60,9 +72,8 @@ func TestNodeMapGetNodeLinesMutation(t *testing.T) {
 	nm.AddNode(9, &yaml.Node{})
 	after := nm.GetNodeLines()
 	slices.Sort(after)
-	if !reflect.DeepEqual(before, []int{2, 3}) || !reflect.DeepEqual(after, []int{3, 7, 9}) {
-		t.Fatalf("before %v after %v", before, after)
-	}
+	assert.Equal(t, []int{2, 3}, before)
+	assert.Equal(t, []int{3, 7, 9}, after)
 }
 
 func TestNodeMapGetNodeLinesConcurrent(t *testing.T) {
@@ -77,18 +88,14 @@ func TestNodeMapGetNodeLinesConcurrent(t *testing.T) {
 				lines := nm.GetNodeLines()
 				seen := make(map[int]bool, len(lines))
 				for _, line := range lines {
-					if seen[line] {
-						t.Errorf("duplicate line %d", line)
-					}
+					assert.False(t, seen[line], "duplicate line %d", line)
 					seen[line] = true
 				}
 			}
 		}(worker)
 	}
 	wg.Wait()
-	if len(nm.GetNodeLines()) != 4000 {
-		t.Fatal("missing writes")
-	}
+	assert.Len(t, nm.GetNodeLines(), 4000, "missing writes")
 }
 
 func BenchmarkNodeMapLineNumbers(b *testing.B) {

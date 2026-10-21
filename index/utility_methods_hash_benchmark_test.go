@@ -1,6 +1,7 @@
 package index
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 
@@ -8,17 +9,6 @@ import (
 )
 
 var hashNodeFastBenchmarkSink string
-
-func hashNodeFastBenchmarkChain(size int) *yaml.Node {
-	root := &yaml.Node{Tag: "!!seq"}
-	current := root
-	for i := 1; i < size; i++ {
-		next := &yaml.Node{Tag: "!!seq", Value: strconv.Itoa(i), Line: i}
-		current.Content = []*yaml.Node{next}
-		current = next
-	}
-	return root
-}
 
 // BenchmarkHashNodeTraversalWorkloads distinguishes scalar traffic, uncached
 // narrow roots, cold wide roots, and map reuse after a large traversal.
@@ -88,6 +78,33 @@ func BenchmarkHashNodeTraversalWorkloads(b *testing.B) {
 			}
 			b.StopTimer()
 			b.ReportMetric(129, "hashes/op")
+		})
+	}
+}
+
+func BenchmarkHashNodeSmallTraversalBoundaries(b *testing.B) {
+	for _, size := range []int{8, 16, 17, 32} {
+		b.Run(fmt.Sprintf("deep_unique_%d", size), func(b *testing.B) {
+			root := hashNodeFastBenchmarkChain(size)
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				hashNodeFastBenchmarkSink = HashNode(root)
+			}
+		})
+		b.Run(fmt.Sprintf("wide_duplicates_%d", size), func(b *testing.B) {
+			shared := &yaml.Node{Value: "same"}
+			wide := &yaml.Node{Content: make([]*yaml.Node, size)}
+			for i := range wide.Content {
+				wide.Content[i] = shared
+			}
+			// the narrow root avoids cache admission and measures each traversal.
+			root := &yaml.Node{Content: []*yaml.Node{wide}}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for i := 0; i < b.N; i++ {
+				hashNodeFastBenchmarkSink = HashNode(root)
+			}
 		})
 	}
 }
