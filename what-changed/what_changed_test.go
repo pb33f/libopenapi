@@ -276,13 +276,18 @@ func TestCheckExplodedFileCheck(t *testing.T) {
 	modDoc, _ := v3.CreateDocumentFromConfig(infoMod, config)
 
 	changes := CompareOpenAPIDocuments(origDoc, modDoc)
-	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 3, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 
+	// both references changed, and the files they now point to are compared: c-alt.yaml has a new description.
 	allChanges := changes.GetAllChanges()
-	assert.Len(t, allChanges, 1)
+	assert.Len(t, allChanges, 3)
 	assert.Equal(t, "b.yaml#/components/schemas/SchemaB", allChanges[0].OriginalObject)
 	assert.Equal(t, "b-alt.yaml#/components/schemas/SchemaB", allChanges[0].NewObject)
+	assert.Equal(t, "c.yaml", allChanges[1].OriginalObject)
+	assert.Equal(t, "c-alt.yaml", allChanges[1].NewObject)
+	assert.Equal(t, "description", allChanges[2].Property)
+	assert.Equal(t, "object C, but this has a changed description", allChanges[2].New)
 
 }
 
