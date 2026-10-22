@@ -41,3 +41,44 @@ func TestLookupRolodexDoesNotWaitForTargetIndex(t *testing.T) {
 		t.Fatal("reference lookup waited for target indexing; mutually referencing files can deadlock")
 	}
 }
+
+func TestExplicitWaitForIndexingStillWaitsForCompletion(t *testing.T) {
+	for name, file := range map[string]func(chan struct{}) *rolodexFile{
+		"local": func(done chan struct{}) *rolodexFile {
+			return &rolodexFile{localFile: &LocalFile{indexingComplete: done}}
+		},
+		"remote": func(done chan struct{}) *rolodexFile {
+			return &rolodexFile{remoteFile: &RemoteFile{indexingComplete: done}}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			indexed := make(chan struct{})
+			t.Cleanup(func() {
+				select {
+				case <-indexed:
+				default:
+					close(indexed)
+				}
+			})
+			returned := make(chan struct{})
+			go func() {
+				file(indexed).WaitForIndexing()
+				close(returned)
+			}()
+			select {
+			case <-returned:
+				t.Fatal("explicit wait returned before indexing completed")
+			case <-time.After(10 * time.Millisecond):
+			}
+			close(indexed)
+			select {
+			case <-returned:
+			case <-time.After(time.Second):
+				t.Fatal("explicit wait did not return after indexing completed")
+			}
+			// Files without an indexing operation have nothing to wait for.
+			file(nil).WaitForIndexing()
+		})
+	}
+	(&rolodexFile{}).WaitForIndexing()
+}

@@ -815,6 +815,7 @@ paths: {}`
 func TestIsFileBeingIndexed_HTTPPathMatch(t *testing.T) {
 	// Test that HTTP paths match when the path portion is the same
 	ctx := context.Background()
+	assert.False(t, IsFileBeingIndexed(ctx, "https://example.com/schemas/pet.yaml"))
 
 	// Add an HTTP file to the indexing context
 	files := make(map[string]bool)
