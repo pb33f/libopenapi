@@ -73,6 +73,7 @@ See all the documentation at https://pb33f.io/libopenapi/
 - [Overlays](https://pb33f.io/libopenapi/overlays/)
 - [Arazzo](https://pb33f.io/libopenapi/arazzo/)
 - [Generating Code](https://pb33f.io/libopenapi/generating-code/)
+- [Generating Go & TypeScript SDKs](https://pb33f.io/libopenapi/generating-sdks/)
 - [Parsing Code](https://pb33f.io/libopenapi/parsing-code/)
 - [FAQ](https://pb33f.io/libopenapi/faq/)
 - [About libopenapi](https://pb33f.io/libopenapi/about/)
