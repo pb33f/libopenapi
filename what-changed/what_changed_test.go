@@ -12,6 +12,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/what-changed/model"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
 )
@@ -387,4 +388,69 @@ func TestCompareOpenAPIDocuments_CrossFileCircularReference(t *testing.T) {
 	require.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+// Many references to one schema in a document with a reference loop: with quick hash, references after the
+// first reuse the cached hash of the schema they point to rather than building it again. The result must be the
+// same as without quick hash.
+func TestCompareOpenAPIDocuments_QuickHashCyclicSharedRefs(t *testing.T) {
+	spec := func(nameType string) []byte {
+		return []byte(`openapi: 3.1.0
+info:
+  title: shared refs
+  version: '1'
+paths: {}
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: ` + nameType + `
+    Owner:
+      type: object
+      properties:
+        pet:
+          $ref: '#/components/schemas/Pet'
+        pets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Pet'
+    Shop:
+      type: object
+      properties:
+        featured:
+          $ref: '#/components/schemas/Pet'
+        owner:
+          $ref: '#/components/schemas/Owner'
+    Node:
+      type: object
+      properties:
+        next:
+          $ref: '#/components/schemas/Link'
+    Link:
+      type: object
+      properties:
+        node:
+          $ref: '#/components/schemas/Node'`)
+	}
+	compare := func(quick bool) *model.DocumentChanges {
+		config := datamodel.NewDocumentConfiguration()
+		config.UseSchemaQuickHash = quick
+		load := func(b []byte) *v3.Document {
+			info, err := datamodel.ExtractSpecInfo(b)
+			require.NoError(t, err)
+			doc, err := v3.CreateDocumentFromConfig(info, config)
+			require.NoError(t, err)
+			return doc
+		}
+		return CompareOpenAPIDocuments(load(spec("string")), load(spec("integer")))
+	}
+
+	withQuickHash, without := compare(true), compare(false)
+	require.NotNil(t, withQuickHash)
+	require.NotNil(t, without)
+	assert.Equal(t, without.TotalChanges(), withQuickHash.TotalChanges())
+	assert.Equal(t, without.TotalBreakingChanges(), withQuickHash.TotalBreakingChanges())
+	assert.Equal(t, 1, withQuickHash.TotalBreakingChanges()) // Pet.name: string -> integer
 }
