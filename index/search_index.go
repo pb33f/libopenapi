@@ -429,10 +429,16 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 
 func (index *SpecIndex) extractIndex(r *Reference) *SpecIndex {
 	idx := r.Index
-	if idx != nil && r.Index.GetSpecAbsolutePath() != r.RemoteLocation {
-		for i := range r.Index.rolodex.indexes {
-			if r.Index.rolodex.indexes[i].GetSpecAbsolutePath() == r.RemoteLocation {
-				idx = r.Index.rolodex.indexes[i]
+	// A whole-file reference can be cached before its target index is ready.
+	// Use the caller's rolodex to find that target, without using its index.
+	sourceIndex := idx
+	if sourceIndex == nil {
+		sourceIndex = index
+	}
+	if sourceIndex.rolodex != nil && (idx == nil || sourceIndex.GetSpecAbsolutePath() != r.RemoteLocation) {
+		for i := range sourceIndex.rolodex.indexes {
+			if sourceIndex.rolodex.indexes[i].GetSpecAbsolutePath() == r.RemoteLocation {
+				idx = sourceIndex.rolodex.indexes[i]
 				break
 			}
 		}

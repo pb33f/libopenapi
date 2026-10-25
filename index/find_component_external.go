@@ -55,9 +55,7 @@ func (index *SpecIndex) lookupRolodex(ctx context.Context, uri []string) *Refere
 		// Looking up a component needs the parsed YAML, not the completed index.
 		// Waiting here can deadlock concurrently indexed documents that reference
 		// each other, even when the referenced schema graph itself is finite.
-		if rFile.GetIndex() != nil {
-			idx = rFile.GetIndex()
-		}
+		idx = rFile.GetIndex()
 		parsedDocument, _ = rFile.GetContentAsYAMLNode()
 	} else {
 		parsedDocument = index.root
