@@ -921,3 +921,80 @@ properties:
 	recomputedHash := sch.Hash()
 	assert.NotEqual(t, uint64(0), recomputedHash)
 }
+
+// quickHashRefProxy is a reference proxy as the model builds it: its value node is the schema it points to.
+func quickHashRefProxy(t *testing.T, target string, cfg *index.SpecIndexConfig) *SchemaProxy {
+	t.Helper()
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(target), &node))
+	cfg.UseSchemaQuickHash = true
+	idx := index.NewSpecIndexWithConfig(&node, cfg)
+	rolodex := index.NewRolodex(cfg)
+	idx.SetRolodex(rolodex)
+	rolodex.SetRootIndex(idx)
+
+	sp := new(SchemaProxy)
+	sp.vn = node.Content[0]
+	sp.idx = idx
+	sp.ctx = context.Background()
+	r := low.Reference{}
+	r.SetReference("#/components/schemas/Pet", &yaml.Node{})
+	sp.Reference = r
+	return sp
+}
+
+func TestSchemaProxy_QuickHash_ReusesCachedHashWithoutBuilding(t *testing.T) {
+	ClearSchemaQuickHashMap()
+	defer ClearSchemaQuickHashMap()
+	sp := quickHashRefProxy(t, "type: object\nproperties:\n  name:\n    type: string\n", &index.SpecIndexConfig{})
+
+	SchemaQuickHashMap.Store(quickHashKeyOf(sp.idx, sp.idx, sp.vn), uint64(42))
+
+	assert.Equal(t, uint64(42), sp.Hash())
+	assert.Nil(t, sp.rendered.Load(), "the referenced schema should not be built")
+}
+
+func TestSchemaProxy_QuickHash_BuildsOnMiss(t *testing.T) {
+	ClearSchemaQuickHashMap()
+	defer ClearSchemaQuickHashMap()
+	sp := quickHashRefProxy(t, "type: object\nproperties:\n  name:\n    type: string\n", &index.SpecIndexConfig{})
+
+	hash := sp.Hash()
+
+	built := sp.rendered.Load()
+	require.NotNil(t, built)
+	assert.Equal(t, built.QuickHash(), hash)
+	// the key worked out from the proxy is the one the built schema uses.
+	assert.Equal(t, built.quickHashKey(), quickHashKeyOf(sp.idx, sp.idx, sp.vn))
+}
+
+func TestSchemaProxy_CachedQuickHash_Declines(t *testing.T) {
+	ClearSchemaQuickHashMap()
+	defer ClearSchemaQuickHashMap()
+	target := "type: object\nproperties:\n  name:\n    type: string\n"
+
+	// a node that is itself a $ref is re-attributed while building, with or without property merging.
+	for _, cfg := range []*index.SpecIndexConfig{{}, {MergeReferencedProperties: true}} {
+		sp := quickHashRefProxy(t, "$ref: '#/components/schemas/Other'\ndescription: sibling\n", cfg)
+		SchemaQuickHashMap.Store(quickHashKeyOf(sp.idx, sp.idx, sp.vn), uint64(42))
+		_, ok := sp.cachedQuickHash()
+		assert.False(t, ok)
+	}
+
+	// nothing to build.
+	sp := new(SchemaProxy)
+	_, ok := sp.cachedQuickHash()
+	assert.False(t, ok)
+
+	// an alias with nothing behind it.
+	sp = quickHashRefProxy(t, target, &index.SpecIndexConfig{})
+	sp.vn = &yaml.Node{Kind: yaml.AliasNode}
+	_, ok = sp.cachedQuickHash()
+	assert.False(t, ok)
+
+	// a value that isn't a hash.
+	sp = quickHashRefProxy(t, target, &index.SpecIndexConfig{})
+	SchemaQuickHashMap.Store(quickHashKeyOf(sp.idx, sp.idx, sp.vn), "not a hash")
+	_, ok = sp.cachedQuickHash()
+	assert.False(t, ok)
+}

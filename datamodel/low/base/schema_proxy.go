@@ -267,7 +267,8 @@ func (sp *SchemaProxy) Schema() *Schema {
 // there were no errors during build, then nil will be returned.
 //
 // Thread safety: GetBuildError() is safe to call concurrently only after Schema() has been called at least once
-// on this proxy (from any goroutine). All standard code paths (Hash(), high-level Schema()) call Schema() first.
+// on this proxy (from any goroutine). The high-level Schema() calls Schema() first; Hash() may not, when a quick
+// hash for the referenced schema is already cached.
 func (sp *SchemaProxy) GetBuildError() error {
 	return sp.buildError
 }
@@ -363,6 +364,10 @@ func (sp *SchemaProxy) computeHash() uint64 {
 	cfg := sp.getSpecConfig()
 	if cfg != nil && cfg.UseSchemaQuickHash {
 		if !CheckSchemaProxyForCircularRefs(sp) {
+			// many references point at the same schema; reuse its quick hash before building another copy.
+			if hash, ok := sp.cachedQuickHash(); ok {
+				return hash
+			}
 			sch = sp.Schema()
 			if sch != nil {
 				return sch.QuickHash()
@@ -474,4 +479,27 @@ func (sp *SchemaProxy) attemptPropertyMerging(node *yaml.Node, config *datamodel
 	}
 
 	return merged
+}
+
+// cachedQuickHash returns the quick hash already stored for the schema this reference would build, without
+// building it. It only answers when the key the built schema would use can be worked out from the proxy: a node
+// that is itself a $ref is re-attributed to another index while building (and is the only kind of node
+// referenced-property merging changes), so that is left to Schema().
+func (sp *SchemaProxy) cachedQuickHash() (uint64, bool) {
+	if sp.vn == nil {
+		return 0, false
+	}
+	root := utils.ResolveMergeNodes(sp.vn)
+	if root == nil {
+		return 0, false
+	}
+	if isRef, _, _ := utils.IsNodeRefValue(root); isRef {
+		return 0, false
+	}
+	if v, ok := SchemaQuickHashMap.Load(quickHashKeyOf(sp.idx, sp.idx, root)); ok {
+		if hash, isHash := v.(uint64); isHash {
+			return hash, true
+		}
+	}
+	return 0, false
 }
