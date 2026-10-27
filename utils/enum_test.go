@@ -1,11 +1,66 @@
 package utils
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/require"
 )
+
+func TestCheckEnumForDuplicates_OversizedNumbers(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		tag   string
+		value string
+	}{
+		{"positive exponent", "!!float", "1e401"},
+		{"negative exponent", "!!float", "1e-401"},
+		{"huge positive exponent", "!!float", "1e999999"},
+		{"huge negative exponent", "!!float", "1e-999999"},
+		{"uppercase exponent", "!!float", "1E+401"},
+		{"separated exponent", "!!float", "1e4_01"},
+		{"binary exponent", "!!float", "0x1p401"},
+		{"negative binary exponent", "!!float", "0x1P-401"},
+		{"decimal mantissa binary exponent", "!!float", "1p401"},
+		{"long integer", "!!int", strings.Repeat("9", 1025)},
+		{"long prefixed integer", "!!int", "0x" + strings.Repeat("f", 1023)},
+		{"long mantissa", "!!float", "1." + strings.Repeat("0", 1023)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			first := &yaml.Node{Kind: yaml.ScalarNode, Tag: tc.tag, Value: tc.value}
+			second := &yaml.Node{Kind: yaml.ScalarNode, Tag: tc.tag, Value: tc.value}
+			require.Empty(t, CheckEnumForDuplicates([]*yaml.Node{first, second}))
+		})
+	}
+}
+
+func TestCheckEnumForDuplicates_BoundedNumbers(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		tag    string
+		first  string
+		second string
+	}{
+		{"positive exponent boundary", "!!float", "1e400", "10e399"},
+		{"negative exponent boundary", "!!float", "1e-400", "0.1e-399"},
+		{"uppercase signed exponent", "!!float", "1E+400", "10e399"},
+		{"separated exponent", "!!float", "1e4_00", "1e400"},
+		{"zero padded exponent", "!!float", "1e000400", "1e400"},
+		{"binary exponent boundary", "!!float", "0x1p400", "0x2p399"},
+		{"hexadecimal mantissa", "!!float", "0xdead", "57005.0"},
+		{"integer length boundary", "!!int", strings.Repeat("9", 1024), strings.Repeat("9", 1024)},
+		{"mantissa length boundary", "!!float", "1." + strings.Repeat("0", 1022), "1.0"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			first := &yaml.Node{Kind: yaml.ScalarNode, Tag: tc.tag, Value: tc.first}
+			second := &yaml.Node{Kind: yaml.ScalarNode, Tag: tc.tag, Value: tc.second}
+			duplicates := CheckEnumForDuplicates([]*yaml.Node{first, second})
+			require.Len(t, duplicates, 1)
+			require.Same(t, second, duplicates[0])
+		})
+	}
+}
 
 func TestCheckEnumForDuplicates_Values(t *testing.T) {
 	for _, tc := range []struct {
