@@ -6,6 +6,7 @@ package index
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/pb33f/go-yaml"
@@ -260,7 +261,7 @@ func navigateToFragment(root *yaml.Node, fragment string) *yaml.Node {
 	}
 
 	path := strings.TrimPrefix(fragment, "#")
-	if path == "" || path == "/" {
+	if path == "" {
 		return root
 	}
 
@@ -272,10 +273,6 @@ func navigateToFragment(root *yaml.Node, fragment string) *yaml.Node {
 	}
 
 	for _, segment := range segments {
-		if segment == "" {
-			continue
-		}
-
 		// Decode JSON pointer escapes (~1 = /, ~0 = ~)
 		segment = strings.ReplaceAll(segment, "~1", "/")
 		segment = strings.ReplaceAll(segment, "~0", "~")
@@ -290,17 +287,15 @@ func navigateToFragment(root *yaml.Node, fragment string) *yaml.Node {
 				}
 			}
 		} else if current.Kind == yaml.SequenceNode {
-			idx := 0
-			for _, c := range segment {
-				if c < '0' || c > '9' {
-					return nil
-				}
-				idx = idx*10 + int(c-'0')
+			if len(segment) > 1 && segment[0] == '0' {
+				return nil
 			}
-			if idx < len(current.Content) {
-				current = current.Content[idx]
-				found = true
+			idx, err := strconv.ParseUint(segment, 10, 64)
+			if err != nil || idx >= uint64(len(current.Content)) {
+				return nil
 			}
+			current = current.Content[idx]
+			found = true
 		}
 
 		if !found {

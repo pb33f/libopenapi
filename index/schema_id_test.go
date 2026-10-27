@@ -1173,9 +1173,9 @@ items:
 			wantNil:  false,
 		},
 		{
-			name:     "single slash returns root",
+			name:     "single slash selects missing empty member",
 			fragment: "#/",
-			wantNil:  false,
+			wantNil:  true,
 		},
 		{
 			name:     "navigate to type",
@@ -1217,9 +1217,9 @@ items:
 			wantNil:  true,
 		},
 		{
-			name:     "empty segments skipped (double slash)",
+			name:     "empty segments select missing empty members",
 			fragment: "#//properties//name",
-			wantNil:  false,
+			wantNil:  true,
 		},
 	}
 

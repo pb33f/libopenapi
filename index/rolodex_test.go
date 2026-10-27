@@ -1056,7 +1056,7 @@ components:
           type: "string"
           oneOf:
             items:
-              $ref: "https://junk-peddlers-blues.com/$3#/"
+              $ref: "https://junk-peddlers-blues.com/$3"
         children:
           type: "object"
           allOf:
@@ -1094,7 +1094,7 @@ components:
         buffins:
           type: object
           allOf: 
-            - $ref: "https://no-more-bananas-please.com/$2#/"
+            - $ref: "https://no-more-bananas-please.com/$2"
         muffins:
          type: object
          anyOf:

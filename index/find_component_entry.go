@@ -66,7 +66,15 @@ func (index *SpecIndex) FindComponent(ctx context.Context, componentId string) *
 // JSONPath traversal for legacy or non-direct component identifiers.
 func FindComponent(_ context.Context, root *yaml.Node, componentID, absoluteFilePath string, index *SpecIndex) *Reference {
 	if strings.Contains(componentID, "%") {
-		componentID, _ = url.QueryUnescape(componentID)
+		decoded, err := url.PathUnescape(componentID)
+		if err != nil {
+			return nil
+		}
+		componentID = decoded
+	}
+
+	if componentID == "#" {
+		componentID = ""
 	}
 
 	if fastRef := findDirectComponent(index, componentID, absoluteFilePath); fastRef != nil {
@@ -81,6 +89,9 @@ func FindComponent(_ context.Context, root *yaml.Node, componentID, absoluteFile
 			}
 			return buildResolvedComponentReference(index, nil, componentID, absoluteFilePath, name, friendlySearch, node)
 		}
+		// A JSON Pointer that does not resolve must not be reinterpreted as
+		// JSONPath, whose empty segments and array-index syntax differ.
+		return nil
 	}
 
 	name, friendlySearch := utils.ConvertComponentIdIntoFriendlyPathSearch(componentID)
