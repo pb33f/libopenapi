@@ -64,3 +64,21 @@ func TestResolvedMergeNodeMappingCycleTerminates(t *testing.T) {
 	assert.Equal(t, []*yaml.Node{key, value}, view.Content)
 	assert.Len(t, node.Content, 4)
 }
+
+func TestResolvedMergeNodeSequenceCycleTerminates(t *testing.T) {
+	const source = `base: &base {inherited: first}
+sequence: &sequence [*sequence, *base]
+merged: {<<: *sequence, local: retained}
+`
+	var document yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(source), &document))
+	_, original := FindKeyNodeTop("merged", document.Content[0].Content)
+	view := ResolveMergeNodes(original)
+	_, inherited := FindKeyNodeTop("inherited", view.Content)
+	require.NotNil(t, inherited)
+	assert.Equal(t, "first", inherited.Value)
+	_, local := FindKeyNodeTop("local", view.Content)
+	require.NotNil(t, local)
+	assert.Equal(t, "retained", local.Value)
+	assert.True(t, hasMergeKeys(original.Content))
+}

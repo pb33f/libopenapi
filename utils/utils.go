@@ -411,6 +411,11 @@ func appendExpandedMergeContent(
 	}
 
 	if mergeValue.Kind == yaml.SequenceNode {
+		if _, active := visited[mergeValue]; active {
+			return target
+		}
+		visited[mergeValue] = struct{}{}
+		defer delete(visited, mergeValue)
 		for _, item := range mergeValue.Content {
 			target = appendExpandedMergeContent(target, seenKeys, item, visited)
 		}

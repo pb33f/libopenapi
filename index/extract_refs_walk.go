@@ -12,6 +12,7 @@ import (
 )
 
 type extractRefsState struct {
+	ancestry      map[*yaml.Node]struct{}
 	ctx           context.Context
 	scope         *SchemaIdScope
 	parentBaseURI string
@@ -100,10 +101,11 @@ func (index *SpecIndex) walkChildExtractRefs(node, parent *yaml.Node, state *ext
 			state.polyName = state.prev
 		}
 	}
-	return index.ExtractRefs(state.ctx, node, parent, state.seenPath, state.level, state.poly, state.polyName)
+	return index.extractRefs(state.ctx, node, parent, state.seenPath, state.level, state.poly, state.polyName, state.ancestry)
 }
 
 func isDirectOpenAPIExampleRefNode(node *yaml.Node) bool {
+	node = utils.ResolveMergeNodes(node)
 	return utils.IsNodeMap(node) && utils.GetRefValueNode(node) != nil && len(node.Content) == 2
 }
 
