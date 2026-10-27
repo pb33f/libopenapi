@@ -1171,7 +1171,7 @@ func TestFindNestedObjectContainers_NilChildTraversal(t *testing.T) {
 	assert.Empty(t, findNestedObjectContainers(root, "links"))
 }
 
-func TestSpecIndex_ExtractComponentsFromRefs(t *testing.T) {
+func TestSpecIndex_RejectsMissingLiteralBackslashKeys(t *testing.T) {
 	yml := `components:
   schemas:
     pizza:
@@ -1185,7 +1185,7 @@ func TestSpecIndex_ExtractComponentsFromRefs(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
-	assert.Len(t, index.GetReferenceIndexErrors(), 0)
+	assert.Len(t, index.GetReferenceIndexErrors(), 1)
 }
 
 func TestSpecIndex_ExtractComponentsFromRefs_EmptyRefs(t *testing.T) {
@@ -1746,7 +1746,7 @@ func TestFindComponent_FunctionFallbackEdges(t *testing.T) {
 	assert.Nil(t, FindComponent(context.Background(), nil, "#/missing", "", index))
 	assert.Nil(t, FindComponent(context.Background(), &rootNode, "#/missing", "", index))
 
-	rootRef := FindComponent(context.Background(), &rootNode, "#/", "", index)
+	rootRef := FindComponent(context.Background(), &rootNode, "#", "", index)
 	assert.NotNil(t, rootRef)
 	assert.Equal(t, "$", rootRef.Path)
 

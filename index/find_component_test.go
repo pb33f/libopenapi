@@ -366,9 +366,9 @@ components:
 	r := NewRolodex(c)
 	index.rolodex = r
 
-	n := index.FindComponentInRoot(context.Background(), "#/")
+	n := index.FindComponentInRoot(context.Background(), "#")
 
-	// if the reference is not found, it should return the root.
+	// The empty JSON Pointer fragment selects the document root.
 	assert.NotNil(t, n)
 }
 

@@ -216,9 +216,17 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		ref = uriFile
 	}
 	if strings.Contains(ref, "%") {
-		// decode the url.
-		ref, _ = url.QueryUnescape(ref)
-		refAlt, _ = url.QueryUnescape(refAlt)
+		// Decode URI escaping without treating literal plus signs as spaces.
+		decodedRef, err := url.PathUnescape(ref)
+		if err != nil {
+			return nil, index, ctx
+		}
+		ref = decodedRef
+		refAlt = decodedRef
+		if singleFragment && uriFile == "" {
+			// absPath is a native path, not another URI-escaped fragment.
+			refAlt = absPath + decodedRef
+		}
 	}
 
 	// --- Step 3: Local index lookup ---
