@@ -150,8 +150,13 @@ func buildSchemaIdResolvedReference(index *SpecIndex, entry *SchemaIdEntry, orig
 
 	node := entry.SchemaNode
 	if fragment != "" && entry.SchemaNode != nil {
-		if fragmentNode := navigateToFragment(entry.SchemaNode, fragment); fragmentNode != nil {
-			node = fragmentNode
+		decodedFragment, err := url.PathUnescape(fragment)
+		if err != nil {
+			return nil
+		}
+		node = navigateToFragment(entry.SchemaNode, decodedFragment)
+		if node == nil {
+			return nil
 		}
 	}
 
@@ -221,6 +226,8 @@ func (index *SpecIndex) resolveRefViaSchemaIdPath(path string) *Reference {
 		return nil
 	}
 
+	originalRef := path
+	path, fragment := SplitRefFragment(path)
 	entries := index.GetAllSchemaIds()
 	if index.rolodex != nil {
 		global := index.rolodex.GetAllGlobalSchemaIds()
@@ -250,7 +257,7 @@ func (index *SpecIndex) resolveRefViaSchemaIdPath(path string) *Reference {
 	}
 
 	baseUri := match.GetKey()
-	return buildSchemaIdResolvedReference(index, match, path, baseUri, "")
+	return buildSchemaIdResolvedReference(index, match, originalRef, baseUri, fragment)
 }
 
 // navigateToFragment navigates to a JSON pointer fragment within a YAML node.

@@ -1754,9 +1754,7 @@ properties:
 		"https://example.com/schema.json",
 		"#/properties/unknown",
 	)
-	if assert.NotNil(t, missingFragment) {
-		assert.Equal(t, rootNode.Content[0], missingFragment.Node)
-	}
+	assert.Nil(t, missingFragment)
 
 	assert.Nil(t, buildSchemaIdResolvedReference(rootIndex, nil, "https://example.com/schema.json", "", ""))
 }
