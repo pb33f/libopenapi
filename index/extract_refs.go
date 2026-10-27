@@ -7,6 +7,7 @@ import (
 	"context"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/libopenapi/utils"
 )
 
 func isSchemaContainingNode(v string) bool {
@@ -99,12 +100,25 @@ func isDirectOpenAPIExampleValuePath(seenPath []string) bool {
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
 // The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
 func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string) []*Reference {
+	return index.extractRefs(ctx, node, parent, seenPath, level, poly, pName, make(map[*yaml.Node]struct{}))
+}
+
+// Ancestry tracks canonical source nodes, not the shallow views created during
+// merge expansion. A shared anchor is visited again at each distinct path.
+func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string, ancestry map[*yaml.Node]struct{}) []*Reference {
+	node = utils.NodeAlias(node)
 	if node == nil {
 		return nil
 	}
-
-	state := index.initializeExtractRefsState(ctx, node, seenPath, level, poly, pName)
-	found := index.walkExtractRefs(node, parent, &state)
+	if _, active := ancestry[node]; active {
+		return nil
+	}
+	ancestry[node] = struct{}{}
+	defer delete(ancestry, node)
+	view := utils.ResolveMergeNodes(node)
+	state := index.initializeExtractRefsState(ctx, view, seenPath, level, poly, pName)
+	state.ancestry = ancestry
+	found := index.walkExtractRefs(view, parent, &state)
 	index.refCount = len(index.allRefs)
 	return found
 }
