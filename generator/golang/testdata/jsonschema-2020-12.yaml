@@ -7,7 +7,8 @@ components:
   schemas:
     TortureDocument:
       $schema: https://json-schema.org/draft/2020-12/schema
-      $id: https://pb33f.io/schemas/torture-document
+      # Keep document-local component refs below in the document's URI scope.
+      # TreeNode separately exercises a schema resource with its own $id.
       $anchor: torture-document
       $comment: Exercises JSON Schema 2020-12 model-generation edge cases.
       type: object
