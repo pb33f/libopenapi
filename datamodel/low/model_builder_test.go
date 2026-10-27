@@ -505,3 +505,65 @@ func TestBuildModel_Int64SliceFromFloat(t *testing.T) {
 	assert.Equal(t, int64(1000), h.HighTemps[2].Value)
 	assert.Equal(t, int64(0), h.HighTemps[3].Value)
 }
+
+func TestBuildModel_IntFromFloatAndRange(t *testing.T) {
+	type holder struct {
+		MaxLength NodeReference[int]
+	}
+
+	tests := []struct {
+		name    string
+		yml     string
+		want    int
+		wantSet bool
+	}{
+		{name: "integer", yml: "maxLength: 5", want: 5, wantSet: true},
+		{name: "whole float", yml: "maxLength: 2.0", want: 2, wantSet: true},
+		{name: "scientific", yml: "maxLength: 1e3", want: 1000, wantSet: true},
+		{name: "max float64", yml: "maxLength: 1.7976931348623157E+308", want: math.MaxInt, wantSet: true},
+		{name: "negative inf", yml: "maxLength: -.inf", want: math.MinInt, wantSet: true},
+		{name: "parseint range", yml: "maxLength: 9223372036854775808", want: math.MaxInt, wantSet: true},
+		{name: "negative parseint range", yml: "maxLength: -9223372036854775809", want: math.MinInt, wantSet: true},
+		{name: "fractional", yml: "maxLength: 2.5", wantSet: false},
+		{name: "nan", yml: "maxLength: .nan", wantSet: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var rootNode yaml.Node
+			mErr := yaml.Unmarshal([]byte(tc.yml), &rootNode)
+			assert.NoError(t, mErr)
+
+			h := holder{}
+			cErr := BuildModel(rootNode.Content[0], &h)
+			assert.NoError(t, cErr)
+			if tc.wantSet {
+				assert.False(t, h.MaxLength.IsEmpty())
+				assert.Equal(t, tc.want, h.MaxLength.Value)
+			} else {
+				assert.True(t, h.MaxLength.IsEmpty())
+			}
+		})
+	}
+}
+
+func TestBuildModel_IntSliceFromFloat(t *testing.T) {
+	type holder struct {
+		Temps []NodeReference[int]
+	}
+
+	yml := `temps: [2.0, 2.5, 1e3, .nan]`
+
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	h := holder{}
+	cErr := BuildModel(rootNode.Content[0], &h)
+	assert.NoError(t, cErr)
+	assert.Len(t, h.Temps, 4)
+	assert.Equal(t, 2, h.Temps[0].Value)
+	assert.Equal(t, 0, h.Temps[1].Value)
+	assert.Equal(t, 1000, h.Temps[2].Value)
+	assert.Equal(t, 0, h.Temps[3].Value)
+}

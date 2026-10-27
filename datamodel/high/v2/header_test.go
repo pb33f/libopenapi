@@ -87,3 +87,24 @@ uniqueItems: false`
 	assert.False(t, h.ExclusiveMinimum)
 	assert.False(t, h.UniqueItems)
 }
+
+func TestNewHeader_WholeFloatKeywords(t *testing.T) {
+	yml := `type: number
+maximum: 100.0
+minimum: 1.0
+maxLength: 20.0
+minLength: 2.0
+maxItems: 4.0
+minItems: 1.0
+multipleOf: 5.0`
+
+	h := buildHeader(t, yml)
+
+	assert.Equal(t, 100, h.Maximum)
+	assert.Equal(t, 1, h.Minimum)
+	assert.Equal(t, 20, h.MaxLength)
+	assert.Equal(t, 2, h.MinLength)
+	assert.Equal(t, 4, h.MaxItems)
+	assert.Equal(t, 1, h.MinItems)
+	assert.Equal(t, 5, h.MultipleOf)
+}

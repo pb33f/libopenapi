@@ -259,15 +259,16 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 
 	case setFieldNodeReferenceIntType:
 
-		if utils.IsNodeIntValue(valueNode) {
+		if utils.IsNodeIntValue(valueNode) || utils.IsNodeFloatValue(valueNode) {
 			if field.CanSet() {
-				fv, _ := strconv.Atoi(valueNode.Value)
-				nr := NodeReference[int]{
-					Value:     fv,
-					ValueNode: valueNode,
-					KeyNode:   keyNode,
+				if fv, ok := parseIntNode(valueNode.Value); ok {
+					nr := NodeReference[int]{
+						Value:     fv,
+						ValueNode: valueNode,
+						KeyNode:   keyNode,
+					}
+					field.Set(reflect.ValueOf(nr))
 				}
-				field.Set(reflect.ValueOf(nr))
 			}
 		}
 
@@ -366,7 +367,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 			if field.CanSet() {
 				items := make([]NodeReference[int], 0, len(content))
 				for _, sliceItem := range content {
-					iv, _ := strconv.Atoi(sliceItem.Value)
+					iv, _ := parseIntNode(sliceItem.Value)
 					items = append(items, NodeReference[int]{
 						Value:     iv,
 						ValueNode: sliceItem,
@@ -554,6 +555,14 @@ func parseInt64Node(value string) (int64, bool) {
 		return 0, false
 	}
 	return int64(f), true
+}
+
+// parseIntNode is parseInt64Node for an int field. Where int is 32 bits, strconv.Atoi clamps the
+// result to math.MaxInt / math.MinInt instead of letting it wrap.
+func parseIntNode(value string) (int, bool) {
+	v, ok := parseInt64Node(value)
+	i, _ := strconv.Atoi(strconv.FormatInt(v, 10))
+	return i, ok
 }
 
 // BuildModelAsync is a convenience function for calling BuildModel from a goroutine, requires a sync.WaitGroup
