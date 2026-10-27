@@ -15,10 +15,18 @@ type enumValueIndex struct {
 	active map[*yaml.Node]bool
 }
 
+// Bound arbitrary-precision parsing and the size of retained numeric keys.
+const (
+	maxEnumNumberLength   = 1024
+	maxEnumNumberExponent = 400
+)
+
 // CheckEnumForDuplicates returns each occurrence after the first of an equal
 // JSON value, preserving input order and node identity. Numbers compare by value,
 // arrays by ordered elements, and objects by members irrespective of key order.
 // YAML aliases are followed; cyclic or non-JSON values are ignored.
+// Numeric literals longer than 1024 bytes or with exponents outside [-400, 400]
+// are also ignored to bound the cost of arbitrary-precision comparison.
 func CheckEnumForDuplicates(seq []*yaml.Node) []*yaml.Node {
 	var duplicates []*yaml.Node
 	seen := make(map[int]bool)
@@ -41,7 +49,7 @@ func CheckEnumForDuplicates(seq []*yaml.Node) []*yaml.Node {
 }
 
 // valueID interns each value using its children's IDs, keeping repeated aliases
-// compact. Zero denotes a value outside the JSON data model.
+// compact. Zero denotes an unsupported value or one exceeding numeric limits.
 func (index *enumValueIndex) valueID(node *yaml.Node) int {
 	if node == nil || index.active[node] {
 		return 0
@@ -80,6 +88,9 @@ func (index *enumValueIndex) valueKey(node *yaml.Node) (string, bool) {
 			}
 			return strconv.FormatBool(value), true
 		case "!!int":
+			if len(node.Value) > maxEnumNumberLength {
+				return "", false
+			}
 			// YAML accepts base-prefixed integers and legacy octal (012 == 10).
 			value, ok := new(big.Int).SetString(node.Value, 0)
 			if !ok {
@@ -87,6 +98,9 @@ func (index *enumValueIndex) valueKey(node *yaml.Node) (string, bool) {
 			}
 			return "n" + value.String(), true
 		case "!!float":
+			if !enumFloatWithinLimits(node.Value) {
+				return "", false
+			}
 			value, ok := new(big.Rat).SetString(node.Value)
 			if !ok {
 				return "", false
@@ -128,4 +142,21 @@ func (index *enumValueIndex) valueKey(node *yaml.Node) (string, bool) {
 		return "{" + strings.Join(parts, ",") + "}", true
 	}
 	return "", false
+}
+
+func enumFloatWithinLimits(value string) bool {
+	if len(value) > maxEnumNumberLength {
+		return false
+	}
+	// big.Rat also accepts binary exponents. In hexadecimal mantissas,
+	// e and E are digits, so only p and P can introduce an exponent.
+	markers := "eEpP"
+	if strings.ContainsAny(value, "xX") {
+		markers = "pP"
+	}
+	if i := strings.LastIndexAny(value, markers); i >= 0 {
+		exponent, err := strconv.Atoi(strings.ReplaceAll(value[i+1:], "_", ""))
+		return err == nil && exponent >= -maxEnumNumberExponent && exponent <= maxEnumNumberExponent
+	}
+	return true
 }
