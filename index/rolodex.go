@@ -426,7 +426,12 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 		},
 	)
 
+	r.indexLock.Lock()
 	r.indexes = indexBuildQueue
+	for _, idx := range indexBuildQueue {
+		r.indexMap[idx.specAbsolutePath] = idx
+	}
+	r.indexLock.Unlock()
 
 	for _, idx := range indexBuildQueue {
 		idx.BuildIndex()

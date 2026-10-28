@@ -436,11 +436,12 @@ func (index *SpecIndex) extractIndex(r *Reference) *SpecIndex {
 		sourceIndex = index
 	}
 	if sourceIndex.rolodex != nil && (idx == nil || sourceIndex.GetSpecAbsolutePath() != r.RemoteLocation) {
-		for i := range sourceIndex.rolodex.indexes {
-			if sourceIndex.rolodex.indexes[i].GetSpecAbsolutePath() == r.RemoteLocation {
-				idx = sourceIndex.rolodex.indexes[i]
-				break
-			}
+		rolo := sourceIndex.rolodex
+		rolo.indexLock.Lock()
+		target := rolo.indexMap[r.RemoteLocation]
+		rolo.indexLock.Unlock()
+		if target != nil {
+			idx = target
 		}
 	}
 	return idx

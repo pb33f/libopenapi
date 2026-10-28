@@ -3,6 +3,7 @@ package index
 import (
 	"context"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -125,6 +126,60 @@ components:
 			assert.Equal(t, "string", resolved.Type, "nested refs must resolve in the target document")
 		})
 	}
+}
+
+func TestExtractIndexDuringConcurrentRegistration(t *testing.T) {
+	dir := t.TempDir()
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	caller := &SpecIndex{rolodex: rolo}
+	target := &SpecIndex{specAbsolutePath: filepath.Join(dir, "target.yaml")}
+	ref := &Reference{RemoteLocation: target.specAbsolutePath}
+	start := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		<-start
+		for i := 0; i < 256; i++ {
+			rolo.AddIndex(&SpecIndex{specAbsolutePath: filepath.Join(dir, strconv.Itoa(i)+".yaml")})
+		}
+		rolo.AddIndex(target)
+	}()
+	defer func() { <-done }()
+	close(start)
+	for i := 0; i < 1024; i++ {
+		if found := caller.extractIndex(ref); found != nil {
+			require.Same(t, target, found, "pending lookup must never return an unrelated index")
+		}
+	}
+	<-done
+	assert.Same(t, target, caller.extractIndex(ref))
+}
+
+func TestCachedWholeFileReferenceAfterBatchIndexing(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "target.yaml")
+	cfg := CreateOpenAPIIndexConfig()
+	cfg.BasePath = dir
+	cfg.AvoidCircularReferenceCheck = true
+	rolo := NewRolodex(cfg)
+	files, err := NewLocalFSWithConfig(&LocalFSConfig{BaseDirectory: dir, IndexConfig: cfg})
+	require.NoError(t, err)
+	target := &LocalFile{fullPath: path, data: []byte("type: object\n")}
+	files.Files.Store(path, target)
+	rolo.AddLocalFS(dir, files)
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("components: {}"), &root))
+	caller := NewSpecIndexWithConfig(&root, cfg)
+	ref := caller.lookupRolodex(context.Background(), []string{path})
+	require.NotNil(t, ref)
+	require.Nil(t, ref.Index)
+	caller.cache.Store(path, ref)
+
+	require.NoError(t, rolo.IndexTheRolodex(context.Background()))
+	targetIndex := target.GetIndex()
+	require.NotNil(t, targetIndex)
+	_, foundIndex := caller.SearchIndexForReference(path)
+	assert.Same(t, targetIndex, foundIndex)
 }
 
 func TestExplicitWaitForIndexingStillWaitsForCompletion(t *testing.T) {
