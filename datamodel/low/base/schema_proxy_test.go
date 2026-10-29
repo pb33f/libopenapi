@@ -968,6 +968,22 @@ func TestSchemaProxy_QuickHash_BuildsOnMiss(t *testing.T) {
 	assert.Equal(t, built.quickHashKey(), quickHashKeyOf(sp.idx, sp.idx, sp.vn))
 }
 
+func TestSchemaProxyQuickHashIndependentOfModelAccess(t *testing.T) {
+	ClearSchemaQuickHashMap()
+	defer ClearSchemaQuickHashMap()
+	for _, spec := range []string{"type: string\n", "type: integer\n"} {
+		cold := quickHashRefProxy(t, spec, &index.SpecIndexConfig{})
+		warm := quickHashRefProxy(t, spec, &index.SpecIndexConfig{})
+		require.NotNil(t, warm.Schema())
+		assert.Equal(t, cold.Hash(), warm.Hash())
+	}
+	left := quickHashRefProxy(t, "type: string\n", &index.SpecIndexConfig{})
+	right := quickHashRefProxy(t, "type: integer\n", &index.SpecIndexConfig{})
+	require.NotNil(t, left.Schema())
+	require.NotNil(t, right.Schema())
+	assert.NotEqual(t, left.Hash(), right.Hash())
+}
+
 func TestSchemaProxy_CachedQuickHash_Declines(t *testing.T) {
 	ClearSchemaQuickHashMap()
 	defer ClearSchemaQuickHashMap()

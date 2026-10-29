@@ -333,6 +333,9 @@ func (sp *SchemaProxy) computeHash() uint64 {
 		if !sp.IsReference() {
 			return sch.Hash()
 		}
+		if cfg := sp.getSpecConfig(); cfg != nil && cfg.UseSchemaQuickHash && !CheckSchemaProxyForCircularRefs(sp) {
+			return sch.QuickHash()
+		}
 		return sp.hashReference()
 	}
 
