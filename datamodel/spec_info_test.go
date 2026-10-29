@@ -196,7 +196,7 @@ channels:
           type: string
           pattern: '^hello .+$'`
 
-var AsyncAPISpecOdd = `asyncapi: 3.0.0
+var AsyncAPISpecOdd = `asyncapi: 4.0.0
 info:
   title: Hello world application
   version: '0.1.0'`
