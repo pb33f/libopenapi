@@ -544,17 +544,29 @@ func parseInt64Node(value string) (int64, bool) {
 		return math.MinInt64, true
 	}
 	f, err := strconv.ParseFloat(value, 64)
-	switch {
-	case err != nil || math.IsNaN(f):
-		return 0, false
-	case f >= math.MaxInt64:
-		return math.MaxInt64, true
-	case f <= math.MinInt64:
-		return math.MinInt64, true
-	case f != math.Trunc(f):
+	if (err != nil && !errors.Is(err, strconv.ErrRange)) || math.IsNaN(f) {
 		return 0, false
 	}
-	return int64(f), true
+	if err == nil && math.IsInf(f, 0) {
+		if f < 0 {
+			return math.MinInt64, true
+		}
+		return math.MaxInt64, true
+	}
+	// Keep the existing hexadecimal-float handling; decimal constraints must not
+	// pass through float64, which loses integer and fractional digits above 2^53.
+	if strings.ContainsAny(value, "xX") {
+		switch {
+		case f >= math.MaxInt64:
+			return math.MaxInt64, true
+		case f <= math.MinInt64:
+			return math.MinInt64, true
+		case f != math.Trunc(f):
+			return 0, false
+		}
+		return int64(f), true
+	}
+	return parseDecimalInt64(value)
 }
 
 // parseIntNode is parseInt64Node for an int field. Where int is 32 bits, strconv.Atoi clamps the
