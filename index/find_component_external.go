@@ -89,10 +89,13 @@ func (index *SpecIndex) lookupRolodex(ctx context.Context, uri []string) *Refere
 		}
 	}
 
-	foundRef := FindComponent(ctx, parsedDocument, query, absoluteFileLocation, index)
+	foundRef := FindComponent(ctx, parsedDocument, query, absoluteFileLocation, idx)
 	if foundRef != nil {
 		foundRef.IsRemote = true
 		foundRef.RemoteLocation = absoluteFileLocation
+		if source := index.allRefs[absoluteFileLocation+query]; source != nil {
+			foundRef.SourcePath = append([]string(nil), source.SourcePath...)
+		}
 		return foundRef
 	}
 	index.logger.Debug("[lookupRolodex] FindComponent returned nil",
