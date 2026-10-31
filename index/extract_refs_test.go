@@ -1246,3 +1246,27 @@ func TestExtractRefs_ExampleUnderSchemaKeywordName(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractRefs_ExampleUnderComponentKeywordName(t *testing.T) {
+	for _, container := range []string{"parameters", "headers"} {
+		for _, name := range []string{"definitions", "$defs", "dependentSchemas", "properties", "patternProperties"} {
+			source := fmt.Sprintf(`openapi: 3.1.1
+info: {title: Component examples, version: '1'}
+paths: {}
+components:
+  %s:
+    %s:
+      name: test
+      in: query
+      schema: {type: object}
+      example:
+        nested: {$ref: '#/payload-only'}
+`, container, name)
+			var root yaml.Node
+			require.NoError(t, yaml.Unmarshal([]byte(source), &root))
+			idx := NewSpecIndex(&root)
+			require.Empty(t, idx.GetRawReferencesSequenced(), "%s/%s example is payload", container, name)
+			require.Empty(t, idx.GetReferenceIndexErrors())
+		}
+	}
+}

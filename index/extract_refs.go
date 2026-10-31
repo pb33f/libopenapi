@@ -57,7 +57,7 @@ func isOpenAPIExampleKeywordSegment(seenPath []string, idx int) bool {
 	if seenPath[idx] != "example" && seenPath[idx] != "examples" {
 		return false
 	}
-	// A name in a schema map cannot itself introduce another schema map.
+	// A component or schema name cannot itself introduce another named map.
 	// For example, properties/definitions/example ends at a payload keyword.
 	nameSlot := false
 	for i, segment := range seenPath[:idx] {
@@ -65,11 +65,14 @@ func isOpenAPIExampleKeywordSegment(seenPath []string, idx int) bool {
 			nameSlot = false
 			continue
 		}
-		switch segment {
-		case "properties", "patternProperties", "definitions", "$defs", "dependentSchemas":
+		if i == 1 && seenPath[0] == "components" {
 			nameSlot = true
-		case "schemas":
-			nameSlot = i == 1 && seenPath[0] == "components"
+			continue
+		}
+		switch segment {
+		case "properties", "patternProperties", "definitions", "$defs", "dependentSchemas",
+			"headers", "links", "callbacks", "encoding", "webhooks":
+			nameSlot = true
 		}
 	}
 	return !nameSlot
