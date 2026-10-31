@@ -5,10 +5,15 @@ package index
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/go-yaml/plugin/limit"
 	"github.com/pb33f/libopenapi/utils"
 )
+
+// Use the parser's existing alias policy when traversing its unexpanded node tree.
+var extractRefsAliasLimit limit.Plugin
 
 func isSchemaContainingNode(v string) bool {
 	switch v {
@@ -99,25 +104,60 @@ func isDirectOpenAPIExampleValuePath(seenPath []string) bool {
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
 // The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
+// Excessive YAML alias expansion stops extraction and is reported by GetReferenceIndexErrors.
 func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string) []*Reference {
-	return index.extractRefs(ctx, node, parent, seenPath, level, poly, pName, make(map[*yaml.Node]struct{}))
+	walk := &extractRefsTraversal{ancestry: make(map[*yaml.Node]struct{})}
+	return index.extractRefs(ctx, node, parent, seenPath, level, poly, pName, walk)
+}
+
+type extractRefsTraversal struct {
+	ancestry   map[*yaml.Node]struct{}
+	nodes      int
+	aliasNodes int
+	aliasDepth int
+	stopped    bool
+}
+
+func (walk *extractRefsTraversal) visit() error {
+	walk.nodes++
+	if walk.aliasDepth > 0 {
+		walk.aliasNodes++
+	}
+	return extractRefsAliasLimit.CheckAlias(walk.aliasNodes, walk.nodes)
 }
 
 // Ancestry tracks canonical source nodes, not the shallow views created during
 // merge expansion. A shared anchor is visited again at each distinct path.
-func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string, ancestry map[*yaml.Node]struct{}) []*Reference {
-	node = utils.NodeAlias(node)
+func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string, walk *extractRefsTraversal) []*Reference {
+	if node == nil || walk.stopped {
+		return nil
+	}
+	err := walk.visit()
+	if node.Kind == yaml.AliasNode && err == nil {
+		walk.aliasDepth++
+		defer func() { walk.aliasDepth-- }()
+		node = utils.NodeAlias(node)
+		err = walk.visit()
+	}
+	if err != nil {
+		walk.stopped = true
+		// A stopped traversal cannot provide a complete model.
+		index.refErrors = append(index.refErrors, &ResolvingError{
+			ErrorRef: err, Node: node, Path: "$." + strings.Join(seenPath, "."),
+		})
+		return nil
+	}
 	if node == nil {
 		return nil
 	}
-	if _, active := ancestry[node]; active {
+	if _, active := walk.ancestry[node]; active {
 		return nil
 	}
-	ancestry[node] = struct{}{}
-	defer delete(ancestry, node)
+	walk.ancestry[node] = struct{}{}
+	defer delete(walk.ancestry, node)
 	view := utils.ResolveMergeNodes(node)
 	state := index.initializeExtractRefsState(ctx, view, seenPath, level, poly, pName)
-	state.ancestry = ancestry
+	state.traversal = walk
 	found := index.walkExtractRefs(view, parent, &state)
 	index.refCount = len(index.allRefs)
 	return found
