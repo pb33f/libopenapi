@@ -12,7 +12,7 @@ import (
 )
 
 type extractRefsState struct {
-	ancestry      map[*yaml.Node]struct{}
+	traversal     *extractRefsTraversal
 	ctx           context.Context
 	scope         *SchemaIdScope
 	parentBaseURI string
@@ -69,6 +69,9 @@ func (index *SpecIndex) walkExtractRefs(node, parent *yaml.Node, state *extractR
 
 	var found []*Reference
 	for i, n := range node.Content {
+		if state.traversal.stopped {
+			break
+		}
 		// In YAML mapping nodes, Content alternates key-value: even indices (0, 2, 4...)
 		// are keys, odd indices (1, 3, 5...) are values.
 		if i%2 == 0 {
@@ -101,7 +104,7 @@ func (index *SpecIndex) walkChildExtractRefs(node, parent *yaml.Node, state *ext
 			state.polyName = state.prev
 		}
 	}
-	return index.extractRefs(state.ctx, node, parent, state.seenPath, state.level, state.poly, state.polyName, state.ancestry)
+	return index.extractRefs(state.ctx, node, parent, state.seenPath, state.level, state.poly, state.polyName, state.traversal)
 }
 
 func isDirectOpenAPIExampleRefNode(node *yaml.Node) bool {

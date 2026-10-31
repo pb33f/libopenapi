@@ -552,6 +552,16 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 			caughtErrors = append(caughtErrors, index.refErrors...)
 		}
 	}
+	// Root reference lookup can load additional files after the initial build queue.
+	// Include fatal extraction errors from those indexes before returning a model.
+	for _, idx := range r.GetIndexes() {
+		for _, err := range idx.refErrors {
+			var resolvingErr *ResolvingError
+			if errors.As(err, &resolvingErr) {
+				caughtErrors = append(caughtErrors, err)
+			}
+		}
+	}
 	r.indexingDuration = time.Since(started)
 	r.indexed = true
 	r.caughtErrors = caughtErrors
