@@ -118,7 +118,9 @@ var security{{$resource.Name}}{{.MethodName}} = [][]securityRequirement{
 {{- else}}
 	case {{.Case}}:
 {{- end}}
+{{- if .Type}}
 		decodeErrorValue[{{.Type}}](apiError)
+{{- end}}
 {{- end}}
 	}
 {{- end}}

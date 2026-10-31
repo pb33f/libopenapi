@@ -211,6 +211,7 @@ func (resource *PeopleResource) Match(ctx context.Context, input *PeopleMatchPar
 	switch response.StatusCode {
 	case 400:
 		decodeErrorValue[PeopleMatchBadRequest](apiError)
+	case 401:
 	case 429:
 		decodeErrorValue[PeopleMatchTooManyRequests](apiError)
 	}
