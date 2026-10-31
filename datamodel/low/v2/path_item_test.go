@@ -12,7 +12,9 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 func TestPathItem_Build_Params(t *testing.T) {
@@ -30,6 +32,33 @@ func TestPathItem_Build_Params(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
+}
+
+func TestPathItem_Build_SkippedExternalReferenceAndSiblingOperation(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`swagger: '2.0'
+info: {title: Pets, version: '1'}
+paths:
+  /pets:
+    $ref: './shared.yaml#/paths/~1pets'
+    get:
+      operationId: listPets
+      responses:
+        '200': {description: Pet list}
+`), &root))
+	cfg := index.CreateOpenAPIIndexConfig()
+	cfg.SkipExternalRefResolution = true
+	idx := index.NewSpecIndexWithConfig(&root, cfg)
+	_, paths := utils.FindKeyNodeTop("paths", root.Content[0].Content)
+	_, source := utils.FindKeyNodeTop("/pets", paths.Content)
+	var item PathItem
+	require.NoError(t, item.Build(context.Background(), nil, source, idx))
+	assert.Equal(t, "./shared.yaml#/paths/~1pets", item.Ref.Value)
+	assert.Same(t, source.Content[0], item.Ref.KeyNode)
+	assert.Same(t, source.Content[1], item.Ref.ValueNode)
+	assert.Empty(t, item.Parameters.Value)
+	require.NotNil(t, item.Get.Value)
+	assert.Equal(t, "listPets", item.Get.Value.OperationId.Value)
 }
 
 func TestPathItem_Build_MethodFail(t *testing.T) {

@@ -38,3 +38,26 @@ func TestRequiredAliasPreservesLocalFragment(t *testing.T) {
 		require.Contains(t, targets, location+"#/$defs/ID")
 	}
 }
+
+func TestRequiredPropertyWithoutDefinition(t *testing.T) {
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`type: object
+required: [missing, id]
+properties:
+  id: {$ref: '#/$defs/ID'}
+`), &node))
+	targets := extractDefinitionRequiredRefProperties(node.Content[0], map[string][]string{}, "https://example.com/schema.yaml", nil)
+	require.Equal(t, map[string][]string{"https://example.com/schema.yaml#/$defs/ID": {"id"}}, targets)
+}
+
+func TestRelativeSchemaFileUsesRemoteOwner(t *testing.T) {
+	resolver := NewResolver(NewSpecIndex(nil))
+	for _, ref := range []*Reference{
+		{FullDefinition: "https://example.com/schemas/owner.yaml#/components/schemas/Pet"},
+		{FullDefinition: "#/components/schemas/Pet", RemoteLocation: "https://example.com/schemas/owner.yaml"},
+	} {
+		definition, full := resolver.buildRelativeLookupDefinitions(ref, "child.yaml", "")
+		require.Equal(t, "child.yaml", definition)
+		require.Equal(t, "https://example.com/schemas/child.yaml", full)
+	}
+}
