@@ -91,6 +91,46 @@ components:
 	require.Len(t, comparison.scores, 4)
 }
 
+func TestCompareSchemas_CircularUnionCandidatesStopAtReferences(t *testing.T) {
+	for _, union := range []string{"anyOf", "oneOf"} {
+		for _, mutual := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/mutual=%t", union, mutual), func(t *testing.T) {
+				makeSpec := func(prefix string) string {
+					next := prefix + "A"
+					if mutual {
+						next = prefix + "B"
+					}
+					return fmt.Sprintf(`openapi: 3.0.3
+components:
+  schemas:
+    Root:
+      %s:
+        - {$ref: '#/components/schemas/%sA'}
+        - {$ref: '#/components/schemas/%sA'}
+    %sA:
+      %s:
+        - {$ref: '#/components/schemas/%s'}
+        - {type: string}
+    %sB:
+      %s:
+        - {$ref: '#/components/schemas/%sA'}
+        - {type: integer}
+`, union, prefix, prefix, prefix, union, next, prefix, union, prefix)
+				}
+				l, r := test_BuildDoc(makeSpec("L"), makeSpec("R"))
+				left, right := l.Components.Value.FindSchema("Root").Value, r.Components.Value.FindSchema("Root").Value
+				comparison := new(schemaComparison)
+				changes := comparison.compareSchemas(left, right)
+				require.Equal(t, 2, changes.TotalChanges())
+				require.Len(t, comparison.scores, 1)
+				for _, score := range comparison.scores {
+					require.Equal(t, 1, score.total)
+				}
+			})
+		}
+	}
+}
+
 func TestCompareSchemas_RetargetedDiamondIsBounded(t *testing.T) {
 	for _, depth := range []int{8, 16, 24} {
 		t.Run(fmt.Sprint(depth), func(t *testing.T) {
