@@ -5,6 +5,7 @@ package index
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/pb33f/go-yaml"
@@ -53,18 +54,25 @@ func isOpenAPIExampleKeywordSegment(seenPath []string, idx int) bool {
 	if idx < 0 || idx >= len(seenPath) {
 		return false
 	}
-	switch seenPath[idx] {
-	case "example", "examples":
-		if idx > 0 {
-			switch seenPath[idx-1] {
-			case "properties", "patternProperties", "schemas", "definitions", "$defs", "dependentSchemas":
-				return false
-			}
-		}
-		return true
-	default:
+	if seenPath[idx] != "example" && seenPath[idx] != "examples" {
 		return false
 	}
+	// A name in a schema map cannot itself introduce another schema map.
+	// For example, properties/definitions/example ends at a payload keyword.
+	nameSlot := false
+	for i, segment := range seenPath[:idx] {
+		if nameSlot {
+			nameSlot = false
+			continue
+		}
+		switch segment {
+		case "properties", "patternProperties", "definitions", "$defs", "dependentSchemas":
+			nameSlot = true
+		case "schemas":
+			nameSlot = i == 1 && seenPath[0] == "components"
+		}
+	}
+	return !nameSlot
 }
 
 // underOpenAPIExamplePayloadPath reports whether seenPath points to raw example payload content.
@@ -110,22 +118,22 @@ func isDirectOpenAPIExampleValuePath(seenPath []string) bool {
 // Excessive YAML alias expansion stops extraction and is reported by GetReferenceIndexErrors.
 func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string) []*Reference {
 	walk := &extractRefsTraversal{}
+	if index.config != nil && index.config.AllowExcessiveAliases {
+		walk.limits = *limit.New(limit.AliasNone())
+	}
 	return index.extractRefs(ctx, node, parent, seenPath, level, poly, pName, walk)
 }
 
 type extractRefsTraversal struct {
+	limits     limit.Plugin
 	ancestry   map[*yaml.Node]struct{}
 	nodes      int
 	aliasNodes int
 	aliasDepth int
-	if index.config != nil && index.config.AllowExcessiveAliases {
-		walk.limits = *limit.New(limit.AliasNone())
-	}
 	stopped    bool
 }
 
 func (walk *extractRefsTraversal) visit() error {
-	limits     limit.Plugin
 	walk.nodes++
 	if walk.aliasDepth == 0 {
 		return nil
