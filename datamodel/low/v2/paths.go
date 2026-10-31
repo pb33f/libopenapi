@@ -5,6 +5,7 @@ package v2
 
 import (
 	"context"
+	"fmt"
 	"hash/maphash"
 	"sync"
 
@@ -125,11 +126,27 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 	translateFunc := func(value buildInput) (pathBuildResult, error) {
 		pNode := value.pathNode
 		cNode := value.currentNode
+		pathCtx, pathIdx := ctx, idx
+		var originalRef low.NodeReference[string]
+		if ok, refKey, ref := utils.IsNodeRefValue(pNode); ok {
+			originalRef = low.NodeReference[string]{Value: ref, KeyNode: refKey, ValueNode: utils.GetRefValueNode(pNode)}
+			resolved, foundIdx, err, foundCtx := low.LocateRefEnd(ctx, pNode, idx, 0)
+			if err != nil {
+				return pathBuildResult{}, fmt.Errorf("path item build failed: %w", err)
+			}
+			if resolved == nil {
+				return pathBuildResult{}, fmt.Errorf("path item build failed: cannot find reference: %q", ref)
+			}
+			pNode, pathIdx, pathCtx = resolved, foundIdx, foundCtx
+		}
 		path := new(PathItem)
 		_ = low.BuildModel(pNode, path)
-		err := path.Build(ctx, cNode, pNode, idx)
+		err := path.Build(pathCtx, cNode, pNode, pathIdx)
 		if err != nil {
 			return pathBuildResult{}, err
+		}
+		if originalRef.Value != "" {
+			path.Ref = originalRef
 		}
 		return pathBuildResult{
 			key: low.KeyReference[string]{

@@ -39,6 +39,7 @@ type PathItem struct {
 func NewPathItem(pathItem *lowV2.PathItem) *PathItem {
 	p := new(PathItem)
 	p.low = pathItem
+	p.Ref = pathItem.Ref.Value
 	p.Extensions = high.ExtractExtensions(pathItem.Extensions)
 	if !pathItem.Parameters.IsEmpty() {
 		var params []*Parameter
