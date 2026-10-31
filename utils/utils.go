@@ -364,7 +364,8 @@ func expandMergeContent(node *yaml.Node, visited map[*yaml.Node]struct{}) []*yam
 		return nil
 	}
 	visited[node] = struct{}{}
-	defer delete(visited, node)
+	// Earlier merge sources win. Revisiting this mapping cannot add a key
+	// that was not already supplied or overridden by its first expansion.
 
 	if !hasMergeKeys(node.Content) {
 		return node.Content
@@ -411,11 +412,10 @@ func appendExpandedMergeContent(
 	}
 
 	if mergeValue.Kind == yaml.SequenceNode {
-		if _, active := visited[mergeValue]; active {
+		if _, seen := visited[mergeValue]; seen {
 			return target
 		}
 		visited[mergeValue] = struct{}{}
-		defer delete(visited, mergeValue)
 		for _, item := range mergeValue.Content {
 			target = appendExpandedMergeContent(target, seenKeys, item, visited)
 		}
