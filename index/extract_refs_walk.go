@@ -13,6 +13,7 @@ import (
 
 type extractRefsState struct {
 	traversal     *extractRefsTraversal
+	mergeStart    int
 	ctx           context.Context
 	scope         *SchemaIdScope
 	parentBaseURI string
@@ -81,7 +82,14 @@ func (index *SpecIndex) walkExtractRefs(node, parent *yaml.Node, state *extractR
 		}
 
 		if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
+			inherited := i >= state.mergeStart
+			if inherited {
+				state.traversal.aliasDepth++
+			}
 			found = append(found, index.walkChildExtractRefs(n, node, state)...)
+			if inherited {
+				state.traversal.aliasDepth--
+			}
 		}
 
 		index.unwindExtractRefsPath(node, state, i)
