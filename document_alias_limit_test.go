@@ -51,3 +51,28 @@ x-k: &k [*j, *j]
 		})
 	}
 }
+
+func TestBuildV3ModelReportsMergeAliasLimit(t *testing.T) {
+	const source = `openapi: 3.1.1
+info: {title: Merge aliases, version: '1'}
+paths: {}
+x-a: &a {leaf: value}
+x-b: &b {left: {<<: *a}, right: {<<: *a}}
+x-c: &c {left: {<<: *b}, right: {<<: *b}}
+x-d: &d {left: {<<: *c}, right: {<<: *c}}
+x-e: &e {left: {<<: *d}, right: {<<: *d}}
+x-f: &f {left: {<<: *e}, right: {<<: *e}}
+x-g: &g {left: {<<: *f}, right: {<<: *f}}
+x-h: &h {left: {<<: *g}, right: {<<: *g}}
+x-i: &i {left: {<<: *h}, right: {<<: *h}}
+x-j: &j {left: {<<: *i}, right: {<<: *i}}
+x-k: &k {left: {<<: *j}, right: {<<: *j}}
+`
+	doc, err := NewDocument([]byte(source))
+	require.NoError(t, err)
+	for range 2 {
+		model, buildErr := doc.BuildV3Model()
+		require.ErrorContains(t, buildErr, "document contains excessive aliasing")
+		require.Nil(t, model)
+	}
+}
