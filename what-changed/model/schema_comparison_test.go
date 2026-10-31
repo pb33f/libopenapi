@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -9,6 +10,67 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/testify/require"
 )
+
+func TestCompareSchemas_RecursiveScoresWithoutCircularMetadata(t *testing.T) {
+	for _, union := range []string{"anyOf", "oneOf"} {
+		t.Run(union, func(t *testing.T) {
+			makeSpec := func(name, kind string) string {
+				return fmt.Sprintf(`openapi: 3.1.1
+info: {title: Recursive scores, version: '1'}
+paths: {}
+components:
+  schemas:
+    Holder:
+      properties:
+        p: {$ref: '#/components/schemas/%s'}
+    %s:
+      %s:
+        - {$ref: '#/components/schemas/example/properties/next%s'}
+        - {type: %s}
+    example:
+      type: object
+      properties:
+        nextA:
+          %s:
+            - {$ref: '#/components/schemas/example/properties/nextB'}
+            - {type: %s}
+        nextB:
+          %s:
+            - {$ref: '#/components/schemas/example/properties/nextA'}
+            - {type: %s}
+`, name, name, union, name[len(name)-1:], kind, union, kind, union, kind)
+			}
+			left, right := test_BuildDoc(makeSpec("exampleA", "string"), makeSpec("exampleB", "integer"))
+			l := left.Components.Value.FindSchema("Holder").Value
+			r := right.Components.Value.FindSchema("Holder").Value
+			for _, proxy := range []*base.SchemaProxy{l, r} {
+				idx := proxy.GetIndex()
+				// Model mutation or incomplete metadata must not make scoring fatal.
+				idx.SetCircularReferences(nil)
+				idx.GetRolodex().SetSafeCircularReferences(nil)
+			}
+			var previous []byte
+			for range 3 {
+				comparison := new(schemaComparison)
+				changes := comparison.compareSchemas(l, r)
+				require.NotNil(t, changes)
+				require.Greater(t, changes.TotalChanges(), 0)
+				require.NotNil(t, comparison.scoring)
+				require.Greater(t, comparison.scoring.cycles, uint64(0))
+				require.Empty(t, comparison.scoring.active)
+				comparison.score(l, r)
+				_, cached := comparison.scores[schemaScorePair{schemaScoreIdentity(l), schemaScoreIdentity(r)}]
+				require.False(t, cached, "a score cut short by recursion must not enter the completed-score cache")
+				encoded, err := json.Marshal(changes)
+				require.NoError(t, err)
+				if previous != nil {
+					require.Equal(t, string(previous), string(encoded))
+				}
+				previous = encoded
+			}
+		})
+	}
+}
 
 func diamondComparisonSpec(prefix string, depth int) string {
 	var spec strings.Builder

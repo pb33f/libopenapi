@@ -11,6 +11,14 @@ import (
 type schemaComparison struct {
 	visited map[schemaComparisonPair]struct{}
 	scores  map[schemaScorePair]schemaScore
+	scoring *schemaScoring
+}
+
+// Active scores belong to one traversal. A recursion cut must not publish a
+// context-dependent partial score for another candidate to reuse.
+type schemaScoring struct {
+	active map[schemaScorePair]struct{}
+	cycles uint64
 }
 
 type schemaComparisonPair struct {
@@ -44,17 +52,29 @@ func (c *schemaComparison) score(left, right *base.SchemaProxy) schemaScore {
 	if score, exists := c.scores[pair]; exists {
 		return score
 	}
+	if c.scoring == nil {
+		c.scoring = &schemaScoring{active: make(map[schemaScorePair]struct{})}
+	}
+	if _, active := c.scoring.active[pair]; active {
+		c.scoring.cycles++
+		return schemaScore{}
+	}
+	c.scoring.active[pair] = struct{}{}
+	defer delete(c.scoring.active, pair)
+	cycles := c.scoring.cycles
 	if c.scores == nil {
 		c.scores = make(map[schemaScorePair]schemaScore)
 	}
 	// Each candidate must see a complete comparison, independent of earlier
 	// candidates and report placement. Keep only its counts, not its report nodes.
-	candidate := schemaComparison{scores: c.scores}
+	candidate := schemaComparison{scores: c.scores, scoring: c.scoring}
 	var score schemaScore
 	if changes := candidate.compareSchemas(left, right); changes != nil {
 		score = schemaScore{changes.TotalChanges(), changes.TotalBreakingChanges()}
 	}
-	c.scores[pair] = score
+	if c.scoring.cycles == cycles {
+		c.scores[pair] = score
+	}
 	return score
 }
 
