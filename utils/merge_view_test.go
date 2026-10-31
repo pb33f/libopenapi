@@ -116,3 +116,12 @@ merged: {<<: *repeated, local: chosen}
 	require.NoError(t, err)
 	require.Equal(t, before, after)
 }
+
+func TestResolveMergeNodesPreservesSequence(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("[one, two]"), &root))
+	node := root.Content[0]
+	require.Same(t, node, ResolveMergeNodes(node))
+	require.Equal(t, "one", node.Content[0].Value)
+	require.Equal(t, "two", node.Content[1].Value)
+}

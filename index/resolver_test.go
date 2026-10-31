@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/pb33f/testify/require"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pb33f/jsonpath/pkg/jsonpath"
@@ -2041,4 +2043,27 @@ func TestResolver_ResolveRelativeReference(t *testing.T) {
 	assert.True(t, relative.Seen)
 	assert.True(t, relative.Resolved)
 	assert.Equal(t, foundNode.Content, relative.Node.Content)
+}
+
+func TestResolverNamedExternalExampleFragment(t *testing.T) {
+	for _, source := range []string{
+		"example: {properties: {value: {$ref: '#/components/schemas/Target'}}}\ncomponents: {schemas: {Target: {type: string}}}",
+		"openapi: 3.1.1\nexample: {properties: {value: {$ref: '#/components/schemas/Target'}}}\ncomponents: {schemas: {Target: {type: string}}}",
+	} {
+		var root yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(source), &root))
+		idx := NewSpecIndex(&root)
+		_, node := utils.FindKeyNodeTop("example", root.Content[0].Content)
+		ref := &Reference{Definition: "#/example", FullDefinition: "#/example", Index: idx, Node: node}
+		resolver := NewResolver(idx)
+		found := resolver.extractRelatives(ref, node, nil, map[string]bool{}, nil, false, 0, "")
+		require.Empty(t, resolver.resolvingErrors)
+		require.NotNil(t, node)
+		if strings.HasPrefix(source, "openapi:") {
+			require.Empty(t, found, "a document example remains payload")
+		} else {
+			require.Len(t, found, 1, "the external fragment name does not turn its schema into payload")
+			require.Equal(t, "#/components/schemas/Target", found[0].Definition)
+		}
+	}
 }

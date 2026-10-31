@@ -129,3 +129,18 @@ components:
 	require.Contains(t, paths, "components/schemas/MergedFirst/properties/value")
 	require.Contains(t, paths, "components/schemas/MergedSecond/properties/value")
 }
+
+func TestExtractRefsTrustedAliasesStillStopCycles(t *testing.T) {
+	config := CreateClosedAPIIndexConfig()
+	config.AllowExcessiveAliases = true
+	idx := NewSpecIndexWithConfig(nil, config)
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(strings.ReplaceAll(excessiveAliasDocument, "./unvisited.yaml", "#/components/schemas/Target")), &root))
+	require.NotEmpty(t, idx.ExtractRefs(context.Background(), &root, nil, nil, 0, false, ""))
+	require.Empty(t, idx.GetReferenceIndexErrors())
+	require.True(t, idx.GetConfig().ToDocumentConfiguration().AllowExcessiveAliases)
+	var cycle yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("x: &x {b: {<<: *x}}"), &cycle))
+	require.Empty(t, idx.ExtractRefs(context.Background(), &cycle, nil, nil, 0, false, ""))
+	require.Empty(t, idx.GetReferenceIndexErrors())
+}
