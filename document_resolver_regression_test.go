@@ -111,3 +111,22 @@ paths:
 		}
 	}
 }
+
+func TestBuildV3Model_ExamplePolymorphicPayload(t *testing.T) {
+	doc, err := NewDocument([]byte(`openapi: 3.1.0
+info: {title: Examples, version: '1'}
+paths: {}
+components:
+  schemas:
+    A:
+      type: object
+      example:
+        oneOf:
+          - {$ref: '#/components/schemas/A'}
+    Ref: {$ref: '#/components/schemas/A'}
+`))
+	require.NoError(t, err)
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	require.Empty(t, model.Index.GetCircularReferences())
+}

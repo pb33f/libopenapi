@@ -41,6 +41,9 @@ func (resolver *Resolver) extractRelativesWithState(
 	if underOpenAPIExamplePayloadPath(state.path) {
 		return nil
 	}
+	if isDirectOpenAPIExampleValuePath(state.path) && !isDirectOpenAPIExampleRefNode(node) {
+		return nil
+	}
 	// Guard against stack overflow from deeply nested or circular specs.
 	// Journey tracks the reference chain (100 max); depth tracks recursive calls (500 max).
 	if len(state.journey) > 100 {
