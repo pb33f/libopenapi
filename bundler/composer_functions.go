@@ -52,7 +52,15 @@ func processRefMapKey(target, source *index.Reference) string {
 	if fullDefinition == "" && source != nil {
 		fullDefinition = source.FullDefinition
 	}
-	return contextualProcessRefKey(fullDefinition, source)
+	key := contextualProcessRefKey(fullDefinition, source)
+	if key == fullDefinition && target != nil && !isExplicitComponentDefinition(fullDefinition) {
+		// A whole-file alias has no source path. Use the same detected bucket
+		// that composition uses, so it shares the target with contextual refs.
+		if componentType, ok := DetectOpenAPIComponentType(target.Node); ok {
+			return fullDefinition + contextualRefKeySeparator + componentType
+		}
+	}
+	return key
 }
 
 // processRefMapKeyForComponent scopes a target ref by an already-known component bucket.
