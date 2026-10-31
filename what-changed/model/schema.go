@@ -307,11 +307,6 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
 			t += s.AllOfChanges[n].TotalBreakingChanges()
 		}
 	}
-	if len(s.AllOfChanges) > 0 {
-		for n := range s.AllOfChanges {
-			t += s.AllOfChanges[n].TotalBreakingChanges()
-		}
-	}
 	if len(s.AnyOfChanges) > 0 {
 		for n := range s.AnyOfChanges {
 			t += s.AnyOfChanges[n].TotalBreakingChanges()
