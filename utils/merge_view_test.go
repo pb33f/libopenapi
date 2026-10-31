@@ -82,3 +82,37 @@ merged: {<<: *sequence, local: retained}
 	assert.Equal(t, "retained", local.Value)
 	assert.True(t, hasMergeKeys(original.Content))
 }
+
+func TestResolvedMergeNodeSharedSourcesKeepPrecedence(t *testing.T) {
+	const source = `base: &base {inherited: base, local: base}
+first: &first {<<: *base, inherited: first}
+second: &second {<<: *base, inherited: second, extra: retained}
+shared: &shared [*first, *second]
+repeated: &repeated [*shared, *shared]
+merged: {<<: *repeated, local: chosen}
+`
+	var document yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(source), &document))
+	before, err := yaml.Marshal(&document)
+	require.NoError(t, err)
+	_, original := FindKeyNodeTop("merged", document.Content[0].Content)
+	visited := make(map[*yaml.Node]struct{})
+	content := expandMergeContent(original, visited)
+	for key, expected := range map[string]string{
+		"inherited": "first", "local": "chosen", "extra": "retained",
+	} {
+		_, value := FindKeyNodeTop(key, content)
+		require.NotNil(t, value)
+		require.Equal(t, expected, value.Value)
+	}
+	require.Len(t, content, 6)
+	// Reaching a completed source again in this expansion does no further work.
+	require.Empty(t, expandMergeContent(original, visited))
+	_, repeated := FindKeyNodeTop("repeated", document.Content[0].Content)
+	require.Empty(t, appendExpandedMergeContent(nil, make(map[string]struct{}), repeated, visited))
+	// A new expansion still gives the same effective mapping.
+	require.Equal(t, content, ResolveMergeNodes(original).Content)
+	after, err := yaml.Marshal(&document)
+	require.NoError(t, err)
+	require.Equal(t, before, after)
+}
