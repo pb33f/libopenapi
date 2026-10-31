@@ -589,11 +589,25 @@ func (c *schemaComparison) compareSchemas(l, r *base.SchemaProxy) *SchemaChanges
 		patterns := c.checkMappedSchemaOfASchema(lPattProp, rPattProp, &changes)
 		sc.PatternPropertiesChanges = patterns
 
-		// Stable traversal gives each resolved schema pair one consistent report location.
-		c.extractSchemaChanges(loneOf, roneOf, v3.OneOfLabel, &sc.OneOfChanges, &changes)
-		c.extractSchemaChanges(lallOf, rallOf, v3.AllOfLabel, &sc.AllOfChanges, &changes)
-		c.extractSchemaChanges(lanyOf, ranyOf, v3.AnyOfLabel, &sc.AnyOfChanges, &changes)
-		c.extractSchemaChanges(lprefix, rprefix, v3.PrefixItemsLabel, &sc.PrefixItemsChanges, &changes)
+		compositionCount := 0
+		for _, size := range [4]int{len(loneOf) + len(roneOf), len(lallOf) + len(rallOf), len(lanyOf) + len(ranyOf), len(lprefix) + len(rprefix)} {
+			if size > 0 {
+				compositionCount++
+			}
+		}
+		if c.serial || compositionCount < 2 {
+			c.extractSchemaChanges(loneOf, roneOf, v3.OneOfLabel, &sc.OneOfChanges, &changes)
+			c.extractSchemaChanges(lallOf, rallOf, v3.AllOfLabel, &sc.AllOfChanges, &changes)
+			c.extractSchemaChanges(lanyOf, ranyOf, v3.AnyOfLabel, &sc.AnyOfChanges, &changes)
+			c.extractSchemaChanges(lprefix, rprefix, v3.PrefixItemsLabel, &sc.PrefixItemsChanges, &changes)
+		} else {
+			c.compareCompositions([]schemaCompositionTask{
+				{left: loneOf, right: roneOf, label: v3.OneOfLabel, result: &sc.OneOfChanges},
+				{left: lallOf, right: rallOf, label: v3.AllOfLabel, result: &sc.AllOfChanges},
+				{left: lanyOf, right: ranyOf, label: v3.AnyOfLabel, result: &sc.AnyOfChanges},
+				{left: lprefix, right: rprefix, label: v3.PrefixItemsLabel, result: &sc.PrefixItemsChanges},
+			}, &changes)
+		}
 
 	}
 	// done
@@ -636,6 +650,9 @@ func (c *schemaComparison) checkMappedSchemaOfASchema(
 	rSchema *orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]],
 	changes *[]*Change,
 ) map[string]*SchemaChanges {
+	if orderedmap.Len(lSchema) == 0 && orderedmap.Len(rSchema) == 0 {
+		return nil
+	}
 	propChanges := make(map[string]*SchemaChanges)
 	var lProps []string
 	lEntities := make(map[string]*base.SchemaProxy)
@@ -664,6 +681,12 @@ func (c *schemaComparison) checkMappedSchemaOfASchema(
 func (c *schemaComparison) buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*base.SchemaProxy,
 	propChanges map[string]*SchemaChanges, changes *[]*Change, rKeyNodes, lKeyNodes map[string]*yaml.Node,
 ) {
+	type propertyTask struct {
+		key         string
+		left, right *base.SchemaProxy
+		result      *SchemaChanges
+	}
+	var tasks []propertyTask
 	checkProperty := func(key string, lp, rp *base.SchemaProxy) {
 		if _, compared := propChanges[key]; compared {
 			return
@@ -671,8 +694,12 @@ func (c *schemaComparison) buildProperty(lProps, rProps []string, lEntities, rEn
 		if low.AreEqual(lp, rp) {
 			return
 		}
-		s := c.compareSchemas(lp, rp)
-		propChanges[key] = s
+		if c.serial || min(len(lProps), len(rProps)) < 2 {
+			propChanges[key] = c.compareSchemas(lp, rp)
+			return
+		}
+		propChanges[key] = nil
+		tasks = append(tasks, propertyTask{key: key, left: lp, right: rp})
 	}
 
 	// left and right equal.
@@ -743,6 +770,12 @@ func (c *schemaComparison) buildProperty(lProps, rProps []string, lEntities, rEn
 			}
 		}
 	}
+	c.branch(len(tasks), func(i int, branch *schemaComparison) {
+		tasks[i].result = branch.compareSchemas(tasks[i].left, tasks[i].right)
+	})
+	for _, task := range tasks {
+		propChanges[task.key] = task.result
+	}
 }
 
 func (c *schemaComparison) checkSchemaPropertyChanges(
@@ -753,6 +786,13 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 	changes *[]*Change, sc *SchemaChanges, skipSimpleScalarUnionDiff bool,
 ) {
 	var props []*PropertyCheck
+	addCheck := func(left, right *yaml.Node, label, property string) {
+		if left == nil && right == nil {
+			return
+		}
+		addPropertyCheck(&props, left, right, lSchema, rSchema, changes, label,
+			BreakingModified(CompSchema, property), CompSchema, property)
+	}
 
 	// $schema (breaking change)
 	var lnv, rnv *yaml.Node
@@ -763,17 +803,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.SchemaTypeRef.ValueNode
 	}
 
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.SchemaDialectLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropSchemaDialect),
-		Component: CompSchema,
-		Property:  PropSchemaDialect,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.SchemaDialectLabel, PropSchemaDialect)
 	lnv = nil
 	rnv = nil
 
@@ -784,17 +814,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.ExclusiveMaximum.ValueNode
 	}
 	// ExclusiveMaximum
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.ExclusiveMaximumLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropExclusiveMaximum),
-		Component: CompSchema,
-		Property:  PropExclusiveMaximum,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.ExclusiveMaximumLabel, PropExclusiveMaximum)
 	lnv = nil
 	rnv = nil
 
@@ -806,17 +826,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 	}
 
 	// ExclusiveMinimum
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.ExclusiveMinimumLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropExclusiveMinimum),
-		Component: CompSchema,
-		Property:  PropExclusiveMinimum,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.ExclusiveMinimumLabel, PropExclusiveMinimum)
 	lnv = nil
 	rnv = nil
 
@@ -828,17 +838,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 			rnv = rSchema.Type.ValueNode
 		}
 		// Type
-		props = append(props, &PropertyCheck{
-			LeftNode:  lnv,
-			RightNode: rnv,
-			Label:     v3.TypeLabel,
-			Changes:   changes,
-			Breaking:  BreakingModified(CompSchema, PropType),
-			Component: CompSchema,
-			Property:  PropType,
-			Original:  lSchema,
-			New:       rSchema,
-		})
+		addCheck(lnv, rnv, v3.TypeLabel, PropType)
 		lnv = nil
 		rnv = nil
 	}
@@ -850,17 +850,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.Title.ValueNode
 	}
 	// Title
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.TitleLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropTitle),
-		Component: CompSchema,
-		Property:  PropTitle,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.TitleLabel, PropTitle)
 	lnv = nil
 	rnv = nil
 
@@ -872,17 +862,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 	}
 
 	// MultipleOf
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.MultipleOfLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropMultipleOf),
-		Component: CompSchema,
-		Property:  PropMultipleOf,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.MultipleOfLabel, PropMultipleOf)
 	lnv = nil
 	rnv = nil
 
@@ -893,17 +873,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.Maximum.ValueNode
 	}
 	// Maximum
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.MaximumLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropMaximum),
-		Component: CompSchema,
-		Property:  PropMaximum,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.MaximumLabel, PropMaximum)
 	lnv = nil
 	rnv = nil
 
@@ -914,17 +884,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.Minimum.ValueNode
 	}
 	// Minimum
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.MinimumLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropMinimum),
-		Component: CompSchema,
-		Property:  PropMinimum,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.MinimumLabel, PropMinimum)
 	lnv = nil
 	rnv = nil
 
@@ -935,17 +895,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.MaxLength.ValueNode
 	}
 	// MaxLength
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.MaxLengthLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropMaxLength),
-		Component: CompSchema,
-		Property:  PropMaxLength,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.MaxLengthLabel, PropMaxLength)
 	lnv = nil
 	rnv = nil
 
@@ -956,17 +906,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.MinLength.ValueNode
 	}
 	// MinLength
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.MinLengthLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropMinLength),
-		Component: CompSchema,
-		Property:  PropMinLength,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.MinLengthLabel, PropMinLength)
 	lnv = nil
 	rnv = nil
 
@@ -977,17 +917,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.Pattern.ValueNode
 	}
 	// Pattern
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.PatternLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropPattern),
-		Component: CompSchema,
-		Property:  PropPattern,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.PatternLabel, PropPattern)
 	lnv = nil
 	rnv = nil
 
@@ -998,17 +928,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.Format.ValueNode
 	}
 	// Format
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.FormatLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropFormat),
-		Component: CompSchema,
-		Property:  PropFormat,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.FormatLabel, PropFormat)
 	lnv = nil
 	rnv = nil
 
@@ -1019,17 +939,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.MaxItems.ValueNode
 	}
 	// MaxItems
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.MaxItemsLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropMaxItems),
-		Component: CompSchema,
-		Property:  PropMaxItems,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.MaxItemsLabel, PropMaxItems)
 	lnv = nil
 	rnv = nil
 
@@ -1040,17 +950,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.MinItems.ValueNode
 	}
 	// MinItems
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.MinItemsLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropMinItems),
-		Component: CompSchema,
-		Property:  PropMinItems,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.MinItemsLabel, PropMinItems)
 	lnv = nil
 	rnv = nil
 
@@ -1061,17 +961,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.MaxProperties.ValueNode
 	}
 	// MaxProperties
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.MaxPropertiesLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropMaxProperties),
-		Component: CompSchema,
-		Property:  PropMaxProperties,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.MaxPropertiesLabel, PropMaxProperties)
 	lnv = nil
 	rnv = nil
 
@@ -1083,17 +973,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 	}
 
 	// MinProperties
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.MinPropertiesLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropMinProperties),
-		Component: CompSchema,
-		Property:  PropMinProperties,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.MinPropertiesLabel, PropMinProperties)
 	lnv = nil
 	rnv = nil
 
@@ -1104,17 +984,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.UniqueItems.ValueNode
 	}
 	// UniqueItems
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.UniqueItemsLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropUniqueItems),
-		Component: CompSchema,
-		Property:  PropUniqueItems,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.UniqueItemsLabel, PropUniqueItems)
 
 	lnv = nil
 	rnv = nil
@@ -1158,17 +1028,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.Description.ValueNode
 	}
 	// Description
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.DescriptionLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropDescription),
-		Component: CompSchema,
-		Property:  PropDescription,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.DescriptionLabel, PropDescription)
 	lnv = nil
 	rnv = nil
 
@@ -1179,17 +1039,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.ContentEncoding.ValueNode
 	}
 	// ContentEncoding
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.ContentEncodingLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropContentEncoding),
-		Component: CompSchema,
-		Property:  PropContentEncoding,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.ContentEncodingLabel, PropContentEncoding)
 	lnv = nil
 	rnv = nil
 
@@ -1200,17 +1050,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.ContentMediaType.ValueNode
 	}
 	// ContentMediaType
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.ContentMediaType,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropContentMediaType),
-		Component: CompSchema,
-		Property:  PropContentMediaType,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.ContentMediaType, PropContentMediaType)
 	lnv = nil
 	rnv = nil
 
@@ -1221,17 +1061,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.Default.ValueNode
 	}
 	// Default
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.DefaultLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropDefault),
-		Component: CompSchema,
-		Property:  PropDefault,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.DefaultLabel, PropDefault)
 	lnv = nil
 	rnv = nil
 
@@ -1242,17 +1072,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.Const.ValueNode
 	}
 	// Const
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.ConstLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropConst),
-		Component: CompSchema,
-		Property:  PropConst,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.ConstLabel, PropConst)
 	lnv = nil
 	rnv = nil
 
@@ -1263,17 +1083,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.Nullable.ValueNode
 	}
 	// Nullable
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.NullableLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropNullable),
-		Component: CompSchema,
-		Property:  PropNullable,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.NullableLabel, PropNullable)
 	lnv = nil
 	rnv = nil
 
@@ -1284,17 +1094,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.ReadOnly.ValueNode
 	}
 	// ReadOnly
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.ReadOnlyLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropReadOnly),
-		Component: CompSchema,
-		Property:  PropReadOnly,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.ReadOnlyLabel, PropReadOnly)
 	lnv = nil
 	rnv = nil
 
@@ -1305,17 +1105,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.WriteOnly.ValueNode
 	}
 	// WriteOnly
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.WriteOnlyLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropWriteOnly),
-		Component: CompSchema,
-		Property:  PropWriteOnly,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.WriteOnlyLabel, PropWriteOnly)
 	lnv = nil
 	rnv = nil
 
@@ -1340,17 +1130,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		rnv = rSchema.Deprecated.ValueNode
 	}
 	// Deprecated
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.DeprecatedLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropDeprecated),
-		Component: CompSchema,
-		Property:  PropDeprecated,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.DeprecatedLabel, PropDeprecated)
 
 	// Required
 	j := make(map[string]int)
@@ -1622,17 +1402,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 	if rSchema != nil && rSchema.DynamicAnchor.ValueNode != nil {
 		rnv = rSchema.DynamicAnchor.ValueNode
 	}
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.DynamicAnchorLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropDynamicAnchor),
-		Component: CompSchema,
-		Property:  PropDynamicAnchor,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.DynamicAnchorLabel, PropDynamicAnchor)
 	lnv = nil
 	rnv = nil
 
@@ -1643,17 +1413,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 	if rSchema != nil && rSchema.DynamicRef.ValueNode != nil {
 		rnv = rSchema.DynamicRef.ValueNode
 	}
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.DynamicRefLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropDynamicRef),
-		Component: CompSchema,
-		Property:  PropDynamicRef,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, v3.DynamicRefLabel, PropDynamicRef)
 	lnv = nil
 	rnv = nil
 
@@ -1664,17 +1424,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 	if rSchema != nil && rSchema.Id.ValueNode != nil {
 		rnv = rSchema.Id.ValueNode
 	}
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     base.IdLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropId),
-		Component: CompSchema,
-		Property:  PropId,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, base.IdLabel, PropId)
 	lnv = nil
 	rnv = nil
 
@@ -1685,17 +1435,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 	if rSchema != nil && rSchema.Comment.ValueNode != nil {
 		rnv = rSchema.Comment.ValueNode
 	}
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     base.CommentLabel,
-		Changes:   changes,
-		Breaking:  BreakingModified(CompSchema, PropComment),
-		Component: CompSchema,
-		Property:  PropComment,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	addCheck(lnv, rnv, base.CommentLabel, PropComment)
 	lnv = nil
 	rnv = nil
 

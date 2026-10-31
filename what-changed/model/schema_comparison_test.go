@@ -3,8 +3,10 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -15,7 +17,7 @@ func TestCompareSchemas_RecursiveScoresWithoutCircularMetadata(t *testing.T) {
 	for _, union := range []string{"anyOf", "oneOf"} {
 		t.Run(union, func(t *testing.T) {
 			makeSpec := func(name, kind string) string {
-				return fmt.Sprintf(`openapi: 3.1.1
+				spec := fmt.Sprintf(`openapi: 3.1.1
 info: {title: Recursive scores, version: '1'}
 paths: {}
 components:
@@ -39,6 +41,7 @@ components:
             - {$ref: '#/components/schemas/example/properties/nextA'}
             - {type: %s}
 `, name, name, union, name[len(name)-1:], kind, union, kind, union, kind)
+				return strings.Replace(spec, "        p:", fmt.Sprintf("        q: {$ref: '#/components/schemas/%s'}\n        p:", name), 1)
 			}
 			left, right := test_BuildDoc(makeSpec("exampleA", "string"), makeSpec("exampleB", "integer"))
 			l := left.Components.Value.FindSchema("Holder").Value
@@ -49,20 +52,23 @@ components:
 				idx.SetCircularReferences(nil)
 				idx.GetRolodex().SetSafeCircularReferences(nil)
 			}
+			serial, err := json.Marshal((&schemaComparison{serial: true}).compareSchemas(l, r))
+			require.NoError(t, err)
 			var previous []byte
 			for range 3 {
 				comparison := new(schemaComparison)
 				changes := comparison.compareSchemas(l, r)
 				require.NotNil(t, changes)
 				require.Greater(t, changes.TotalChanges(), 0)
+				comparison.score(l, r)
 				require.NotNil(t, comparison.scoring)
 				require.Greater(t, comparison.scoring.cycles, uint64(0))
 				require.Empty(t, comparison.scoring.active)
-				comparison.score(l, r)
-				_, cached := comparison.scores[schemaScorePair{schemaScoreIdentity(l), schemaScoreIdentity(r)}]
+				_, cached := comparison.scores.values[schemaScorePair{schemaScoreIdentity(l), schemaScoreIdentity(r)}]
 				require.False(t, cached, "a score cut short by recursion must not enter the completed-score cache")
 				encoded, err := json.Marshal(changes)
 				require.NoError(t, err)
+				require.Equal(t, string(serial), string(encoded))
 				if previous != nil {
 					require.Equal(t, string(previous), string(encoded))
 				}
@@ -103,7 +109,11 @@ func TestCompareSchemas_NestedUnionScoresAreShared(t *testing.T) {
 				require.Equal(t, 2*depth+2, changes.TotalChanges())
 				// Four candidates at each level share one complete score. Nested
 				// candidates reuse the same cache instead of starting four more trees.
-				require.Len(t, comparison.scores, depth)
+				if depth == 0 {
+					require.Nil(t, comparison.scores)
+				} else {
+					require.Len(t, comparison.scores.values, depth)
+				}
 				require.Equal(t, changes.TotalChanges(), CompareSchemas(left, right).TotalChanges())
 				if depth == 12 {
 					var wg sync.WaitGroup
@@ -150,7 +160,7 @@ components:
 		require.Equal(t, expected, comparison.score(pair[0], pair[1]))
 		require.Equal(t, expected, comparison.score(pair[0], pair[1]))
 	}
-	require.Len(t, comparison.scores, 4)
+	require.Len(t, comparison.scores.values, 4)
 }
 
 func TestCompareSchemas_CircularUnionCandidatesStopAtReferences(t *testing.T) {
@@ -184,8 +194,8 @@ components:
 				comparison := new(schemaComparison)
 				changes := comparison.compareSchemas(left, right)
 				require.Equal(t, 2, changes.TotalChanges())
-				require.Len(t, comparison.scores, 1)
-				for _, score := range comparison.scores {
+				require.Len(t, comparison.scores.values, 1)
+				for _, score := range comparison.scores.values {
 					require.Equal(t, 1, score.total)
 				}
 			})
@@ -291,5 +301,71 @@ components:
 		}
 		require.Equal(t, 5, changes.SchemaPropertyChanges["first"].TotalChanges())
 		require.Equal(t, 3, changes.SchemaPropertyChanges["second"].TotalChanges())
+	}
+}
+
+func TestCompareSchemas_ParallelPlacementMatchesSerial(t *testing.T) {
+	for _, composition := range []bool{false, true} {
+		t.Run(fmt.Sprintf("composition=%t", composition), func(t *testing.T) {
+			makeSpec := func(prefix, kind string) string {
+				var spec strings.Builder
+				spec.WriteString("openapi: 3.1.0\ninfo: {title: Parallel comparison, version: '1'}\npaths: {}\ncomponents:\n  schemas:\n    Root:\n")
+				if composition {
+					fmt.Fprintf(&spec, "      oneOf: [{$ref: '#/components/schemas/%s'}]\n      anyOf: [{$ref: '#/components/schemas/%s'}]\n", prefix, prefix)
+				} else {
+					spec.WriteString("      properties:\n")
+					for i := range 8 {
+						fmt.Fprintf(&spec, "        p%d: {$ref: '#/components/schemas/%s'}\n", i, prefix)
+					}
+				}
+				fmt.Fprintf(&spec, "    %s:\n      type: object\n      properties:\n        value: {type: %s}\n", prefix, kind)
+				return spec.String()
+			}
+			l, r := test_BuildDoc(makeSpec("Before", "string"), makeSpec("After", "integer"))
+			left, right := l.Components.Value.FindSchema("Root").Value, r.Components.Value.FindSchema("Root").Value
+			serial := (&schemaComparison{serial: true}).compareSchemas(left, right)
+			require.NotNil(t, serial)
+			expected, err := json.Marshal(serial)
+			require.NoError(t, err)
+			for range 20 {
+				parallel := new(schemaComparison).compareSchemas(left, right)
+				actual, err := json.Marshal(parallel)
+				require.NoError(t, err)
+				require.Equal(t, string(expected), string(actual))
+				if composition {
+					require.Greater(t, parallel.OneOfChanges[0].TotalChanges(), 1)
+					require.Equal(t, 1, parallel.AnyOfChanges[0].TotalChanges())
+				} else {
+					require.Greater(t, parallel.SchemaPropertyChanges["p0"].TotalChanges(), 1)
+					require.Equal(t, 1, parallel.SchemaPropertyChanges["p7"].TotalChanges())
+				}
+			}
+		})
+	}
+}
+
+func TestSchemaComparisonBranchBoundsSharedWork(t *testing.T) {
+	l, r := test_BuildDoc(diamondComparisonSpec("L", 12), diamondComparisonSpec("R", 12))
+	left, right := l.Components.Value.FindSchema("Root").Value, r.Components.Value.FindSchema("Root").Value
+	comparison := new(schemaComparison)
+	var visits atomic.Int32
+	results := make([]bool, 40)
+	comparison.branch(len(results), func(i int, branch *schemaComparison) {
+		results[i] = branch.visit(left, right)
+		if results[i] {
+			visits.Add(1)
+		}
+	})
+	require.LessOrEqual(t, visits.Load(), int32(min(runtime.GOMAXPROCS(0), 4)))
+	require.True(t, results[0])
+	for _, result := range results[1:] {
+		require.False(t, result)
+	}
+	require.Len(t, comparison.visited, 1)
+	comparison.branch(len(results), func(i int, branch *schemaComparison) {
+		results[i] = branch.visit(left, right)
+	})
+	for _, result := range results {
+		require.False(t, result, "forks inherit already reported pairs")
 	}
 }
