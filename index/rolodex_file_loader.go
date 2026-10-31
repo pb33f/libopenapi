@@ -153,15 +153,15 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 			copiedCfg.SpecAbsolutePath = name
 			copiedCfg.AvoidBuildIndex = true
 			copiedCfg.SpecInfo = nil
+			if l.rolodex != nil {
+				copiedCfg.Rolodex = l.rolodex
+			}
 
 			// Add this file to the context's indexing set to prevent deadlocks
 			// when circular references cause the same file to be looked up recursively.
 			indexingCtx := AddIndexingFile(ctx, name)
 
 			idx, _ := extractedFile.IndexWithContext(indexingCtx, &copiedCfg)
-			if idx != nil && l.rolodex != nil {
-				idx.rolodex = l.rolodex
-			}
 
 			if idx != nil {
 				NewResolver(idx)

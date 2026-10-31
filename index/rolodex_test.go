@@ -2067,6 +2067,9 @@ func (trf *testRolodexFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 	return &yaml.Node{}, nil
 }
 func (trf *testRolodexFile) GetIndex() *SpecIndex {
+	if trf.errorYaml {
+		return nil // a file that failed parsing has no cached index
+	}
 	return &SpecIndex{
 		specAbsolutePath: "/test/path/spec.yaml",
 	}
