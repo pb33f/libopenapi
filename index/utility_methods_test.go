@@ -383,3 +383,15 @@ func Test_WriteIntToHash(t *testing.T) {
 func Test_Empty_HashNode(t *testing.T) {
 	assert.Equal(t, emptyNodeHash, HashNode(nil))
 }
+
+func TestSeekRefEndCycleAndMissingTarget(t *testing.T) {
+	var root yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte("a: {$ref: '#/b'}\nb: {$ref: '#/a'}"), &root))
+	config := CreateClosedAPIIndexConfig()
+	config.AvoidCircularReferenceCheck = true
+	idx := NewSpecIndexWithConfig(&root, config)
+	assert.Nil(t, seekRefEnd(context.Background(), idx, "#/a"))
+	assert.ErrorContains(t, idx.GetReferenceIndexErrors()[0], "circular reference chain")
+	assert.Nil(t, seekRefEnd(context.Background(), idx, "#/missing"))
+	assert.Nil(t, seekRefEnd(context.Background(), nil, "#/a"))
+}

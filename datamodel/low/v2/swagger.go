@@ -237,6 +237,12 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	// set the index on the document.
 	doc.Index = rolodex.GetRootIndex()
 	doc.SpecInfo = info
+	for _, err := range roloErrs {
+		var resolvingErr *index.ResolvingError
+		if errors.As(err, &resolvingErr) && errors.Is(resolvingErr.ErrorRef, index.ErrReferenceChainCycle) {
+			return &doc, errors.Join(errs...)
+		}
+	}
 
 	// build out swagger scalar variables.
 	_ = low.BuildModel(info.RootNode.Content[0], &doc)

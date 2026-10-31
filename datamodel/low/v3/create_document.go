@@ -302,6 +302,12 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 
 	// set root index.
 	doc.Index = rolodex.GetRootIndex()
+	for _, err := range roloErrs {
+		var resolvingErr *index.ResolvingError
+		if errors.As(err, &resolvingErr) && errors.Is(resolvingErr.ErrorRef, index.ErrReferenceChainCycle) {
+			return &doc, errors.Join(errs...)
+		}
+	}
 	var wg sync.WaitGroup
 
 	var cacheMap sync.Map
