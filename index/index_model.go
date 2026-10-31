@@ -85,6 +85,9 @@ func (rm *ReferenceMapped) MarshalJSON() ([]byte, error) {
 // allowing or disallowing remote or local file lookups.
 //   - https://github.com/pb33f/libopenapi/issues/73
 type SpecIndexConfig struct {
+	// AllowExcessiveAliases disables the YAML alias expansion limit for trusted
+	// documents with extensive shared content. Cycle detection remains enabled.
+	AllowExcessiveAliases bool
 	// The BaseURL will be the root from which relative references will be resolved from if they can't be found locally.
 	//
 	// For example:
@@ -282,6 +285,7 @@ func (s *SpecIndexConfig) ToDocumentConfiguration() *datamodel.DocumentConfigura
 		BasePath:                              s.BasePath,
 		SpecFilePath:                          s.SpecFilePath,
 		AllowFileReferences:                   s.AllowFileLookup,
+		AllowExcessiveAliases:                 s.AllowExcessiveAliases,
 		AllowRemoteReferences:                 s.AllowRemoteLookup,
 		BypassDocumentCheck:                   s.SkipDocumentCheck,
 		IgnorePolymorphicCircularReferences:   s.IgnorePolymorphicCircularReferences,
