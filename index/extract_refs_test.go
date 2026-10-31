@@ -5,6 +5,7 @@ package index
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 	"strings"
 	"testing"
@@ -1225,4 +1226,23 @@ components:
 
 	assert.True(t, rawRefs["#/components/examples/ReusableExample"])
 	assert.False(t, rawRefs["#/components/schemas/ShouldNotIndex"])
+}
+
+// Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
+func TestExtractRefs_ExampleUnderSchemaKeywordName(t *testing.T) {
+	for _, name := range []string{"schemas", "definitions", "$defs", "dependentSchemas", "properties", "patternProperties"} {
+		t.Run(name, func(t *testing.T) {
+			source := fmt.Sprintf("openapi: 3.1.1\ninfo: {title: Payload, version: '1'}\npaths: {}\ncomponents:\n  schemas:\n    Thing:\n      type: object\n      properties:\n        %s:\n          type: object\n          example:\n            nested: {$ref: '#/not-a-schema'}\n", name)
+			var root yaml.Node
+			if err := yaml.Unmarshal([]byte(source), &root); err != nil {
+				t.Fatal(err)
+			}
+			idx := NewSpecIndex(&root)
+			if refs := idx.GetRawReferencesSequenced(); len(refs) != 0 {
+				t.Fatalf("example payload indexed: refs=%d first=%s path=%v errors=%v", len(refs), refs[0].Definition, refs[0].SourcePath, idx.GetReferenceIndexErrors())
+			}
+		})
+	}
 }
