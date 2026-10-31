@@ -41,8 +41,8 @@ func isArrayOfSchemaContainingNode(v string) bool {
 }
 
 // underOpenAPIExamplePath reports whether seenPath is under an OpenAPI example or examples
-// keyword (sample data, not schema). A segment named "example" or "examples" that is preceded
-// by "properties" or "patternProperties" is a schema property name, not an OpenAPI keyword.
+// keyword (sample data, not schema). Entries in maps of named schemas are names,
+// even when the name is "example" or "examples".
 func underOpenAPIExamplePath(seenPath []string) bool {
 	for i := range seenPath {
 		if isOpenAPIExampleKeywordSegment(seenPath, i) {
@@ -58,7 +58,13 @@ func isOpenAPIExampleKeywordSegment(seenPath []string, idx int) bool {
 	}
 	switch seenPath[idx] {
 	case "example", "examples":
-		return idx == 0 || (seenPath[idx-1] != "properties" && seenPath[idx-1] != "patternProperties")
+		if idx > 0 {
+			switch seenPath[idx-1] {
+			case "properties", "patternProperties", "schemas", "definitions", "$defs", "dependentSchemas":
+				return false
+			}
+		}
+		return true
 	default:
 		return false
 	}

@@ -29,6 +29,22 @@ func (resolver *Resolver) extractRelatives(
 		if strings.HasPrefix(ref.Definition, "#/") {
 			state.path = strings.Split(strings.TrimPrefix(ref.Definition, "#/"), "/")
 		}
+		if len(state.path) > 0 && (state.path[0] == "example" || state.path[0] == "examples") && ref.Index != nil {
+			root := ref.Index.GetRootNode()
+			if root != nil {
+				if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
+					root = root.Content[0]
+				}
+				_, openapi := utils.FindKeyNodeTop("openapi", root.Content)
+				_, swagger := utils.FindKeyNodeTop("swagger", root.Content)
+				if openapi == nil && swagger == nil {
+					// An external fragment identifies the object being resolved. Its
+					// top-level name is not a keyword in the referencing document.
+					// Example fields encountered inside that object still mark payloads.
+					state.path = ref.SourcePath
+				}
+			}
+		}
 	}
 	return resolver.extractRelativesWithState(ref, node, parent, state)
 }
