@@ -53,11 +53,9 @@ func extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps m
 	}
 
 	// If the node we're looking at is a direct ref to another model without any properties, mark it as required, but still continue to look for required properties
-	isRef, _, defPath := utils.IsNodeRefValue(schemaNode)
+	isRef, _, _ := utils.IsNodeRefValue(schemaNode)
 	if isRef {
-		if _, ok := reqRefProps[defPath]; !ok {
-			reqRefProps[defPath] = []string{}
-		}
+		reqRefProps = extractRequiredReferenceProperties(fulldef, schemaNode, "", reqRefProps)
 	}
 
 	// Check for a required parameters list, and return if none exists, as any properties will be optional
@@ -125,7 +123,10 @@ func extractRequiredReferenceProperties(fulldef string, requiredPropDefNode *yam
 
 	defPath := fulldef
 
-	if strings.HasPrefix(refName, "http") || filepath.IsAbs(refName) {
+	if strings.HasPrefix(refName, "#") {
+		base, _ := SplitRefFragment(fulldef)
+		defPath = base + refName
+	} else if strings.HasPrefix(refName, "http") || filepath.IsAbs(refName) {
 		defPath = refName
 	} else {
 		exp := strings.Split(fulldef, "#/")
@@ -199,7 +200,9 @@ func extractRequiredReferenceProperties(fulldef string, requiredPropDefNode *yam
 	if _, ok := reqRefProps[defPath]; !ok {
 		reqRefProps[defPath] = []string{}
 	}
-	reqRefProps[defPath] = append(reqRefProps[defPath], propName)
+	if propName != "" {
+		reqRefProps[defPath] = append(reqRefProps[defPath], propName)
+	}
 
 	return reqRefProps
 }
