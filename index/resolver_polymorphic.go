@@ -73,7 +73,7 @@ func (resolver *Resolver) visitPolymorphicReference(
 		return
 	}
 
-	loop := append(state.journey, mappedRefs)
+	loop := append(state.journey[:len(state.journey):len(state.journey)], mappedRefs)
 	circRef := &CircularReferenceResult{
 		ParentNode:          parentNode,
 		Journey:             loop,
