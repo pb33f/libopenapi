@@ -47,6 +47,22 @@ func TestCompareSchemas_RetargetedDiamondIsBounded(t *testing.T) {
 	}
 }
 
+func TestCompareSchemas_RetargetedDiamondWithPropertyAddRemove(t *testing.T) {
+	const depth = 8
+	left := diamondComparisonSpec("L", depth)
+	right := strings.Replace(diamondComparisonSpec("R", depth), "        entry:", "        extra: {type: string}\n        entry:", 1)
+	l, r := test_BuildDoc(left, right)
+	for _, reverse := range []bool{false, true} {
+		lp, rp := l.Components.Value.FindSchema("Root").Value, r.Components.Value.FindSchema("Root").Value
+		if reverse {
+			lp, rp = rp, lp
+		}
+		changes := CompareSchemas(lp, rp)
+		require.Equal(t, 2*depth+2, changes.TotalChanges())
+		require.Equal(t, 2*depth+1, changes.SchemaPropertyChanges["entry"].TotalChanges())
+	}
+}
+
 func TestCompareSchemas_CandidateScoringHasIndependentPairs(t *testing.T) {
 	left := `openapi: 3.0.3
 components:
