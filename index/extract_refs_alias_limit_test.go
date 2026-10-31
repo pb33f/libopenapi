@@ -39,17 +39,53 @@ func TestExtractRefsAbsentAliasTarget(t *testing.T) {
 	require.Empty(t, idx.GetReferenceIndexErrors())
 }
 
+func TestExtractRefsCountsInheritedMergeDescendants(t *testing.T) {
+	const source = `shared: &shared {inherited: {nested: {type: string}}}
+target:
+  before: {type: string}
+  <<: *shared
+  after: {type: integer}
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(source), &root))
+	target := root.Content[0].Content[3]
+	t.Run("only inherited descendants", func(t *testing.T) {
+		idx := NewSpecIndex(nil)
+		walk := &extractRefsTraversal{ancestry: make(map[*yaml.Node]struct{}), nodes: 1000}
+		idx.extractRefs(context.Background(), target, nil, nil, 0, false, "", walk)
+		require.False(t, walk.stopped)
+		require.Empty(t, idx.GetReferenceIndexErrors())
+		require.Equal(t, 1005, walk.nodes)
+		require.Equal(t, 2, walk.aliasNodes)
+		require.Zero(t, walk.aliasDepth)
+	})
+	t.Run("inherited descendants reach limit", func(t *testing.T) {
+		idx := NewSpecIndex(nil)
+		walk := &extractRefsTraversal{ancestry: make(map[*yaml.Node]struct{}), nodes: 997, aliasNodes: 997}
+		idx.extractRefs(context.Background(), target, nil, []string{"target"}, 0, false, "", walk)
+		require.True(t, walk.stopped)
+		require.Len(t, idx.GetReferenceIndexErrors(), 1)
+		require.ErrorContains(t, idx.GetReferenceIndexErrors()[0], "document contains excessive aliasing")
+		require.Equal(t, 1001, walk.nodes)
+		require.Equal(t, 998, walk.aliasNodes)
+		require.Zero(t, walk.aliasDepth)
+	})
+}
+
 func TestExtractRefsAllowsOrdinaryAliases(t *testing.T) {
 	const source = `openapi: 3.1.1
 info: {title: Aliases, version: '1'}
 paths: {}
 x-meta: &meta {description: shared metadata}
 x-ref: &ref {$ref: '#/components/schemas/Target'}
+x-props: &props {value: *ref}
 components:
   schemas:
     Target: {type: string}
     First: {type: object, properties: {value: *ref}, x-meta: *meta}
     Second: {type: object, properties: {value: *ref}, x-meta: *meta}
+    MergedFirst: {type: object, properties: {<<: *props}}
+    MergedSecond: {type: object, properties: {<<: *props}}
 `
 	var root yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte(source), &root))
@@ -61,4 +97,6 @@ components:
 	}
 	require.Contains(t, paths, "components/schemas/First/properties/value")
 	require.Contains(t, paths, "components/schemas/Second/properties/value")
+	require.Contains(t, paths, "components/schemas/MergedFirst/properties/value")
+	require.Contains(t, paths, "components/schemas/MergedSecond/properties/value")
 }

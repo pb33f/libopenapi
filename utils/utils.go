@@ -710,6 +710,7 @@ func NodeMerge(nodes []*yaml.Node) *yaml.Node {
 // precedence over later sources. Aliases are resolved before expansion.
 // A merged mapping is shallow-copied: source nodes are not modified, and original
 // key/value nodes and their location/comment metadata are retained. Mappings
+// place explicit key/value pairs first, followed by inherited pairs. Mappings
 // without merges retain their identity. Callers must not mutate shared children
 // while readers or model builders use them.
 func ResolveMergeNodes(node *yaml.Node) *yaml.Node {

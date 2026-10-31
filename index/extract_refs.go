@@ -158,6 +158,17 @@ func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node
 	view := utils.ResolveMergeNodes(node)
 	state := index.initializeExtractRefsState(ctx, view, seenPath, level, poly, pName)
 	state.traversal = walk
+	state.mergeStart = len(view.Content)
+	if view != node {
+		// Merge views retain explicit pairs first, then append inherited pairs.
+		// Only inherited descendants consume the alias expansion budget.
+		state.mergeStart = 0
+		for i := 0; i < len(node.Content); i += 2 {
+			if key := node.Content[i]; key != nil && key.Tag != "!!merge" {
+				state.mergeStart += 2
+			}
+		}
+	}
 	found := index.walkExtractRefs(view, parent, &state)
 	index.refCount = len(index.allRefs)
 	return found
