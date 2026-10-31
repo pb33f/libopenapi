@@ -61,9 +61,9 @@ func parseDecimalInt64(value string) (int64, bool) {
 	if integerDigits > 19 {
 		return limit, true
 	}
-	max := uint64(math.MaxInt64)
+	maxMagnitude := uint64(math.MaxInt64)
 	if negative {
-		max++
+		maxMagnitude++
 	}
 	var result uint64
 	remaining := integerDigits
@@ -85,7 +85,7 @@ func parseDecimalInt64(value string) (int64, bool) {
 		result *= 10
 		remaining--
 	}
-	if result > max {
+	if result > maxMagnitude {
 		return limit, true
 	}
 	if negative {
