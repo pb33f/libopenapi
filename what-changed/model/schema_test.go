@@ -4204,7 +4204,7 @@ func TestExtractOrderInsensitiveSchemaChanges_ExactRefPairsCanProduceChanges(t *
 
 	var schemaChanges []*SchemaChanges
 	var changes []*Change
-	extractOrderInsensitiveSchemaChanges(
+	new(schemaComparison).extractOrderInsensitiveSchemaChanges(
 		[]low.ValueReference[*base.SchemaProxy]{{Value: leftProxy}},
 		[]low.ValueReference[*base.SchemaProxy]{{Value: rightProxy}},
 		v3.OneOfLabel,
@@ -4961,7 +4961,7 @@ func TestExtractSchemaChanges_PrefixItemsRemovedAndModified(t *testing.T) {
 
 	var schemaChanges []*SchemaChanges
 	var changes []*Change
-	extractSchemaChanges(left, right, v3.PrefixItemsLabel, &schemaChanges, &changes)
+	new(schemaComparison).extractSchemaChanges(left, right, v3.PrefixItemsLabel, &schemaChanges, &changes)
 
 	assert.Len(t, schemaChanges, 1)
 	assert.Len(t, changes, 1)
@@ -4983,7 +4983,7 @@ func TestExtractSchemaChanges_PrefixItemsAddedAndModified(t *testing.T) {
 
 	var schemaChanges []*SchemaChanges
 	var changes []*Change
-	extractSchemaChanges(left, right, v3.PrefixItemsLabel, &schemaChanges, &changes)
+	new(schemaComparison).extractSchemaChanges(left, right, v3.PrefixItemsLabel, &schemaChanges, &changes)
 
 	assert.Len(t, schemaChanges, 1)
 	assert.Len(t, changes, 1)
@@ -5063,7 +5063,7 @@ func TestCompareSchemas_fireNilCheck(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
 	checkSchemaXML(nil, nil, nil, nil)
-	checkSchemaPropertyChanges(nil, nil, nil, nil, nil, nil, false)
+	new(schemaComparison).checkSchemaPropertyChanges(nil, nil, nil, nil, nil, nil, false)
 	checkExamples(nil, nil, nil)
 }
 
