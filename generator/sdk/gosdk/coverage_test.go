@@ -337,7 +337,8 @@ func TestPrepareResponsesContracts(t *testing.T) {
 		{Status: "default", Content: jsonContent(schema("object", ""))},
 	}}, "Read", "[ThingsResource.Read]", &view)
 	if err != nil || view.ResponseType != "string" || !reflect.DeepEqual(view.SuccessStatuses, []string{"200"}) || !view.DecodeAll ||
-		len(view.ErrorCases) != 1 || !view.ErrorCases[0].Default || view.ErrorCases[0].Type != "ReadError" || view.ErrorSwitch != "response.StatusCode" {
+		len(view.ErrorCases) != 2 || view.ErrorCases[0].Case != "401" || view.ErrorCases[0].Type != "" ||
+		!view.ErrorCases[1].Default || view.ErrorCases[1].Type != "ReadError" || view.ErrorSwitch != "response.StatusCode" {
 		t.Fatalf("unexpected prepared responses: %#v %v", view, err)
 	}
 	view = operationView{}

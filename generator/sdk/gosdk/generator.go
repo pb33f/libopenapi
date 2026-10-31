@@ -697,9 +697,8 @@ func (e *emitter) prepareResponses(operation *sdk.Operation, base, method string
 		if _, err := statusCondition([]string{status}); err != nil {
 			return fmt.Errorf("gosdk: operation %q error response %s: %w", operation.ID, status, err)
 		}
-		if typeName != "" {
-			errorCases = append(errorCases, errorResponseView{Statuses: []string{status}, Type: typeName})
-		}
+		// Untyped responses still override a typed range or default response.
+		errorCases = append(errorCases, errorResponseView{Statuses: []string{status}, Type: typeName})
 	}
 	if len(view.SuccessStatuses) == 0 {
 		return fmt.Errorf("gosdk: operation %q has no declared 2xx response", operation.ID)
@@ -720,6 +719,9 @@ func (e *emitter) prepareResponses(operation *sdk.Operation, base, method string
 	view.DecodeAll = view.DecodeCondition == view.SuccessCondition
 	view.ErrorCases, view.ErrorSwitch = errorSwitch(errorCases)
 	for _, errorCase := range view.ErrorCases {
+		if errorCase.Type == "" {
+			continue
+		}
 		statuses := strings.Join(errorCase.Statuses, ", ")
 		if errorCase.Default {
 			statuses = "default"
@@ -735,6 +737,7 @@ func (e *emitter) prepareResponses(operation *sdk.Operation, base, method string
 // ranges the switch is on the status code itself.
 func errorSwitch(responses []errorResponseView) ([]errorResponseView, string) {
 	var exact, ranges, fallback []errorResponseView
+	hasTypedResponse := false
 	group := func(cases []errorResponseView, response errorResponseView) []errorResponseView {
 		for index := range cases {
 			if cases[index].Type == response.Type {
@@ -745,6 +748,7 @@ func errorSwitch(responses []errorResponseView) ([]errorResponseView, string) {
 		return append(cases, response)
 	}
 	for _, response := range responses {
+		hasTypedResponse = hasTypedResponse || response.Type != ""
 		switch status := response.Statuses[0]; {
 		case status == "default":
 			fallback = []errorResponseView{{Type: response.Type, Default: true}}
@@ -753,6 +757,9 @@ func errorSwitch(responses []errorResponseView) ([]errorResponseView, string) {
 		default:
 			exact = group(exact, response)
 		}
+	}
+	if !hasTypedResponse {
+		return nil, ""
 	}
 	for _, cases := range [][]errorResponseView{exact, ranges} {
 		for index := range cases {
