@@ -718,6 +718,9 @@ func ResolveMergeNodes(node *yaml.Node) *yaml.Node {
 	if node == nil {
 		return nil
 	}
+	if node.Kind != yaml.MappingNode && node.Tag != "!!map" {
+		return node
+	}
 	if !hasMergeKeys(node.Content) {
 		return node
 	}

@@ -39,6 +39,35 @@ func TestExtractRefsAbsentAliasTarget(t *testing.T) {
 	require.Empty(t, idx.GetReferenceIndexErrors())
 }
 
+func TestExtractRefsMergeCycleWithoutAliasInWalk(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("x: &x {b: {<<: *x}}\n"), &root))
+	idx := NewSpecIndex(nil)
+	walk := &extractRefsTraversal{}
+	idx.extractRefs(context.Background(), &root, nil, nil, 0, false, "", walk)
+	require.False(t, walk.stopped)
+	require.Empty(t, idx.GetReferenceIndexErrors())
+	require.Empty(t, walk.ancestry)
+	require.Zero(t, walk.aliasDepth)
+	require.Less(t, walk.nodes, 10)
+}
+
+func TestExtractRefsPlainDocumentNeedsNoAncestry(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`openapi: 3.1.1
+components:
+  schemas:
+    Item: {type: object, properties: {id: {type: string}}}
+    Ref: {$ref: '#/components/schemas/Item'}
+`), &root))
+	idx := NewSpecIndex(nil)
+	walk := &extractRefsTraversal{}
+	refs := idx.extractRefs(context.Background(), &root, nil, nil, 0, false, "", walk)
+	require.Len(t, refs, 1)
+	require.Nil(t, walk.ancestry)
+	require.Zero(t, walk.aliasNodes)
+}
+
 func TestExtractRefsCountsInheritedMergeDescendants(t *testing.T) {
 	const source = `shared: &shared {inherited: {nested: {type: string}}}
 target:
