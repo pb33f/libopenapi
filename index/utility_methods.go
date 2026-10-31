@@ -136,13 +136,8 @@ func extractRequiredReferenceProperties(fulldef string, requiredPropDefNode *yam
 					u, _ := url.Parse(exp[0])
 					r := strings.Split(refName, "#/")
 					if len(r) == 2 {
-						var abs string
-						if r[0] == "" {
-							abs = u.Path
-						} else {
-							abs, _ = filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), r[0],
-								string(os.PathSeparator)))
-						}
+						abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), r[0],
+							string(os.PathSeparator)))
 
 						u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 						u.Fragment = ""
@@ -156,16 +151,8 @@ func extractRequiredReferenceProperties(fulldef string, requiredPropDefNode *yam
 				} else {
 					r := strings.Split(refName, "#/")
 					if len(r) == 2 {
-						var abs string
-						if r[0] == "" {
-							abs, _ = filepath.Abs(exp[0])
-						} else {
-							abs, _ = filepath.Abs(utils.CheckPathOverlap(filepath.Dir(exp[0]), r[0],
-								string(os.PathSeparator)))
-
-							// abs, _ = filepath.Abs(filepath.Join(filepath.Dir(exp[0]), r[0],
-							//	string('J')))
-						}
+						abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(exp[0]), r[0],
+							string(os.PathSeparator)))
 
 						defPath = fmt.Sprintf("%s#/%s", abs, r[1])
 					} else {
