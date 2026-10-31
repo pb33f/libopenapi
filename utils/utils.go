@@ -364,7 +364,8 @@ func expandMergeContent(node *yaml.Node, visited map[*yaml.Node]struct{}) []*yam
 		return nil
 	}
 	visited[node] = struct{}{}
-	defer delete(visited, node)
+	// Earlier merge sources win. Revisiting this mapping cannot add a key
+	// that was not already supplied or overridden by its first expansion.
 
 	if !hasMergeKeys(node.Content) {
 		return node.Content
@@ -411,6 +412,10 @@ func appendExpandedMergeContent(
 	}
 
 	if mergeValue.Kind == yaml.SequenceNode {
+		if _, seen := visited[mergeValue]; seen {
+			return target
+		}
+		visited[mergeValue] = struct{}{}
 		for _, item := range mergeValue.Content {
 			target = appendExpandedMergeContent(target, seenKeys, item, visited)
 		}
@@ -705,6 +710,7 @@ func NodeMerge(nodes []*yaml.Node) *yaml.Node {
 // precedence over later sources. Aliases are resolved before expansion.
 // A merged mapping is shallow-copied: source nodes are not modified, and original
 // key/value nodes and their location/comment metadata are retained. Mappings
+// place explicit key/value pairs first, followed by inherited pairs. Mappings
 // without merges retain their identity. Callers must not mutate shared children
 // while readers or model builders use them.
 func ResolveMergeNodes(node *yaml.Node) *yaml.Node {

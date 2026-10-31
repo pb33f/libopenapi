@@ -11,6 +11,7 @@ type relativeWalkState struct {
 	resolve        bool
 	depth          int
 	schemaIDBase   string
+	path           []string
 }
 
 func newRelativeWalkState(

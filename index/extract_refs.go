@@ -5,9 +5,15 @@ package index
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/go-yaml/plugin/limit"
+	"github.com/pb33f/libopenapi/utils"
 )
+
+// Use the parser's existing alias policy when traversing its unexpanded node tree.
+var extractRefsAliasLimit limit.Plugin
 
 func isSchemaContainingNode(v string) bool {
 	switch v {
@@ -98,13 +104,72 @@ func isDirectOpenAPIExampleValuePath(seenPath []string) bool {
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
 // The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
+// Excessive YAML alias expansion stops extraction and is reported by GetReferenceIndexErrors.
 func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string) []*Reference {
+	walk := &extractRefsTraversal{ancestry: make(map[*yaml.Node]struct{})}
+	return index.extractRefs(ctx, node, parent, seenPath, level, poly, pName, walk)
+}
+
+type extractRefsTraversal struct {
+	ancestry   map[*yaml.Node]struct{}
+	nodes      int
+	aliasNodes int
+	aliasDepth int
+	stopped    bool
+}
+
+func (walk *extractRefsTraversal) visit() error {
+	walk.nodes++
+	if walk.aliasDepth > 0 {
+		walk.aliasNodes++
+	}
+	return extractRefsAliasLimit.CheckAlias(walk.aliasNodes, walk.nodes)
+}
+
+// Ancestry tracks canonical source nodes, not the shallow views created during
+// merge expansion. A shared anchor is visited again at each distinct path.
+func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string, walk *extractRefsTraversal) []*Reference {
+	if node == nil || walk.stopped {
+		return nil
+	}
+	err := walk.visit()
+	if node.Kind == yaml.AliasNode && err == nil {
+		walk.aliasDepth++
+		defer func() { walk.aliasDepth-- }()
+		node = utils.NodeAlias(node)
+		err = walk.visit()
+	}
+	if err != nil {
+		walk.stopped = true
+		// A stopped traversal cannot provide a complete model.
+		index.refErrors = append(index.refErrors, &ResolvingError{
+			ErrorRef: err, Node: node, Path: "$." + strings.Join(seenPath, "."),
+		})
+		return nil
+	}
 	if node == nil {
 		return nil
 	}
-
-	state := index.initializeExtractRefsState(ctx, node, seenPath, level, poly, pName)
-	found := index.walkExtractRefs(node, parent, &state)
+	if _, active := walk.ancestry[node]; active {
+		return nil
+	}
+	walk.ancestry[node] = struct{}{}
+	defer delete(walk.ancestry, node)
+	view := utils.ResolveMergeNodes(node)
+	state := index.initializeExtractRefsState(ctx, view, seenPath, level, poly, pName)
+	state.traversal = walk
+	state.mergeStart = len(view.Content)
+	if view != node {
+		// Merge views retain explicit pairs first, then append inherited pairs.
+		// Only inherited descendants consume the alias expansion budget.
+		state.mergeStart = 0
+		for i := 0; i < len(node.Content); i += 2 {
+			if key := node.Content[i]; key != nil && key.Tag != "!!merge" {
+				state.mergeStart += 2
+			}
+		}
+	}
+	found := index.walkExtractRefs(view, parent, &state)
 	index.refCount = len(index.allRefs)
 	return found
 }

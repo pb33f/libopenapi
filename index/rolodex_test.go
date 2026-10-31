@@ -3049,3 +3049,17 @@ func TestRolodex_Open_HttpPrefixedLocationWithoutScheme(t *testing.T) {
 	assert.Nil(t, rf)
 	assert.EqualError(t, err, "remote URL 'httpdocs/pet.yaml' has no scheme, unable to fetch it")
 }
+
+func TestRolodex_HasCheckedForCircularReferences(t *testing.T) {
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.1.0"), &rootNode)
+	config := CreateOpenAPIIndexConfig()
+	config.AvoidCircularReferenceCheck = true
+	rolo := NewRolodex(config)
+	rolo.SetRootNode(&rootNode)
+	assert.NoError(t, rolo.IndexTheRolodex(context.Background()))
+	assert.False(t, rolo.HasCheckedForCircularReferences())
+
+	rolo.CheckForCircularReferences()
+	assert.True(t, rolo.HasCheckedForCircularReferences())
+}

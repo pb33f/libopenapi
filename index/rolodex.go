@@ -247,6 +247,11 @@ func (r *Rolodex) GetIndexingDuration() time.Duration {
 	return r.indexingDuration
 }
 
+// HasCheckedForCircularReferences returns true once the rolodex has been checked for circular references.
+func (r *Rolodex) HasCheckedForCircularReferences() bool {
+	return r.circChecked
+}
+
 // GetRootIndex returns the root index of the rolodex (the entry point, the main document)
 func (r *Rolodex) GetRootIndex() *SpecIndex {
 	return r.rootIndex
@@ -550,6 +555,16 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 
 		if len(index.refErrors) > 0 {
 			caughtErrors = append(caughtErrors, index.refErrors...)
+		}
+	}
+	// Root reference lookup can load additional files after the initial build queue.
+	// Include fatal extraction errors from those indexes before returning a model.
+	for _, idx := range r.GetIndexes() {
+		for _, err := range idx.refErrors {
+			var resolvingErr *ResolvingError
+			if errors.As(err, &resolvingErr) {
+				caughtErrors = append(caughtErrors, err)
+			}
 		}
 	}
 	r.indexingDuration = time.Since(started)

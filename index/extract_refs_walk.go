@@ -12,6 +12,8 @@ import (
 )
 
 type extractRefsState struct {
+	traversal     *extractRefsTraversal
+	mergeStart    int
 	ctx           context.Context
 	scope         *SchemaIdScope
 	parentBaseURI string
@@ -68,6 +70,9 @@ func (index *SpecIndex) walkExtractRefs(node, parent *yaml.Node, state *extractR
 
 	var found []*Reference
 	for i, n := range node.Content {
+		if state.traversal.stopped {
+			break
+		}
 		// In YAML mapping nodes, Content alternates key-value: even indices (0, 2, 4...)
 		// are keys, odd indices (1, 3, 5...) are values.
 		if i%2 == 0 {
@@ -77,7 +82,14 @@ func (index *SpecIndex) walkExtractRefs(node, parent *yaml.Node, state *extractR
 		}
 
 		if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
+			inherited := i >= state.mergeStart
+			if inherited {
+				state.traversal.aliasDepth++
+			}
 			found = append(found, index.walkChildExtractRefs(n, node, state)...)
+			if inherited {
+				state.traversal.aliasDepth--
+			}
 		}
 
 		index.unwindExtractRefsPath(node, state, i)
@@ -100,10 +112,11 @@ func (index *SpecIndex) walkChildExtractRefs(node, parent *yaml.Node, state *ext
 			state.polyName = state.prev
 		}
 	}
-	return index.ExtractRefs(state.ctx, node, parent, state.seenPath, state.level, state.poly, state.polyName)
+	return index.extractRefs(state.ctx, node, parent, state.seenPath, state.level, state.poly, state.polyName, state.traversal)
 }
 
 func isDirectOpenAPIExampleRefNode(node *yaml.Node) bool {
+	node = utils.ResolveMergeNodes(node)
 	return utils.IsNodeMap(node) && utils.GetRefValueNode(node) != nil && len(node.Content) == 2
 }
 

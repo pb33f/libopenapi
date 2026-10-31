@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -24,6 +25,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 // These tests require full documents to be tested properly. schemas are perhaps the most complex
@@ -336,10 +338,12 @@ components:
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
-	assert.Len(t, changes.Changes, 1)
-	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Len(t, changes.Changes, 2)
+	assert.Len(t, changes.GetAllChanges(), 2)
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, "#/components/schemas/Yo", changes.Changes[0].New)
+	assert.Equal(t, v3.TypeLabel, changes.Changes[1].Property)
+	assert.True(t, changes.Changes[1].Breaking) // the schema behind the reference is compared too.
 }
 
 func TestCompareSchemas_RefToInline(t *testing.T) {
@@ -369,11 +373,13 @@ components:
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
-	assert.Len(t, changes.Changes, 1)
-	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Len(t, changes.Changes, 2)
+	assert.Len(t, changes.GetAllChanges(), 2)
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
 	assert.Equal(t, "#/components/schemas/Yo", changes.Changes[0].Original)
+	assert.Equal(t, v3.TypeLabel, changes.Changes[1].Property)
+	assert.True(t, changes.Changes[1].Breaking) // the schema behind the reference is compared too.
 }
 
 func TestCompareSchemas_InlineToRef(t *testing.T) {
@@ -403,11 +409,13 @@ components:
 
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
-	assert.Len(t, changes.Changes, 1)
-	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Len(t, changes.Changes, 2)
+	assert.Len(t, changes.GetAllChanges(), 2)
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
 	assert.Equal(t, "#/components/schemas/Yo", changes.Changes[0].New)
+	assert.Equal(t, v3.TypeLabel, changes.Changes[1].Property)
+	assert.True(t, changes.Changes[1].Breaking) // the schema behind the reference is compared too.
 }
 
 func TestCompareSchemas_Identical(t *testing.T) {
@@ -2110,7 +2118,7 @@ components:
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
 	assert.Len(t, changes.GetAllChanges(), 2)
-	assert.Equal(t, 2, changes.TotalBreakingChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.AllOfLabel, changes.Changes[0].Property)
 	assert.Equal(t, Modified, changes.AllOfChanges[0].Changes[0].ChangeType)
@@ -3452,7 +3460,8 @@ components:
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
-	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 2, changes.TotalChanges()) // the $ref change, and int becoming string behind it.
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
 }
 
 // https://github.com/pb33f/openapi-changes/issues/104
@@ -4195,7 +4204,7 @@ func TestExtractOrderInsensitiveSchemaChanges_ExactRefPairsCanProduceChanges(t *
 
 	var schemaChanges []*SchemaChanges
 	var changes []*Change
-	extractOrderInsensitiveSchemaChanges(
+	new(schemaComparison).extractOrderInsensitiveSchemaChanges(
 		[]low.ValueReference[*base.SchemaProxy]{{Value: leftProxy}},
 		[]low.ValueReference[*base.SchemaProxy]{{Value: rightProxy}},
 		v3.OneOfLabel,
@@ -4406,9 +4415,9 @@ func TestSchemaCompositionPairingHelpers(t *testing.T) {
 		[]schemaCompositionPairCandidate{{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 0}, totalChanges: 1, stableKeyMatch: true, breakingChanges: 0}},
 	))
 
-	assert.Nil(t, pairUnmatchedSchemaCompositionEntries(nil, []schemaCompositionEntry{{position: 0}}))
-	assert.Nil(t, pairUnmatchedSchemaCompositionEntries([]schemaCompositionEntry{{position: 0}}, nil))
-	pairs := pairUnmatchedSchemaCompositionEntries(
+	assert.Nil(t, new(schemaComparison).pairUnmatchedSchemaCompositionEntries(nil, []schemaCompositionEntry{{position: 0}}))
+	assert.Nil(t, new(schemaComparison).pairUnmatchedSchemaCompositionEntries([]schemaCompositionEntry{{position: 0}}, nil))
+	pairs := new(schemaComparison).pairUnmatchedSchemaCompositionEntries(
 		[]schemaCompositionEntry{{position: 0}, {position: 0}},
 		[]schemaCompositionEntry{{position: 1}, {position: 0}},
 	)
@@ -4952,7 +4961,7 @@ func TestExtractSchemaChanges_PrefixItemsRemovedAndModified(t *testing.T) {
 
 	var schemaChanges []*SchemaChanges
 	var changes []*Change
-	extractSchemaChanges(left, right, v3.PrefixItemsLabel, &schemaChanges, &changes)
+	new(schemaComparison).extractSchemaChanges(left, right, v3.PrefixItemsLabel, &schemaChanges, &changes)
 
 	assert.Len(t, schemaChanges, 1)
 	assert.Len(t, changes, 1)
@@ -4974,7 +4983,7 @@ func TestExtractSchemaChanges_PrefixItemsAddedAndModified(t *testing.T) {
 
 	var schemaChanges []*SchemaChanges
 	var changes []*Change
-	extractSchemaChanges(left, right, v3.PrefixItemsLabel, &schemaChanges, &changes)
+	new(schemaComparison).extractSchemaChanges(left, right, v3.PrefixItemsLabel, &schemaChanges, &changes)
 
 	assert.Len(t, schemaChanges, 1)
 	assert.Len(t, changes, 1)
@@ -5054,7 +5063,7 @@ func TestCompareSchemas_fireNilCheck(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
 	checkSchemaXML(nil, nil, nil, nil)
-	checkSchemaPropertyChanges(nil, nil, nil, nil, nil, nil, false)
+	new(schemaComparison).checkSchemaPropertyChanges(nil, nil, nil, nil, nil, nil, false)
 	checkExamples(nil, nil, nil)
 }
 
@@ -5405,7 +5414,9 @@ components:
 	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
-	assert.Nil(t, changes)
+	// the reference is circular, so it isn't followed, but the $ref change itself is kept.
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
 }
 
 func TestCompareSchemas_CheckRefChangeCircular_HackIndex(t *testing.T) {
@@ -5472,15 +5483,15 @@ components:
 	//rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
-	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Len(t, changes.GetAllChanges(), 2)
 
 	rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
 	changes = CompareSchemas(lSchemaProxy, rSchemaProxy)
-	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Len(t, changes.GetAllChanges(), 2)
 
 	rSchemaProxy.GetIndex().SetAbsolutePath("")
 	changes = CompareSchemas(rSchemaProxy, lSchemaProxy) // flip them back
-	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Len(t, changes.GetAllChanges(), 2)
 
 }
 
@@ -5512,7 +5523,9 @@ components:
 	//rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
-	assert.Nil(t, changes)
+	// the reference is circular, so it isn't followed, but the $ref change itself is kept.
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
 }
 
 func TestCompareSchemas_CheckRefChange_HackIndex_RightToLeft(t *testing.T) {
@@ -5543,11 +5556,11 @@ components:
 	//rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
-	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Len(t, changes.GetAllChanges(), 2)
 
 	rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
 	changes = CompareSchemas(lSchemaProxy, rSchemaProxy)
-	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Len(t, changes.GetAllChanges(), 2)
 }
 
 func TestCompareSchemas_CheckRefChangeCircular_HackIndex_RightToLeft(t *testing.T) {
@@ -5578,7 +5591,9 @@ components:
 	//rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
-	assert.Nil(t, changes)
+	// the reference is circular, so it isn't followed, but the $ref change itself is kept.
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
 
 }
 
@@ -7421,6 +7436,384 @@ components:
 	assert.True(t, changes.VocabularyChanges[0].Breaking)
 	// TotalBreakingChanges should count the vocabulary change
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+// changesOtherThanRef summarises every change except the $ref change, for comparing a change made behind a
+// reference with the same change made inline.
+func changesOtherThanRef(changes *SchemaChanges) []string {
+	var summary []string
+	for _, c := range changes.GetAllChanges() {
+		if c.Property != v3.RefLabel {
+			summary = append(summary, fmt.Sprintf("%s %d %v", c.Property, c.ChangeType, c.Breaking))
+		}
+	}
+	sort.Strings(summary)
+	return summary
+}
+
+// https://github.com/pb33f/libopenapi/issues/663
+func TestCompareSchemas_RefToInline_RequiredAdded(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+    OK:
+      $ref: '#/components/schemas/Pet'
+    Inline:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+    OK:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+    Inline:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	find := func(doc *v3.Document, name string) *base.SchemaProxy {
+		return doc.Components.Value.FindSchema(name).Value
+	}
+
+	changes := CompareSchemas(find(leftDoc, "OK"), find(rightDoc, "OK"))
+	assert.NotNil(t, changes)
+	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
+	assert.False(t, changes.Changes[0].Breaking)
+
+	// reported the way the same change is reported between two inline schemas.
+	inline := CompareSchemas(find(leftDoc, "Inline"), find(rightDoc, "Inline"))
+	assert.Equal(t, changesOtherThanRef(inline), changesOtherThanRef(changes))
+
+	// and in the other direction.
+	changes = CompareSchemas(find(rightDoc, "OK"), find(leftDoc, "OK"))
+	inline = CompareSchemas(find(rightDoc, "Inline"), find(leftDoc, "Inline"))
+	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Equal(t, changesOtherThanRef(inline), changesOtherThanRef(changes))
+}
+
+// https://github.com/pb33f/libopenapi/issues/663
+func TestCompareSchemas_RefRetargeted_RequiredAdded(t *testing.T) {
+	low.ClearHashCache()
+	spec := `openapi: 3.1.0
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+    NewPet:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+    OK:
+      $ref: '#/components/schemas/Pet'`
+
+	leftDoc, rightDoc := test_BuildDoc(spec, strings.Replace(spec, "$ref: '#/components/schemas/Pet'", "$ref: '#/components/schemas/NewPet'", 1))
+
+	changes := CompareSchemas(leftDoc.Components.Value.FindSchema("OK").Value, rightDoc.Components.Value.FindSchema("OK").Value)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, "#/components/schemas/NewPet", changes.Changes[0].New)
+	assert.Equal(t, v3.RequiredLabel, changes.Changes[1].Property)
+}
+
+// https://github.com/pb33f/libopenapi/issues/663
+func TestCompareSchemas_RefToInline_IdenticalCopy(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+    OK:
+      $ref: '#/components/schemas/Pet'`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+    OK:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	assert.Nil(t, CompareSchemas(leftDoc.Components.Value.FindSchema("OK").Value, rightDoc.Components.Value.FindSchema("OK").Value))
+}
+
+// https://github.com/pb33f/libopenapi/issues/663
+func TestCompareSchemas_RefToInline_SimpleAllOf(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Pet:
+      allOf:
+        - type: object
+          properties:
+            name:
+              type: string
+    OK:
+      $ref: '#/components/schemas/Pet'
+    Inline:
+      allOf:
+        - type: object
+          properties:
+            name:
+              type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    OK:
+      allOf:
+        - type: object
+          properties:
+            name:
+              type: string
+          required: [name]
+    Inline:
+      allOf:
+        - type: object
+          properties:
+            name:
+              type: string
+          required: [name]`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	find := func(doc *v3.Document, name string) *base.SchemaProxy {
+		return doc.Components.Value.FindSchema(name).Value
+	}
+
+	// the referenced allOf is compared through the same merged view as an inline one.
+	changes := CompareSchemas(find(leftDoc, "OK"), find(rightDoc, "OK"))
+	inline := CompareSchemas(find(leftDoc, "Inline"), find(rightDoc, "Inline"))
+	assert.NotNil(t, changes)
+	assert.NotEmpty(t, changesOtherThanRef(changes))
+	assert.Equal(t, changesOtherThanRef(inline), changesOtherThanRef(changes))
+}
+
+// https://github.com/pb33f/libopenapi/issues/663
+func TestCompareSchemas_RefWithSiblings_StopsAtRef(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+    OK:
+      $ref: '#/components/schemas/Pet'`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+    OK:
+      $ref: '#/components/schemas/Pet'
+      required: [name]`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	l := leftDoc.Components.Value.FindSchema("OK").Value
+	r := rightDoc.Components.Value.FindSchema("OK").Value
+	assert.True(t, r.IsTransformedRefWithSiblings())
+
+	// a $ref with siblings is held as an allOf, which doesn't line up with the referenced schema field by field.
+	changes := CompareSchemas(l, r)
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
+
+	changes = CompareSchemas(r, l)
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
+}
+
+// https://github.com/pb33f/libopenapi/issues/663
+func TestCompareSchemas_RefToInline_CircularStopsAtRef(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Node:
+      type: object
+      properties:
+        next:
+          $ref: '#/components/schemas/Node'
+    OK:
+      $ref: '#/components/schemas/Node'`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Node:
+      type: object
+      properties:
+        next:
+          $ref: '#/components/schemas/Node'
+    OK:
+      type: object
+      required: [next]`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	l := leftDoc.Components.Value.FindSchema("OK").Value
+	r := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(l, r)
+	require.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
+
+	changes = CompareSchemas(r, l)
+	require.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
+}
+
+// https://github.com/pb33f/libopenapi/issues/663
+func TestCompareSchemas_RefRetargeted_Unresolved(t *testing.T) {
+	low.ClearHashCache()
+	spec := `openapi: 3.1.0
+components:
+  schemas:
+    Pet:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+    OK:
+      $ref: '#/components/schemas/Pet'`
+
+	cases := map[string]struct {
+		ref    string
+		config *datamodel.DocumentConfiguration
+	}{
+		"missing":                {"#/components/schemas/Missing", datamodel.NewDocumentConfiguration()},
+		"external, not resolved": {"other.yaml#/Pet", &datamodel.DocumentConfiguration{SkipExternalRefResolution: true}},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			leftInfo, _ := datamodel.ExtractSpecInfo([]byte(spec))
+			rightInfo, _ := datamodel.ExtractSpecInfo([]byte(strings.Replace(spec, "#/components/schemas/Pet'", tc.ref+"'", 1)))
+			leftDoc, _ := v3.CreateDocumentFromConfig(leftInfo, tc.config)
+			rightDoc, _ := v3.CreateDocumentFromConfig(rightInfo, tc.config)
+
+			// there's nothing to compare the old schema with, so only the $ref change is reported.
+			changes := CompareSchemas(leftDoc.Components.Value.FindSchema("OK").Value, rightDoc.Components.Value.FindSchema("OK").Value)
+			require.NotNil(t, changes)
+			assert.Len(t, changes.GetAllChanges(), 1)
+			assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
+		})
+	}
+}
+
+// https://github.com/pb33f/libopenapi/issues/663
+func TestCompareSchemas_RefRetargeted_CircularCheckSkipped(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    A:
+      type: object
+      properties:
+        b:
+          $ref: '#/components/schemas/B'
+    B:
+      type: object
+      properties:
+        a:
+          $ref: '#/components/schemas/A'
+    OK:
+      $ref: '#/components/schemas/A'`
+	right := strings.NewReplacer("schemas/A", "schemas/X", "schemas/B", "schemas/Y", "    A:", "    X:", "    B:", "    Y:").Replace(left)
+
+	config := datamodel.NewDocumentConfiguration()
+	config.SkipCircularReferenceCheck = true
+	leftInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
+	rightInfo, _ := datamodel.ExtractSpecInfo([]byte(strings.Replace(right, "type: object\n      properties:\n        b:", "type: object\n      description: changed\n      properties:\n        b:", 1)))
+	leftDoc, _ := v3.CreateDocumentFromConfig(leftInfo, config)
+	rightDoc, _ := v3.CreateDocumentFromConfig(rightInfo, config)
+
+	// without the circular check a loop can't be recognised, so the reference is not followed.
+	changes := CompareSchemas(leftDoc.Components.Value.FindSchema("OK").Value, rightDoc.Components.Value.FindSchema("OK").Value)
+	require.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
+}
+
+// https://github.com/pb33f/libopenapi/issues/663
+func TestCompareSchemas_RefToInline_EquivalentScalarUnion(t *testing.T) {
+	low.ClearHashCache()
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    NullableString:
+      type: [string, 'null']
+    OK:
+      $ref: '#/components/schemas/NullableString'`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    OK:
+      anyOf:
+        - type: string
+        - type: 'null'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+	l := leftDoc.Components.Value.FindSchema("OK").Value
+	r := rightDoc.Components.Value.FindSchema("OK").Value
+
+	// a type array and the equivalent anyOf are the same schema, whichever side is a reference.
+	changes := CompareSchemas(l, r)
+	require.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
+
+	changes = CompareSchemas(r, l)
+	require.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 1)
 }
 
 // https://github.com/pb33f/libopenapi/issues/662

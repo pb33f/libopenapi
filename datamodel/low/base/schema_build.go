@@ -68,7 +68,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 
 	if !isTransformed {
 		if h, _, _ := utils.IsNodeRefValue(root); h {
-			ref, foundIdx, err, fctx := low.LocateRefNodeWithContext(ctx, root, idx)
+			ref, foundIdx, err, fctx := low.LocateRefEnd(ctx, root, idx, 0)
 			if ref != nil {
 				root = utils.ResolveMergeNodes(ref)
 				if fctx != nil {

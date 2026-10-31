@@ -24,6 +24,12 @@ func (resolver *Resolver) extractRelatives(
 	schemaIDBase string,
 ) []*Reference {
 	state := newRelativeWalkState(foundRelatives, journey, resolve, depth, schemaIDBase)
+	if ref != nil {
+		state.path = ref.SourcePath
+		if strings.HasPrefix(ref.Definition, "#/") {
+			state.path = strings.Split(strings.TrimPrefix(ref.Definition, "#/"), "/")
+		}
+	}
 	return resolver.extractRelativesWithState(ref, node, parent, state)
 }
 
@@ -32,6 +38,12 @@ func (resolver *Resolver) extractRelativesWithState(
 	node, parent *yaml.Node,
 	state relativeWalkState,
 ) []*Reference {
+	if underOpenAPIExamplePayloadPath(state.path) {
+		return nil
+	}
+	if isDirectOpenAPIExampleValuePath(state.path) && !isDirectOpenAPIExampleRefNode(node) {
+		return nil
+	}
 	// Guard against stack overflow from deeply nested or circular specs.
 	// Journey tracks the reference chain (100 max); depth tracks recursive calls (500 max).
 	if len(state.journey) > 100 {
@@ -53,7 +65,13 @@ func (resolver *Resolver) extractRelativesWithState(
 			}
 
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
-				found = append(found, resolver.extractNestedRelatives(ref, node, n, state)...)
+				childState := state
+				if node.Kind == yaml.MappingNode && i%2 == 1 {
+					childState.path = append(state.path, node.Content[i-1].Value)
+				} else if node.Kind == yaml.SequenceNode {
+					childState.path = append(state.path, "[]")
+				}
+				found = append(found, resolver.extractNestedRelatives(ref, node, n, childState)...)
 			}
 
 			if i%2 == 0 && n.Value == "$ref" && len(node.Content) > i%2+1 {
@@ -88,7 +106,7 @@ func (resolver *Resolver) handleRelativeDepthLimit(ref *Reference, state relativ
 			"reference", def)
 	}
 
-	loop := append(state.journey, ref)
+	loop := append(state.journey[:len(state.journey):len(state.journey)], ref)
 	circRef := &CircularReferenceResult{
 		Journey:        loop,
 		Start:          ref,
