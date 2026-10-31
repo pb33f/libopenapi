@@ -2412,7 +2412,7 @@ func pairExactSchemaCompositionEntries(
 	return pairs, leftUnmatched, rightUnmatched
 }
 
-func buildSchemaCompositionPairCandidateMatrix(
+func (c *schemaComparison) buildSchemaCompositionPairCandidateMatrix(
 	rowEntries, columnEntries []schemaCompositionEntry,
 	swapPairDirection bool,
 ) [][]schemaCompositionPairCandidate {
@@ -2426,18 +2426,12 @@ func buildSchemaCompositionPairCandidateMatrix(
 				leftEntry = columnEntries[j]
 				rightEntry = rowEntries[i]
 			}
-			changes := CompareSchemas(leftEntry.proxy, rightEntry.proxy)
-			totalChanges := 0
-			breakingChanges := 0
-			if changes != nil {
-				totalChanges = changes.TotalChanges()
-				breakingChanges = changes.TotalBreakingChanges()
-			}
+			score := c.score(leftEntry.proxy, rightEntry.proxy)
 			row[j] = schemaCompositionPairCandidate{
 				left:            leftEntry,
 				right:           rightEntry,
-				totalChanges:    totalChanges,
-				breakingChanges: breakingChanges,
+				totalChanges:    score.total,
+				breakingChanges: score.breaking,
 				stableKeyMatch:  leftEntry.stableKey == rightEntry.stableKey,
 			}
 		}
@@ -2545,16 +2539,18 @@ func selectBestSchemaCompositionPairCandidates(
 	return best
 }
 
-func pairUnmatchedSchemaCompositionEntries(
+func (c *schemaComparison) pairUnmatchedSchemaCompositionEntries(
 	leftEntries, rightEntries []schemaCompositionEntry,
 ) []schemaCompositionPair {
 	if len(leftEntries) == 0 || len(rightEntries) == 0 {
 		return nil
 	}
 
-	matrix := buildSchemaCompositionPairCandidateMatrix(leftEntries, rightEntries, false)
+	var matrix [][]schemaCompositionPairCandidate
 	if len(leftEntries) > len(rightEntries) {
-		matrix = buildSchemaCompositionPairCandidateMatrix(rightEntries, leftEntries, true)
+		matrix = c.buildSchemaCompositionPairCandidateMatrix(rightEntries, leftEntries, true)
+	} else {
+		matrix = c.buildSchemaCompositionPairCandidateMatrix(leftEntries, rightEntries, false)
 	}
 
 	selected := selectBestSchemaCompositionPairCandidates(matrix)
@@ -2613,7 +2609,7 @@ func (c *schemaComparison) extractOrderInsensitiveSchemaChanges(
 	rightEntries := buildSchemaCompositionEntries(rSchema)
 
 	exactPairs, leftUnmatched, rightUnmatched := pairExactSchemaCompositionEntries(leftEntries, rightEntries)
-	unmatchedPairs := pairUnmatchedSchemaCompositionEntries(leftUnmatched, rightUnmatched)
+	unmatchedPairs := c.pairUnmatchedSchemaCompositionEntries(leftUnmatched, rightUnmatched)
 
 	for i := range exactPairs {
 		if changes := c.compareSchemas(exactPairs[i].left.proxy, exactPairs[i].right.proxy); changes != nil {
