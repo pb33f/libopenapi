@@ -6,6 +6,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/testify/require"
 )
 
@@ -17,6 +18,77 @@ func diamondComparisonSpec(prefix string, depth int) string {
 	}
 	fmt.Fprintf(&spec, "    %s%d: {type: string}\n", prefix, depth)
 	return spec.String()
+}
+
+func TestCompareSchemas_NestedUnionScoresAreShared(t *testing.T) {
+	for _, union := range []string{"anyOf", "oneOf"} {
+		for _, depth := range []int{0, 1, 2, 3, 12} {
+			t.Run(fmt.Sprintf("%s/%d", union, depth), func(t *testing.T) {
+				makeSpec := func(prefix, kind string) string {
+					var spec strings.Builder
+					spec.WriteString("openapi: 3.0.3\ninfo: {title: Union, version: '1'}\npaths: {}\ncomponents:\n  schemas:\n")
+					fmt.Fprintf(&spec, "    Root: {$ref: '#/components/schemas/%s0'}\n", prefix)
+					for i := 0; i < depth; i++ {
+						fmt.Fprintf(&spec, "    %s%d:\n      %s:\n        - {$ref: '#/components/schemas/%s%d'}\n        - {$ref: '#/components/schemas/%s%d'}\n", prefix, i, union, prefix, i+1, prefix, i+1)
+					}
+					fmt.Fprintf(&spec, "    %s%d: {type: %s}\n", prefix, depth, kind)
+					return spec.String()
+				}
+				l, r := test_BuildDoc(makeSpec("L", "string"), makeSpec("R", "integer"))
+				left, right := l.Components.Value.FindSchema("Root").Value, r.Components.Value.FindSchema("Root").Value
+				comparison := new(schemaComparison)
+				changes := comparison.compareSchemas(left, right)
+				require.Equal(t, 2*depth+2, changes.TotalChanges())
+				// Four candidates at each level share one complete score. Nested
+				// candidates reuse the same cache instead of starting four more trees.
+				require.Len(t, comparison.scores, depth)
+				require.Equal(t, changes.TotalChanges(), CompareSchemas(left, right).TotalChanges())
+				if depth == 12 {
+					var wg sync.WaitGroup
+					counts := make([]int, 4)
+					for i := range counts {
+						wg.Add(1)
+						go func() { defer wg.Done(); counts[i] = CompareSchemas(left, right).TotalChanges() }()
+					}
+					wg.Wait()
+					for _, count := range counts {
+						require.Equal(t, 2*depth+2, count)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestCompareSchemas_CandidateScoresPreserveReferenceIdentity(t *testing.T) {
+	makeSpec := func(kind string) string {
+		return fmt.Sprintf(`openapi: 3.0.3
+components:
+  schemas:
+    Target: {type: %s}
+    Alias: {$ref: '#/components/schemas/Target'}
+    Ref: {$ref: '#/components/schemas/Target'}
+    AliasRef: {$ref: '#/components/schemas/Alias'}
+`, kind)
+	}
+	l, r := test_BuildDoc(makeSpec("string"), makeSpec("integer"))
+	left := l.Components.Value.FindSchema("Ref").Value
+	right := r.Components.Value.FindSchema("Ref").Value
+	alias := r.Components.Value.FindSchema("AliasRef").Value
+	inlineLeft := l.Components.Value.FindSchema("Target").Value
+	inlineRight := r.Components.Value.FindSchema("Target").Value
+	require.Same(t, schemaDefinitionNode(right), schemaDefinitionNode(alias))
+	require.Same(t, schemaDefinitionNode(right), schemaDefinitionNode(inlineRight))
+	comparison := new(schemaComparison)
+	for _, pair := range [][2]*base.SchemaProxy{{left, right}, {left, alias}, {inlineLeft, right}, {left, inlineRight}} {
+		var expected schemaScore
+		if changes := CompareSchemas(pair[0], pair[1]); changes != nil {
+			expected = schemaScore{changes.TotalChanges(), changes.TotalBreakingChanges()}
+		}
+		require.Equal(t, expected, comparison.score(pair[0], pair[1]))
+		require.Equal(t, expected, comparison.score(pair[0], pair[1]))
+	}
+	require.Len(t, comparison.scores, 4)
 }
 
 func TestCompareSchemas_RetargetedDiamondIsBounded(t *testing.T) {

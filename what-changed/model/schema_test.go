@@ -4415,9 +4415,9 @@ func TestSchemaCompositionPairingHelpers(t *testing.T) {
 		[]schemaCompositionPairCandidate{{left: schemaCompositionEntry{position: 0}, right: schemaCompositionEntry{position: 0}, totalChanges: 1, stableKeyMatch: true, breakingChanges: 0}},
 	))
 
-	assert.Nil(t, pairUnmatchedSchemaCompositionEntries(nil, []schemaCompositionEntry{{position: 0}}))
-	assert.Nil(t, pairUnmatchedSchemaCompositionEntries([]schemaCompositionEntry{{position: 0}}, nil))
-	pairs := pairUnmatchedSchemaCompositionEntries(
+	assert.Nil(t, new(schemaComparison).pairUnmatchedSchemaCompositionEntries(nil, []schemaCompositionEntry{{position: 0}}))
+	assert.Nil(t, new(schemaComparison).pairUnmatchedSchemaCompositionEntries([]schemaCompositionEntry{{position: 0}}, nil))
+	pairs := new(schemaComparison).pairUnmatchedSchemaCompositionEntries(
 		[]schemaCompositionEntry{{position: 0}, {position: 0}},
 		[]schemaCompositionEntry{{position: 1}, {position: 0}},
 	)
