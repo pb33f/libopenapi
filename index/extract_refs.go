@@ -112,7 +112,7 @@ func isDirectOpenAPIExampleValuePath(seenPath []string) bool {
 // The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
 // Excessive YAML alias expansion stops extraction and is reported by GetReferenceIndexErrors.
 func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string) []*Reference {
-	walk := &extractRefsTraversal{ancestry: make(map[*yaml.Node]struct{})}
+	walk := &extractRefsTraversal{}
 	return index.extractRefs(ctx, node, parent, seenPath, level, poly, pName, walk)
 }
 
@@ -126,9 +126,10 @@ type extractRefsTraversal struct {
 
 func (walk *extractRefsTraversal) visit() error {
 	walk.nodes++
-	if walk.aliasDepth > 0 {
-		walk.aliasNodes++
+	if walk.aliasDepth == 0 {
+		return nil
 	}
+	walk.aliasNodes++
 	return extractRefsAliasLimit.CheckAlias(walk.aliasNodes, walk.nodes)
 }
 
@@ -139,7 +140,8 @@ func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node
 		return nil
 	}
 	err := walk.visit()
-	if node.Kind == yaml.AliasNode && err == nil {
+	aliased := node.Kind == yaml.AliasNode
+	if aliased && err == nil {
 		walk.aliasDepth++
 		defer func() { walk.aliasDepth-- }()
 		node = utils.NodeAlias(node)
@@ -156,12 +158,17 @@ func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node
 	if node == nil {
 		return nil
 	}
-	if _, active := walk.ancestry[node]; active {
-		return nil
-	}
-	walk.ancestry[node] = struct{}{}
-	defer delete(walk.ancestry, node)
 	view := utils.ResolveMergeNodes(node)
+	if aliased || view != node {
+		if _, active := walk.ancestry[node]; active {
+			return nil
+		}
+		if walk.ancestry == nil {
+			walk.ancestry = make(map[*yaml.Node]struct{})
+		}
+		walk.ancestry[node] = struct{}{}
+		defer delete(walk.ancestry, node)
+	}
 	state := index.initializeExtractRefsState(ctx, view, seenPath, level, poly, pName)
 	state.traversal = walk
 	state.mergeStart = len(view.Content)
