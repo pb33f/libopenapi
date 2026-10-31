@@ -1,13 +1,79 @@
 package libopenapi
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/testify/require"
 )
+
+func sharedResponseDocument() string {
+	var source strings.Builder
+	source.WriteString("openapi: 3.1.1\ninfo: {title: Shared responses, version: '1'}\nx-common:\n  errors: &errors\n")
+	for i := range 20 {
+		fmt.Fprintf(&source, "    '%d':\n      description: Error %d\n      content:\n        application/json:\n          schema:\n            type: object\n            properties:\n              code: {type: integer}\n              message: {type: string}\n", 400+i, i)
+	}
+	source.WriteString("paths:\n")
+	for i := range 5000 {
+		fmt.Fprintf(&source, "  /r%d:\n    get:\n      operationId: op%d\n      responses:\n        '200': {description: ok}\n        <<: *errors\n", i, i)
+	}
+	return source.String()
+}
+
+func TestBuildV3Model_AllowsTrustedSharedResponses(t *testing.T) {
+	source := sharedResponseDocument()
+	for _, external := range []bool{false, true} {
+		for _, allow := range []bool{false, true} {
+			t.Run(fmt.Sprintf("external=%t/allow=%t", external, allow), func(t *testing.T) {
+				config := datamodel.NewDocumentConfiguration()
+				input := source
+				if external {
+					config = externalRegressionConfig(t, map[string]string{"routes.yaml": source})
+					input = "openapi: 3.1.1\ninfo: {title: Linked response, version: '1'}\npaths:\n  /linked: {$ref: './routes.yaml#/paths/~1r4999'}\n"
+				}
+				config.AllowExcessiveAliases = allow
+				doc, err := NewDocumentWithConfiguration([]byte(input), config)
+				require.NoError(t, err)
+				model, err := doc.BuildV3Model()
+				if !allow {
+					require.ErrorContains(t, err, "AllowExcessiveAliases")
+					require.Nil(t, model)
+					return
+				}
+				require.NoError(t, err)
+				require.NotNil(t, model)
+				require.True(t, model.Index.GetConfig().AllowExcessiveAliases)
+				if external {
+					require.Equal(t, 1, model.Model.Paths.PathItems.Len())
+					require.Equal(t, "op4999", model.Model.Paths.PathItems.GetOrZero("/linked").Get.OperationId)
+					require.Len(t, model.Index.GetRolodex().GetIndexes(), 1)
+					require.Equal(t, 5000, model.Index.GetRolodex().GetIndexes()[0].GetOperationCount())
+				} else {
+					require.Equal(t, 5000, model.Model.Paths.PathItems.Len())
+				}
+				for item := range model.Model.Paths.PathItems.ValuesFromOldest() {
+					require.Equal(t, 21, item.Get.Responses.Codes.Len())
+					require.Equal(t, "Error 19", item.Get.Responses.Codes.GetOrZero("419").Description)
+				}
+			})
+		}
+	}
+}
+
+func TestBuildV2Model_PropagatesAliasPolicy(t *testing.T) {
+	config := datamodel.NewDocumentConfiguration()
+	config.AllowExcessiveAliases = true
+	doc, err := NewDocumentWithConfiguration([]byte("swagger: '2.0'\ninfo: {title: Alias policy, version: '1'}\npaths: {}\n"), config)
+	require.NoError(t, err)
+	model, err := doc.BuildV2Model()
+	require.NoError(t, err)
+	require.True(t, model.Index.GetConfig().AllowExcessiveAliases)
+	require.True(t, model.Index.GetConfig().ToDocumentConfiguration().AllowExcessiveAliases)
+}
 
 func TestBuildV3ModelReportsAliasLimit(t *testing.T) {
 	// A small shared graph crosses the parser's alias ratio limit during indexing.

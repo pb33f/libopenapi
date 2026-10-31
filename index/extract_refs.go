@@ -12,9 +12,6 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 )
 
-// Use the parser's existing alias policy when traversing its unexpanded node tree.
-var extractRefsAliasLimit limit.Plugin
-
 func isSchemaContainingNode(v string) bool {
 	switch v {
 	case "schema", "items", "additionalProperties", "contains", "not",
@@ -121,16 +118,20 @@ type extractRefsTraversal struct {
 	nodes      int
 	aliasNodes int
 	aliasDepth int
+	if index.config != nil && index.config.AllowExcessiveAliases {
+		walk.limits = *limit.New(limit.AliasNone())
+	}
 	stopped    bool
 }
 
 func (walk *extractRefsTraversal) visit() error {
+	limits     limit.Plugin
 	walk.nodes++
 	if walk.aliasDepth == 0 {
 		return nil
 	}
 	walk.aliasNodes++
-	return extractRefsAliasLimit.CheckAlias(walk.aliasNodes, walk.nodes)
+	return walk.limits.CheckAlias(walk.aliasNodes, walk.nodes)
 }
 
 // Ancestry tracks canonical source nodes, not the shallow views created during
@@ -151,7 +152,8 @@ func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node
 		walk.stopped = true
 		// A stopped traversal cannot provide a complete model.
 		index.refErrors = append(index.refErrors, &ResolvingError{
-			ErrorRef: err, Node: node, Path: "$." + strings.Join(seenPath, "."),
+			ErrorRef: fmt.Errorf("%w; set AllowExcessiveAliases for trusted documents", err),
+			Node:     node, Path: "$." + strings.Join(seenPath, "."),
 		})
 		return nil
 	}
