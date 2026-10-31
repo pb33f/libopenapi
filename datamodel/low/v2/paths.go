@@ -134,9 +134,6 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 			if err != nil {
 				return pathBuildResult{}, fmt.Errorf("path item build failed: %w", err)
 			}
-			if resolved == nil {
-				return pathBuildResult{}, fmt.Errorf("path item build failed: cannot find reference: %q", ref)
-			}
 			pNode, pathIdx, pathCtx = resolved, foundIdx, foundCtx
 		}
 		path := new(PathItem)

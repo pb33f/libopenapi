@@ -33,6 +33,12 @@ func TestBuildModel_ExactDecimalIntegers(t *testing.T) {
 		{"100.0e-2", 1, true},
 		{"100.0e-3", 0, false},
 		{".0", 0, true},
+		{"Inf", math.MaxInt64, true},
+		{"-Inf", math.MinInt64, true},
+		{"0x1p4", 16, true},
+		{"0x1p64", math.MaxInt64, true},
+		{"-0x1p64", math.MinInt64, true},
+		{"0x1.8p0", 0, false},
 	} {
 		t.Run(tc.value, func(t *testing.T) {
 			// Explicit tags also exercise overflow literals that YAML's implicit
