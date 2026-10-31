@@ -395,13 +395,38 @@ func (index *SpecIndex) countUniqueInlineDuplicates() int {
 }
 
 func seekRefEnd(ctx context.Context, index *SpecIndex, refName string) *Reference {
-	ref, _, nCtx := index.SearchIndexForReferenceWithContext(ctx, refName)
-	if ref != nil {
-		if ok, _, v := utils.IsNodeRefValue(ref.Node); ok {
-			return seekRefEnd(nCtx, ref.Index, v)
-		}
+	owner := index
+	type target struct {
+		index *SpecIndex
+		node  *yaml.Node
 	}
-	return ref
+	var seen map[target]struct{}
+	for index != nil {
+		ref, nextIndex, nextContext := index.SearchIndexForReferenceWithContext(ctx, refName)
+		if ref == nil {
+			return nil
+		}
+		ok, _, next := utils.IsNodeRefValue(ref.Node)
+		if !ok {
+			return ref
+		}
+		key := target{nextIndex, ref.Node}
+		if _, repeated := seen[key]; repeated {
+			owner.errorLock.Lock()
+			owner.refErrors = append(owner.refErrors, &ResolvingError{
+				ErrorRef: fmt.Errorf("%w while resolving '%s'", ErrReferenceChainCycle, refName),
+				Node:     ref.Node, Path: ref.Path,
+			})
+			owner.errorLock.Unlock()
+			return nil
+		}
+		if seen == nil {
+			seen = make(map[target]struct{})
+		}
+		seen[key] = struct{}{}
+		ctx, index, refName = nextContext, nextIndex, next
+	}
+	return nil
 }
 
 // formatParameterPath creates a consistent JSON path for parameter error messages

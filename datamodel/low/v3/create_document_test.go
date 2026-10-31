@@ -1483,3 +1483,20 @@ paths: {}
 	assert.NotNil(t, doc.Index.GetConfig())
 	assert.True(t, doc.Index.GetConfig().ResolveNestedRefsWithDocumentContext)
 }
+
+func TestCreateDocument_PathReferenceCycle(t *testing.T) {
+	info, err := datamodel.ExtractSpecInfo([]byte(`openapi: 3.1.1
+info: {title: Path cycle, version: '1'}
+x-a: {$ref: '#/x-b'}
+x-b: {$ref: '#/x-a'}
+paths:
+  /a: {$ref: '#/x-a'}
+`))
+	require.NoError(t, err)
+	config := datamodel.NewDocumentConfiguration()
+	config.SkipCircularReferenceCheck = true
+	doc, err := CreateDocumentFromConfig(info, config)
+	require.ErrorContains(t, err, "circular reference chain")
+	require.NotNil(t, doc.Index)
+	require.Nil(t, doc.Paths.Value)
+}
