@@ -144,3 +144,30 @@ func TestExtractRefsTrustedAliasesStillStopCycles(t *testing.T) {
 	require.Empty(t, idx.ExtractRefs(context.Background(), &cycle, nil, nil, 0, false, ""))
 	require.Empty(t, idx.GetReferenceIndexErrors())
 }
+
+func TestExtractRefsMergeViewPreservesSchemaID(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`shared: &shared {$id: 'https://example.com/shared', type: object}
+withID: {$id: 'https://example.com/local', <<: *shared}
+inherited: {<<: *shared}
+`), &root))
+	mapping := root.Content[0]
+	view, id := resolveExtractRefsNode(mapping.Content[3])
+	require.Equal(t, "https://example.com/local", id)
+	require.NotSame(t, mapping.Content[3], view)
+	_, inherited := resolveExtractRefsNode(mapping.Content[5])
+	require.Equal(t, "https://example.com/shared", inherited)
+	_, documentID := resolveExtractRefsNode(&root)
+	require.Empty(t, documentID)
+}
+
+func TestExtractRefsSchemaIDKeepsFirstEmptyValue(t *testing.T) {
+	mapping := &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{
+		nil, {Kind: yaml.ScalarNode, Value: "ignored"},
+		{Kind: yaml.ScalarNode, Value: "$id"}, {Kind: yaml.ScalarNode, Tag: "!!str"},
+		{Kind: yaml.ScalarNode, Value: "$id"}, {Kind: yaml.ScalarNode, Tag: "!!str", Value: "https://example.com/later"},
+	}}
+	view, id := resolveExtractRefsNode(mapping)
+	require.Same(t, mapping, view)
+	require.Empty(t, id)
+}
