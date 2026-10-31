@@ -24,12 +24,19 @@ func (resolver *Resolver) extractRelatives(
 	schemaIDBase string,
 ) []*Reference {
 	state := newRelativeWalkState(foundRelatives, journey, resolve, depth, schemaIDBase)
+	// Keep ordinary paths on this walk's stack. Child walks reuse capacity;
+	// unusually deep paths grow normally without changing the traversal limit.
+	var pathBuffer [32]string
+	walkPath := pathBuffer[:0]
 	if ref != nil {
-		state.path = ref.SourcePath
 		if strings.HasPrefix(ref.Definition, "#/") {
-			state.path = strings.Split(strings.TrimPrefix(ref.Definition, "#/"), "/")
+			for segment := range strings.SplitSeq(strings.TrimPrefix(ref.Definition, "#/"), "/") {
+				walkPath = append(walkPath, segment)
+			}
+		} else {
+			walkPath = append(walkPath, ref.SourcePath...)
 		}
-		if len(state.path) > 0 && (state.path[0] == "example" || state.path[0] == "examples") && ref.Index != nil {
+		if len(walkPath) > 0 && (walkPath[0] == "example" || walkPath[0] == "examples") && ref.Index != nil {
 			root := ref.Index.GetRootNode()
 			if root != nil {
 				if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
@@ -41,23 +48,24 @@ func (resolver *Resolver) extractRelatives(
 					// An external fragment identifies the object being resolved. Its
 					// top-level name is not a keyword in the referencing document.
 					// Example fields encountered inside that object still mark payloads.
-					state.path = ref.SourcePath
+					walkPath = append(pathBuffer[:0], ref.SourcePath...)
 				}
 			}
 		}
 	}
-	return resolver.extractRelativesWithState(ref, node, parent, state)
+	return resolver.extractRelativesWithState(ref, node, parent, state, walkPath)
 }
 
 func (resolver *Resolver) extractRelativesWithState(
 	ref *Reference,
 	node, parent *yaml.Node,
 	state relativeWalkState,
+	walkPath []string,
 ) []*Reference {
-	if underOpenAPIExamplePayloadPath(state.path) {
+	if underOpenAPIExamplePayloadPath(walkPath) {
 		return nil
 	}
-	if isDirectOpenAPIExampleValuePath(state.path) && !isDirectOpenAPIExampleRefNode(node) {
+	if isDirectOpenAPIExampleValuePath(walkPath) && !isDirectOpenAPIExampleRefNode(node) {
 		return nil
 	}
 	// Guard against stack overflow from deeply nested or circular specs.
@@ -82,12 +90,13 @@ func (resolver *Resolver) extractRelativesWithState(
 
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
 				childState := state
+				childPath := walkPath
 				if node.Kind == yaml.MappingNode && i%2 == 1 {
-					childState.path = append(state.path, node.Content[i-1].Value)
+					childPath = append(walkPath, node.Content[i-1].Value)
 				} else if node.Kind == yaml.SequenceNode {
-					childState.path = append(state.path, "[]")
+					childPath = append(walkPath, "[]")
 				}
-				found = append(found, resolver.extractNestedRelatives(ref, node, n, childState)...)
+				found = append(found, resolver.extractNestedRelatives(ref, node, n, childState, childPath)...)
 			}
 
 			if i%2 == 0 && n.Value == "$ref" && len(node.Content) > i%2+1 {
@@ -101,7 +110,7 @@ func (resolver *Resolver) extractRelativesWithState(
 			}
 
 			if i%2 == 0 && shouldExtractPolymorphicRelatives(parent, n) {
-				found = append(found, resolver.extractPolymorphicRelatives(ref, node, n, state, i)...)
+				found = append(found, resolver.extractPolymorphicRelatives(ref, node, n, state, i, walkPath)...)
 				skip = true
 			}
 		}
@@ -141,6 +150,7 @@ func (resolver *Resolver) extractNestedRelatives(
 	ref *Reference,
 	parent, node *yaml.Node,
 	state relativeWalkState,
+	walkPath []string,
 ) []*Reference {
 	childState := state.descend()
 	foundRef, _, _ := resolver.searchReferenceWithContext(ref, ref)
@@ -148,9 +158,9 @@ func (resolver *Resolver) extractNestedRelatives(
 		if foundRef.Circular {
 			return nil
 		}
-		return resolver.extractRelativesWithState(foundRef, node, parent, childState)
+		return resolver.extractRelativesWithState(foundRef, node, parent, childState, walkPath)
 	}
-	return resolver.extractRelativesWithState(ref, node, parent, childState)
+	return resolver.extractRelativesWithState(ref, node, parent, childState, walkPath)
 }
 
 func (resolver *Resolver) extractRelativeReference(

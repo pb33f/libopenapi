@@ -2067,3 +2067,25 @@ func TestResolverNamedExternalExampleFragment(t *testing.T) {
 		}
 	}
 }
+
+func TestResolverDeepExamplePaths(t *testing.T) {
+	var source strings.Builder
+	source.WriteString("openapi: 3.1.1\ncomponents:\n  schemas:\n    Target: {type: string}\n    Root:\n")
+	indent := "      "
+	for range 24 {
+		source.WriteString(indent + "properties:\n" + indent + "  item:\n")
+		indent += "    "
+	}
+	source.WriteString(indent + "example: {nested: {$ref: '#/payload-only'}}\n")
+	source.WriteString(indent + "properties: {child: {$ref: '#/components/schemas/Target'}}\n")
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(source.String()), &root))
+	idx := NewSpecIndex(&root)
+	ref, _ := idx.SearchIndexForReference("#/components/schemas/Root")
+	require.NotNil(t, ref)
+	resolver := NewResolver(idx)
+	found := resolver.extractRelatives(ref, ref.Node, nil, map[string]bool{}, nil, false, 0, "")
+	require.Empty(t, resolver.resolvingErrors)
+	require.Len(t, found, 1)
+	require.Equal(t, "#/components/schemas/Target", found[0].Definition)
+}

@@ -13,6 +13,7 @@ func (resolver *Resolver) extractPolymorphicRelatives(
 	node, keywordNode *yaml.Node,
 	state relativeWalkState,
 	index int,
+	walkPath []string,
 ) []*Reference {
 	var found []*Reference
 
@@ -40,7 +41,7 @@ func (resolver *Resolver) extractPolymorphicRelatives(
 				if d, _, l := utils.IsNodeRefValue(v); d {
 					resolver.visitPolymorphicReference(ref, keywordNode.Value, node.Content[index], l, state, index)
 				} else {
-					found = append(found, resolver.extractRelativesWithState(ref, v, keywordNode, state.descend())...)
+					found = append(found, resolver.extractRelativesWithState(ref, v, keywordNode, state.descend(), walkPath)...)
 				}
 			}
 		}
