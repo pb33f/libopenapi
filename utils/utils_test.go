@@ -2164,6 +2164,9 @@ func TestConvertComponentIdIntoFriendlyPathSearch_DigitStartingSegments(t *testi
 
 // Test isPathChar function directly for comprehensive coverage
 func TestIsPathChar(t *testing.T) {
+	for _, name := range []string{"naïve", "東京", string([]byte{'a', 0xff})} {
+		assert.False(t, isPathChar(name), "non-ASCII names require bracket notation")
+	}
 	// Valid path characters (letters, numbers not at start, underscore, backslash)
 	assert.True(t, isPathChar("validName"))
 	assert.True(t, isPathChar("Valid123"))
