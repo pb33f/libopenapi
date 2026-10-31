@@ -68,6 +68,9 @@ func handleIndex(c *handleIndexConfig) error {
 			continue
 		}
 		mappedReference := mappedReferences[sequenced.FullDefinition]
+		if mappedReference == nil {
+			mappedReference, _ = c.idx.SearchIndexForReference(sequenced.FullDefinition)
+		}
 
 		// Check for invalid sibling properties if strict validation is enabled
 		if c.compositionConfig.StrictValidation &&
@@ -188,6 +191,14 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 		}
 		model.Components = components
 	}
+	// An alias contributes no component of its own. Inline its reference after
+	// the target has been composed, so both paths use the same component.
+	isAlias, _, _ := utils.IsNodeRefValue(pr.ref.Node)
+	isAlias = isAlias && len(pr.ref.Node.Content) == 2
+	if !pr.fromDiscriminator && isAlias {
+		cf.inlineRequired = append(cf.inlineRequired, pr)
+		return nil
+	}
 
 	var location []string
 	if strings.Contains(pr.ref.FullDefinition, "#/") {
@@ -198,7 +209,9 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 		// Bare-file imports need the sequenced absolute definition so composition
 		// keys and later rewrites point at the same target.
 		pr.ref.FullDefinition = pr.seqRef.FullDefinition
-		if importType, ok := inferComponentTypeFromSourcePath(pr.seqRef.SourcePath); ok &&
+		if pr.fromDiscriminator && isAlias {
+			_, location = fileImportLocationForType(v3low.SchemasLabel, components, pr, cf)
+		} else if importType, ok := inferComponentTypeFromSourcePath(pr.seqRef.SourcePath); ok &&
 			canComposeContextualReference(importType, pr.ref.Node, true) {
 			_, location = fileImportLocationForType(importType, components, pr, cf)
 		} else if importType, ok := DetectOpenAPIComponentType(pr.ref.Node); ok {
@@ -383,7 +396,8 @@ func enqueueDiscriminatorMappingTargets(
 		mapKey := processRefMapKeyForComponent(ref, v3low.SchemasLabel)
 
 		// Skip targets already queued for composition.
-		if cf.refMap.GetOrZero(mapKey) != nil {
+		if existing := cf.refMap.GetOrZero(mapKey); existing != nil {
+			existing.fromDiscriminator = true
 			continue
 		}
 
