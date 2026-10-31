@@ -116,19 +116,23 @@ func isDirectOpenAPIExampleValuePath(seenPath []string) bool {
 	return false
 }
 
+// Limit plugins are immutable after construction and shared by extraction walks.
+var defaultExtractRefsLimits limit.Plugin
+var unlimitedExtractRefsLimits = limit.New(limit.AliasNone())
+
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
 // The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
 // Excessive YAML alias expansion stops extraction and is reported by GetReferenceIndexErrors.
 func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string) []*Reference {
 	walk := &extractRefsTraversal{}
 	if index.config != nil && index.config.AllowExcessiveAliases {
-		walk.limits = *limit.New(limit.AliasNone())
+		walk.limits = unlimitedExtractRefsLimits
 	}
 	return index.extractRefs(ctx, node, parent, seenPath, level, poly, pName, walk)
 }
 
 type extractRefsTraversal struct {
-	limits     limit.Plugin
+	limits     *limit.Plugin
 	ancestry   map[*yaml.Node]struct{}
 	nodes      int
 	aliasNodes int
@@ -142,7 +146,11 @@ func (walk *extractRefsTraversal) visit() error {
 		return nil
 	}
 	walk.aliasNodes++
-	return walk.limits.CheckAlias(walk.aliasNodes, walk.nodes)
+	limits := walk.limits
+	if limits == nil {
+		limits = &defaultExtractRefsLimits
+	}
+	return limits.CheckAlias(walk.aliasNodes, walk.nodes)
 }
 
 // Ancestry tracks canonical source nodes, not the shallow views created during
@@ -152,10 +160,9 @@ func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node
 		return nil
 	}
 	err := walk.visit()
-	aliased := node.Kind == yaml.AliasNode
-	if aliased && err == nil {
+	aliased := node.Kind == yaml.AliasNode && err == nil
+	if aliased {
 		walk.aliasDepth++
-		defer func() { walk.aliasDepth-- }()
 		node = utils.NodeAlias(node)
 		err = walk.visit()
 	}
@@ -166,24 +173,32 @@ func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node
 			ErrorRef: fmt.Errorf("%w; set AllowExcessiveAliases for trusted documents", err),
 			Node:     node, Path: "$." + strings.Join(seenPath, "."),
 		})
+		if aliased {
+			walk.aliasDepth--
+		}
 		return nil
 	}
 	if node == nil {
+		if aliased {
+			walk.aliasDepth--
+		}
 		return nil
 	}
-	view := utils.ResolveMergeNodes(node)
-	if aliased || view != node {
+	view, nodeID := resolveExtractRefsNode(node)
+	tracked := aliased || view != node
+	if tracked {
 		if _, active := walk.ancestry[node]; active {
+			if aliased {
+				walk.aliasDepth--
+			}
 			return nil
 		}
 		if walk.ancestry == nil {
 			walk.ancestry = make(map[*yaml.Node]struct{})
 		}
 		walk.ancestry[node] = struct{}{}
-		defer delete(walk.ancestry, node)
 	}
-	state := index.initializeExtractRefsState(ctx, view, seenPath, level, poly, pName)
-	state.traversal = walk
+	state := index.initializeExtractRefsState(ctx, nodeID, seenPath, level, poly, pName)
 	state.mergeStart = len(view.Content)
 	if view != node {
 		// Merge views retain explicit pairs first, then append inherited pairs.
@@ -195,7 +210,39 @@ func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node
 			}
 		}
 	}
-	found := index.walkExtractRefs(view, parent, &state)
+	found := index.walkExtractRefs(view, parent, &state, walk)
+	if tracked {
+		delete(walk.ancestry, node)
+	}
+	if aliased {
+		walk.aliasDepth--
+	}
 	index.refCount = len(index.allRefs)
 	return found
+}
+
+// resolveExtractRefsNode finds merge keys and the schema ID in one scan. Ordinary
+// mappings retain their identity; merged mappings use the existing read-only view.
+func resolveExtractRefsNode(node *yaml.Node) (*yaml.Node, string) {
+	if node.Kind != yaml.MappingNode && node.Tag != "!!map" {
+		return node, ""
+	}
+	var idNode *yaml.Node
+	for i := 0; i < len(node.Content); i += 2 {
+		key := node.Content[i]
+		if key == nil {
+			continue
+		}
+		if key.Tag == "!!merge" {
+			view := utils.ResolveMergeNodes(node)
+			return view, FindSchemaIdInNode(view)
+		}
+		if idNode == nil && node.Kind == yaml.MappingNode && key.Value == "$id" && i+1 < len(node.Content) && utils.IsNodeStringValue(node.Content[i+1]) {
+			idNode = node.Content[i+1]
+		}
+	}
+	if idNode != nil {
+		return node, idNode.Value
+	}
+	return node, ""
 }

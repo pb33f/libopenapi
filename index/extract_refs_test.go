@@ -1088,7 +1088,7 @@ properties:
 
 func TestExtractRefs_WalkHelpers(t *testing.T) {
 	idx := NewTestSpecIndex().Load().(*SpecIndex)
-	state := idx.initializeExtractRefsState(context.Background(), nil, nil, 0, false, "")
+	state := idx.initializeExtractRefsState(context.Background(), "", nil, 0, false, "")
 
 	node := &yaml.Node{
 		Kind: yaml.MappingNode,
