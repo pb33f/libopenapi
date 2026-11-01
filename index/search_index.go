@@ -14,14 +14,20 @@ import (
 type ContextKey string
 
 const (
-	CurrentPathKey   ContextKey = "currentPath"
-	FoundIndexKey    ContextKey = "foundIndex"
-	RootIndexKey     ContextKey = "currentIndex"
-	IndexingFilesKey ContextKey = "indexingFiles" // Tracks files being indexed in current call chain
+	CurrentPathKey ContextKey = "currentPath"
+	FoundIndexKey  ContextKey = "foundIndex"
+	RootIndexKey   ContextKey = "currentIndex"
+	// IndexingFilesKey holds the set used by AddIndexingFile and GetIndexingFiles.
+	//
+	// Deprecated: the library no longer tracks the files it is indexing.
+	IndexingFilesKey ContextKey = "indexingFiles"
 )
 
 // GetIndexingFiles returns the set of files currently being indexed in the call chain.
 // Returns nil if not set.
+//
+// Deprecated: the library no longer tracks the files it is indexing, so this only
+// returns what the caller added with AddIndexingFile.
 func GetIndexingFiles(ctx context.Context) map[string]bool {
 	if v := ctx.Value(IndexingFilesKey); v != nil {
 		return v.(map[string]bool)
@@ -31,6 +37,8 @@ func GetIndexingFiles(ctx context.Context) map[string]bool {
 
 // AddIndexingFile adds a file to the indexing set in the context.
 // Returns a new context with the updated set.
+//
+// Deprecated: the library no longer reads this set when indexing.
 func AddIndexingFile(ctx context.Context, filePath string) context.Context {
 	existing := GetIndexingFiles(ctx)
 	newSet := make(map[string]bool)
@@ -45,6 +53,9 @@ func AddIndexingFile(ctx context.Context, filePath string) context.Context {
 // For HTTP URLs, it also checks if the PATH portion matches any indexed file,
 // since the same file might be referenced with different hostnames (which get normalized
 // to a common server).
+//
+// Deprecated: the library no longer tracks the files it is indexing, so this only
+// sees what the caller added with AddIndexingFile.
 func IsFileBeingIndexed(ctx context.Context, filePath string) bool {
 	files := GetIndexingFiles(ctx)
 	if files == nil {

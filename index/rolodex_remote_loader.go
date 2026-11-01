@@ -644,7 +644,7 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 	i.Files.Store(cacheKey, remoteFile)
 	i.releaseRemoteProcessingWaiter(processingWaiter, cacheKey, remoteFile, nil)
 
-	i.indexRemoteFile(ctx, remoteFile, copiedCfg, remoteParsedURL, remoteParsedURLOriginal)
+	i.indexRemoteFile(ctx, remoteFile, copiedCfg, remoteParsedURL)
 
 	return remoteFile, errors.Join(i.remoteErrors...)
 }
@@ -800,13 +800,9 @@ func (i *RemoteFS) indexRemoteFile(
 	ctx context.Context,
 	remoteFile *RemoteFile,
 	copiedCfg *SpecIndexConfig,
-	remoteParsedURL, remoteParsedURLOriginal *url.URL,
+	remoteParsedURL *url.URL,
 ) {
-	indexingCtx := AddIndexingFile(ctx, remoteParsedURL.Path)
-	indexingCtx = AddIndexingFile(indexingCtx, remoteParsedURL.String())
-	indexingCtx = AddIndexingFile(indexingCtx, remoteParsedURLOriginal.String())
-
-	idx, idxError := remoteFile.Index(indexingCtx, copiedCfg)
+	idx, idxError := remoteFile.Index(ctx, copiedCfg)
 	if idxError != nil && idx == nil {
 		i.appendRemoteError(idxError)
 		remoteFile.signalIndexingComplete()

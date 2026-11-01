@@ -157,11 +157,7 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 				copiedCfg.Rolodex = l.rolodex
 			}
 
-			// Add this file to the context's indexing set to prevent deadlocks
-			// when circular references cause the same file to be looked up recursively.
-			indexingCtx := AddIndexingFile(ctx, name)
-
-			idx, _ := extractedFile.IndexWithContext(indexingCtx, &copiedCfg)
+			idx, _ := extractedFile.IndexWithContext(ctx, &copiedCfg)
 
 			if idx != nil {
 				NewResolver(idx)

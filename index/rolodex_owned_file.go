@@ -54,8 +54,7 @@ func (r *Rolodex) ownIndexedFile(source RolodexFile) (*LocalFile, error) {
 		cfg.SpecAbsolutePath = location
 		cfg.SpecInfo = info
 		cfg.AvoidBuildIndex = true
-		ctx := AddIndexingFile(context.Background(), location)
-		idx := NewSpecIndexWithConfigAndContext(ctx, info.RootNode, &cfg)
+		idx := NewSpecIndexWithConfigAndContext(context.Background(), info.RootNode, &cfg)
 		resolver := NewResolver(idx)
 		resolver.IgnoreArray = cfg.IgnoreArrayCircularReferences
 		resolver.IgnorePoly = cfg.IgnorePolymorphicCircularReferences
