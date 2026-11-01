@@ -313,7 +313,12 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 							// check for a config baseURL and use that if it exists.
 							if idx.GetConfig().BaseURL != nil {
 								u := *idx.GetConfig().BaseURL
-								abs, _ := filepath.Abs(utils.CheckPathOverlap(u.Path, rv, string(os.PathSeparator)))
+								// an empty base path would otherwise resolve against the working directory.
+								basePath := u.Path
+								if basePath == "" {
+									basePath = string(os.PathSeparator)
+								}
+								abs, _ := filepath.Abs(utils.CheckPathOverlap(basePath, rv, string(os.PathSeparator)))
 								u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 								rv = u.String()
 							}
