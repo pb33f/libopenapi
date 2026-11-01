@@ -1868,6 +1868,36 @@ func TestLocateRefNode_CurrentPathKey_Path_URL(t *testing.T) {
 	assert.NotNil(t, c)
 }
 
+func TestLocateRefNode_RootBaseURL_IgnoresWorkingDirectory(t *testing.T) {
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "yazzy.yaml",
+			},
+		},
+	}
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	cf := index.CreateClosedAPIIndexConfig()
+	u, _ := url.Parse("https://herbs-and-coffee-in-the-fall.com")
+	cf.BaseURL = u
+	idx := index.NewSpecIndexWithConfig(&no, cf)
+	n, i, e, c := LocateRefNodeWithContext(context.Background(), &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, c)
+	require.Error(t, e)
+	assert.NotContains(t, e.Error(), filepath.ToSlash(cwd))
+}
+
 func TestLocateRefNode_CurrentPathKey_DeeperPath_URL(t *testing.T) {
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
