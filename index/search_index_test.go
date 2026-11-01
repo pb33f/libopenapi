@@ -832,6 +832,16 @@ func TestIsFileBeingIndexed_HTTPPathMatch(t *testing.T) {
 	assert.False(t, IsFileBeingIndexed(ctx, "https://example.com/other/file.yaml"))
 }
 
+func TestAddIndexingFile_ExtendsTheSetOfTheChildContextOnly(t *testing.T) {
+	parent := AddIndexingFile(context.Background(), "/tmp/specs/pet.yaml")
+	child := AddIndexingFile(parent, "/tmp/specs/cat.yaml")
+
+	assert.Equal(t, map[string]bool{"/tmp/specs/pet.yaml": true}, GetIndexingFiles(parent))
+	assert.Equal(t, map[string]bool{"/tmp/specs/pet.yaml": true, "/tmp/specs/cat.yaml": true}, GetIndexingFiles(child))
+	assert.True(t, IsFileBeingIndexed(child, "/tmp/specs/cat.yaml"))
+	assert.False(t, IsFileBeingIndexed(parent, "/tmp/specs/cat.yaml"))
+}
+
 func TestIsFileBeingIndexed_HTTPMatchesLocalFilename(t *testing.T) {
 	ctx := context.Background()
 
