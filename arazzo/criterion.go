@@ -145,8 +145,11 @@ func evaluateSimpleOperand(operand string, exprCtx *expression.Context, caches *
 		return op[1 : len(op)-1], nil
 	}
 
-	if b, err := strconv.ParseBool(op); err == nil {
-		return b, nil
+	switch op {
+	case "true":
+		return true, nil
+	case "false":
+		return false, nil
 	}
 	if i, err := strconv.ParseInt(op, 10, 64); err == nil {
 		return i, nil
