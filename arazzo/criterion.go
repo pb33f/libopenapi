@@ -8,9 +8,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/pb33f/jsonpath/pkg/jsonpath"
 	jsonpathconfig "github.com/pb33f/jsonpath/pkg/jsonpath/config"
+
 	"github.com/pb33f/libopenapi/arazzo/expression"
 	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
 )
@@ -101,33 +103,9 @@ func evaluateSimpleConditionString(condition string, exprCtx *expression.Context
 	if trimmed == "" {
 		return false, nil
 	}
-
-	if b, err := strconv.ParseBool(trimmed); err == nil {
-		return b, nil
-	}
-
-	leftRaw, op, rightRaw, found := expression.SplitSimpleCondition(trimmed)
-	if found {
-		left, err := evaluateSimpleOperand(leftRaw, exprCtx, caches)
-		if err != nil {
-			return false, err
-		}
-		right, err := evaluateSimpleOperand(rightRaw, exprCtx, caches)
-		if err != nil {
-			return false, err
-		}
-		return compareSimpleValues(left, right, op)
-	}
-
-	val, err := evaluateSimpleOperand(trimmed, exprCtx, caches)
-	if err != nil {
-		return false, err
-	}
-	b, ok := val.(bool)
-	if !ok {
-		return false, fmt.Errorf("simple condition %q did not evaluate to a boolean", condition)
-	}
-	return b, nil
+	// Compound simple conditions may combine literals, operators, and runtime
+	// expressions with &&, ||, and parentheses (Arazzo 1.0.1 Criterion Object).
+	return evaluateBooleanExpr(trimmed, exprCtx, caches)
 }
 
 func evaluateSimpleOperand(operand string, exprCtx *expression.Context, caches *criterionCaches) (any, error) {
@@ -145,20 +123,42 @@ func evaluateSimpleOperand(operand string, exprCtx *expression.Context, caches *
 		return op[1 : len(op)-1], nil
 	}
 
-	if b, err := strconv.ParseBool(op); err == nil {
-		return b, nil
-	}
+	// Parse numbers before bools. strconv.ParseBool accepts "0" and "1", which
+	// would make `$response.body#/count > 0` compare a number to false.
 	if i, err := strconv.ParseInt(op, 10, 64); err == nil {
 		return i, nil
 	}
 	if f, err := strconv.ParseFloat(op, 64); err == nil {
 		return f, nil
 	}
+	if op == "true" || op == "True" || op == "TRUE" {
+		return true, nil
+	}
+	if op == "false" || op == "False" || op == "FALSE" {
+		return false, nil
+	}
 
 	return op, nil
 }
 
 func compareSimpleValues(left, right any, op string) (bool, error) {
+	// A null or missing operand has no ordering, so only equality is meaningful.
+	// Without this, nil falls through to the string comparison below as "<nil>",
+	// which sorts after digits and makes `$response.body#/count > 0` pass on a 204.
+	if left == nil || right == nil {
+		bothNil := left == nil && right == nil
+		switch op {
+		case "==":
+			return bothNil, nil
+		case "!=":
+			return !bothNil, nil
+		case ">", "<", ">=", "<=":
+			return false, nil
+		default:
+			return false, fmt.Errorf("unsupported operator %q", op)
+		}
+	}
+
 	if ln, lok := numericValue(left); lok {
 		if rn, rok := numericValue(right); rok {
 			switch op {
@@ -351,4 +351,272 @@ func sprintValue(v any) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+type boolTokenKind int
+
+const (
+	tokEOF boolTokenKind = iota
+	tokOperand
+	tokAnd
+	tokOr
+	tokEq
+	tokNeq
+	tokGt
+	tokLt
+	tokGte
+	tokLte
+	tokLParen
+	tokRParen
+)
+
+type boolToken struct {
+	kind boolTokenKind
+	raw  string
+}
+
+func evaluateBooleanExpr(condition string, exprCtx *expression.Context, caches *criterionCaches) (bool, error) {
+	tokens, err := tokenizeSimpleCondition(condition)
+	if err != nil {
+		return false, err
+	}
+	p := &boolParser{
+		tokens:  tokens,
+		exprCtx: exprCtx,
+		caches:  caches,
+		input:   condition,
+	}
+	value, err := p.parseOr()
+	if err != nil {
+		return false, err
+	}
+	if p.peek().kind != tokEOF {
+		return false, fmt.Errorf("unexpected token %q in simple condition %q", p.peek().raw, condition)
+	}
+	return value, nil
+}
+
+type boolParser struct {
+	tokens  []boolToken
+	pos     int
+	exprCtx *expression.Context
+	caches  *criterionCaches
+	input   string
+}
+
+func (p *boolParser) peek() boolToken {
+	if p.pos >= len(p.tokens) {
+		return boolToken{kind: tokEOF}
+	}
+	return p.tokens[p.pos]
+}
+
+func (p *boolParser) next() boolToken {
+	tok := p.peek()
+	if tok.kind != tokEOF {
+		p.pos++
+	}
+	return tok
+}
+
+func (p *boolParser) parseOr() (bool, error) {
+	left, err := p.parseAnd()
+	if err != nil {
+		return false, err
+	}
+	for p.peek().kind == tokOr {
+		p.next()
+		right, err := p.parseAnd()
+		if err != nil {
+			return false, err
+		}
+		left = left || right
+	}
+	return left, nil
+}
+
+func (p *boolParser) parseAnd() (bool, error) {
+	left, err := p.parseComparison()
+	if err != nil {
+		return false, err
+	}
+	for p.peek().kind == tokAnd {
+		p.next()
+		right, err := p.parseComparison()
+		if err != nil {
+			return false, err
+		}
+		left = left && right
+	}
+	return left, nil
+}
+
+func (p *boolParser) parseComparison() (bool, error) {
+	left, err := p.parsePrimary()
+	if err != nil {
+		return false, err
+	}
+	if op, ok := comparisonOp(p.peek().kind); ok {
+		p.next()
+		right, err := p.parsePrimary()
+		if err != nil {
+			return false, err
+		}
+		return compareSimpleValues(left, right, op)
+	}
+	// A missing runtime value (parsePrimary maps it to nil) or an explicit null
+	// used as a bare operand is falsy, so `$statusCode == 204 || $response.body#/flag`
+	// still passes on an empty 204 response.
+	if left == nil {
+		return false, nil
+	}
+	b, ok := left.(bool)
+	if !ok {
+		return false, fmt.Errorf("simple condition %q did not evaluate to a boolean", p.input)
+	}
+	return b, nil
+}
+
+func (p *boolParser) parsePrimary() (any, error) {
+	tok := p.next()
+	switch tok.kind {
+	case tokLParen:
+		value, err := p.parseOr()
+		if err != nil {
+			return nil, err
+		}
+		if p.next().kind != tokRParen {
+			return nil, fmt.Errorf("missing closing parenthesis in simple condition %q", p.input)
+		}
+		return value, nil
+	case tokOperand:
+		value, err := evaluateSimpleOperand(tok.raw, p.exprCtx, p.caches)
+		if err != nil && isOptionalRuntimeValueError(err) {
+			return nil, nil
+		}
+		return value, err
+	default:
+		return nil, fmt.Errorf("unexpected token %q in simple condition %q", tok.raw, p.input)
+	}
+}
+
+func comparisonOp(kind boolTokenKind) (string, bool) {
+	switch kind {
+	case tokEq:
+		return "==", true
+	case tokNeq:
+		return "!=", true
+	case tokGte:
+		return ">=", true
+	case tokLte:
+		return "<=", true
+	case tokGt:
+		return ">", true
+	case tokLt:
+		return "<", true
+	default:
+		return "", false
+	}
+}
+
+func tokenizeSimpleCondition(input string) ([]boolToken, error) {
+	var tokens []boolToken
+	i := 0
+	for i < len(input) {
+		for i < len(input) && unicode.IsSpace(rune(input[i])) {
+			i++
+		}
+		if i >= len(input) {
+			break
+		}
+		rest := input[i:]
+		switch {
+		case strings.HasPrefix(rest, "&&"):
+			tokens = append(tokens, boolToken{kind: tokAnd, raw: "&&"})
+			i += 2
+		case strings.HasPrefix(rest, "||"):
+			tokens = append(tokens, boolToken{kind: tokOr, raw: "||"})
+			i += 2
+		case strings.HasPrefix(rest, "=="):
+			tokens = append(tokens, boolToken{kind: tokEq, raw: "=="})
+			i += 2
+		case strings.HasPrefix(rest, "!="):
+			tokens = append(tokens, boolToken{kind: tokNeq, raw: "!="})
+			i += 2
+		case strings.HasPrefix(rest, ">="):
+			tokens = append(tokens, boolToken{kind: tokGte, raw: ">="})
+			i += 2
+		case strings.HasPrefix(rest, "<="):
+			tokens = append(tokens, boolToken{kind: tokLte, raw: "<="})
+			i += 2
+		case rest[0] == '>':
+			tokens = append(tokens, boolToken{kind: tokGt, raw: ">"})
+			i++
+		case rest[0] == '<':
+			tokens = append(tokens, boolToken{kind: tokLt, raw: "<"})
+			i++
+		case rest[0] == '(':
+			tokens = append(tokens, boolToken{kind: tokLParen, raw: "("})
+			i++
+		case rest[0] == ')':
+			tokens = append(tokens, boolToken{kind: tokRParen, raw: ")"})
+			i++
+		default:
+			start := i
+			if rest[0] == '\'' || rest[0] == '"' {
+				q := rest[0]
+				i++
+				for i < len(input) && input[i] != q {
+					i++
+				}
+				if i >= len(input) {
+					return nil, fmt.Errorf("unterminated string in simple condition %q", input)
+				}
+				i++
+			} else if rest[0] == '$' {
+				i++
+				for i < len(input) && !isBoolOpStart(input[i:]) && input[i] != '(' && input[i] != ')' && !unicode.IsSpace(rune(input[i])) {
+					i++
+				}
+			} else {
+				for i < len(input) && !isBoolOpStart(input[i:]) && input[i] != '(' && input[i] != ')' && !unicode.IsSpace(rune(input[i])) {
+					i++
+				}
+			}
+			tokens = append(tokens, boolToken{kind: tokOperand, raw: input[start:i]})
+		}
+	}
+	return tokens, nil
+}
+
+func isBoolOpStart(s string) bool {
+	if s == "" {
+		return false
+	}
+	return strings.HasPrefix(s, "&&") ||
+		strings.HasPrefix(s, "||") ||
+		strings.HasPrefix(s, "==") ||
+		strings.HasPrefix(s, "!=") ||
+		strings.HasPrefix(s, ">=") ||
+		strings.HasPrefix(s, "<=") ||
+		s[0] == '>' ||
+		s[0] == '<'
+}
+
+// isOptionalRuntimeValueError must only be called with a non-nil error.
+func isOptionalRuntimeValueError(err error) bool {
+	msg := err.Error()
+	// Only values that legitimately vary per response (headers, params, body
+	// pointers) are optional. Unknown steps, workflows, inputs, outputs, or
+	// components are authoring errors and must still fail.
+	return strings.Contains(msg, "request header ") ||
+		strings.Contains(msg, "request query parameter ") ||
+		strings.Contains(msg, "request path parameter ") ||
+		strings.Contains(msg, "response header ") ||
+		strings.Contains(msg, "response query parameter ") ||
+		strings.Contains(msg, "response path parameter ") ||
+		strings.Contains(msg, "JSON pointer segment ") ||
+		strings.Contains(msg, "no response body available") ||
+		strings.Contains(msg, "no request body available") ||
+		strings.Contains(msg, "no response headers available")
 }

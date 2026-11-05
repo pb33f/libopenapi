@@ -476,6 +476,11 @@ func (e *Engine) populateStepOutputs(
 		}
 		value, err := e.evaluateStringValue(expressionValue, exprCtx)
 		if err != nil {
+			// Missing body/header values are valid on empty responses (e.g. HTTP 204).
+			if isOptionalRuntimeValueError(err) {
+				result.Outputs[name] = nil
+				continue
+			}
 			clear(result.Outputs)
 			return fmt.Errorf("failed to evaluate output %q for step %q: %w", name, step.StepId, err)
 		}
@@ -499,6 +504,11 @@ func (e *Engine) populateWorkflowOutputs(wf *high.Workflow, result *WorkflowResu
 		}
 		value, err := e.evaluateStringValue(expressionValue, exprCtx)
 		if err != nil {
+			// Missing body/header values are valid on empty responses (e.g. HTTP 204).
+			if isOptionalRuntimeValueError(err) {
+				staged = append(staged, stagedOutput{name: name})
+				continue
+			}
 			return fmt.Errorf("failed to evaluate output %q for workflow %q: %w", name, wf.WorkflowId, err)
 		}
 		staged = append(staged, stagedOutput{name: name, value: value})

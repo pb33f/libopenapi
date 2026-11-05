@@ -461,3 +461,77 @@ func TestEngine_WorkflowOutputsAreNotPartiallyPopulatedOnEvaluationFailure(t *te
 	assert.Empty(t, exprCtx.Outputs,
 		"a failed workflow output set must not leak into the expression context")
 }
+
+// On an empty response (e.g. HTTP 204) a missing body or header value publishes a
+// nil output instead of failing the step.
+func TestEngine_StepOutputsAreNilForMissingResponseValues(t *testing.T) {
+	engine := NewEngine(nil, nil, nil)
+	outputs := orderedmap.New[string, *high.OutputValue]()
+	outputs.Set("id", high.NewExpressionOutputValue("$response.body#/id"))
+	outputs.Set("location", high.NewExpressionOutputValue("$response.header.Location"))
+	outputs.Set("status", high.NewExpressionOutputValue("$statusCode"))
+
+	stepResult := &StepResult{Outputs: make(map[string]any)}
+	err := engine.populateStepOutputs(
+		&high.Step{StepId: "step", Outputs: outputs},
+		&high.Workflow{WorkflowId: "workflow"},
+		stepResult,
+		&expression.Context{StatusCode: 204},
+	)
+	require.NoError(t, err)
+	require.Len(t, stepResult.Outputs, 3)
+	assert.Contains(t, stepResult.Outputs, "id")
+	assert.Nil(t, stepResult.Outputs["id"])
+	assert.Contains(t, stepResult.Outputs, "location")
+	assert.Nil(t, stepResult.Outputs["location"])
+	assert.Equal(t, 204, stepResult.Outputs["status"])
+}
+
+// Workflow outputs stage nil values for missing response data and commit them to both
+// the result and the expression context.
+func TestEngine_WorkflowOutputsAreNilForMissingResponseValues(t *testing.T) {
+	engine := NewEngine(nil, nil, nil)
+	outputs := orderedmap.New[string, *high.OutputValue]()
+	outputs.Set("id", high.NewExpressionOutputValue("$response.body#/id"))
+	outputs.Set("status", high.NewExpressionOutputValue("$statusCode"))
+
+	workflowResult := &WorkflowResult{Outputs: make(map[string]any)}
+	exprCtx := &expression.Context{StatusCode: 204, Outputs: make(map[string]any)}
+
+	err := engine.populateWorkflowOutputs(
+		&high.Workflow{WorkflowId: "workflow", Outputs: outputs},
+		workflowResult,
+		exprCtx,
+	)
+	require.NoError(t, err)
+	for _, got := range []map[string]any{workflowResult.Outputs, exprCtx.Outputs} {
+		require.Len(t, got, 2)
+		assert.Contains(t, got, "id")
+		assert.Nil(t, got["id"])
+		assert.Equal(t, 204, got["status"])
+	}
+}
+
+// A missing response value staged before a real failure must not be published either.
+func TestEngine_WorkflowOutputsWithMissingValueStayAtomicOnFailure(t *testing.T) {
+	engine := NewEngine(nil, nil, nil)
+	outputs := orderedmap.New[string, *high.OutputValue]()
+	outputs.Set("id", high.NewExpressionOutputValue("$response.body#/id"))
+	outputs.Set("bad", high.NewExpressionOutputValue("$steps.nonexistent.outputs.missing"))
+
+	workflowResult := &WorkflowResult{Outputs: make(map[string]any)}
+	exprCtx := &expression.Context{
+		StatusCode: 204,
+		Steps:      map[string]*expression.StepContext{},
+		Outputs:    make(map[string]any),
+	}
+
+	err := engine.populateWorkflowOutputs(
+		&high.Workflow{WorkflowId: "workflow", Outputs: outputs},
+		workflowResult,
+		exprCtx,
+	)
+	require.Error(t, err)
+	assert.Empty(t, workflowResult.Outputs)
+	assert.Empty(t, exprCtx.Outputs)
+}
