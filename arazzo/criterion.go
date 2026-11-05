@@ -137,9 +137,9 @@ func evaluateSimpleOperand(operand string, exprCtx *expression.Context, caches *
 }
 
 func compareSimpleValues(left, right any, op string) (bool, error) {
-	// A null operand has no ordering, so only equality is meaningful. Without
-	// this, nil falls through to the string comparison below as "<nil>", which
-	// sorts after digits and makes a JSON null pass `$response.body#/count > 0`.
+	// A null or missing operand has no ordering, so only equality is meaningful.
+	// Without this, nil falls through to the string comparison below as "<nil>",
+	// which sorts after digits and makes `$response.body#/count > 0` pass on a 204.
 	if left == nil || right == nil {
 		bothNil := left == nil && right == nil
 		switch op {
@@ -459,8 +459,9 @@ func (p *boolParser) parseComparison() (bool, error) {
 		}
 		return compareSimpleValues(left, right, op)
 	}
-	// An explicit null used as a bare operand is falsy, so the rest of the
-	// condition still decides the outcome.
+	// A missing runtime value (parsePrimary maps it to nil) or an explicit null
+	// used as a bare operand is falsy, so `$statusCode == 204 || $response.body#/flag`
+	// still passes on an empty 204 response.
 	if left == nil {
 		return false, nil
 	}
@@ -484,7 +485,11 @@ func (p *boolParser) parsePrimary() (any, error) {
 		}
 		return value, nil
 	case tokOperand:
-		return evaluateSimpleOperand(tok.raw, p.exprCtx, p.caches)
+		value, err := evaluateSimpleOperand(tok.raw, p.exprCtx, p.caches)
+		if err != nil && isOptionalRuntimeValueError(err) {
+			return nil, nil
+		}
+		return value, err
 	default:
 		return nil, fmt.Errorf("unexpected token %q in simple condition %q", tok.raw, p.input)
 	}
@@ -591,4 +596,22 @@ func isBoolOpStart(s string) bool {
 		strings.HasPrefix(s, "<=") ||
 		s[0] == '>' ||
 		s[0] == '<'
+}
+
+// isOptionalRuntimeValueError must only be called with a non-nil error.
+func isOptionalRuntimeValueError(err error) bool {
+	msg := err.Error()
+	// Only values that legitimately vary per response (headers, params, body
+	// pointers) are optional. Unknown steps, workflows, inputs, outputs, or
+	// components are authoring errors and must still fail.
+	return strings.Contains(msg, "request header ") ||
+		strings.Contains(msg, "request query parameter ") ||
+		strings.Contains(msg, "request path parameter ") ||
+		strings.Contains(msg, "response header ") ||
+		strings.Contains(msg, "response query parameter ") ||
+		strings.Contains(msg, "response path parameter ") ||
+		strings.Contains(msg, "JSON pointer segment ") ||
+		strings.Contains(msg, "no response body available") ||
+		strings.Contains(msg, "no request body available") ||
+		strings.Contains(msg, "no response headers available")
 }

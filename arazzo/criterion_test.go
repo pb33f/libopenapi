@@ -42,7 +42,11 @@ func TestEvaluateCriterion_SimpleCondition_BooleanOperators(t *testing.T) {
 		Condition: `$statusCode == 204 || ($statusCode == 200 && ($response.body#/challengeName == 'NEW_PASSWORD_REQUIRED' || $response.body#/challengeName == 'SOFTWARE_TOKEN_MFA'))`,
 	}
 
-	ok, err := EvaluateCriterion(criterion, &expression.Context{
+	ok, err := EvaluateCriterion(criterion, &expression.Context{StatusCode: 204})
+	require.NoError(t, err)
+	assert.True(t, ok, "204 with an empty body should pass")
+
+	ok, err = EvaluateCriterion(criterion, &expression.Context{
 		StatusCode:   200,
 		ResponseBody: yamlMapping(t, map[string]any{"challengeName": "NEW_PASSWORD_REQUIRED"}),
 	})
@@ -67,6 +71,35 @@ func yamlMapping(t *testing.T, v any) *yaml.Node {
 		return node.Content[0]
 	}
 	return &node
+}
+
+// A missing runtime value resolves to null. Null has no ordering, so every
+// ordering comparison against it must fail; only == and != are meaningful.
+func TestEvaluateCriterion_MissingValueComparisons(t *testing.T) {
+	cases := []struct {
+		condition string
+		want      bool
+	}{
+		{"$response.body#/count > 0", false},
+		{"$response.body#/count >= 0", false},
+		{"$response.body#/count < 5", false},
+		{"$response.body#/count <= 0", false},
+		{"$response.body#/count == 0", false},
+		{"$response.body#/count != 0", true},
+		{"$response.body#/name == ''", false},
+		{"$response.header.X-Count > 0", false},
+		{"$statusCode == 204 && $response.body#/count > 0", false},
+		{"$statusCode == 204 || $response.body#/count > 0", true},
+		{"$response.body#/count > 0 || $statusCode == 204", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.condition, func(t *testing.T) {
+			ok, err := EvaluateCriterion(&high.Criterion{Condition: tc.condition},
+				&expression.Context{StatusCode: 204})
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, ok)
+		})
+	}
 }
 
 // An explicit JSON null in a body has no ordering and is falsy as a bare operand.
@@ -107,6 +140,30 @@ func TestCompareSimpleValues_Nil(t *testing.T) {
 
 	_, err = compareSimpleValues(nil, int64(1), "~=")
 	assert.Error(t, err)
+}
+
+// A missing value used as a bare boolean operand is falsy rather than an error,
+// so the rest of the condition still decides the outcome.
+func TestEvaluateCriterion_MissingBareOperandIsFalse(t *testing.T) {
+	cases := []struct {
+		condition string
+		want      bool
+	}{
+		{"$response.body#/flag", false},
+		{"$response.header.X-Flag", false},
+		{"$statusCode == 204 || $response.body#/flag", true},
+		{"$response.body#/flag || $statusCode == 204", true},
+		{"$statusCode == 204 && $response.body#/flag", false},
+		{"($response.body#/flag) || $statusCode == 204", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.condition, func(t *testing.T) {
+			ok, err := EvaluateCriterion(&high.Criterion{Condition: tc.condition},
+				&expression.Context{StatusCode: 204})
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, ok)
+		})
+	}
 }
 
 // A present but non-boolean bare operand is still an authoring error.
