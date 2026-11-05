@@ -69,6 +69,54 @@ func yamlMapping(t *testing.T, v any) *yaml.Node {
 	return &node
 }
 
+// An explicit JSON null in a body has no ordering and is falsy as a bare operand.
+func TestEvaluateCriterion_NullBodyValueComparisons(t *testing.T) {
+	body := yamlMapping(t, map[string]any{"count": nil})
+	ctx := &expression.Context{StatusCode: 200, ResponseBody: body}
+
+	ok, err := EvaluateCriterion(&high.Criterion{Condition: "$response.body#/count > 0"}, ctx)
+	require.NoError(t, err)
+	assert.False(t, ok)
+
+	ok, err = EvaluateCriterion(&high.Criterion{Condition: "$response.body#/count != 0"}, ctx)
+	require.NoError(t, err)
+	assert.True(t, ok)
+
+	// A bare null operand is falsy, leaving the rest of the condition to decide.
+	ok, err = EvaluateCriterion(&high.Criterion{Condition: "$response.body#/count"}, ctx)
+	require.NoError(t, err)
+	assert.False(t, ok)
+
+	ok, err = EvaluateCriterion(&high.Criterion{Condition: "$response.body#/count || $statusCode == 200"}, ctx)
+	require.NoError(t, err)
+	assert.True(t, ok)
+}
+
+func TestCompareSimpleValues_Nil(t *testing.T) {
+	ok, err := compareSimpleValues(nil, nil, "==")
+	require.NoError(t, err)
+	assert.True(t, ok)
+
+	ok, err = compareSimpleValues(nil, nil, "!=")
+	require.NoError(t, err)
+	assert.False(t, ok)
+
+	ok, err = compareSimpleValues(nil, int64(1), ">")
+	require.NoError(t, err)
+	assert.False(t, ok)
+
+	_, err = compareSimpleValues(nil, int64(1), "~=")
+	assert.Error(t, err)
+}
+
+// A present but non-boolean bare operand is still an authoring error.
+func TestEvaluateCriterion_NonBooleanBareOperandErrors(t *testing.T) {
+	_, err := EvaluateCriterion(&high.Criterion{Condition: "$statusCode"},
+		&expression.Context{StatusCode: 204})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "did not evaluate to a boolean")
+}
+
 func TestEvaluateCriterion_SimpleConditionSyntaxErrors(t *testing.T) {
 	cases := []struct {
 		condition string

@@ -137,6 +137,23 @@ func evaluateSimpleOperand(operand string, exprCtx *expression.Context, caches *
 }
 
 func compareSimpleValues(left, right any, op string) (bool, error) {
+	// A null operand has no ordering, so only equality is meaningful. Without
+	// this, nil falls through to the string comparison below as "<nil>", which
+	// sorts after digits and makes a JSON null pass `$response.body#/count > 0`.
+	if left == nil || right == nil {
+		bothNil := left == nil && right == nil
+		switch op {
+		case "==":
+			return bothNil, nil
+		case "!=":
+			return !bothNil, nil
+		case ">", "<", ">=", "<=":
+			return false, nil
+		default:
+			return false, fmt.Errorf("unsupported operator %q", op)
+		}
+	}
+
 	if ln, lok := numericValue(left); lok {
 		if rn, rok := numericValue(right); rok {
 			switch op {
@@ -441,6 +458,11 @@ func (p *boolParser) parseComparison() (bool, error) {
 			return false, err
 		}
 		return compareSimpleValues(left, right, op)
+	}
+	// An explicit null used as a bare operand is falsy, so the rest of the
+	// condition still decides the outcome.
+	if left == nil {
+		return false, nil
 	}
 	b, ok := left.(bool)
 	if !ok {
