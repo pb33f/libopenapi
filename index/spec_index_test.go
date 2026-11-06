@@ -889,7 +889,7 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 		Level: slog.LevelError,
 	}))
 
-	// setting this baseURL will override the base
+	// relative references use the fixture base URL.
 	cf.BaseURL, _ = url.Parse(server.URL)
 
 	cFile := "../test_specs/mixedref-burgershop.openapi.yaml"
@@ -911,7 +911,15 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 
 	c := http.Client{}
 
-	remoteFS.RemoteHandlerFunc = c.Get
+	remoteFS.RemoteHandlerFunc = func(location string) (*http.Response, error) {
+		target, err := url.Parse(location)
+		if err != nil {
+			return nil, err
+		}
+		// route fixture origins without changing their reference identity.
+		target.Scheme, target.Host = cf.BaseURL.Scheme, cf.BaseURL.Host
+		return c.Get(target.String())
+	}
 
 	// configure the local filesystem.
 	fsCfg := LocalFSConfig{
