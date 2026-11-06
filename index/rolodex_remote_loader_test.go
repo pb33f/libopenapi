@@ -111,7 +111,7 @@ func TestNewRemoteFS_BasicCheck_Valid(t *testing.T) {
 	remoteFS, _ := NewRemoteFSWithRootURL(server.URL)
 	remoteFS.RemoteHandlerFunc = test_httpClient.Get
 
-	file, err := remoteFS.Open("https://raw.githubusercontent.com/digitalocean/openapi/ed0958267922794ec8cf540e19131a2d9664bfc7/specification/file1.yaml")
+	file, err := remoteFS.Open(server.URL + "/digitalocean/openapi/ed0958267922794ec8cf540e19131a2d9664bfc7/specification/file1.yaml")
 
 	assert.NoError(t, err)
 
@@ -222,7 +222,7 @@ func TestNewRemoteFS_BasicCheck_Relative(t *testing.T) {
 	remoteFS, _ := NewRemoteFSWithRootURL(server.URL)
 	remoteFS.RemoteHandlerFunc = test_httpClient.Get
 
-	file, err := remoteFS.Open("http://where-is-my-feet.com/deeper/file2.yaml")
+	file, err := remoteFS.Open(server.URL + "/deeper/file2.yaml")
 
 	assert.NoError(t, err)
 
@@ -251,7 +251,7 @@ func TestNewRemoteFS_BasicCheck_Relative_Deeper(t *testing.T) {
 	remoteFS, _ := NewRemoteFSWithConfig(cf)
 	remoteFS.RemoteHandlerFunc = test_httpClient.Get
 
-	file, err := remoteFS.Open("http://stop-being-a-dick-to-nature.com/deeper/even_deeper/file3.yaml")
+	file, err := remoteFS.Open(server.URL + "/deeper/even_deeper/file3.yaml")
 
 	assert.NoError(t, err)
 
@@ -420,7 +420,7 @@ func TestNewRemoteFS_RemoteBaseURL_BadRequestButContainsBody(t *testing.T) {
 	x, y := rfs.Open("http://pb33f.io/woof.yaml")
 	assert.Nil(t, x)
 	assert.Error(t, y)
-	assert.Equal(t, "it's bad, but who cares https://pb33f.io/woof.yaml", y.Error())
+	assert.Equal(t, "it's bad, but who cares http://pb33f.io/woof.yaml", y.Error())
 }
 
 func TestNewRemoteFS_RemoteBaseURL_NoErrorNoResponse(t *testing.T) {
@@ -510,7 +510,7 @@ func TestNewRemoteFS_RemoteBaseURL_EmptySpecFailIndex(t *testing.T) {
 	x, y := rfs.Open("http://pb33f.io/woof.yaml")
 	assert.NotNil(t, x)
 	assert.Error(t, y)
-	assert.Equal(t, "nothing was extracted from the file 'https://pb33f.io/woof.yaml'", y.Error())
+	assert.Equal(t, "nothing was extracted from the file 'http://pb33f.io/woof.yaml'", y.Error())
 }
 
 func TestNewRemoteFS_Unsupported(t *testing.T) {
