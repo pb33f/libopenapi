@@ -29,3 +29,25 @@ func TestRootRelativeLookupUsesRemoteBase(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoteRelativeURLDoesNotUseAnIncompleteBase(t *testing.T) {
+	for _, rawBase := range []string{"source.example/specs/", "https:/specs/"} {
+		base, err := url.Parse(rawBase)
+		require.NoError(t, err)
+		target, err := url.Parse("types.yaml")
+		require.NoError(t, err)
+		loader := &RemoteFS{rootURLParsed: base}
+		loader.normalizeRemoteURL(target)
+		require.Equal(t, "types.yaml", target.String())
+	}
+}
+
+func TestRemoteRelativeURLUsesCompleteBaseOrigin(t *testing.T) {
+	base, err := url.Parse("https://source.example/specs/")
+	require.NoError(t, err)
+	target, err := url.Parse("types.yaml")
+	require.NoError(t, err)
+	loader := &RemoteFS{rootURLParsed: base}
+	loader.normalizeRemoteURL(target)
+	require.Equal(t, "https://source.example/types.yaml", target.String())
+}
