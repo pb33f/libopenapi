@@ -650,7 +650,7 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 }
 
 func (i *RemoteFS) normalizeRemoteURL(remoteParsedURL *url.URL) {
-	if i.rootURLParsed == nil || remoteParsedURL == nil {
+	if i.rootURLParsed == nil || remoteParsedURL == nil || remoteParsedURL.IsAbs() {
 		return
 	}
 	// a base URL without a scheme or host (e.g. 'example.com/specs/') cannot be fetched from,
@@ -785,6 +785,8 @@ func (i *RemoteFS) createRemoteFile(remoteParsedURL *url.URL, fileExt FileExtens
 
 func (i *RemoteFS) createRemoteIndexConfig(remoteParsedURL, remoteParsedURLOriginal *url.URL) *SpecIndexConfig {
 	copiedCfg := *i.indexConfig
+	copiedCfg.Rolodex = i.rolodex
+	copiedCfg.SpecInfo = nil
 	newBase := fmt.Sprintf("%s://%s%s", remoteParsedURLOriginal.Scheme, remoteParsedURLOriginal.Host,
 		path.Dir(remoteParsedURL.Path))
 	newBaseURL, _ := url.Parse(newBase)
