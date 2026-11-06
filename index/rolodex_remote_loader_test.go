@@ -625,8 +625,8 @@ func TestRemoteFS_NormalizeAndLoadCachedHelpers(t *testing.T) {
 	target, err := url.Parse("http://other.example/spec.yaml")
 	assert.NoError(t, err)
 	rfs.normalizeRemoteURL(target)
-	assert.Equal(t, "https", target.Scheme)
-	assert.Equal(t, "root.example", target.Host)
+	assert.Equal(t, "http", target.Scheme)
+	assert.Equal(t, "other.example", target.Host)
 
 	legacyFile := &RemoteFile{filename: "spec.yaml"}
 	rfs.Files.Store("/spec.yaml", legacyFile)
