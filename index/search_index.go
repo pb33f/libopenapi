@@ -131,13 +131,6 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		rawRef = searchRef.RawRef
 	}
 	normalizedRef := resolveRefWithSchemaBase(rawRef, schemaIdBase)
-	// use the same remote base as extraction so relative lookups find the
-	// absolute keys already stored in the reference map.
-	if index.config != nil && index.config.BaseURL != nil && !strings.HasPrefix(normalizedRef, "#") && !strings.HasPrefix(normalizedRef, "http") && !filepath.IsAbs(normalizedRef) {
-		if parsed, err := url.Parse(normalizedRef); err == nil && !parsed.IsAbs() && parsed.Host == "" {
-			normalizedRef, _ = index.resolveReferenceTarget(normalizedRef)
-		}
-	}
 
 	if index.cache != nil && normalizedRef != searchRef.FullDefinition {
 		if v, ok := index.cache.Load(normalizedRef); ok {
@@ -171,6 +164,14 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 				}
 			}
 			return resolved, resolved.Index, context.WithValue(ctx, CurrentPathKey, resolved.RemoteLocation)
+		}
+	}
+
+	// use the same remote base as extraction so relative lookups find the
+	// absolute keys already stored in the reference map.
+	if index.config != nil && index.config.BaseURL != nil && !strings.HasPrefix(normalizedRef, "#") && !strings.HasPrefix(normalizedRef, "http") && !filepath.IsAbs(normalizedRef) {
+		if parsed, err := url.Parse(normalizedRef); err == nil && !parsed.IsAbs() && parsed.Host == "" {
+			normalizedRef, _ = index.resolveReferenceTarget(normalizedRef)
 		}
 	}
 
