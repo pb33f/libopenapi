@@ -252,8 +252,11 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	// Only create a remote filesystem when the caller explicitly allows remote references.
 	if config.AllowRemoteReferences {
 
-		// create a remote filesystem
-		remoteFS, _ := index.NewRemoteFSWithConfig(idxConfig)
+		// $self resolves relative references; only an explicit BaseURL overrides remote hosts.
+		remoteConfig := *idxConfig
+		remoteConfig.BaseURL = config.BaseURL
+		remoteFS, _ := index.NewRemoteFSWithConfig(&remoteConfig)
+		remoteFS.SetIndexConfig(idxConfig)
 		if config.RemoteURLHandler != nil {
 			remoteFS.RemoteHandlerFunc = config.RemoteURLHandler
 		}
