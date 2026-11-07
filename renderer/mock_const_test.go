@@ -151,3 +151,59 @@ components:
 	require.NoError(t, err)
 	require.Equal(t, "false", string(output))
 }
+
+func TestMockConstRejectsMalformedTreesWithoutPartialOutput(t *testing.T) {
+	key := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "field"}
+	invalid := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "not-an-integer"}
+	for name, node := range map[string]*yaml.Node{
+		"empty document":       {Kind: yaml.DocumentNode},
+		"multiple documents":   {Kind: yaml.DocumentNode, Content: []*yaml.Node{key, key}},
+		"invalid boolean":      {Kind: yaml.ScalarNode, Tag: "!!bool", Value: "yes"},
+		"invalid integer":      invalid,
+		"unsupported scalar":   {Kind: yaml.ScalarNode, Tag: "!!timestamp", Value: "2026-11-07"},
+		"unsupported node":     {Kind: 99},
+		"invalid object child": {Kind: yaml.MappingNode, Content: []*yaml.Node{key, invalid}},
+		"invalid array child":  {Kind: yaml.SequenceNode, Content: []*yaml.Node{invalid}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			schema := &base.Schema{Const: node}
+			value, err := CreateRendererUsingDefaultDictionary().RenderSchemaWithError(schema)
+			require.Error(t, err)
+			require.Nil(t, value)
+			values := make(map[string]any)
+			require.False(t, CreateRendererUsingDefaultDictionary().DiveIntoSchema(schema, "result", values, make(map[string]bool), 0))
+			require.Empty(t, values)
+		})
+	}
+}
+
+func TestMockConstDocumentAndAliasValues(t *testing.T) {
+	constant := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: "TRUE"}
+	for _, node := range []*yaml.Node{constant, {Kind: yaml.DocumentNode, Content: []*yaml.Node{constant}}, {Kind: yaml.AliasNode, Alias: constant}} {
+		value, err := CreateRendererUsingDefaultDictionary().RenderSchemaWithError(&base.Schema{Const: node})
+		require.NoError(t, err)
+		require.Equal(t, true, value)
+	}
+}
+
+func TestMockConstContainerOverheadUsesByteBudget(t *testing.T) {
+	for _, kind := range []yaml.Kind{yaml.MappingNode, yaml.SequenceNode} {
+		generator := NewMockGenerator(JSON)
+		generator.SetMockGenerationOptions(MockGenerationOptions{MaxMockBytes: 1})
+		output, err := generator.GenerateMock(&base.Schema{Const: &yaml.Node{Kind: kind}}, "")
+		require.Nil(t, output)
+		var budget *MockGenerationBudgetError
+		require.ErrorAs(t, err, &budget)
+		require.Equal(t, "bytes", budget.Budget)
+	}
+}
+
+func TestMockConstRejectsLargeNumericTextBeforeNormalization(t *testing.T) {
+	generator := NewMockGenerator(JSON)
+	generator.SetMockGenerationOptions(MockGenerationOptions{MaxMockBytes: 16})
+	output, err := generator.GenerateMock(&base.Schema{Const: &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "0x" + strings.Repeat("f", 10000)}}, "")
+	require.Nil(t, output)
+	var budget *MockGenerationBudgetError
+	require.ErrorAs(t, err, &budget)
+	require.Equal(t, "bytes", budget.Budget)
+}
