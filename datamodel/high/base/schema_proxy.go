@@ -848,6 +848,9 @@ func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
 		if node, ok, renderErr := sp.renderTransformedRefWithSiblings(s); ok || renderErr != nil {
 			return node, renderErr
 		}
+		if node := s.booleanSchemaNode(); node != nil {
+			return node, nil
+		}
 		nb := high.NewNodeBuilder(s, s.low)
 		return nb.Render(), nil
 	}
