@@ -84,3 +84,23 @@ func TestObjectSchemaChangesToBooleanThroughProxy(t *testing.T) {
 	require.Equal(t, false, actual)
 	require.True(t, high.Schema().GoLow().BooleanSchema.IsEmpty())
 }
+
+func TestBooleanSchemaObjectKeywordRemainsObject(t *testing.T) {
+	for _, value := range []string{"true", "false"} {
+		t.Run(value, func(t *testing.T) {
+			var node yaml.Node
+			require.NoError(t, yaml.Unmarshal([]byte("type: string\nbooleanSchema: "+value), &node))
+			proxy := new(lowbase.SchemaProxy)
+			require.NoError(t, proxy.Build(context.Background(), nil, node.Content[0], index.NewSpecIndex(&node)))
+			high := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: proxy, ValueNode: node.Content[0]})
+			require.Nil(t, high.Schema().BooleanSchema)
+			for _, render := range []func() ([]byte, error){high.Render, high.Schema().RenderInline, high.Schema().MarshalJSON} {
+				data, err := render()
+				require.NoError(t, err)
+				var actual map[string]any
+				require.NoError(t, yaml.Unmarshal(data, &actual))
+				require.Equal(t, "string", actual["type"])
+			}
+		})
+	}
+}
