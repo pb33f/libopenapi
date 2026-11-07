@@ -613,12 +613,9 @@ func rewireRef(idx *index.SpecIndex, ref *index.Reference, fullDef string, proce
 				refValNode.Value = rename
 			}
 		}
-		ref.FullDefinition = rename
-		ref.Definition = rename
-	} else {
-		ref.FullDefinition = rename
-		ref.Definition = rename
 	}
+	ref.FullDefinition = rename
+	ref.Definition = rename
 }
 
 func buildComponents(idx *index.SpecIndex) (*v3.Components, error) {
