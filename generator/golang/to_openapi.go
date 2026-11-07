@@ -231,6 +231,7 @@ func applySchemaFidelity(schema *highbase.Schema, ir *SchemaIR) {
 		return
 	}
 	src := ir.SourceSchema
+	schema.BooleanSchema = src.BooleanSchema
 	schema.Description = src.Description
 	schema.Title = src.Title
 	schema.Format = src.Format

@@ -230,3 +230,22 @@ func TestRawUnionAndNullableEnumJSON(t *testing.T) {
 }
 `)
 }
+
+func TestRoundTripOpenAPIIRPreservesBooleanSchemas(t *testing.T) {
+	for _, source := range []string{"true", "false"} {
+		t.Run(source, func(t *testing.T) {
+			gen := NewGenerator()
+			ir, err := gen.irFromOpenAPI("boolean", schemaProxyFromYAML(t, source), "boolean")
+			if err != nil {
+				t.Fatal(err)
+			}
+			rendered, err := gen.openapiFromIR(ir).Schema().MarshalJSON()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(rendered) != source {
+				t.Fatalf("boolean schema changed: got %s, want %s", rendered, source)
+			}
+		})
+	}
+}
