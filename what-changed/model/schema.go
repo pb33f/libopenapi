@@ -510,6 +510,26 @@ func (c *schemaComparison) compareSchemas(l, r *base.SchemaProxy) *SchemaChanges
 
 		lSchema := l.Schema()
 		rSchema := r.Schema()
+		if lSchema != nil && rSchema != nil && (!lSchema.BooleanSchema.IsEmpty() || !rSchema.BooleanSchema.IsEmpty()) {
+			if !low.AreEqual(lSchema, rSchema) {
+				left, right := lSchema.RootNode, rSchema.RootNode
+				if !lSchema.BooleanSchema.IsEmpty() {
+					left = lSchema.BooleanSchema.ValueNode
+				}
+				if !rSchema.BooleanSchema.IsEmpty() {
+					right = rSchema.BooleanSchema.ValueNode
+				}
+				// encoding a replacement object must not alter shared source nodes.
+				CreateChangeWithEncoding(&changes, Modified, v3.SchemaLabel,
+					utils.CloneYAMLNode(left), utils.CloneYAMLNode(right),
+					BreakingModified(CompSchema, PropType), lSchema, rSchema)
+			}
+			if len(changes) == 0 {
+				return nil
+			}
+			sc.PropertyChanges = NewPropertyChanges(changes)
+			return sc
+		}
 		preserved := preservedObjectBranch(l, r, lSchema, rSchema)
 		if preserved != nil {
 			checkObjectCompositionAlternatives(lSchema, rSchema, preserved, &changes)
