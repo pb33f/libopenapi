@@ -4,8 +4,10 @@
 package base
 
 import (
+	"context"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/require"
 )
 
@@ -31,4 +33,15 @@ func TestBooleanSchemaObjectKeywordDoesNotSetRootShape(t *testing.T) {
 			})
 		}
 	}
+}
+
+// callers can supply parsed nodes directly; invalid boolean text must not become false.
+func TestBooleanSchemaRejectsMalformedBooleanNode(t *testing.T) {
+	node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: "not-a-boolean"}
+	var schema Schema
+	err := schema.Build(context.Background(), node, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not-a-boolean")
+	require.True(t, schema.BooleanSchema.IsEmpty())
+	require.Equal(t, "not-a-boolean", node.Value)
 }
