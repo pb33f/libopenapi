@@ -207,3 +207,17 @@ func TestMockConstRejectsLargeNumericTextBeforeNormalization(t *testing.T) {
 	require.ErrorAs(t, err, &budget)
 	require.Equal(t, "bytes", budget.Budget)
 }
+
+func TestMockConstRejectsFloatWithoutMantissaDigits(t *testing.T) {
+	for _, value := range []string{"", "e2", "E+2", "-", "+", ".", ".e2", "-e2", "_", "1e+"} {
+		t.Run(value, func(t *testing.T) {
+			node := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!float", Value: value}
+			for _, format := range []MockType{JSON, YAML} {
+				output, err := NewMockGenerator(format).GenerateMock(&base.Schema{Const: node}, "")
+				require.Error(t, err)
+				require.Nil(t, output)
+				require.Equal(t, value, node.Value)
+			}
+		})
+	}
+}
