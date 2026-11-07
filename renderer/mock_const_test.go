@@ -26,6 +26,11 @@ func TestMockConstValues(t *testing.T) {
 		{"octal", "012", "10", "!!int"},
 		{"leading decimal", "-.5", "-0.5", "!!float"},
 		{"trailing decimal", "1.", "1.0", "!!float"},
+		{"leading zero decimal", "01.0", "1.0", "!!float"},
+		{"leading zero exponent", "01e2", "1e2", "!!float"},
+		{"negative leading zero decimal", "-00.50", "-0.50", "!!float"},
+		{"zero exponent", "00.0e+2", "0.0e+2", "!!float"},
+		{"leading zero precision", "0012345678901234567890.123456789", "12345678901234567890.123456789", "!!float"},
 		{"array", `[false, 0, null, ""]`, `[false,0,null,""]`, "!!seq"},
 		{"object", `{accepted: false, count: 0, empty: "", missing: null}`, `{"accepted":false,"count":0,"empty":"","missing":null}`, "!!map"},
 	} {

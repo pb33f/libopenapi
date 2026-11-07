@@ -140,6 +140,13 @@ func (ctx *mockRenderContext) renderConst(node *yaml.Node, depth int, active map
 					number = "0" + number
 				}
 				parts := strings.SplitN(strings.ToLower(number), "e", 2)
+				// YAML allows leading zeroes in a decimal mantissa; JSON does not.
+				mantissa := strings.SplitN(parts[0], ".", 2)
+				mantissa[0] = strings.TrimLeft(mantissa[0], "0")
+				if mantissa[0] == "" {
+					mantissa[0] = "0"
+				}
+				parts[0] = strings.Join(mantissa, ".")
 				if strings.HasSuffix(parts[0], ".") {
 					parts[0] += "0"
 				}
