@@ -491,18 +491,9 @@ func checkForCollision[T any](schemaName, delimiter string, pr *processRef, comp
 func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *processRef]) {
 	seq := idx.GetRawReferencesSequenced()
 
-	// Track $ref value nodes rewritten by the first loop to prevent
-	// the second loop from overwriting them. This fixes circular self-refs
-	// when a root-local mapped ref shares a yaml node pointer with a
-	// sequenced ref that was already correctly rewritten.
-	rewiredRefNodes := make(map[*yaml.Node]struct{}, len(seq))
-
 	for _, sequenced := range seq {
 		if sequenced.IsExtensionRef {
 			continue
-		}
-		if refValNode := utils.GetRefValueNode(sequenced.Node); refValNode != nil {
-			rewiredRefNodes[refValNode] = struct{}{}
 		}
 		rewireRef(idx, sequenced, sequenced.FullDefinition, processedNodes)
 	}
@@ -513,13 +504,12 @@ func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *pr
 		if mRef.IsExtensionRef {
 			continue
 		}
-		if refValNode := utils.GetRefValueNode(mRef.Node); refValNode != nil {
-			if _, ok := rewiredRefNodes[refValNode]; ok {
-				continue
-			}
-		}
+		// Mapped references identify targets, not the outgoing $ref on an alias.
+		// Only the owning index's sequenced reference may rewrite that node.
 		origDef := mRef.FullDefinition
-		rewireRef(idx, mRef, mRef.FullDefinition, processedNodes)
+		rename := renameRefWithSource(idx, origDef, mRef, processedNodes)
+		mRef.FullDefinition = rename
+		mRef.Definition = rename
 		mapped[mRef.FullDefinition] = mRef
 		mapped[origDef] = mRef
 	}
@@ -647,12 +637,13 @@ func buildSchema(node *yaml.Node, idx *index.SpecIndex) (*base.SchemaProxy, erro
 		return nil, errors.New("node is nil")
 	}
 	schema := lowbase.Schema{}
-	_ = low.BuildModel(node, &schema)
 	ctx := context.Background()
-	err := schema.Build(ctx, node, idx)
+	if err := schema.Build(ctx, node, idx); err != nil {
+		return nil, err
+	}
 
 	var sch lowbase.SchemaProxy
-	err = sch.Build(ctx, &yaml.Node{}, node, idx)
+	err := sch.Build(ctx, &yaml.Node{}, node, idx)
 	r := &low.NodeReference[*lowbase.SchemaProxy]{Value: &sch}
 	highSchemaProxy := base.NewSchemaProxy(r)
 	return highSchemaProxy, err

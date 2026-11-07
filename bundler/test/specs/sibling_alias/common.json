@@ -1,0 +1,4 @@
+{
+  "amount": {"description": "Alias description", "$ref": "#/number"},
+  "number": {"type": "number"}
+}
