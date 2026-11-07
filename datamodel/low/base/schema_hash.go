@@ -86,6 +86,10 @@ func (s *Schema) hash(quick bool) uint64 {
 // keywords holding the same value never hash the same: {minimum: 5} is not {maximum: 5}, and a oneOf is not an allOf
 // over the same schemas.
 func (s *Schema) hashProperties(h *maphash.Hash) {
+	if !s.BooleanSchema.IsEmpty() {
+		hashSchemaBool(h, "booleanSchema", s.BooleanSchema.Value)
+		return
+	}
 	var scratch []string
 
 	if !s.SchemaTypeRef.IsEmpty() {

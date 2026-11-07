@@ -97,9 +97,20 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 		}
 	}
 
+	if utils.IsNodeBoolValue(root) {
+		var value bool
+		if err := root.Decode(&value); err != nil {
+			return err
+		}
+		s.BooleanSchema = low.NodeReference[bool]{Value: value, ValueNode: utils.NodeAlias(root)}
+		return nil
+	}
+
 	if err := low.BuildModel(root, s); err != nil {
 		return err
 	}
+	// BooleanSchema describes the root shape, never an object keyword.
+	s.BooleanSchema = low.NodeReference[bool]{}
 
 	s.extractExtensions(root)
 

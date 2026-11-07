@@ -25,6 +25,11 @@ import (
 //   - v3 schema: https://swagger.io/specification/#schema-object
 //   - v3.1 schema: https://spec.openapis.org/oas/v3.1.0#schema-object
 type Schema struct {
+	// BooleanSchema represents a JSON Schema boolean when non-nil: true accepts
+	// every instance and false rejects every instance. It overrides object keywords.
+	// Set it to nil to render this schema as an object.
+	BooleanSchema *bool `json:"-" yaml:"-"`
+
 	// 3.1 only, used to define a dialect for this schema, label is '$schema'.
 	SchemaTypeRef string `json:"$schema,omitempty" yaml:"$schema,omitempty"`
 
@@ -140,6 +145,11 @@ type Schema struct {
 func NewSchema(schema *base.Schema) *Schema {
 	s := new(Schema)
 	s.low = schema
+	if !schema.BooleanSchema.IsEmpty() {
+		value := schema.BooleanSchema.Value
+		s.BooleanSchema = &value
+		return s
+	}
 	s.Title = schema.Title.Value
 	if !schema.SchemaTypeRef.IsEmpty() {
 		s.SchemaTypeRef = schema.SchemaTypeRef.Value
@@ -530,6 +540,10 @@ func (s *Schema) RenderInline() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Schema object.
 func (s *Schema) MarshalYAML() (interface{}, error) {
+	if node := s.booleanSchemaNode(); node != nil {
+		return node, nil
+	}
+
 	if s.ParentProxy != nil {
 		if node, ok, err := s.ParentProxy.renderTransformedRefWithSiblings(s); ok || err != nil {
 			return node, err
@@ -550,6 +564,10 @@ func (s *Schema) MarshalYAML() (interface{}, error) {
 
 // MarshalJSON will create a ready to render JSON representation of the Schema object.
 func (s *Schema) MarshalJSON() ([]byte, error) {
+	if s.BooleanSchema != nil {
+		return json.Marshal(*s.BooleanSchema)
+	}
+
 	if s.ParentProxy != nil && s.ParentProxy.isParsedRefWithSiblings() {
 		node, err := s.ParentProxy.referenceYAMLNodeForSchema(s)
 		if err != nil {
@@ -578,6 +596,10 @@ func (s *Schema) MarshalJSON() ([]byte, error) {
 // The ctx parameter should be *InlineRenderContext but is typed as any to satisfy the
 // high.RenderableInlineWithContext interface without import cycles.
 func (s *Schema) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
+	if node := s.booleanSchemaNode(); node != nil {
+		return node, nil
+	}
+
 	// ensure we have a valid render context; create default bundle mode context if nil.
 	// this ensures backward compatibility where nil context = bundle mode behavior.
 	renderCtx, ok := ctx.(*InlineRenderContext)
@@ -637,6 +659,10 @@ func (s *Schema) MarshalYAMLInline() (interface{}, error) {
 
 // MarshalJSONInline will render out the Schema pointer as JSON, and all refs will be inlined fully
 func (s *Schema) MarshalJSONInline() ([]byte, error) {
+	if s.BooleanSchema != nil {
+		return json.Marshal(*s.BooleanSchema)
+	}
+
 	if s.ParentProxy != nil && s.ParentProxy.isParsedRefWithSiblings() {
 		rendered, err := s.MarshalYAMLInline()
 		if err != nil {
