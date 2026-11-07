@@ -1,0 +1,16 @@
+{
+  "endpoint": {
+    "get": {"responses": {"200": {
+      "description": "OK",
+      "content": {"application/json": {"schema": {"$ref": "#/output"}}}
+    }}}
+  },
+  "output": {"type": "array", "items": {"$ref": "#/item"}},
+  "item": {"type": "object", "properties": {"price": {"$ref": "#/price"}}},
+  "price": {
+    "type": "object",
+    "properties": {
+      "amount": {"$ref": "common.json#/amount", "description": "Local description"}
+    }
+  }
+}

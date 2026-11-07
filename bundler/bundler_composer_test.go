@@ -3187,3 +3187,12 @@ paths:
 	assert.Contains(t, string(bundled), "#/components/schemas/User")
 	assert.NotContains(t, string(bundled), "User.json")
 }
+
+func TestBuildSchema_UnresolvedReferenceReturnsError(t *testing.T) {
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("type: object\nproperties:\n  amount:\n    $ref: '#/missing'\n"), &node))
+	idx := index.NewSpecIndex(&node)
+	schema, err := buildSchema(node.Content[0], idx)
+	require.ErrorContains(t, err, "#/missing")
+	require.Nil(t, schema)
+}
