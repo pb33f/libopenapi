@@ -131,6 +131,14 @@ func (ctx *mockRenderContext) renderConst(node *yaml.Node, depth int, active map
 				number = integer.String()
 			}
 			if node.ShortTag() == "!!float" {
+				// normalization must not invent a mantissa for malformed explicit tags.
+				mantissaEnd := strings.IndexAny(number, "eE")
+				if mantissaEnd < 0 {
+					mantissaEnd = len(number)
+				}
+				if strings.IndexAny(number[:mantissaEnd], "0123456789") < 0 {
+					return fail()
+				}
 				// YAML permits a missing zero on either side of the decimal point.
 				sign := ""
 				if strings.HasPrefix(number, "-") {
