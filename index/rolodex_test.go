@@ -1041,7 +1041,7 @@ components:
           type: "string"
           anyOf:
             items:
-              $ref: "https://schemas.example/$3"
+              $ref: "https://I-love-a-good-cake-and-pizza.com/$3"
         pizza:
           type: "string"
           anyOf:
@@ -1051,12 +1051,12 @@ components:
           type: "string"
           oneOf:
             items:
-              $ref: "https://schemas.example/$4#/components/schemas/Chicken"
+              $ref: "https://milly-the-milk-bottle.com/$4#/components/schemas/Chicken"
         name:
           type: "string"
           oneOf:
             items:
-              $ref: "https://schemas.example/$3"
+              $ref: "https://junk-peddlers-blues.com/$3"
         children:
           type: "object"
           allOf:
@@ -1090,15 +1090,15 @@ components:
         chuffins:
           type: object
           allOf: 
-            - $ref: "https://schemas.example/$3"
+            - $ref: "https://what-a-lovely-fence.com/$3"
         buffins:
           type: object
           allOf: 
-            - $ref: "https://schemas.example/$2"
+            - $ref: "https://no-more-bananas-please.com/$2"
         muffins:
          type: object
          anyOf:
-           - $ref: "https://schemas.example/$2#/components/schemas/CircleTest"
+           - $ref: "https://where-are-all-my-jellies.com/$2#/components/schemas/CircleTest"
 `
 
 	var firstFile, secondFile, thirdFile, fourthFile *os.File
@@ -1148,15 +1148,6 @@ components:
 	remoteFS, rErr := NewRemoteFSWithConfig(cf)
 	assert.NoError(t, rErr)
 
-	// route synthetic origins to the fixture server without changing reference identities.
-	remoteFS.RemoteHandlerFunc = func(location string) (*http.Response, error) {
-		target, err := url.Parse(location)
-		if err != nil {
-			return nil, err
-		}
-		target.Scheme, target.Host = u.Scheme, u.Host
-		return srv.Client().Get(target.String())
-	}
 	rolodex.AddRemoteFS(srv.URL, remoteFS)
 	rolodex.SetRootNode(&rootNode)
 
@@ -1387,15 +1378,6 @@ components:
 	remoteFS, rErr := NewRemoteFSWithConfig(cf)
 	assert.NoError(t, rErr)
 
-	// route synthetic origins to the fixture server without changing reference identities.
-	remoteFS.RemoteHandlerFunc = func(location string) (*http.Response, error) {
-		target, err := url.Parse(location)
-		if err != nil {
-			return nil, err
-		}
-		target.Scheme, target.Host = u.Scheme, u.Host
-		return srv.Client().Get(target.String())
-	}
 	rolodex.AddRemoteFS(srv.URL, remoteFS)
 
 	err = rolodex.IndexTheRolodex(context.Background())
