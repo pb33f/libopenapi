@@ -6,6 +6,7 @@ package renderer
 import (
 	"errors"
 	"fmt"
+	"github.com/pb33f/go-yaml"
 	"io"
 	"math/rand"
 	"os"
@@ -204,16 +205,20 @@ func (wr *SchemaRenderer) renderSchemaBestEffort(schema *base.Schema) any {
 }
 
 func (wr *SchemaRenderer) renderSchemaWithBudgets(schema *base.Schema, enforceBudgets bool) (any, error) {
+	value, _, err := wr.renderSchemaWithPresence(schema, enforceBudgets)
+	return value, err
+}
+
+// renderSchemaWithPresence distinguishes an explicit null from a schema that produced no value.
+func (wr *SchemaRenderer) renderSchemaWithPresence(schema *base.Schema, enforceBudgets bool) (any, bool, error) {
 	structure := make(map[string]any)
 	ctx := newMockRenderContext(wr)
 	ctx.enforceBudgets = enforceBudgets
 	if !ctx.diveIntoSchema(schema, rootType, structure, 0) {
-		if ctx.err != nil {
-			return nil, ctx.err
-		}
-		return nil, nil
+		return nil, false, ctx.err
 	}
-	return structure[rootType], nil
+	value, present := structure[rootType]
+	return value, present, nil
 }
 
 // DisableRequiredCheck disables required-property filtering when rendering a schema.
@@ -254,6 +259,14 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 
 		structure[key] = example
 		return true
+	}
+	if schema.Const != nil {
+		ctx := newMockRenderContext(wr)
+		value, ok := ctx.renderConst(schema.Const, depth, make(map[*yaml.Node]bool))
+		if ok {
+			structure[key] = value
+		}
+		return ok
 	}
 	if semantic, err := semanticSchemaForTransformedRef(schema); err != nil {
 		return false
