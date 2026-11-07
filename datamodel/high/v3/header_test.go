@@ -16,6 +16,7 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 func TestHeader_MarshalYAML(t *testing.T) {
@@ -309,4 +310,32 @@ paths: {}`
 	result, err := h.MarshalYAMLInlineWithContext(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
+}
+
+func TestHeader_ExampleScope(t *testing.T) {
+	for _, direct := range []string{"", "example: 9\n", "example: null\n"} {
+		t.Run(direct, func(t *testing.T) {
+			spec := "schema:\n  type: integer\n  example: 7\n" + direct
+			var node yaml.Node
+			require.NoError(t, yaml.Unmarshal([]byte(spec), &node))
+			var lowHeader lowv3.Header
+			require.NoError(t, low.BuildModel(node.Content[0], &lowHeader))
+			require.NoError(t, lowHeader.Build(context.Background(), nil, node.Content[0], index.NewSpecIndex(&node)))
+			header := NewHeader(&lowHeader)
+			require.Equal(t, "7", header.Schema.Schema().Example.Value)
+			if direct == "" {
+				require.True(t, lowHeader.Example.IsEmpty())
+				require.Nil(t, header.Example)
+			} else {
+				require.Same(t, node.Content[0].Content[2], lowHeader.Example.KeyNode)
+				require.Same(t, node.Content[0].Content[3], header.Example)
+			}
+			rendered, err := header.Render()
+			require.NoError(t, err)
+			var before, after any
+			require.NoError(t, yaml.Unmarshal([]byte(spec), &before))
+			require.NoError(t, yaml.Unmarshal(rendered, &after))
+			require.Equal(t, before, after)
+		})
+	}
 }

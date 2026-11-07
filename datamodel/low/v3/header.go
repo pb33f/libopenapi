@@ -149,7 +149,7 @@ func (h *Header) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index
 
 	low.ExtractExtensionNodes(ctx, h.Extensions, h.Nodes)
 	// handle example if set.
-	_, expLabel, expNode := utils.FindKeyNodeFull(base.ExampleLabel, root.Content)
+	_, expLabel, expNode := utils.FindKeyNodeFullTop(base.ExampleLabel, root.Content)
 	if expNode != nil {
 		h.Example = low.NodeReference[*yaml.Node]{
 			Value:     expNode,
