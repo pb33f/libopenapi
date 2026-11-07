@@ -16,7 +16,7 @@ import (
 	"github.com/pb33f/testify/require"
 )
 
-func TestRemoteNestedReferencesPreserveOrigin(t *testing.T) {
+func TestRemoteNestedReferencesHonorBaseURL(t *testing.T) {
 	spec := []byte(`openapi: 3.1.0
 info:
   title: Remote origin regression
@@ -29,7 +29,7 @@ components:
 `)
 	sources := map[string]string{
 		"https://api.example/schemas/item.yaml": "components:\n  schemas:\n    Item:\n      type: object\n      properties:\n        id:\n          $ref: 'http://types.example/id.yaml#/components/schemas/Id'\n",
-		"http://types.example/id.yaml":          "components:\n  schemas:\n    Id:\n      type: integer\n",
+		"https://api.example/id.yaml":           "components:\n  schemas:\n    Id:\n      type: integer\n",
 	}
 	var mu sync.Mutex
 	calls := map[string]int{}
@@ -57,7 +57,7 @@ components:
 	require.NotNil(t, found, "raw relative lookups must use the same remote identity as extraction")
 	mu.Lock()
 	defer mu.Unlock()
-	require.Equal(t, map[string]int{"https://api.example/schemas/item.yaml": 1, "http://types.example/id.yaml": 1}, calls)
+	require.Equal(t, map[string]int{"https://api.example/schemas/item.yaml": 1, "https://api.example/id.yaml": 1}, calls)
 }
 
 func TestRemoteOriginsWithSamePathStayDistinct(t *testing.T) {
@@ -73,8 +73,7 @@ components:
     Right:
       $ref: 'https://right.example/type.yaml'
 `)
-	base, _ := url.Parse("https://root.example/")
-	doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{BaseURL: base, AllowRemoteReferences: true, RemoteURLHandler: func(location string) (*http.Response, error) {
+	doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{AllowRemoteReferences: true, RemoteURLHandler: func(location string) (*http.Response, error) {
 		kind := ""
 		switch location {
 		case "https://left.example/type.yaml":

@@ -650,7 +650,7 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 }
 
 func (i *RemoteFS) normalizeRemoteURL(remoteParsedURL *url.URL) {
-	if i.rootURLParsed == nil || remoteParsedURL == nil || remoteParsedURL.IsAbs() {
+	if i.rootURLParsed == nil || remoteParsedURL == nil {
 		return
 	}
 	// a base URL without a scheme or host (e.g. 'example.com/specs/') cannot be fetched from,

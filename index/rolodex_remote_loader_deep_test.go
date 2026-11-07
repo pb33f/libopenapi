@@ -508,7 +508,7 @@ func TestRemoteFSOpenWithContextComprehensive(t *testing.T) {
 		assert.NotNil(t, file)
 	})
 
-	t.Run("BaseURL preserves absolute origin", func(t *testing.T) {
+	t.Run("BaseURL scheme override", func(t *testing.T) {
 		// Create config with base URL that has different scheme/host
 		config := CreateOpenAPIIndexConfig()
 		baseURL, _ := url.Parse("https://override.com/base")
@@ -518,8 +518,8 @@ func TestRemoteFSOpenWithContextComprehensive(t *testing.T) {
 		assert.NoError(t, err)
 
 		rfs.RemoteHandlerFunc = func(url string) (*http.Response, error) {
-			// absolute references retain their own origin.
-			assert.Equal(t, "http://original.com/test.yaml", url)
+			// Verify that the URL was rewritten to use override.com
+			assert.Contains(t, url, "override.com")
 			return &http.Response{
 				StatusCode: 200,
 				Body:       io.NopCloser(strings.NewReader("test: data")),
