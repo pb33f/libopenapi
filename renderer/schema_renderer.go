@@ -260,12 +260,6 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		structure[key] = example
 		return true
 	}
-	if semantic, err := semanticSchemaForTransformedRef(schema); err != nil {
-		return false
-	} else if semantic != nil {
-		return wr.DiveIntoSchema(semantic, key, structure, visited, depth)
-	}
-
 	if schema.Const != nil {
 		ctx := newMockRenderContext(wr)
 		value, ok := ctx.renderConst(schema.Const, depth, make(map[*yaml.Node]bool))
@@ -273,6 +267,11 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			structure[key] = value
 		}
 		return ok
+	}
+	if semantic, err := semanticSchemaForTransformedRef(schema); err != nil {
+		return false
+	} else if semantic != nil {
+		return wr.DiveIntoSchema(semantic, key, structure, visited, depth)
 	}
 
 	// Prevent unbounded recursion on deeply nested schemas.

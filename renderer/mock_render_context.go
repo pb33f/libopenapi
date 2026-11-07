@@ -64,12 +64,6 @@ func (ctx *mockRenderContext) diveIntoSchema(schema *base.Schema, key string, st
 		structure[key] = example
 		return ctx.noteValue(example)
 	}
-	if semantic, err := semanticSchemaForTransformedRef(schema); err != nil {
-		ctx.err = err
-		return false
-	} else if semantic != nil {
-		return ctx.diveIntoSchema(semantic, key, structure, depth)
-	}
 	if schema.Const != nil {
 		value, ok := ctx.renderConst(schema.Const, depth, make(map[*yaml.Node]bool))
 		if ok {
@@ -77,6 +71,13 @@ func (ctx *mockRenderContext) diveIntoSchema(schema *base.Schema, key string, st
 		}
 		return ok
 	}
+	if semantic, err := semanticSchemaForTransformedRef(schema); err != nil {
+		ctx.err = err
+		return false
+	} else if semantic != nil {
+		return ctx.diveIntoSchema(semantic, key, structure, depth)
+	}
+
 	if !ctx.noteNode() {
 		return false
 	}

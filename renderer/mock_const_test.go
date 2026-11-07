@@ -135,3 +135,19 @@ components:
 		})
 	}
 }
+
+func TestMockConstReferenceSiblingOverridesTypeGeneration(t *testing.T) {
+	schema := componentSchemaForMockTest(t, "Root", `openapi: 3.1.0
+info: {title: constant, version: '1'}
+paths: {}
+components:
+  schemas:
+    Root:
+      $ref: '#/components/schemas/Value'
+      const: false
+    Value:
+      type: boolean`)
+	output, err := NewMockGenerator(JSON).GenerateMock(schema, "")
+	require.NoError(t, err)
+	require.Equal(t, "false", string(output))
+}
