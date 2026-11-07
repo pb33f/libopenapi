@@ -803,3 +803,24 @@ workflows:
 	require.NotNil(t, doc)
 	assert.Equal(t, "https://specs.example.com/root.arazzo.yaml", doc.GetDocumentOrigin().ResolvedIdentity)
 }
+
+func TestNewArazzoDocument_RenderEmptyExtension(t *testing.T) {
+	for _, spec := range []string{
+		"arazzo: 1.0.1\ninfo: {title: t, version: '1'}\nx-a:\n",
+		"arazzo: 1.0.1\ninfo:\n  title: t\n  version: '1'\n  x-a:\n",
+		"arazzo: 1.0.1\ninfo: {title: t, version: '1'}\nworkflows:\n  - workflowId: w\n    x-a:\n",
+	} {
+		t.Run(spec, func(t *testing.T) {
+			doc, err := NewArazzoDocument([]byte(spec))
+			require.NoError(t, err)
+			var rendered []byte
+			require.NotPanics(t, func() { rendered, err = doc.Render() })
+			require.NoError(t, err)
+			assert.Contains(t, string(rendered), "x-a:")
+			var before, after any
+			require.NoError(t, yaml.Unmarshal([]byte(spec), &before))
+			require.NoError(t, yaml.Unmarshal(rendered, &after))
+			assert.Equal(t, before, after)
+		})
+	}
+}

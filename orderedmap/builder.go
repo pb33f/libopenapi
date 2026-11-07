@@ -56,7 +56,11 @@ func (o *Map[K, V]) MarshalYAML() (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		if err = valueNode.Encode(value); err != nil {
+		// Encoding an empty null node as a standalone document panics in go-yaml.
+		// The value is already cloned, so retain its comments and source metadata.
+		if n, ok := value.(*yaml.Node); ok && n != nil && n.Kind == yaml.ScalarNode && n.Tag == "!!null" && n.Value == "" {
+			valueNode = n
+		} else if err = valueNode.Encode(value); err != nil {
 			return nil, err
 		}
 
