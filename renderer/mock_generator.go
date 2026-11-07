@@ -232,11 +232,11 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 			return mg.renderForType(schemaValue.Example, schemaValue), nil
 		}
 
-		renderMap, renderErr := mg.renderer.RenderSchemaWithError(schemaValue)
+		renderMap, present, renderErr := mg.renderer.renderSchemaWithPresence(schemaValue, true)
 		if renderErr != nil {
 			return nil, renderErr
 		}
-		if renderMap == nil {
+		if !present {
 			return nil, fmt.Errorf("unable to render schema for mock, it's empty")
 		}
 		return mg.renderForType(renderMap, schemaValue), nil
@@ -277,6 +277,14 @@ func (mg *MockGenerator) renderMockJSON(v any) []byte {
 }
 
 func (mg *MockGenerator) renderMockYAML(v any) []byte {
+	if v == nil {
+		return []byte("null\n")
+	}
+	if _, ok := v.(yaml.Marshaler); ok {
+		data, _ := yaml.Marshal(v)
+		return data
+	}
+
 	var data []byte
 	// determine the type, render properly.
 	switch reflect.ValueOf(v).Kind() {
