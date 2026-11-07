@@ -1306,8 +1306,7 @@ components:
 	oneOf := pet["oneOf"].([]any)
 	assert.Len(t, oneOf, 3)
 
-	_, isObj := oneOf[0].(map[string]any)
-	assert.True(t, isObj, "first oneOf item should get removed and turned into an empty object")
+	assert.Equal(t, true, oneOf[0], "first oneOf item must preserve its boolean schema")
 
 	_, hasRef := oneOf[1].(map[string]any)["$ref"]
 	assert.False(t, hasRef, "second item has no $ref and should remain inline")
