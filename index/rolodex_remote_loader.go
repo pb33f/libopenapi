@@ -785,6 +785,8 @@ func (i *RemoteFS) createRemoteFile(remoteParsedURL *url.URL, fileExt FileExtens
 
 func (i *RemoteFS) createRemoteIndexConfig(remoteParsedURL, remoteParsedURLOriginal *url.URL) *SpecIndexConfig {
 	copiedCfg := *i.indexConfig
+	copiedCfg.Rolodex = i.rolodex
+	copiedCfg.SpecInfo = nil
 	newBase := fmt.Sprintf("%s://%s%s", remoteParsedURLOriginal.Scheme, remoteParsedURLOriginal.Host,
 		path.Dir(remoteParsedURL.Path))
 	newBaseURL, _ := url.Parse(newBase)

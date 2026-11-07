@@ -167,6 +167,14 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		}
 	}
 
+	// use the same remote base as extraction so relative lookups find the
+	// absolute keys already stored in the reference map.
+	if index.config != nil && index.config.BaseURL != nil && !strings.HasPrefix(normalizedRef, "#") && !strings.HasPrefix(normalizedRef, "http") && !filepath.IsAbs(normalizedRef) {
+		if parsed, err := url.Parse(normalizedRef); err == nil && !parsed.IsAbs() && parsed.Host == "" {
+			normalizedRef, _ = index.resolveReferenceTarget(normalizedRef)
+		}
+	}
+
 	// --- Step 2: Parse the ref into URI components and build lookup paths ---
 	// Split the ref on "#/" to separate the file path (uri[0]) from the JSON Pointer
 	// fragment (uri[1]). Depending on whether the ref is absolute, relative, or HTTP,
@@ -188,7 +196,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 	if singleFragment {
 		if uriFile != "" {
 			if strings.HasPrefix(uriFile, "http") {
-				roloLookup = searchRef.FullDefinition
+				roloLookup = ref
 			} else {
 				if filepath.IsAbs(uriFile) {
 					roloLookup = uriFile

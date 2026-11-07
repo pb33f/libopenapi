@@ -198,6 +198,7 @@ type LocalFile struct {
 	readingErrors    []error
 	index            atomic.Value
 	parsed           *yaml.Node
+	parsedError      error
 	offset           int64
 	parseMutex       sync.Mutex
 	indexOnce        sync.Once
@@ -248,6 +249,17 @@ func (l *LocalFile) IndexWithContext(ctx context.Context, config *SpecIndexConfi
 		// first, we must parse the content of the file,
 		// the check is bypassed, so as long as it's readable, we're good.
 		info, _ := datamodel.ExtractSpecInfoWithDocumentCheck(content, true)
+		// recursive opens can expose nodes before indexing. Keep that tree so
+		// schemas retain their owning index and source locations. An error fallback
+		// must not replace a successful parse with normalized JSON escapes.
+		l.parseMutex.Lock()
+		if l.parsed != nil && l.parsedError == nil {
+			info.RootNode = l.parsed
+		} else {
+			l.parsed = info.RootNode
+			l.parsedError = nil
+		}
+		l.parseMutex.Unlock()
 		if config.SpecInfo == nil {
 			config.SpecInfo = info
 		}
@@ -283,7 +295,7 @@ func (l *LocalFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 	// Check again after locking in case another goroutine completed parsing
 	// while we were waiting for the lock
 	if l.parsed != nil {
-		return l.parsed, nil
+		return l.parsed, l.parsedError
 	}
 
 	if l.data == nil {
@@ -308,6 +320,7 @@ func (l *LocalFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 		idx.root = &root
 	}
 	l.parsed = &root
+	l.parsedError = err
 	return &root, err
 }
 

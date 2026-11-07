@@ -253,6 +253,17 @@ func isInsidePropertiesNode(parent *yaml.Node) bool {
 func (resolver *Resolver) buildRelativeLookupDefinitions(ref *Reference, value, currentBase string) (string, string) {
 	definition := value
 	fullDef := ""
+	// a BaseURL-only root has no physical file path. Its external references
+	// must use the remote base, just as they do during initial extraction.
+	if resolver.specIndex != nil && resolver.specIndex.config != nil && resolver.specIndex.config.BaseURL != nil && resolver.specIndex.specAbsolutePath == "" && strings.HasPrefix(ref.FullDefinition, "#") && utils.IsExternalRef(value) {
+		if parsed, err := url.Parse(value); err == nil && !parsed.IsAbs() && parsed.Host == "" && !filepath.IsAbs(value) {
+			fullDef, definition = resolver.specIndex.resolveReferenceTarget(value)
+			if currentBase != "" {
+				fullDef = resolveRefWithSchemaBase(value, currentBase)
+			}
+			return definition, fullDef
+		}
+	}
 	exp := strings.Split(value, "#/")
 	if len(exp) == 2 {
 		// Reference contains a fragment (e.g. "other.yaml#/components/schemas/Foo").
