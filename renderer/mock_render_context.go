@@ -70,6 +70,13 @@ func (ctx *mockRenderContext) diveIntoSchema(schema *base.Schema, key string, st
 	} else if semantic != nil {
 		return ctx.diveIntoSchema(semantic, key, structure, depth)
 	}
+	if schema.Const != nil {
+		value, ok := ctx.renderConst(schema.Const, depth, make(map[*yaml.Node]bool))
+		if ok {
+			structure[key] = value
+		}
+		return ok
+	}
 	if !ctx.noteNode() {
 		return false
 	}
@@ -475,6 +482,8 @@ func estimatedMockValueBytes(value any) int {
 	case nil:
 		return 4
 	case string:
+		return len(v) + 2
+	case mockConstString:
 		return len(v) + 2
 	case []any:
 		return 2 + len(v)*2
