@@ -170,6 +170,46 @@ func TestRolodexLocalFS_WaitsForInFlightLoad(t *testing.T) {
 	assert.Same(t, loaded, got.file)
 }
 
+func TestRolodexLocalFS_StaleMissReusesPublishedFile(t *testing.T) {
+	directory := t.TempDir()
+	name := filepath.Join(directory, "shared-schema.yaml")
+	if err := os.WriteFile(name, []byte("type: object\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	lfs, err := NewLocalFSWithConfig(&LocalFSConfig{BaseDirectory: directory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// this caller observes a miss, then another caller completes publication
+	// before the first enters the reserved cold-load path.
+	_, observed := lfs.Files.Load(name)
+	assert.False(t, observed)
+	published, err := lfs.Open(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalNode, err := published.(*LocalFile).GetContentAsYAMLNode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// any attempt to reload the file now fails rather than hiding a duplicate read.
+	if err = os.Remove(name); err != nil {
+		t.Fatal(err)
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		opened, openErr := lfs.openOnDemand(context.Background(), name)
+		if openErr != nil {
+			t.Fatal(openErr)
+		}
+		assert.Same(t, published, opened)
+		node, parseErr := opened.(*LocalFile).GetContentAsYAMLNode()
+		assert.NoError(t, parseErr)
+		assert.Same(t, originalNode, node)
+		_, reserved := lfs.processingFiles.Load(name)
+		assert.False(t, reserved, "completed reservation must be retired before reuse")
+	}
+}
+
 func TestRolodexLocalFS_ConcurrentOpenPreservesFileAndNodeIdentity(t *testing.T) {
 	name := filepath.Join(t.TempDir(), "shared-schema.yaml")
 	content := []byte("type: object\nproperties:\n  value:\n    type: string\n")
