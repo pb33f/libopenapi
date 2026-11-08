@@ -169,8 +169,8 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 
 	// use the same remote base as extraction so relative lookups find the
 	// absolute keys already stored in the reference map.
-	if index.config != nil && index.config.BaseURL != nil && !strings.HasPrefix(normalizedRef, "#") && !strings.HasPrefix(normalizedRef, "http") && !filepath.IsAbs(normalizedRef) {
-		if parsed, err := url.Parse(normalizedRef); err == nil && !parsed.IsAbs() && parsed.Host == "" {
+	if index.config != nil && index.config.BaseURL != nil && !strings.HasPrefix(normalizedRef, "#") && !strings.HasPrefix(normalizedRef, "http") && (!filepath.IsAbs(normalizedRef) || strings.HasPrefix(index.specAbsolutePath, "http")) {
+		if parsed, err := url.Parse(normalizedRef); err == nil && !parsed.IsAbs() && (parsed.Host == "" || strings.HasPrefix(index.specAbsolutePath, "http")) {
 			normalizedRef, _ = index.resolveReferenceTarget(normalizedRef)
 		}
 	}
@@ -234,14 +234,22 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		}
 		ref = uriFile
 	}
-	if strings.Contains(ref, "%") {
+	encodedRef, prefix := ref, ""
+	if strings.HasPrefix(ref, "http") {
+		// remote path and query escapes are part of the retrieval identity.
+		prefix, encodedRef, _ = strings.Cut(ref, "#")
+		if encodedRef != "" {
+			encodedRef = "#" + encodedRef
+		}
+	}
+	if strings.Contains(encodedRef, "%") {
 		// Decode URI escaping without treating literal plus signs as spaces.
-		decodedRef, err := url.PathUnescape(ref)
+		decodedRef, err := url.PathUnescape(encodedRef)
 		if err != nil {
 			return nil, index, ctx
 		}
-		ref = decodedRef
-		refAlt = decodedRef
+		ref = prefix + decodedRef
+		refAlt = ref
 		if singleFragment && uriFile == "" {
 			// absPath is a native path, not another URI-escaped fragment.
 			refAlt = absPath + decodedRef

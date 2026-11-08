@@ -55,6 +55,8 @@ type DocumentConfiguration struct {
 	BasePath string // set the Base Path for resolving relative references if the spec is exploded.
 
 	// SpecFilePath is the name of the root specification file (usually named "openapi.yaml").
+	// For OpenAPI 3, an absolute HTTP(S) URL supplies the root retrieval identity and
+	// relative-reference base when neither BaseURL nor $self supplies a base.
 	SpecFilePath string
 
 	// FileFilter is a list of specific files to be included by the rolodex when looking up references. If this value
