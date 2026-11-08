@@ -117,6 +117,17 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 			return f, e
 		}
 
+		// a completed loader can publish and remove its waiter after our initial
+		// cache miss. Recheck under the new reservation to preserve its file/tree.
+		if cached, ok := l.Files.Load(name); ok {
+			file := cached.(*LocalFile)
+			processingWaiter.file = file
+			processingWaiter.done = true
+			l.processingFiles.Delete(name)
+			processingWaiter.mu.Unlock()
+			return file, nil
+		}
+
 		// We successfully stored our waiter, so we're responsible for processing this file
 
 		var extractedFile *LocalFile

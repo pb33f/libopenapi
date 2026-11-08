@@ -170,6 +170,60 @@ func TestRolodexLocalFS_WaitsForInFlightLoad(t *testing.T) {
 	assert.Same(t, loaded, got.file)
 }
 
+func TestRolodexLocalFS_ConcurrentOpenPreservesFileAndNodeIdentity(t *testing.T) {
+	name := filepath.Join(t.TempDir(), "shared-schema.yaml")
+	content := []byte("type: object\nproperties:\n  value:\n    type: string\n")
+	if err := os.WriteFile(name, content, 0600); err != nil {
+		t.Fatal(err)
+	}
+	// repeated cold bursts exercise callers whose cache miss outlives a loader's
+	// reservation. Parsed nodes must keep the same owner after publication.
+	const coldBursts, readers = 128, 64
+	for burst := 0; burst < coldBursts; burst++ {
+		lfs := &LocalFS{
+			fsConfig: &LocalFSConfig{},
+			logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		}
+		type result struct {
+			file fs.File
+			node *yaml.Node
+			err  error
+		}
+		opened := make([]result, readers)
+		start := make(chan struct{})
+		var done sync.WaitGroup
+		for i := range opened {
+			done.Add(1)
+			go func() {
+				defer done.Done()
+				<-start
+				file, err := lfs.Open(name)
+				opened[i] = result{file: file, err: err}
+				if err == nil {
+					opened[i].node, opened[i].err = file.(*LocalFile).GetContentAsYAMLNode()
+				}
+			}()
+		}
+		close(start)
+		done.Wait()
+		for i, got := range opened {
+			if got.err != nil {
+				t.Fatal(got.err)
+			}
+			if got.file != opened[0].file || got.node != opened[0].node {
+				t.Fatalf("burst %d reader %d received a different file or parsed tree", burst, i)
+			}
+		}
+		cached, err := lfs.Open(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cached != opened[0].file {
+			t.Fatalf("burst %d replaced the published file", burst)
+		}
+	}
+}
+
 func TestRolodexLocalFile_BadParse(t *testing.T) {
 	lf := &LocalFile{}
 	n, e := lf.GetContentAsYAMLNode()
