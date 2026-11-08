@@ -48,7 +48,9 @@ func (wr *SchemaRenderer) renderMockStringValue(schema *base.Schema, key string,
 				if exmp != nil {
 					var ex any
 					_ = exmp.Decode(&ex)
-					renderedExamples[i] = fmt.Sprint(ex)
+					if ex != nil {
+						renderedExamples[i] = fmt.Sprint(ex)
+					}
 				}
 			}
 			return renderedExamples
@@ -57,7 +59,9 @@ func (wr *SchemaRenderer) renderMockStringValue(schema *base.Schema, key string,
 		if exmp := schema.Examples[0]; exmp != nil {
 			var ex any
 			_ = exmp.Decode(&ex)
-			renderedExample = fmt.Sprint(ex)
+			if ex != nil {
+				renderedExample = fmt.Sprint(ex)
+			}
 		}
 		return renderedExample
 	}
