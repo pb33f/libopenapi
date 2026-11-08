@@ -96,101 +96,106 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 
 	// Only enter new-file logic if DirFS is not set
 	if l.fsConfig != nil && l.fsConfig.DirFS == nil {
+		return l.openOnDemand(ctx, name)
+	}
 
-		// Use LoadOrStore to atomically check if someone is already processing this file.
-		// This prevents the race condition where two goroutines both see "not processing"
-		// and both start processing the same file.
-		processingWaiter := &waiterLocal{f: name}
-		processingWaiter.mu.Lock()
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+}
 
-		if existing, loaded := l.processingFiles.LoadOrStore(name, processingWaiter); loaded {
-			// Someone else is already processing this file, wait for them
-			processingWaiter.mu.Unlock() // Release our unused waiter's lock
-			wait := existing.(*waiterLocal)
+// openOnDemand owns file publication after a caller observes a cache miss.
+// The name is absolute and the caller has already checked lookup permission.
+func (l *LocalFS) openOnDemand(ctx context.Context, name string) (fs.File, error) {
+	// Use LoadOrStore to atomically check if someone is already processing this file.
+	// This prevents the race condition where two goroutines both see "not processing"
+	// and both start processing the same file.
+	processingWaiter := &waiterLocal{f: name}
+	processingWaiter.mu.Lock()
 
-			wait.mu.Lock()
-			l.logger.Debug("[rolodex file loader]: waiting for existing OS load to complete", "file", name, "listeners", wait.listeners)
-			f := wait.file
-			e := wait.error
-			l.logger.Debug("[rolodex file loader]: waiting done, OS load completed, returning file", "file", name, "listeners", wait.listeners)
-			wait.mu.Unlock()
-			return f, e
-		}
+	if existing, loaded := l.processingFiles.LoadOrStore(name, processingWaiter); loaded {
+		// Someone else is already processing this file, wait for them
+		processingWaiter.mu.Unlock() // Release our unused waiter's lock
+		wait := existing.(*waiterLocal)
 
-		// a completed loader can publish and remove its waiter after our initial
-		// cache miss. Recheck under the new reservation to preserve its file/tree.
-		if cached, ok := l.Files.Load(name); ok {
-			file := cached.(*LocalFile)
-			processingWaiter.file = file
-			processingWaiter.done = true
-			l.processingFiles.Delete(name)
-			processingWaiter.mu.Unlock()
-			return file, nil
-		}
+		wait.mu.Lock()
+		l.logger.Debug("[rolodex file loader]: waiting for existing OS load to complete", "file", name, "listeners", wait.listeners)
+		f := wait.file
+		e := wait.error
+		l.logger.Debug("[rolodex file loader]: waiting done, OS load completed, returning file", "file", name, "listeners", wait.listeners)
+		wait.mu.Unlock()
+		return f, e
+	}
 
-		// We successfully stored our waiter, so we're responsible for processing this file
+	// a completed loader can publish and remove its waiter after our initial
+	// cache miss. Recheck under the new reservation to preserve its file/tree.
+	if cached, ok := l.Files.Load(name); ok {
+		file := cached.(*LocalFile)
+		processingWaiter.file = file
+		processingWaiter.done = true
+		l.processingFiles.Delete(name)
+		processingWaiter.mu.Unlock()
+		return file, nil
+	}
 
-		var extractedFile *LocalFile
-		var extErr error
-		l.logger.Debug("[rolodex file loader]: extracting file from OS", "file", name)
-		extractedFile, extErr = l.extractFile(name)
+	// We successfully stored our waiter, so we're responsible for processing this file
 
-		if extErr != nil {
-			processingWaiter.error = extErr
-			processingWaiter.done = true
-			l.processingFiles.Delete(name)
-			processingWaiter.mu.Unlock()
+	var extractedFile *LocalFile
+	var extErr error
+	l.logger.Debug("[rolodex file loader]: extracting file from OS", "file", name)
+	extractedFile, extErr = l.extractFile(name)
 
-			return nil, extErr
-		}
-
-		// Store in Files and release the waiter BEFORE indexing to prevent deadlocks.
-		// If file A needs file B and file B needs file A, holding the lock during indexing
-		// would cause a deadlock. The indexOnce in IndexWithContext handles concurrent
-		// access to index creation safely.
-		if extractedFile != nil {
-			l.Files.Store(name, extractedFile)
-		}
-
-		processingWaiter.file = extractedFile
+	if extErr != nil {
 		processingWaiter.error = extErr
 		processingWaiter.done = true
 		l.processingFiles.Delete(name)
 		processingWaiter.mu.Unlock()
 
-		// Now index the file AFTER releasing the lock
-		if extractedFile != nil && l.indexConfig != nil {
-			copiedCfg := *l.indexConfig
-			copiedCfg.SpecAbsolutePath = name
-			copiedCfg.AvoidBuildIndex = true
-			copiedCfg.SpecInfo = nil
-			if l.rolodex != nil {
-				copiedCfg.Rolodex = l.rolodex
-			}
-
-			idx, _ := extractedFile.IndexWithContext(ctx, &copiedCfg)
-
-			if idx != nil {
-				NewResolver(idx)
-				idx.BuildIndex()
-			}
-			if len(extractedFile.data) > 0 {
-				l.logger.Debug("[rolodex file loader]: successfully loaded and indexed file", "file", name)
-			}
-			if l.rolodex != nil {
-				l.rolodex.AddIndex(idx)
-			}
-		}
-
-		// Signal that indexing is complete - other goroutines waiting for this file can proceed
-		if extractedFile != nil {
-			extractedFile.signalIndexingComplete()
-		}
-
-		return extractedFile, nil
+		return nil, extErr
 	}
 
-	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+	// Store in Files and release the waiter BEFORE indexing to prevent deadlocks.
+	// If file A needs file B and file B needs file A, holding the lock during indexing
+	// would cause a deadlock. The indexOnce in IndexWithContext handles concurrent
+	// access to index creation safely.
+	if extractedFile != nil {
+		l.Files.Store(name, extractedFile)
+	}
+
+	processingWaiter.file = extractedFile
+	processingWaiter.error = extErr
+	processingWaiter.done = true
+	l.processingFiles.Delete(name)
+	processingWaiter.mu.Unlock()
+
+	// Now index the file AFTER releasing the lock
+	if extractedFile != nil && l.indexConfig != nil {
+		copiedCfg := *l.indexConfig
+		copiedCfg.SpecAbsolutePath = name
+		copiedCfg.AvoidBuildIndex = true
+		copiedCfg.SpecInfo = nil
+		if l.rolodex != nil {
+			copiedCfg.Rolodex = l.rolodex
+		}
+
+		idx, _ := extractedFile.IndexWithContext(ctx, &copiedCfg)
+
+		if idx != nil {
+			NewResolver(idx)
+			idx.BuildIndex()
+		}
+		if len(extractedFile.data) > 0 {
+			l.logger.Debug("[rolodex file loader]: successfully loaded and indexed file", "file", name)
+		}
+		if l.rolodex != nil {
+			l.rolodex.AddIndex(idx)
+		}
+	}
+
+	// Signal that indexing is complete - other goroutines waiting for this file can proceed
+	if extractedFile != nil {
+		extractedFile.signalIndexingComplete()
+	}
+
+	return extractedFile, nil
 }
 
 // Open opens a file, returning it or an error. If the file is not found, the error is of type *PathError.
