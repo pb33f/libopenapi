@@ -15,7 +15,6 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"hash/maphash"
 	"math/big"
-	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -233,27 +232,13 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 			// The ref points to a component within either this file or another file.
 			if !strings.HasPrefix(explodedRefValue[0], "http") {
 				// The ref is not an absolute URL.
-				if !filepath.IsAbs(explodedRefValue[0]) {
+				if !filepath.IsAbs(explodedRefValue[0]) || strings.HasPrefix(specPath, "http") {
 					// The ref is not an absolute local file path.
 					if strings.HasPrefix(specPath, "http") {
 						// The schema containing the ref is itself a remote file.
-						u, _ := url.Parse(specPath)
-						// p is the directory the referenced file is expected to be in.
-						p := ""
-						if u.Path != "" && explodedRefValue[0] != "" {
-							// We are using the path of the resolved URL from the rolodex to
-							// obtain the "folder" or base of the file URL.
-							p = filepath.Dir(u.Path)
+						if absolute, err := index.ResolveRefAgainstSchemaId(rv, &index.SchemaIdScope{BaseUri: specPath}); err == nil {
+							rv = absolute
 						}
-						if p != "" && explodedRefValue[0] != "" {
-							// We are resolving the relative URL against the absolute URL of
-							// the spec containing the reference.
-							u.Path = utils.ReplaceWindowsDriveWithLinuxPath(utils.CheckPathOverlap(p, explodedRefValue[0], string(os.PathSeparator)))
-						}
-						u.Fragment = ""
-						// Turn the reference value [rv] into the absolute filepath/URL we
-						// resolved.
-						rv = fmt.Sprintf("%s#%s", u.String(), explodedRefValue[1])
 					} else {
 						// The schema containing the ref is a local file or doesn't have an
 						// absolute URL.
@@ -295,14 +280,11 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 			}
 		} else {
 			if !strings.HasPrefix(explodedRefValue[0], "http") {
-				if !filepath.IsAbs(explodedRefValue[0]) {
+				if !filepath.IsAbs(explodedRefValue[0]) || strings.HasPrefix(specPath, "http") {
 					if strings.HasPrefix(specPath, "http") {
-						u, _ := url.Parse(specPath)
-						p := filepath.Dir(u.Path)
-						abs, _ := filepath.Abs(utils.CheckPathOverlap(p, rv, string(os.PathSeparator)))
-						u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
-						rv = u.String()
-
+						if absolute, err := index.ResolveRefAgainstSchemaId(rv, &index.SchemaIdScope{BaseUri: specPath}); err == nil {
+							rv = absolute
+						}
 					} else {
 						if specPath != "" {
 

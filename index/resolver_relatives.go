@@ -6,7 +6,6 @@ package index
 import (
 	"fmt"
 	"net/url"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -275,12 +274,7 @@ func (resolver *Resolver) buildRelativeLookupDefinitions(ref *Reference, value, 
 				fullDef = value
 			} else if strings.HasPrefix(ref.FullDefinition, "http") {
 				// Relative file path, but the parent ref is remote — resolve against the URL.
-				httpExp := strings.Split(ref.FullDefinition, "#/")
-				u, _ := url.Parse(httpExp[0])
-				abs, _ := filepath.Abs(utils.CheckPathOverlap(path.Dir(u.Path), exp[0], string(filepath.Separator)))
-				u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
-				u.Fragment = ""
-				fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
+				fullDef = resolveRefWithSchemaBase(value, ref.FullDefinition)
 			} else {
 				// Relative file path with a local parent — resolve against the parent's directory.
 				fileDef := strings.Split(ref.FullDefinition, "#/")
@@ -313,10 +307,7 @@ func (resolver *Resolver) buildRelativeLookupDefinitions(ref *Reference, value, 
 		}
 		fileDef := strings.Split(baseLocation, "#/")
 		if strings.HasPrefix(fileDef[0], "http") {
-			u, _ := url.Parse(fileDef[0])
-			absPath, _ := filepath.Abs(utils.CheckPathOverlap(path.Dir(u.Path), exp[0], string(filepath.Separator)))
-			u.Path = utils.ReplaceWindowsDriveWithLinuxPath(absPath)
-			fullDef = u.String()
+			fullDef = resolveRefWithSchemaBase(value, fileDef[0])
 		} else {
 			fullDef = resolver.resolveLocalRefPath(filepath.Dir(fileDef[0]), exp[0])
 		}

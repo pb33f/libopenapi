@@ -200,6 +200,14 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 		}
 	}
 
+	// a retrieval URL supplies a resolution base without overriding remote hosts.
+	if baseURL == nil {
+		if sourceURL, err := url.Parse(config.SpecFilePath); err == nil && sourceURL.Host != "" && (sourceURL.Scheme == "http" || sourceURL.Scheme == "https") {
+			idxConfig.SpecAbsolutePath = sourceURL.String()
+			baseURL = sourceURL.ResolveReference(&url.URL{Path: "."})
+		}
+	}
+
 	idxConfig.BaseURL = urlWithoutTrailingSlash(baseURL)
 	idxConfig.BasePath = config.BasePath
 	idxConfig.SpecFilePath = config.SpecFilePath

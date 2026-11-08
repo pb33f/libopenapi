@@ -34,7 +34,7 @@ components:
 	var mu sync.Mutex
 	calls := map[string]int{}
 	base, _ := url.Parse("https://api.example/")
-	doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{BaseURL: base, ResolveNestedRefsWithDocumentContext: true, AllowRemoteReferences: true, RemoteURLHandler: func(location string) (*http.Response, error) {
+	doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{SpecFilePath: "https://retrieval.example/root.yaml?token=private", BaseURL: base, ResolveNestedRefsWithDocumentContext: true, AllowRemoteReferences: true, RemoteURLHandler: func(location string) (*http.Response, error) {
 		mu.Lock()
 		defer mu.Unlock()
 		calls[location]++

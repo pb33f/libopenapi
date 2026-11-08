@@ -98,6 +98,7 @@ components:
 			var mu sync.Mutex
 			var requested []string
 			config := datamodel.NewDocumentConfiguration()
+			config.SpecFilePath = "https://retrieval.example/root.yaml?token=private"
 			config.AllowRemoteReferences = true
 			if tc.base != "" {
 				var err error
