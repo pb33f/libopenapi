@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -212,6 +213,78 @@ func TestRemoteFS_OpenWithContext_FailedFetchReleasesWaitersWithError(t *testing
 				assert.EqualError(t, <-errs, tt.expected)
 			}
 		})
+	}
+}
+
+func remoteYAMLResponse(string) (*http.Response, error) {
+	return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader("type: object\n"))}, nil
+}
+
+func TestRemoteFS_StaleMissReusesPublishedFile(t *testing.T) {
+	const location = "https://example.com/shared.yaml"
+	remoteFS, _ := NewRemoteFSWithRootURL("")
+	var fetches atomic.Int32
+	remoteFS.RemoteHandlerFunc = func(u string) (*http.Response, error) {
+		fetches.Add(1)
+		return remoteYAMLResponse(u)
+	}
+	parsed, _ := url.Parse(location)
+	cacheKey := remoteLookupCacheKey(parsed)
+
+	// this caller observes a miss, then another caller completes publication
+	// before the first reserves the cold-load path.
+	assert.Nil(t, remoteFS.loadCachedRemoteFile(cacheKey, parsed.Path))
+	published, err := remoteFS.OpenWithContext(context.Background(), location)
+	assert.NoError(t, err)
+
+	waiter, file, err := remoteFS.acquireRemoteProcessingWaiter(cacheKey, parsed.Path, location, parsed)
+	assert.Nil(t, waiter)
+	assert.NoError(t, err)
+	assert.Same(t, published, file)
+	_, reserved := remoteFS.ProcessingFiles.Load(cacheKey)
+	assert.False(t, reserved, "completed reservation must be retired before reuse")
+	assert.Equal(t, int32(1), fetches.Load())
+}
+
+func TestRemoteFS_ConcurrentOpenPreservesFileIdentity(t *testing.T) {
+	const location = "https://example.com/shared.yaml"
+	// repeated cold bursts exercise callers whose cache miss outlives a fetch's
+	// reservation. Each burst must fetch once and share one published file.
+	const coldBursts, readers = 128, 64
+	for burst := 0; burst < coldBursts; burst++ {
+		config := CreateOpenAPIIndexConfig()
+		config.AllowRemoteLookup = true
+		remoteFS, _ := NewRemoteFSWithConfig(config)
+		var fetches atomic.Int32
+		remoteFS.RemoteHandlerFunc = func(u string) (*http.Response, error) {
+			fetches.Add(1)
+			return remoteYAMLResponse(u)
+		}
+		opened := make([]any, readers)
+		start := make(chan struct{})
+		var done sync.WaitGroup
+		for i := range opened {
+			done.Add(1)
+			go func() {
+				defer done.Done()
+				<-start
+				file, err := remoteFS.Open(location)
+				if err != nil {
+					t.Error(err)
+				}
+				opened[i] = file
+			}()
+		}
+		close(start)
+		done.Wait()
+		if got := fetches.Load(); got != 1 {
+			t.Fatalf("burst %d fetched %d times", burst, got)
+		}
+		for i, file := range opened {
+			if file != opened[0] {
+				t.Fatalf("burst %d reader %d received a different file", burst, i)
+			}
+		}
 	}
 }
 
