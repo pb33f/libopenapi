@@ -276,6 +276,39 @@ properties:
 	assertValidXML(t, result)
 }
 
+func TestMockGeneratorXML_OmitsNullAttributesAndText(t *testing.T) {
+	const fixture = `type: object
+xml:
+  name: token
+required: [id, revokedAt, expiresAt, note, lastUsed]
+properties:
+  id:
+    type: string
+    xml: {attribute: true}
+    examples: [a1]
+  revokedAt:
+    type: [string, 'null']
+    xml: {attribute: true, prefix: t, namespace: 'urn:token'}
+    examples: [null]
+  expiresAt:
+    type: [string, 'null']
+    xml: {nodeType: attribute}
+    examples: [null]
+  note:
+    type: [string, 'null']
+    xml: {nodeType: text}
+    examples: [null]
+  lastUsed:
+    type: [string, 'null']
+    examples: [null]
+`
+	mockable := createFakeMockWithoutProxy(fixture, nil, nil)
+	payload, err := NewMockGenerator(XML).GenerateMock(mockable, "")
+	require.NoError(t, err)
+	assert.Equal(t, `<?xml version="1.0" encoding="UTF-8"?><token id="a1"></token>`, string(payload))
+	assertValidXML(t, payload)
+}
+
 func TestRenderXML_InvalidXMLNames(t *testing.T) {
 	mg := NewMockGenerator(XML)
 

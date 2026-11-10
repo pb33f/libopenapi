@@ -240,6 +240,10 @@ func (mg *MockGenerator) renderXMLMap(enc *xml.Encoder, start xml.StartElement, 
 
 		switch nodeType {
 		case "attribute":
+			if val == nil {
+				// a null attribute has no value, so omit it like a null element.
+				continue
+			}
 			attrName := resolveElementName(key, propSchema)
 			// Apply prefix for attributes too
 			if propSchema != nil && propSchema.XML != nil && propSchema.XML.Prefix != "" {
@@ -251,7 +255,9 @@ func (mg *MockGenerator) renderXMLMap(enc *xml.Encoder, start xml.StartElement, 
 				Value: fmt.Sprint(val),
 			})
 		case "text", "cdata":
-			textValues = append(textValues, val)
+			if val != nil {
+				textValues = append(textValues, val)
+			}
 		case "none":
 			// Skip the node itself, include sub-properties directly
 			if subMap, ok := val.(map[string]any); ok {
