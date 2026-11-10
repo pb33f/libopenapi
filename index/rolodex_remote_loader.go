@@ -734,6 +734,13 @@ func (i *RemoteFS) acquireRemoteProcessingWaiter(cacheKey, legacyPath, remoteURL
 		return nil, file, err
 	}
 
+	// a completed fetch can publish and retire its waiter after our initial
+	// cache miss. Recheck under the new reservation to preserve its file/tree.
+	if cached := i.loadCachedRemoteFile(cacheKey, legacyPath); cached != nil {
+		i.releaseRemoteProcessingWaiter(processingWaiter, cacheKey, cached, nil)
+		return nil, cached, nil
+	}
+
 	return processingWaiter, nil, nil
 }
 
