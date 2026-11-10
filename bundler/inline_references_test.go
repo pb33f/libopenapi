@@ -432,3 +432,25 @@ func BenchmarkBundleBytes_InlineReferencePreparation(b *testing.B) {
 		})
 	}
 }
+
+func TestPrepareCollectedInlineReferences_SchemaBuildErrorReturned(t *testing.T) {
+	root := []byte("openapi: 3.1.0\ninfo: {title: t, version: v}\npaths: {}\n")
+	document, err := libopenapi.NewDocument(root)
+	require.NoError(t, err)
+	model, err := document.BuildV3Model()
+	require.NoError(t, err)
+
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("type: object\nproperties:\n  amount:\n    $ref: '#/missing'\n"), &node))
+	idx := index.NewSpecIndex(&node)
+	err = prepareCollectedInlineReferences(&model.Model, highbase.NewInlineRenderContext(), false, []*inlineReferenceTarget{{
+		fullDefinition: "broken.yaml#/Broken",
+		definition:     "#/Broken",
+		index:          idx,
+		node:           node.Content[0],
+		name:           "Broken",
+	}}, nil)
+	require.ErrorContains(t, err, "broken.yaml#/Broken")
+	require.ErrorContains(t, err, "#/missing")
+	require.Nil(t, model.Model.Components.Schemas.GetOrZero("Broken"))
+}

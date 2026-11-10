@@ -766,22 +766,24 @@ func requireClosed[K comparable, V any](t *testing.T, c <-chan orderedmap.Pair[K
 }
 
 func TestMapMarshalYAMLEmptyNull(t *testing.T) {
-	value := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", LineComment: "empty extension"}
-	for _, wrapped := range []bool{false, true} {
-		m := orderedmap.New[string, any]()
-		if wrapped {
-			m.Set("x-a", yamlNodeMarshaler{node: value})
-		} else {
-			m.Set("x-a", value)
+	for _, tag := range []string{"!!null", ""} {
+		value := &yaml.Node{Kind: yaml.ScalarNode, Tag: tag, LineComment: "empty extension"}
+		for _, wrapped := range []bool{false, true} {
+			m := orderedmap.New[string, any]()
+			if wrapped {
+				m.Set("x-a", yamlNodeMarshaler{node: value})
+			} else {
+				m.Set("x-a", value)
+			}
+			node, err := m.MarshalYAML()
+			require.NoError(t, err)
+			got := node.(*yaml.Node).Content[1]
+			require.NotSame(t, value, got)
+			require.Equal(t, value, got)
+			rendered, err := yaml.Marshal(m)
+			require.NoError(t, err)
+			require.Equal(t, "x-a: # empty extension\n", string(rendered))
+			require.Empty(t, value.Value)
 		}
-		node, err := m.MarshalYAML()
-		require.NoError(t, err)
-		got := node.(*yaml.Node).Content[1]
-		require.NotSame(t, value, got)
-		require.Equal(t, value, got)
-		rendered, err := yaml.Marshal(m)
-		require.NoError(t, err)
-		require.Equal(t, "x-a: # empty extension\n", string(rendered))
-		require.Empty(t, value.Value)
 	}
 }

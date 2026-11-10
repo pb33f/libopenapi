@@ -507,6 +507,7 @@ func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *pr
 		// Mapped references identify targets, not the outgoing $ref on an alias.
 		// Only the owning index's sequenced reference may rewrite that node.
 		origDef := mRef.FullDefinition
+		seedRefPointer(processedNodes, origDef, mRef)
 		rename := renameRefWithSource(idx, origDef, mRef, processedNodes)
 		mRef.FullDefinition = rename
 		mRef.Definition = rename
@@ -589,20 +590,24 @@ func renameRefWithSource(
 	return def
 }
 
-func rewireRef(idx *index.SpecIndex, ref *index.Reference, fullDef string, processedNodes *orderedmap.Map[string, *processRef]) {
-	isRef, _, _ := utils.IsNodeRefValue(ref.Node)
-
-	// extract the pr from the processed nodes.
-	if pr := processedRefFor(processedNodes, fullDef, ref); pr != nil {
-		if kk, _, _ := utils.IsNodeRefValue(pr.ref.Node); kk {
-			if pr.refPointer == "" {
-				// Use GetRefValueNode to handle OA 3.1 sibling properties correctly
-				if refValNode := utils.GetRefValueNode(pr.ref.Node); refValNode != nil {
-					pr.refPointer = refValNode.Value
-				}
-			}
+// seedRefPointer records the outgoing $ref of a processed alias target so the
+// inline fallback can follow it, whether the target was reached by a sequenced or mapped reference.
+func seedRefPointer(processedNodes *orderedmap.Map[string, *processRef], fullDef string, ref *index.Reference) {
+	pr := processedRefFor(processedNodes, fullDef, ref)
+	if pr == nil || pr.refPointer != "" {
+		return
+	}
+	if kk, _, _ := utils.IsNodeRefValue(pr.ref.Node); kk {
+		// Use GetRefValueNode to handle OA 3.1 sibling properties correctly
+		if refValNode := utils.GetRefValueNode(pr.ref.Node); refValNode != nil {
+			pr.refPointer = refValNode.Value
 		}
 	}
+}
+
+func rewireRef(idx *index.SpecIndex, ref *index.Reference, fullDef string, processedNodes *orderedmap.Map[string, *processRef]) {
+	isRef, _, _ := utils.IsNodeRefValue(ref.Node)
+	seedRefPointer(processedNodes, fullDef, ref)
 
 	rename := renameRefWithSource(idx, fullDef, ref, processedNodes)
 	if isRef {

@@ -68,7 +68,10 @@ func prepareCollectedInlineReferences(model *v3.Document, ctx *highbase.InlineRe
 			if existingNames[componentName] {
 				componentName = calculateCollisionNameInline(componentName, target.fullDefinition, "__", existingNames)
 			}
-			schema, _ := buildSchema(target.node, target.index)
+			schema, err := buildSchema(target.node, target.index)
+			if err != nil {
+				return fmt.Errorf("unable to lift inline schema target '%s': %w", target.fullDefinition, err)
+			}
 			model.Components.Schemas.Set(componentName, schema)
 			existingNames[componentName] = true
 		}
