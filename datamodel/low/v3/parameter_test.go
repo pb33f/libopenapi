@@ -365,3 +365,21 @@ schema:
 	hash2 := n.Hash()
 	assert.NotEqual(t, hash1, hash2)
 }
+
+func TestParameter_Hash_ExplodePresence(t *testing.T) {
+	build := func(spec string) *Parameter {
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(spec), &node))
+		var parameter Parameter
+		require.NoError(t, low.BuildModel(node.Content[0], &parameter))
+		require.NoError(t, parameter.Build(context.Background(), nil, node.Content[0], nil))
+		return &parameter
+	}
+	spec := "name: a\nin: query\nschema: {type: array}\n"
+	absent := build(spec)
+	explicitFalse := build(spec + "explode: false\n")
+	explicitTrue := build(spec + "explode: true\n")
+	assert.NotEqual(t, absent.Hash(), explicitFalse.Hash())
+	assert.NotEqual(t, absent.Hash(), explicitTrue.Hash())
+	assert.Equal(t, explicitTrue.Hash(), build(spec+"explode: true\n").Hash())
+}
