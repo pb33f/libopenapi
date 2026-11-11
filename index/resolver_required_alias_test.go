@@ -1,6 +1,7 @@
 package index
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pb33f/go-yaml"
@@ -17,6 +18,44 @@ func TestResolver_RequiredReferenceMissingTarget(t *testing.T) {
 		RequiredRefProperties: map[string][]string{"#/Missing": {"id"}},
 	}, make(map[string]bool), nil)
 	require.False(t, infinite)
+}
+
+func TestResolver_RequiredChildWithSelfReference(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		required string
+		infinite bool
+	}{
+		{"required next node", "[id, next]", true},
+		{"optional next node", "[id]", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := fmt.Sprintf(`openapi: 3.1.0
+info: {title: Linked list, version: '1'}
+paths: {}
+components:
+  schemas:
+    List:
+      type: object
+      required: [head]
+      properties:
+        head: {$ref: '#/components/schemas/Node'}
+    Node:
+      type: object
+      required: %s
+      properties:
+        id: {type: integer}
+        next: {$ref: '#/components/schemas/Node'}
+`, tc.required)
+			var doc yaml.Node
+			require.NoError(t, yaml.Unmarshal([]byte(spec), &doc))
+			idx := NewSpecIndex(&doc)
+			list, _ := idx.SearchIndexForReference("#/components/schemas/List")
+			require.NotNil(t, list)
+			infinite, _ := NewResolver(idx).isInfiniteCircularDependency(list, make(map[string]bool), nil)
+			require.Equal(t, tc.infinite, infinite)
+		})
+	}
 }
 
 func TestResolver_CircularJourneySnapshot(t *testing.T) {
