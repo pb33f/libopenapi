@@ -1069,3 +1069,41 @@ required: false`
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
+
+func TestCompareParameters_V3_ExplodePresence(t *testing.T) {
+	low.ClearHashCache()
+	build := func(spec string) *v3.Parameter {
+		var node yaml.Node
+		if !assert.NoError(t, yaml.Unmarshal([]byte(spec), &node)) {
+			t.FailNow()
+		}
+		var parameter v3.Parameter
+		assert.NoError(t, low.BuildModel(node.Content[0], &parameter))
+		assert.NoError(t, parameter.Build(context.Background(), nil, node.Content[0], nil))
+		return &parameter
+	}
+	spec := "name: a\nin: query\nschema: {type: array}\n"
+	absent := build(spec)
+	explicitFalse := build(spec + "explode: false\n")
+	for _, tc := range []struct {
+		name        string
+		left, right *v3.Parameter
+		changeType  int
+	}{
+		{"added", absent, explicitFalse, PropertyAdded},
+		{"removed", explicitFalse, absent, PropertyRemoved},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			changes := CompareParameters(tc.left, tc.right)
+			if !assert.NotNil(t, changes) {
+				return
+			}
+			assert.Equal(t, 1, changes.TotalChanges())
+			assert.Equal(t, 0, changes.TotalBreakingChanges())
+			if assert.Len(t, changes.GetAllChanges(), 1) {
+				assert.Equal(t, "explode", changes.GetAllChanges()[0].Property)
+				assert.Equal(t, tc.changeType, changes.GetAllChanges()[0].ChangeType)
+			}
+		})
+	}
+}
