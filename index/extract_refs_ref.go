@@ -66,6 +66,17 @@ func (index *SpecIndex) extractReferenceAt(
 	}
 
 	fullDefinitionPath, componentName := index.resolveReferenceTarget(value)
+	refKey := value
+	if isSchemaAnchorFragment(value) {
+		// "#foo" names an $anchor in the enclosing resource, so the same text can
+		// point at different schemas. key it by the resource.
+		base := index.specAbsolutePath
+		if scope != nil && scope.BaseUri != "" {
+			base = scope.BaseUri
+		}
+		fullDefinitionPath = base + value
+		refKey = fullDefinitionPath
+	}
 	_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(componentName)
 
 	siblingProps, siblingKeys := extractSiblingRefProperties(node)
@@ -107,7 +118,7 @@ func (index *SpecIndex) extractReferenceAt(
 		return nil
 	}
 
-	if index.allRefs[value] != nil {
+	if index.allRefs[refKey] != nil {
 		return nil
 	}
 

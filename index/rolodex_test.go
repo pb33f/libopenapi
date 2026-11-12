@@ -2940,6 +2940,7 @@ func TestRolodex_Release(t *testing.T) {
 	rolodex.debouncedSafeCircRefs = []*CircularReferenceResult{{}}
 	rolodex.debouncedIgnoredCircRefs = []*CircularReferenceResult{{}}
 	rolodex.globalSchemaIdRegistry = map[string]*SchemaIdEntry{"test": {}}
+	rolodex.globalSchemaAnchorRegistry = map[string]*SchemaIdEntry{"#a": {}}
 	rolodex.indexed = true
 	rolodex.built = true
 	rolodex.manualBuilt = true
@@ -2964,6 +2965,7 @@ func TestRolodex_Release(t *testing.T) {
 	assert.Nil(t, rolodex.debouncedSafeCircRefs)
 	assert.Nil(t, rolodex.debouncedIgnoredCircRefs)
 	assert.Nil(t, rolodex.globalSchemaIdRegistry)
+	assert.Nil(t, rolodex.globalSchemaAnchorRegistry)
 	assert.Nil(t, rolodex.indexConfig)
 	assert.Zero(t, rolodex.indexingDuration)
 	assert.False(t, rolodex.indexed)
