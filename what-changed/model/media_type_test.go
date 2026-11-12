@@ -67,7 +67,7 @@ encoding:
 itemSchema:
   type: string
 itemEncoding:
- - contentType: application/json`
+  contentType: application/json`
 
 	right := `schema:
   type: string
@@ -99,7 +99,8 @@ itemEncoding:
 	assert.NotNil(t, extChanges)
 	assert.Equal(t, 3, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 3)
-	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	// itemSchema type and itemEncoding contentType are both breaking modifications
+	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.ExampleLabel, extChanges.Changes[0].Property)
 }
@@ -365,8 +366,7 @@ examples:
   exampleOne:
     value: yummy coffee
 itemEncoding:
-  cupOfTea:
-    contentType: milk/hotwater
+  contentType: milk/hotwater
 encoding:
   something: 
     contentType: application/json
@@ -379,8 +379,7 @@ examples:
   exampleOne:
     value: yummy coffee is great!
 itemEncoding:
-  cupOfTea:
-    contentType: milk/hotwater/sugar
+  contentType: milk/hotwater/sugar
 encoding:
   something:
     contentType: application/xml
@@ -547,9 +546,8 @@ func TestCompareMediaTypes_ItemEncodingAdded(t *testing.T) {
 	right := `schema:
   type: array
 itemEncoding:
-  file:
-    contentType: image/jpeg
-    allowReserved: true`
+  contentType: image/jpeg
+  allowReserved: true`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -583,16 +581,14 @@ func TestCompareMediaTypes_ItemEncodingModified(t *testing.T) {
 	left := `schema:
   type: array
 itemEncoding:
-  file:
-    contentType: image/jpeg
-    allowReserved: true`
+  contentType: image/jpeg
+  allowReserved: true`
 
 	right := `schema:
   type: array
 itemEncoding:
-  file:
-    contentType: image/png
-    allowReserved: false`
+  contentType: image/png
+  allowReserved: false`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -611,7 +607,7 @@ itemEncoding:
 
 	assert.NotNil(t, changes)
 	assert.NotNil(t, changes.ItemEncodingChanges)
-	assert.Equal(t, 1, len(changes.ItemEncodingChanges))
+	assert.Equal(t, 2, changes.ItemEncodingChanges.TotalChanges())
 	assert.Greater(t, changes.TotalChanges(), 0)
 }
 
@@ -625,8 +621,7 @@ encoding:
   field1:
     contentType: text/plain
 itemEncoding:
-  stream1:
-    contentType: application/json`
+  contentType: application/json`
 
 	right := `schema:
   type: object
@@ -634,8 +629,7 @@ encoding:
   field1:
     contentType: text/html
 itemEncoding:
-  stream1:
-    contentType: application/xml`
+  contentType: application/xml`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -656,7 +650,7 @@ itemEncoding:
 	assert.NotNil(t, changes.EncodingChanges)
 	assert.NotNil(t, changes.ItemEncodingChanges)
 	assert.Equal(t, 1, len(changes.EncodingChanges))
-	assert.Equal(t, 1, len(changes.ItemEncodingChanges))
+	assert.Equal(t, 1, changes.ItemEncodingChanges.TotalChanges())
 	assert.Greater(t, changes.TotalChanges(), 1) // At least 2 changes
 }
 
@@ -672,8 +666,7 @@ itemSchema:
     id:
       type: string
 itemEncoding:
-  id:
-    contentType: text/plain`
+  contentType: text/plain`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &lNode)
@@ -705,8 +698,7 @@ func TestMediaTypeChanges_GetAllChanges_WithItemFields(t *testing.T) {
 itemSchema:
   type: object
 itemEncoding:
-  field:
-    contentType: application/json`
+  contentType: application/json`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -865,4 +857,154 @@ examples:
 	assert.NotNil(t, changes.ExampleChanges["oldExample"], "Removed example 'oldExample' should appear in ExampleChanges map")
 	assert.Equal(t, 1, changes.ExampleChanges["oldExample"].TotalChanges())
 	assert.Equal(t, ObjectRemoved, changes.ExampleChanges["oldExample"].Changes[0].ChangeType)
+}
+
+func compareMediaTypeYAML(t *testing.T, left, right string) *MediaTypeChanges {
+	t.Helper()
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+	var lMt, rMt v3.MediaType
+	_ = low.BuildModel(&lNode, &lMt)
+	_ = low.BuildModel(&rNode, &rMt)
+	assert.NoError(t, lMt.Build(context.Background(), nil, lNode.Content[0], index.NewSpecIndex(&lNode)))
+	assert.NoError(t, rMt.Build(context.Background(), nil, rNode.Content[0], index.NewSpecIndex(&rNode)))
+	return CompareMediaTypes(&lMt, &rMt)
+}
+
+func TestCompareMediaTypes_PrefixEncoding(t *testing.T) {
+	low.ClearHashCache()
+	ResetActiveBreakingRulesConfig()
+
+	left := `prefixEncoding:
+  - contentType: application/json
+  - contentType: image/png`
+
+	// modified by position
+	changes := compareMediaTypeYAML(t, left, `prefixEncoding:
+  - contentType: application/json
+  - contentType: image/gif`)
+	assert.NotNil(t, changes)
+	assert.Len(t, changes.PrefixEncodingChanges, 1)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+
+	// removing a positional entry is breaking
+	changes = compareMediaTypeYAML(t, left, `prefixEncoding:
+  - contentType: application/json`)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.PrefixEncodingLabel, changes.GetAllChanges()[0].Property)
+
+	// adding one is not
+	changes = compareMediaTypeYAML(t, left, left+`
+  - contentType: text/plain`)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+	// reordering changes the entry at both positions
+	changes = compareMediaTypeYAML(t, left, `prefixEncoding:
+  - contentType: image/png
+  - contentType: application/json`)
+	assert.NotNil(t, changes)
+	assert.Len(t, changes.PrefixEncodingChanges, 2)
+}
+
+func TestCompareMediaTypes_ItemEncodingRemovedIsBreaking(t *testing.T) {
+	low.ClearHashCache()
+	ResetActiveBreakingRulesConfig()
+
+	changes := compareMediaTypeYAML(t, `schema:
+  type: array
+itemEncoding:
+  contentType: image/png`, `schema:
+  type: array`)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+func TestCompareMediaTypes_NestedEncoding(t *testing.T) {
+	low.ClearHashCache()
+	ResetActiveBreakingRulesConfig()
+
+	changes := compareMediaTypeYAML(t, `encoding:
+  batch:
+    contentType: multipart/mixed
+    prefixEncoding:
+      - contentType: application/json
+    itemEncoding:
+      contentType: image/png
+    encoding:
+      inner:
+        contentType: text/plain`, `encoding:
+  batch:
+    contentType: multipart/mixed
+    prefixEncoding:
+      - contentType: application/xml
+    itemEncoding:
+      contentType: image/gif`)
+	assert.NotNil(t, changes)
+	batch := changes.EncodingChanges["batch"]
+	assert.NotNil(t, batch)
+	assert.Len(t, batch.PrefixEncodingChanges, 1)
+	assert.NotNil(t, batch.ItemEncodingChanges)
+	// prefixEncoding[0].contentType, itemEncoding.contentType, encoding.inner removed
+	assert.Equal(t, 3, changes.TotalChanges())
+	assert.Equal(t, 3, changes.TotalBreakingChanges())
+}
+
+func TestCompareMediaTypes_NestedEncoding_Modified(t *testing.T) {
+	low.ClearHashCache()
+	ResetActiveBreakingRulesConfig()
+
+	changes := compareMediaTypeYAML(t, `encoding:
+  batch:
+    encoding:
+      inner:
+        contentType: text/plain
+    prefixEncoding:
+      - itemEncoding:
+          contentType: image/png`, `encoding:
+  batch:
+    encoding:
+      inner:
+        contentType: text/csv
+    prefixEncoding:
+      - itemEncoding:
+          contentType: image/gif`)
+	assert.NotNil(t, changes)
+	batch := changes.EncodingChanges["batch"]
+	assert.NotNil(t, batch)
+	assert.NotNil(t, batch.EncodingChanges["inner"])
+	assert.NotNil(t, batch.PrefixEncodingChanges[0].ItemEncodingChanges)
+	// encoding.inner.contentType and prefixEncoding[0].itemEncoding.contentType
+	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Equal(t, 2, changes.TotalBreakingChanges())
+	assert.Len(t, changes.GetAllChanges(), 2)
+}
+
+func TestCompareMediaTypes_EncodingRulesConfigurable(t *testing.T) {
+	low.ClearHashCache()
+	defer ResetActiveBreakingRulesConfig()
+
+	config := GenerateDefaultBreakingRules()
+	config.Merge(&BreakingRulesConfig{
+		MediaType: &MediaTypeRules{PrefixEncoding: rule(false, false, false)},
+		Encoding:  &EncodingRules{ItemEncoding: rule(false, false, false)},
+	})
+	SetActiveBreakingRulesConfig(config)
+
+	changes := compareMediaTypeYAML(t, `prefixEncoding:
+  - contentType: application/json
+encoding:
+  batch:
+    itemEncoding:
+      contentType: image/png`, `encoding:
+  batch: {}`)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
 }

@@ -62,14 +62,11 @@ itemSchema:
     metadata:
       type: object
 itemEncoding:
-  file:
-    contentType: image/jpeg
-    headers:
-      X-Custom:
-        schema:
-          type: string
-  metadata:
-    contentType: application/json`
+  contentType: image/jpeg
+  headers:
+    X-Custom:
+      schema:
+        type: string`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
@@ -82,25 +79,10 @@ itemEncoding:
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-	// Check itemEncoding
+	// itemEncoding is a single Encoding Object (OpenAPI 3.2)
 	assert.NotNil(t, n.ItemEncoding.Value)
-	assert.Equal(t, 2, n.ItemEncoding.Value.Len())
-
-	// Check file encoding
-	var foundFile, foundMeta bool
-	for k, v := range n.ItemEncoding.Value.FromOldest() {
-		if k.Value == "file" {
-			foundFile = true
-			assert.Equal(t, "image/jpeg", v.Value.ContentType.Value)
-			assert.NotNil(t, v.Value.Headers.Value)
-		}
-		if k.Value == "metadata" {
-			foundMeta = true
-			assert.Equal(t, "application/json", v.Value.ContentType.Value)
-		}
-	}
-	assert.True(t, foundFile, "file encoding should be present")
-	assert.True(t, foundMeta, "metadata encoding should be present")
+	assert.Equal(t, "image/jpeg", n.ItemEncoding.Value.ContentType.Value)
+	assert.Equal(t, 1, n.ItemEncoding.Value.Headers.Value.Len())
 }
 
 func TestMediaType_Build_ItemSchema_Bad(t *testing.T) {
@@ -147,8 +129,7 @@ itemSchema:
     data:
       type: object
 itemEncoding:
-  data:
-    contentType: application/json
+  contentType: application/json
 encoding:
   mainField:
     style: form
@@ -173,7 +154,7 @@ example: '{"timestamp":"2025-01-01T00:00:00Z","event":"test","data":{"key":"valu
 	assert.NotNil(t, n.Encoding.Value)
 	assert.NotNil(t, n.ItemEncoding.Value)
 	assert.Equal(t, 1, n.Encoding.Value.Len())
-	assert.Equal(t, 1, n.ItemEncoding.Value.Len())
+	assert.Equal(t, "application/json", n.ItemEncoding.Value.ContentType.Value)
 }
 
 func TestMediaType_Hash_WithItemSchema(t *testing.T) {
@@ -213,14 +194,12 @@ func TestMediaType_Hash_WithItemEncoding(t *testing.T) {
 	yml1 := `schema:
   type: array
 itemEncoding:
-  file:
-    contentType: image/jpeg`
+  contentType: image/jpeg`
 
 	yml2 := `schema:
   type: array
 itemEncoding:
-  file:
-    contentType: image/png`
+  contentType: image/png`
 
 	var idxNode1, idxNode2 yaml.Node
 	_ = yaml.Unmarshal([]byte(yml1), &idxNode1)

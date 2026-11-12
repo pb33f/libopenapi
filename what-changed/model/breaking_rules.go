@@ -257,18 +257,22 @@ func buildDefaultRules() *BreakingRulesConfig {
 		},
 
 		MediaType: &MediaTypeRules{
-			Example:      rule(false, false, false),
-			Examples:     rule(false, false, false),
-			Schema:       rule(true, false, true),
-			ItemSchema:   rule(true, false, true),
-			ItemEncoding: rule(false, false, true),
+			Example:        rule(false, false, false),
+			Examples:       rule(false, false, false),
+			Schema:         rule(true, false, true),
+			ItemSchema:     rule(true, false, true),
+			ItemEncoding:   rule(false, false, true),
+			PrefixEncoding: rule(false, false, true),
 		},
 
 		Encoding: &EncodingRules{
-			ContentType:   rule(true, true, true),
-			Style:         rule(true, true, true),
-			Explode:       rule(true, true, true),
-			AllowReserved: rule(false, false, false),
+			ContentType:    rule(true, true, true),
+			Style:          rule(true, true, true),
+			Explode:        rule(true, true, true),
+			AllowReserved:  rule(false, false, false),
+			Encoding:       rule(false, false, true),
+			PrefixEncoding: rule(false, false, true),
+			ItemEncoding:   rule(false, false, true),
 		},
 
 		Header: &HeaderRules{

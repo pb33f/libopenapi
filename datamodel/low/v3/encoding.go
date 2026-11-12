@@ -23,12 +23,18 @@ type Encoding struct {
 	Style         low.NodeReference[string]
 	Explode       low.NodeReference[bool]
 	AllowReserved low.NodeReference[bool]
-	KeyNode       *yaml.Node
-	RootNode      *yaml.Node
-	index         *index.SpecIndex
-	context       context.Context
-	nodeStore     low.NodeLines
-	reference     low.Reference
+
+	// Encoding, PrefixEncoding and ItemEncoding describe nested multipart parts (OpenAPI 3.2+).
+	Encoding       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]]
+	PrefixEncoding low.NodeReference[[]low.ValueReference[*Encoding]]
+	ItemEncoding   low.NodeReference[*Encoding]
+
+	KeyNode   *yaml.Node
+	RootNode  *yaml.Node
+	index     *index.SpecIndex
+	context   context.Context
+	nodeStore low.NodeLines
+	reference low.Reference
 	*low.Reference
 	low.NodeMap
 }
@@ -75,6 +81,8 @@ func (en *Encoding) Hash() uint64 {
 		h.WriteByte(low.HASH_PIPE)
 		low.HashBool(h, en.AllowReserved.Value)
 		h.WriteByte(low.HASH_PIPE)
+		low.HashMap(h, "encoding", en.Encoding.Value)
+		hashEncodingFields(h, en.PrefixEncoding.Value, en.ItemEncoding.Value)
 		return h.Sum64()
 	})
 }
@@ -111,5 +119,68 @@ func (en *Encoding) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
+	return extractEncodingFields(ctx, root, idx, en.Nodes, &en.Encoding, &en.PrefixEncoding, &en.ItemEncoding)
+}
+
+// FindEncoding attempts to locate a nested Encoding with the supplied property name.
+func (en *Encoding) FindEncoding(eType string) *low.ValueReference[*Encoding] {
+	return low.FindItemInOrderedMap[*Encoding](eType, en.Encoding.Value)
+}
+
+// extractEncodingFields builds the encoding, prefixEncoding and itemEncoding fields shared by the
+// Media Type Object and (for nested multipart parts) the Encoding Object.
+func extractEncodingFields(ctx context.Context, root *yaml.Node, idx *index.SpecIndex, nodes *low.NodeLines,
+	encoding *low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]],
+	prefixEncoding *low.NodeReference[[]low.ValueReference[*Encoding]],
+	itemEncoding *low.NodeReference[*Encoding],
+) error {
+	encs, encsL, encsN, err := low.ExtractMap[*Encoding](ctx, EncodingLabel, root, idx)
+	if err != nil {
+		return err
+	}
+	if encs != nil {
+		*encoding = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]]{
+			Value:     encs,
+			KeyNode:   encsL,
+			ValueNode: encsN,
+		}
+		nodes.Store(encsL.Line, encsL)
+		for k, v := range encs.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
+		}
+	}
+
+	prefix, prefixL, prefixN, err := low.ExtractArray[*Encoding](ctx, PrefixEncodingLabel, root, idx)
+	if err != nil {
+		return err
+	}
+	if prefixL != nil {
+		*prefixEncoding = low.NodeReference[[]low.ValueReference[*Encoding]]{
+			Value:     prefix,
+			KeyNode:   prefixL,
+			ValueNode: prefixN,
+		}
+		nodes.Store(prefixL.Line, prefixL)
+	}
+
+	item, err := low.ExtractObject[*Encoding](ctx, ItemEncodingLabel, root, idx)
+	if err != nil {
+		return err
+	}
+	if !item.IsEmpty() {
+		*itemEncoding = item
+		nodes.Store(item.KeyNode.Line, item.KeyNode)
+	}
 	return nil
+}
+
+// hashEncodingFields hashes prefixEncoding in order, because each entry applies to the part at its position,
+// then itemEncoding.
+func hashEncodingFields(h *maphash.Hash, prefix []low.ValueReference[*Encoding], item *Encoding) {
+	for i := range prefix {
+		low.HashString(h, "prefixEncoding", low.GenerateHashString(prefix[i].Value))
+	}
+	if item != nil {
+		low.HashString(h, "itemEncoding", low.GenerateHashString(item))
+	}
 }
