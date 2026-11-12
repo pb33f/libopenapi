@@ -40,6 +40,42 @@ func TestPathItem(t *testing.T) {
 	assert.Equal(t, 1, r.GoLow().Servers.KeyNode.Line)
 }
 
+func TestPathItem_NullOperations(t *testing.T) {
+	yml := `get: null
+post:
+  description: create
+put:
+additionalOperations:
+  FOO: null
+  BAR:
+    description: bar`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n lowV3.PathItem
+	_ = low.BuildModel(&idxNode, &n)
+	require.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+
+	r := NewPathItem(&n)
+	assert.Nil(t, r.Get)
+	assert.Nil(t, r.Put)
+	require.NotNil(t, r.Post)
+	assert.Equal(t, "create", r.Post.Description)
+
+	ops := r.GetOperations()
+	assert.Equal(t, 2, ops.Len())
+	_, ok := ops.Get("get")
+	assert.False(t, ok)
+	_, ok = ops.Get("FOO")
+	assert.False(t, ok)
+
+	require.NotNil(t, r.AdditionalOperations)
+	assert.Equal(t, 1, r.AdditionalOperations.Len())
+	assert.Equal(t, "bar", r.AdditionalOperations.GetOrZero("BAR").Description)
+}
+
 func TestPathItem_WithAdditionalOperations(t *testing.T) {
 	// Test for lines 132-133 and 204-210: Additional operations support in OpenAPI 3.2+
 	// Create a proper low-level PathItem with AdditionalOperations
