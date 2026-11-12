@@ -120,3 +120,47 @@ func TestEncoding_Build_ScalarRoot(t *testing.T) {
 	assert.Len(t, nodes[scalar.Content[0].Line], 1)
 	assert.Equal(t, "hello", nodes[scalar.Content[0].Line][0].Value)
 }
+
+func TestEncoding_Build_Nested(t *testing.T) {
+	yml := `contentType: multipart/mixed
+encoding:
+  meta:
+    contentType: application/json
+prefixEncoding:
+  - contentType: application/xml
+  - contentType: image/png
+itemEncoding:
+  contentType: text/plain`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Encoding
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+
+	assert.Equal(t, "application/json", n.FindEncoding("meta").Value.ContentType.Value)
+	assert.Nil(t, n.FindEncoding("missing"))
+	assert.Len(t, n.PrefixEncoding.Value, 2)
+	assert.Equal(t, "image/png", n.PrefixEncoding.Value[1].Value.ContentType.Value)
+	assert.Equal(t, "text/plain", n.ItemEncoding.Value.ContentType.Value)
+}
+
+func TestEncoding_Build_Error_Nested(t *testing.T) {
+	for name, yml := range map[string]string{
+		"encoding":       "encoding:\n  part:\n    $ref: '#/bork'",
+		"prefixEncoding": "prefixEncoding:\n  - $ref: '#/bork'",
+		"itemEncoding":   "itemEncoding:\n  $ref: '#/bork'",
+	} {
+		t.Run(name, func(t *testing.T) {
+			var idxNode yaml.Node
+			_ = yaml.Unmarshal([]byte(yml), &idxNode)
+			idx := index.NewSpecIndex(&idxNode)
+
+			var n Encoding
+			_ = low.BuildModel(idxNode.Content[0], &n)
+			assert.Error(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+		})
+	}
+}
