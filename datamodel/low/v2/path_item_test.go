@@ -104,6 +104,35 @@ func TestPathItem_Build_MethodModelBuildFail(t *testing.T) {
 	assert.ErrorContains(t, err, "model boom")
 }
 
+func TestPathItem_Build_NonMappingOperations(t *testing.T) {
+	yml := `get: null
+put:
+post: ~
+delete: nope
+head: []
+options: ''
+patch: {}`
+
+	var idxNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &idxNode))
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	require.NoError(t, low.BuildModel(idxNode.Content[0], &n))
+	require.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+
+	assert.True(t, n.Get.IsEmpty())
+	assert.True(t, n.Put.IsEmpty())
+	assert.True(t, n.Post.IsEmpty())
+	assert.True(t, n.Delete.IsEmpty())
+	assert.True(t, n.Head.IsEmpty())
+	assert.True(t, n.Options.IsEmpty())
+
+	// an empty mapping is an operation, just an empty one.
+	require.False(t, n.Patch.IsEmpty())
+	assert.NotNil(t, n.Patch.Value)
+}
+
 func TestPathItem_Hash(t *testing.T) {
 	yml := `get:
   description: get me up
