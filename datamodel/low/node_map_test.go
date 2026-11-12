@@ -10,6 +10,30 @@ import (
 	"github.com/pb33f/testify/assert"
 )
 
+// Placeholders for skipped external references are never built, so their node store is nil. Writing
+// to or reading from it must be a no-op, not a nil pointer dereference.
+func TestNodeLines_NilReceiver(t *testing.T) {
+	var n *NodeLines
+	node := &yaml.Node{Line: 3}
+
+	assert.NotPanics(t, func() { n.Store(3, node) })
+	assert.NotPanics(t, func() { n.add(3, node) })
+
+	v, ok := n.Load(3)
+	assert.Nil(t, v)
+	assert.False(t, ok)
+
+	called := false
+	n.Range(func(int, any) bool { called = true; return true })
+	assert.False(t, called)
+
+	nm := &NodeMap{}
+	assert.NotPanics(t, func() { nm.AddNode(3, node) })
+	assert.False(t, nm.ContainsLine(3))
+	assert.Equal(t, []int{0}, nm.GetNodeLines())
+	assert.Len(t, nm.GetNodes()[0], 0)
+}
+
 func Test_NodeMapExtractNodes(t *testing.T) {
 	yml := `one: hello
 two: there
