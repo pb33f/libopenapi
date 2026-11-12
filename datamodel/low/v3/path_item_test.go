@@ -422,6 +422,90 @@ func TestPathItem_Build_StandardOperationUnknownYAMLKey(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestPathItem_Build_NonMappingOperations(t *testing.T) {
+	yml := `x-nothing: null
+get: null
+put:
+post: ~
+delete: nope
+head: []
+options:
+  $ref: '#/x-nothing'
+trace: null
+query: ''
+patch: {}
+ROOT:
+  $ref: '#/x-nothing'
+additionalOperations:
+  FOO: null
+  BAR: {}
+  BAZ: nope
+  QUX:
+  REF:
+    $ref: '#/x-nothing'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	err := n.Build(context.Background(), nil, idxNode.Content[0], idx)
+	require.NoError(t, err)
+
+	assert.True(t, n.Get.IsEmpty())
+	assert.True(t, n.Put.IsEmpty())
+	assert.True(t, n.Post.IsEmpty())
+	assert.True(t, n.Delete.IsEmpty())
+	assert.True(t, n.Head.IsEmpty())
+	assert.True(t, n.Options.IsEmpty())
+	assert.True(t, n.Trace.IsEmpty())
+	assert.True(t, n.Query.IsEmpty())
+
+	// an empty mapping is an operation, just an empty one.
+	require.False(t, n.Patch.IsEmpty())
+	assert.NotNil(t, n.Patch.Value)
+
+	require.NotNil(t, n.AdditionalOperations.Value)
+	var keys []string
+	for k := range n.AdditionalOperations.Value.FromOldest() {
+		keys = append(keys, k.Value)
+	}
+	assert.Equal(t, []string{"BAR"}, keys)
+}
+
+func TestPathItem_Build_OnlyNullAdditionalOperations(t *testing.T) {
+	yml := `additionalOperations:
+  FOO: null`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	require.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+	assert.True(t, n.AdditionalOperations.IsEmpty())
+}
+
+func TestPathItem_Hash_NullOperation(t *testing.T) {
+	build := func(yml string) *PathItem {
+		var idxNode yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(yml), &idxNode))
+		idx := index.NewSpecIndex(&idxNode)
+		var n PathItem
+		require.NoError(t, low.BuildModel(idxNode.Content[0], &n))
+		require.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+		return &n
+	}
+
+	absent := build("summary: s")
+	null := build("summary: s\nget: null")
+	empty := build("summary: s\nget: {}")
+	assert.Equal(t, absent.Hash(), null.Hash())
+	assert.NotEqual(t, absent.Hash(), empty.Hash())
+}
+
 func TestPathItem_Build_AdditionalOperationsUnknownYAMLKey(t *testing.T) {
 	// YAML keys matching unexported fields (e.g., "context") are silently ignored
 	// by BuildModel; the build succeeds since the key is simply unrecognized.

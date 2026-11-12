@@ -111,6 +111,12 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 			continue // ignore everything else.
 		}
 
+		// an operation is a mapping. `get:`, `get: null` or any other non-mapping value
+		// holds no operation, so don't build an empty one for it.
+		if !utils.IsNodeMap(pathNode) {
+			continue
+		}
+
 		var op Operation
 		if err := buildPathItemOperationModel(pathNode, &op); err != nil {
 			return err
