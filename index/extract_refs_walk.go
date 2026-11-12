@@ -102,6 +102,9 @@ func (index *SpecIndex) walkChildExtractRefs(node, parent *yaml.Node, state *ext
 	if isDirectOpenAPIExampleValuePath(state.seenPath) && !isDirectOpenAPIExampleRefNode(node) {
 		return nil
 	}
+	if underSchemaInstanceValuePath(state.seenPath, node) {
+		return nil
+	}
 	state.level++
 	if isPoly, _ := index.checkPolymorphicNode(state.prev); isPoly {
 		state.poly = true

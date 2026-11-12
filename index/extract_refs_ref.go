@@ -26,7 +26,7 @@ func (index *SpecIndex) extractReferenceAt(
 	if len(node.Content) <= keyIndex+1 {
 		return nil
 	}
-	if underOpenAPIExamplePayloadPath(seenPath) {
+	if underOpenAPIExamplePayloadPath(seenPath) || underSchemaInstanceValuePath(seenPath, nil) {
 		return nil
 	}
 

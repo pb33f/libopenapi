@@ -1270,3 +1270,133 @@ components:
 		}
 	}
 }
+
+func TestUnderSchemaInstanceValuePath(t *testing.T) {
+	var seq, mapping yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("[{$ref: '#/a'}]"), &seq))
+	require.NoError(t, yaml.Unmarshal([]byte("{named: {$ref: '#/a'}}"), &mapping))
+	tests := []struct {
+		name string
+		path []string
+		node *yaml.Node
+		want bool
+	}{
+		{"empty", nil, nil, false},
+		{"enum", []string{"components", "schemas", "S", "enum"}, nil, true},
+		{"const", []string{"components", "schemas", "S", "const"}, nil, true},
+		{"default", []string{"components", "schemas", "S", "default"}, nil, true},
+		{"below_default", []string{"components", "schemas", "S", "default", "nested"}, nil, true},
+		{"items_enum", []string{"components", "schemas", "S", "items", "enum"}, nil, true},
+		{"examples_array", []string{"components", "schemas", "S", "examples"}, seq.Content[0], true},
+		{"examples_array_element", []string{"components", "schemas", "S", "examples", "[]"}, nil, true},
+		{"examples_map", []string{"content", "application/json", "examples"}, mapping.Content[0], false},
+		{"examples_unknown_node", []string{"components", "schemas", "S", "examples"}, nil, false},
+		{"example_object_named_default", []string{"content", "application/json", "examples", "default"}, nil, false},
+		{"schema_named_default", []string{"components", "schemas", "default"}, nil, false},
+		{"property_named_default", []string{"components", "schemas", "S", "properties", "default"}, nil, false},
+		{"property_named_enum", []string{"components", "schemas", "S", "properties", "enum"}, nil, false},
+		{"property_named_const", []string{"components", "schemas", "S", "properties", "const"}, nil, false},
+		{"default_response", []string{"paths", "~1pets", "get", "responses", "default"}, nil, false},
+		{"default_of_property_named_default", []string{"components", "schemas", "S", "properties", "default", "default"}, nil, true},
+		{"swagger_parameter_named_default", []string{"parameters", "default"}, nil, false},
+		{"operation_parameter_schema_default", []string{"paths", "~1pets", "get", "parameters", "schema", "default"}, nil, true},
+		{"default_response_schema_default", []string{"paths", "~1pets", "get", "responses", "default", "content", "application/json", "schema", "default"}, nil, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, underSchemaInstanceValuePath(tt.path, tt.node))
+		})
+	}
+}
+
+func TestExtractReferenceAt_IgnoresRefsInsideSchemaInstanceValues(t *testing.T) {
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
+	idx.specAbsolutePath = "test.yaml"
+
+	var refNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`$ref: '#/components/schemas/Pet'`), &refNode)
+
+	ref := idx.extractReferenceAt(refNode.Content[0], nil, 0, []string{"components", "schemas", "S", "default"}, nil, false, "")
+	assert.Nil(t, ref)
+	assert.Empty(t, idx.GetAllReferences())
+	assert.Empty(t, idx.GetAllSequencedReferences())
+}
+
+func TestSpecIndex_ExtractRefs_SchemaInstanceValueRefsIgnored(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Instance values
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      responses:
+        default:
+          $ref: '#/components/responses/Default'
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                default: {$ref: '#/data/response-default'}
+              examples:
+                default:
+                  $ref: '#/components/examples/Default'
+components:
+  responses:
+    Default:
+      description: default
+  examples:
+    Default:
+      value: {ok: true}
+  schemas:
+    Data:
+      type: object
+      enum:
+        - {$ref: '#/data/enum'}
+      const: {$ref: '#/data/const'}
+      default:
+        nested: {$ref: '#/data/default'}
+      examples:
+        - {$ref: '#/data/examples'}
+      items:
+        enum: [{$ref: '#/data/items-enum'}]
+    Named:
+      type: object
+      properties:
+        default: {$ref: '#/components/schemas/Target'}
+        enum: {$ref: '#/components/schemas/Target'}
+        const: {$ref: '#/components/schemas/Target'}
+        examples: {$ref: '#/components/schemas/Target'}
+    default:
+      $ref: '#/components/schemas/Target'
+    Target:
+      type: string
+`
+
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &rootNode))
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+
+	rawRefs := make(map[string]bool)
+	for _, ref := range idx.GetRawReferencesSequenced() {
+		rawRefs[ref.RawRef] = true
+	}
+
+	assert.True(t, rawRefs["#/components/responses/Default"], "a response keyed default is a reference")
+	assert.True(t, rawRefs["#/components/examples/Default"], "an Example Object named default is a reference")
+	assert.True(t, rawRefs["#/components/schemas/Target"], "properties named default, enum, const and examples are schemas")
+	for raw := range rawRefs {
+		assert.False(t, strings.HasPrefix(raw, "#/data/"), "instance data indexed as a reference: %s", raw)
+	}
+	assert.Empty(t, idx.GetReferenceIndexErrors())
+}
+
+func TestIsOpenAPIKeywordSegment_OutOfRange(t *testing.T) {
+	path := []string{"components", "schemas", "S", "default"}
+	assert.False(t, isOpenAPIKeywordSegment(path, -1))
+	assert.False(t, isOpenAPIKeywordSegment(path, len(path)))
+	assert.True(t, isOpenAPIKeywordSegment(path, 3))
+}
