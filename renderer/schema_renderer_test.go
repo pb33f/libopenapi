@@ -1436,6 +1436,49 @@ components:
 	assert.Equal(t, "from-base", structure["value"])
 }
 
+func TestRenderSchema_RefWithUnevaluatedSiblingUsesReferencedShape(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Ref Siblings
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Base:
+      type: object
+      properties:
+        name:
+          type: string
+          example: from-base
+    Closed:
+      $ref: '#/components/schemas/Base'
+      unevaluatedProperties: false
+    Extended:
+      $ref: '#/components/schemas/Base'
+      properties:
+        tag:
+          type: string
+          example: from-sibling
+      unevaluatedProperties: false
+`
+
+	doc, err := libopenapi.NewDocument([]byte(spec))
+	assert.NoError(t, err)
+	model, err := doc.BuildV3Model()
+	assert.NoError(t, err)
+
+	for name, want := range map[string]map[string]any{
+		"Closed":   {"name": "from-base"},
+		"Extended": {"name": "from-base", "tag": "from-sibling"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			proxy := model.Model.Components.Schemas.GetOrZero(name)
+			wr := createSchemaRenderer()
+			assert.Equal(t, want, wr.RenderSchema(proxy.Schema()))
+		})
+	}
+}
+
 func TestRenderSchema_TransformedRefSemanticErrors(t *testing.T) {
 	schema := &highbase.Schema{ParentProxy: malformedRendererTransformedSiblingRefProxy(t)}
 

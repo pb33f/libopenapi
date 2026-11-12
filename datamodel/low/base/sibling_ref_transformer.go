@@ -36,6 +36,12 @@ func NewSiblingRefTransformer(idx *index.SpecIndex) *SiblingRefTransformer {
 //
 //	Input:  {title: "MySchema", $ref: "#/components/schemas/Base"}
 //	Output: {allOf: [{title: "MySchema"}, {$ref: "#/components/schemas/Base"}]}
+//
+// unevaluatedProperties and unevaluatedItems stay beside allOf rather than moving into it,
+// because they only see what adjacent keywords evaluated, and that includes the $ref target:
+//
+//	Input:  {$ref: "#/components/schemas/Base", unevaluatedProperties: false}
+//	Output: {allOf: [{$ref: "#/components/schemas/Base"}], unevaluatedProperties: false}
 func (srt *SiblingRefTransformer) TransformSiblingRef(node *yaml.Node) (*yaml.Node, error) {
 	transformed := srt.transformSiblingRefWithMetadata(node)
 	if transformed == nil {
@@ -93,8 +99,24 @@ func (srt *SiblingRefTransformer) createAllOfStructureWithSiblingNode(refValue s
 
 	allOfArrayNode := allOfNode.Content[1]
 
-	if siblingSchemaNode != nil && len(siblingSchemaNode.Content) > 0 {
-		allOfArrayNode.Content = append(allOfArrayNode.Content, siblingSchemaNode)
+	memberNode := siblingSchemaNode
+	if siblingSchemaNode != nil {
+		var kept []*yaml.Node
+		for i := 0; i+1 < len(siblingSchemaNode.Content); i += 2 {
+			keyNode, valueNode := siblingSchemaNode.Content[i], siblingSchemaNode.Content[i+1]
+			if isUnevaluatedKeyword(keyNode.Value) {
+				allOfNode.Content = append(allOfNode.Content, keyNode, valueNode)
+			} else {
+				kept = append(kept, keyNode, valueNode)
+			}
+		}
+		if len(kept) != len(siblingSchemaNode.Content) {
+			memberNode = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: kept}
+		}
+	}
+
+	if memberNode != nil && len(memberNode.Content) > 0 {
+		allOfArrayNode.Content = append(allOfArrayNode.Content, memberNode)
 	}
 
 	refSchemaNode := &yaml.Node{
@@ -108,6 +130,12 @@ func (srt *SiblingRefTransformer) createAllOfStructureWithSiblingNode(refValue s
 	allOfArrayNode.Content = append(allOfArrayNode.Content, refSchemaNode)
 
 	return allOfNode
+}
+
+// isUnevaluatedKeyword reports whether a sibling keyword has to stay beside allOf to see what
+// the $ref target evaluated.
+func isUnevaluatedKeyword(key string) bool {
+	return key == UnevaluatedPropertiesLabel || key == UnevaluatedItemsLabel
 }
 
 func (srt *SiblingRefTransformer) createSiblingSchemaNode(node *yaml.Node) *yaml.Node {
