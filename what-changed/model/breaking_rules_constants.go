@@ -107,6 +107,8 @@ const (
 	PropIn                   = "in"
 	PropItems                = "items"
 	PropItemEncoding         = "itemEncoding"
+	PropPrefixEncoding       = "prefixEncoding"
+	PropEncoding             = "encoding"
 	PropItemSchema           = "itemSchema"
 	PropKind                 = "kind"
 	PropLicense              = "license"

@@ -20,7 +20,12 @@ type Encoding struct {
 	Style         string                           `json:"style,omitempty" yaml:"style,omitempty"`
 	Explode       *bool                            `json:"explode,omitempty" yaml:"explode,omitempty"`
 	AllowReserved bool                             `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
-	low           *lowv3.Encoding
+
+	// Encoding, PrefixEncoding and ItemEncoding describe nested multipart parts (OpenAPI 3.2+).
+	Encoding       *orderedmap.Map[string, *Encoding] `json:"encoding,omitempty" yaml:"encoding,omitempty"`
+	PrefixEncoding []*Encoding                        `json:"prefixEncoding,omitempty" yaml:"prefixEncoding,omitempty"`
+	ItemEncoding   *Encoding                          `json:"itemEncoding,omitempty" yaml:"itemEncoding,omitempty"`
+	low            *lowv3.Encoding
 }
 
 // NewEncoding creates a new instance of Encoding from a low-level one.
@@ -34,6 +39,11 @@ func NewEncoding(encoding *lowv3.Encoding) *Encoding {
 	}
 	e.AllowReserved = encoding.AllowReserved.Value
 	e.Headers = ExtractHeaders(encoding.Headers.Value)
+	e.Encoding = ExtractEncoding(encoding.Encoding.Value)
+	e.PrefixEncoding = extractEncodingSlice(encoding.PrefixEncoding.Value)
+	if !encoding.ItemEncoding.IsEmpty() {
+		e.ItemEncoding = NewEncoding(encoding.ItemEncoding.Value)
+	}
 	return e
 }
 
@@ -75,4 +85,16 @@ func (e *Encoding) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 // ExtractEncoding converts hard to navigate low-level plumbing Encoding definitions, into a high-level simple map
 func ExtractEncoding(elements *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*lowv3.Encoding]]) *orderedmap.Map[string, *Encoding] {
 	return low.FromReferenceMapWithFunc(elements, NewEncoding)
+}
+
+// extractEncodingSlice converts a low-level prefixEncoding array into high-level Encoding objects, keeping order.
+func extractEncodingSlice(elements []lowmodel.ValueReference[*lowv3.Encoding]) []*Encoding {
+	if len(elements) == 0 {
+		return nil
+	}
+	extracted := make([]*Encoding, 0, len(elements))
+	for i := range elements {
+		extracted = append(extracted, NewEncoding(elements[i].Value))
+	}
+	return extracted
 }
