@@ -27,6 +27,24 @@ xml:
 	assert.Nil(t, result, "Valid config should return nil")
 }
 
+// The Encoding Object has a property named encoding, so encoding.encoding is a rule, not a nested component.
+func TestValidateBreakingRulesConfigYAML_EncodingProperties(t *testing.T) {
+	yaml := `
+mediaType:
+  prefixEncoding:
+    removed: false
+encoding:
+  encoding:
+    removed: false
+  prefixEncoding:
+    added: true
+  itemEncoding:
+    modified: true
+`
+	result := ValidateBreakingRulesConfigYAML([]byte(yaml))
+	assert.Nil(t, result, "Valid config should return nil")
+}
+
 func TestValidateBreakingRulesConfigYAML_NestedDiscriminator(t *testing.T) {
 	// Nest 'discriminator' under 'response' where it's NOT a valid property
 	// (discriminator IS valid under schema, so we use response instead)

@@ -114,19 +114,23 @@ type ResponseRules struct {
 
 // MediaTypeRules defines breaking rules for the Media Type object properties.
 type MediaTypeRules struct {
-	Example      *BreakingChangeRule `json:"example,omitempty" yaml:"example,omitempty"`
-	Examples     *BreakingChangeRule `json:"examples,omitempty" yaml:"examples,omitempty"`
-	Schema       *BreakingChangeRule `json:"schema,omitempty" yaml:"schema,omitempty"`
-	ItemSchema   *BreakingChangeRule `json:"itemSchema,omitempty" yaml:"itemSchema,omitempty"`
-	ItemEncoding *BreakingChangeRule `json:"itemEncoding,omitempty" yaml:"itemEncoding,omitempty"`
+	Example        *BreakingChangeRule `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples       *BreakingChangeRule `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Schema         *BreakingChangeRule `json:"schema,omitempty" yaml:"schema,omitempty"`
+	ItemSchema     *BreakingChangeRule `json:"itemSchema,omitempty" yaml:"itemSchema,omitempty"`
+	ItemEncoding   *BreakingChangeRule `json:"itemEncoding,omitempty" yaml:"itemEncoding,omitempty"`
+	PrefixEncoding *BreakingChangeRule `json:"prefixEncoding,omitempty" yaml:"prefixEncoding,omitempty"`
 }
 
 // EncodingRules defines breaking rules for the Encoding object properties.
 type EncodingRules struct {
-	ContentType   *BreakingChangeRule `json:"contentType,omitempty" yaml:"contentType,omitempty"`
-	Style         *BreakingChangeRule `json:"style,omitempty" yaml:"style,omitempty"`
-	Explode       *BreakingChangeRule `json:"explode,omitempty" yaml:"explode,omitempty"`
-	AllowReserved *BreakingChangeRule `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
+	ContentType    *BreakingChangeRule `json:"contentType,omitempty" yaml:"contentType,omitempty"`
+	Style          *BreakingChangeRule `json:"style,omitempty" yaml:"style,omitempty"`
+	Explode        *BreakingChangeRule `json:"explode,omitempty" yaml:"explode,omitempty"`
+	AllowReserved  *BreakingChangeRule `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
+	Encoding       *BreakingChangeRule `json:"encoding,omitempty" yaml:"encoding,omitempty"`
+	PrefixEncoding *BreakingChangeRule `json:"prefixEncoding,omitempty" yaml:"prefixEncoding,omitempty"`
+	ItemEncoding   *BreakingChangeRule `json:"itemEncoding,omitempty" yaml:"itemEncoding,omitempty"`
 }
 
 // HeaderRules defines breaking rules for the Header object properties.

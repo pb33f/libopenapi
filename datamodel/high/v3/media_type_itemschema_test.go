@@ -64,15 +64,12 @@ itemSchema:
     metadata:
       type: object
 itemEncoding:
-  data:
-    contentType: application/octet-stream
-    allowReserved: true
-  metadata:
-    contentType: application/json
-    headers:
-      X-Meta-Type:
-        schema:
-          type: string`
+  contentType: application/json
+  allowReserved: true
+  headers:
+    X-Meta-Type:
+      schema:
+        type: string`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
@@ -84,22 +81,11 @@ itemEncoding:
 
 	highMediaType := NewMediaType(&lowMediaType)
 
-	// Check itemEncoding exists
+	// itemEncoding is a single Encoding Object (OpenAPI 3.2)
 	assert.NotNil(t, highMediaType.ItemEncoding)
-	assert.Equal(t, 2, highMediaType.ItemEncoding.Len())
-
-	// Check data encoding
-	dataEnc := highMediaType.ItemEncoding.GetOrZero("data")
-	assert.NotNil(t, dataEnc)
-	assert.Equal(t, "application/octet-stream", dataEnc.ContentType)
-	assert.True(t, dataEnc.AllowReserved)
-
-	// Check metadata encoding
-	metaEnc := highMediaType.ItemEncoding.GetOrZero("metadata")
-	assert.NotNil(t, metaEnc)
-	assert.Equal(t, "application/json", metaEnc.ContentType)
-	assert.NotNil(t, metaEnc.Headers)
-	assert.Equal(t, 1, metaEnc.Headers.Len())
+	assert.Equal(t, "application/json", highMediaType.ItemEncoding.ContentType)
+	assert.True(t, highMediaType.ItemEncoding.AllowReserved)
+	assert.Equal(t, 1, highMediaType.ItemEncoding.Headers.Len())
 }
 
 func TestNewMediaType_WithBothEncodingTypes(t *testing.T) {
@@ -114,9 +100,8 @@ encoding:
     contentType: text/plain
     style: form
 itemEncoding:
-  streamField:
-    contentType: application/json
-    explode: false`
+  contentType: application/json
+  explode: false`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
@@ -132,7 +117,6 @@ itemEncoding:
 	assert.NotNil(t, highMediaType.Encoding)
 	assert.NotNil(t, highMediaType.ItemEncoding)
 	assert.Equal(t, 1, highMediaType.Encoding.Len())
-	assert.Equal(t, 1, highMediaType.ItemEncoding.Len())
 
 	// Check regular encoding
 	regularEnc := highMediaType.Encoding.GetOrZero("regularField")
@@ -141,7 +125,7 @@ itemEncoding:
 	assert.Equal(t, "form", regularEnc.Style)
 
 	// Check item encoding
-	itemEnc := highMediaType.ItemEncoding.GetOrZero("streamField")
+	itemEnc := highMediaType.ItemEncoding
 	assert.NotNil(t, itemEnc)
 	assert.Equal(t, "application/json", itemEnc.ContentType)
 	assert.NotNil(t, itemEnc.Explode)
@@ -181,8 +165,7 @@ itemSchema:
     id:
       type: string
 itemEncoding:
-  id:
-    contentType: text/plain`
+  contentType: text/plain`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
@@ -205,8 +188,7 @@ func TestMediaType_GoLow_WithItemFields(t *testing.T) {
 	yml := `itemSchema:
   type: string
 itemEncoding:
-  field:
-    contentType: application/json`
+  contentType: application/json`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
@@ -223,4 +205,85 @@ itemEncoding:
 	assert.NotNil(t, lowResult)
 	assert.NotNil(t, lowResult.ItemSchema.Value)
 	assert.NotNil(t, lowResult.ItemEncoding.Value)
+}
+
+// TestMediaType_OAS32Encoding_RoundTrip checks that prefixEncoding, a single-object itemEncoding and the
+// nested Encoding Object fields build into the model and render back unchanged.
+func TestMediaType_OAS32Encoding_RoundTrip(t *testing.T) {
+	for name, yml := range map[string]string{
+		"prefix and item": `prefixEncoding:
+    - contentType: application/json
+    - contentType: image/png
+      headers:
+        X-Part:
+            schema:
+                type: string
+itemEncoding:
+    contentType: text/plain
+`,
+		"nested": `encoding:
+    batch:
+        contentType: multipart/mixed
+        prefixEncoding:
+            - contentType: application/json
+        itemEncoding:
+            contentType: image/png
+    form:
+        contentType: multipart/form-data
+        encoding:
+            file:
+                contentType: image/jpeg
+`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			var idxNode yaml.Node
+			_ = yaml.Unmarshal([]byte(yml), &idxNode)
+			idx := index.NewSpecIndex(&idxNode)
+
+			var lowMediaType lowv3.MediaType
+			_ = low.BuildModel(&idxNode, &lowMediaType)
+			assert.NoError(t, lowMediaType.Build(context.Background(), nil, idxNode.Content[0], idx))
+
+			rendered, err := NewMediaType(&lowMediaType).Render()
+			assert.NoError(t, err)
+			assert.Equal(t, yml, string(rendered))
+		})
+	}
+}
+
+func TestMediaType_OAS32Encoding_Model(t *testing.T) {
+	yml := `encoding:
+  batch:
+    contentType: multipart/mixed
+    prefixEncoding:
+      - contentType: application/json
+      - contentType: image/png
+    itemEncoding:
+      contentType: text/plain
+    encoding:
+      inner:
+        style: form
+prefixEncoding:
+  - contentType: application/xml
+itemEncoding:
+  contentType: image/gif`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var lowMediaType lowv3.MediaType
+	_ = low.BuildModel(&idxNode, &lowMediaType)
+	assert.NoError(t, lowMediaType.Build(context.Background(), nil, idxNode.Content[0], idx))
+	mt := NewMediaType(&lowMediaType)
+
+	assert.Len(t, mt.PrefixEncoding, 1)
+	assert.Equal(t, "application/xml", mt.PrefixEncoding[0].ContentType)
+	assert.Equal(t, "image/gif", mt.ItemEncoding.ContentType)
+
+	batch := mt.Encoding.GetOrZero("batch")
+	assert.Len(t, batch.PrefixEncoding, 2)
+	assert.Equal(t, "image/png", batch.PrefixEncoding[1].ContentType)
+	assert.Equal(t, "text/plain", batch.ItemEncoding.ContentType)
+	assert.Equal(t, "form", batch.Encoding.GetOrZero("inner").Style)
 }

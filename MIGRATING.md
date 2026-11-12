@@ -2,6 +2,86 @@
 
 This file lists breaking changes to the libopenapi Go API and how to update code for each one.
 
+## Upgrading past v0.42
+
+OpenAPI 3.2 defines `itemEncoding` as one Encoding Object, not a map, and adds `prefixEncoding` and nested
+`encoding`, `prefixEncoding` and `itemEncoding` to the Encoding Object. libopenapi modeled `itemEncoding` as a map, so
+a valid 3.2 `itemEncoding` was read as a map keyed by its own field names and rendered back corrupted. This release
+models all of them as the specification defines them.
+
+You don't need to change anything if your code doesn't read `ItemEncoding` or `ItemEncodingChanges`.
+
+### `MediaType.ItemEncoding` is a single `Encoding`
+
+| v0.42 | now |
+|---|---|
+| high: `ItemEncoding *orderedmap.Map[string, *Encoding]` | `ItemEncoding *Encoding` |
+| low: `ItemEncoding low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]]` | `ItemEncoding low.NodeReference[*Encoding]` |
+| what-changed: `MediaTypeChanges.ItemEncodingChanges map[string]*EncodingChanges` | `ItemEncodingChanges *EncodingChanges` |
+
+Under the old type, each map key was a field of the Encoding Object, such as `contentType`. Read those fields from
+`ItemEncoding` directly.
+
+### New fields
+
+| model | fields |
+|---|---|
+| high and low `MediaType` | `PrefixEncoding`, applied to parts by position |
+| high and low `Encoding` | `Encoding`, `PrefixEncoding` and `ItemEncoding`, for nested multipart parts |
+| what-changed `MediaTypeChanges` | `PrefixEncodingChanges` |
+| what-changed `EncodingChanges` | `EncodingChanges`, `PrefixEncodingChanges` and `ItemEncodingChanges` |
+| breaking rules `MediaTypeRules` | `PrefixEncoding` |
+| breaking rules `EncodingRules` | `Encoding`, `PrefixEncoding` and `ItemEncoding` |
+
+The new breaking rules default to the same as `itemEncoding`: removing one is breaking, adding or changing one is
+not.
+
+This program reads the encoding of each part of a `multipart/mixed` request body:
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/pb33f/libopenapi"
+)
+
+const spec = `openapi: 3.2.0
+info:
+  title: Burger Shop
+  version: 1.0.0
+paths:
+  /orders:
+    post:
+      requestBody:
+        content:
+          multipart/mixed:
+            itemSchema:
+              type: object
+            prefixEncoding:
+              - contentType: application/json
+            itemEncoding:
+              contentType: image/png
+`
+
+func main() {
+	doc, _ := libopenapi.NewDocument([]byte(spec))
+	model, _ := doc.BuildV3Model()
+	mt := model.Model.Paths.PathItems.GetOrZero("/orders").Post.RequestBody.Content.GetOrZero("multipart/mixed")
+
+	fmt.Println("first part:", mt.PrefixEncoding[0].ContentType)
+	fmt.Println("other parts:", mt.ItemEncoding.ContentType)
+}
+```
+
+Output:
+
+```
+first part: application/json
+other parts: image/png
+```
+
 ## Upgrading past v0.40
 
 This release makes two changes to the low-level model API. They don't change parsing, rendering, bundling or

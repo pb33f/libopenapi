@@ -70,7 +70,11 @@ func TestHash_FieldsAndKeysDoNotCollide(t *testing.T) {
 			"itemSchema:\n  type: string",
 			"encoding:\n  first:\n    contentType: text/plain",
 			"encoding:\n  second:\n    contentType: text/plain",
-			"itemEncoding:\n  first:\n    contentType: text/plain",
+			"itemEncoding:\n  contentType: text/plain",
+			"prefixEncoding:\n  - contentType: text/plain",
+			"prefixEncoding:\n  - contentType: text/plain\n  - contentType: text/plain",
+			"prefixEncoding:\n  - contentType: text/plain\n  - contentType: image/png",
+			"prefixEncoding:\n  - contentType: image/png\n  - contentType: text/plain",
 			"examples:\n  first:\n    value: 1",
 			"examples:\n  second:\n    value: 1",
 		)
@@ -80,6 +84,9 @@ func TestHash_FieldsAndKeysDoNotCollide(t *testing.T) {
 		assertHashesDiffer[Encoding](t,
 			"contentType: form",
 			"style: form",
+			"encoding:\n  first:\n    contentType: text/plain",
+			"prefixEncoding:\n  - contentType: text/plain",
+			"itemEncoding:\n  contentType: text/plain",
 		)
 	})
 
