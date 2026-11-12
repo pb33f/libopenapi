@@ -57,6 +57,16 @@ func isOpenAPIExampleKeywordSegment(seenPath []string, idx int) bool {
 	if seenPath[idx] != "example" && seenPath[idx] != "examples" {
 		return false
 	}
+	return isOpenAPIKeywordSegment(seenPath, idx)
+}
+
+// isOpenAPIKeywordSegment reports whether seenPath[idx] is a field name rather than a name the
+// document chose: a component, property, response code or Example Object name. A property named
+// "default" or a response keyed "default" is a name; the "default" field of a schema is not.
+func isOpenAPIKeywordSegment(seenPath []string, idx int) bool {
+	if idx < 0 || idx >= len(seenPath) {
+		return false
+	}
 	// A component or schema name cannot itself introduce another named map.
 	// For example, properties/definitions/example ends at a payload keyword.
 	nameSlot := false
@@ -71,11 +81,41 @@ func isOpenAPIExampleKeywordSegment(seenPath []string, idx int) bool {
 		}
 		switch segment {
 		case "properties", "patternProperties", "definitions", "$defs", "dependentSchemas",
-			"headers", "links", "callbacks", "encoding", "webhooks":
+			"headers", "links", "callbacks", "encoding", "webhooks", "responses", "examples":
 			nameSlot = true
+		case "parameters":
+			// Swagger 2.0 keeps reusable parameters in a root map. Elsewhere it is an array.
+			nameSlot = i == 0
 		}
 	}
 	return !nameSlot
+}
+
+// underSchemaInstanceValuePath reports whether path, the location of node, is inside a value
+// JSON Schema treats as instance data: the value of enum, const or default, or the examples array.
+// A $ref key there is part of the data, not a reference. An OpenAPI examples field is a map of
+// Example Objects, so examples counts only when it holds an array. The resolver marks array
+// elements with "[]"; the index walk does not, so node, when not nil, is the value at path.
+func underSchemaInstanceValuePath(path []string, node *yaml.Node) bool {
+	for i, segment := range path {
+		switch segment {
+		case "enum", "const", "default":
+		case "examples":
+			if i+1 < len(path) {
+				if path[i+1] != "[]" {
+					continue
+				}
+			} else if node == nil || !utils.IsNodeArray(node) {
+				continue
+			}
+		default:
+			continue
+		}
+		if isOpenAPIKeywordSegment(path, i) {
+			return true
+		}
+	}
+	return false
 }
 
 // underOpenAPIExamplePayloadPath reports whether seenPath points to raw example payload content.

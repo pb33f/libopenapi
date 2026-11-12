@@ -67,6 +67,9 @@ func (resolver *Resolver) extractRelativesWithState(
 	if isDirectOpenAPIExampleValuePath(walkPath) && !isDirectOpenAPIExampleRefNode(node) {
 		return nil
 	}
+	if underSchemaInstanceValuePath(walkPath, node) {
+		return nil
+	}
 	// Guard against stack overflow from deeply nested or circular specs.
 	// Journey tracks the reference chain (100 max); depth tracks recursive calls (500 max).
 	if len(state.journey) > 100 {
@@ -92,6 +95,13 @@ func (resolver *Resolver) extractRelativesWithState(
 				childPath := walkPath
 				if node.Kind == yaml.MappingNode && i%2 == 1 {
 					childPath = append(walkPath, node.Content[i-1].Value)
+					// The index does not extract references under excluded extensions, so the
+					// resolver must not look for them there either. A property named x-... is
+					// still a schema.
+					if resolver.excludeExtensionRefs() && strings.HasPrefix(childPath[len(childPath)-1], "x-") &&
+						isOpenAPIKeywordSegment(childPath, len(childPath)-1) {
+						continue
+					}
 				} else if node.Kind == yaml.SequenceNode {
 					childPath = append(walkPath, "[]")
 				}
@@ -117,6 +127,10 @@ func (resolver *Resolver) extractRelativesWithState(
 
 	resolver.relativesSeen += len(found)
 	return found
+}
+
+func (resolver *Resolver) excludeExtensionRefs() bool {
+	return resolver.specIndex != nil && resolver.specIndex.config != nil && resolver.specIndex.config.ExcludeExtensionRefs
 }
 
 func (resolver *Resolver) handleRelativeDepthLimit(ref *Reference, state relativeWalkState) []*Reference {
