@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	libopenapi "github.com/pb33f/libopenapi"
+	"github.com/pb33f/libopenapi/arazzo/expression"
+	high "github.com/pb33f/libopenapi/datamodel/high/arazzo"
 )
 
 func largeArazzoDocument(stepCount, outputCount int) []byte {
@@ -80,5 +82,37 @@ func BenchmarkRenderLargeArazzoSelectorMap(b *testing.B) {
 		if len(rendered) == 0 {
 			b.Fatal("large Arazzo render was empty")
 		}
+	}
+}
+
+func BenchmarkSimpleCriterion(b *testing.B) {
+	ctx := &expression.Context{StatusCode: 200, Method: "POST"}
+	for _, condition := range []string{
+		"true",
+		"$statusCode == 200",
+		"$method == 'POST'",
+		"$statusCode == 200 && ($method == 'POST' || $method == 'PUT')",
+	} {
+		b.Run(condition, func(b *testing.B) {
+			caches := newCriterionCaches()
+			exprCache := map[string]expression.Expression{}
+			caches.parseExpr = func(s string) (expression.Expression, error) {
+				if e, ok := exprCache[s]; ok {
+					return e, nil
+				}
+				e, err := expression.Parse(s)
+				if err == nil {
+					exprCache[s] = e
+				}
+				return e, err
+			}
+			criterion := &high.Criterion{Condition: condition}
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				if _, err := evaluateCriterionImpl(criterion, ctx, caches); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
 	}
 }
