@@ -672,6 +672,8 @@ func (sp *SchemaProxy) buildSiblingOnlySchemaView() *Schema {
 
 // BuildTransformedRefSemanticSchema returns the internal semantic allOf view for
 // an authored $ref-with-siblings proxy, using current high-level sibling values.
+// unevaluatedProperties and unevaluatedItems sit beside allOf, so when they are the
+// only siblings, allOf holds just the $ref.
 func (sp *SchemaProxy) BuildTransformedRefSemanticSchema(currentSibling *Schema) (*Schema, error) {
 	return sp.buildSemanticAllOfSchemaView(currentSibling)
 }
@@ -689,10 +691,25 @@ func (sp *SchemaProxy) buildSemanticAllOfSchemaView(currentSibling *Schema) (*Sc
 	if currentSibling == nil {
 		currentSibling = sp.Schema()
 	}
-	if currentSibling != nil && len(schema.AllOf) == 2 {
+	if currentSibling != nil {
 		siblingCopy := *currentSibling
 		siblingCopy.ParentProxy = nil
-		schema.AllOf[0] = CreateSchemaProxy(&siblingCopy)
+
+		// unevaluated* stay beside allOf so they see what the $ref target evaluated.
+		schema.UnevaluatedProperties = siblingCopy.UnevaluatedProperties
+		schema.UnevaluatedItems = siblingCopy.UnevaluatedItems
+		siblingCopy.UnevaluatedProperties = nil
+		siblingCopy.UnevaluatedItems = nil
+
+		switch len(schema.AllOf) {
+		case 2:
+			schema.AllOf[0] = CreateSchemaProxy(&siblingCopy)
+		case 1:
+			// every authored sibling was an unevaluated* keyword, so allOf only holds the $ref.
+			if len(high.NewNodeBuilder(&siblingCopy, nil).Render().Content) > 0 {
+				schema.AllOf = []*SchemaProxy{CreateSchemaProxy(&siblingCopy), schema.AllOf[0]}
+			}
+		}
 	}
 	return schema, nil
 }
@@ -724,28 +741,41 @@ func (sp *SchemaProxy) renderTransformedRefWithSiblings(s *Schema) (*yaml.Node, 
 	ref := sp.schema.Value.GetTransformedRefReference()
 
 	if !sp.schemaIsTransformedSiblingView(s) {
-		if len(s.AllOf) != 2 || s.AllOf[0] == nil || s.AllOf[1] == nil || !s.AllOf[1].IsReference() {
+		refMember := len(s.AllOf) - 1
+		if refMember < 0 || refMember > 1 || s.AllOf[0] == nil || !s.AllOf[refMember].IsReference() {
 			return nil, false, nil
 		}
 
-		// Only collapse the synthetic allOf created by the sibling-ref transformer.
-		// If callers add fields to the outer schema or change its composition, keep
-		// the explicit allOf so no mutations are hidden.
+		// Only collapse the synthetic allOf created by the sibling-ref transformer,
+		// which may hold unevaluated* beside allOf. If callers add other fields to the
+		// outer schema or change its composition, keep the explicit allOf so no
+		// mutations are hidden.
 		outerNode := high.NewNodeBuilder(s, s.low).Render()
-		if len(outerNode.Content) != 2 || outerNode.Content[0].Value != "allOf" {
-			return nil, false, nil
+		var outerSiblings []*yaml.Node
+		for i := 0; i+1 < len(outerNode.Content); i += 2 {
+			switch key := outerNode.Content[i].Value; key {
+			case base.AllOfLabel:
+			case base.UnevaluatedPropertiesLabel, base.UnevaluatedItemsLabel:
+				outerSiblings = append(outerSiblings, outerNode.Content[i], outerNode.Content[i+1])
+			default:
+				return nil, false, nil
+			}
 		}
 
-		siblingRender, err := s.AllOf[0].MarshalYAML()
-		if err != nil {
-			return nil, true, err
+		siblingNode = utils.CreateEmptyMapNode()
+		if refMember == 1 {
+			siblingRender, err := s.AllOf[0].MarshalYAML()
+			if err != nil {
+				return nil, true, err
+			}
+			var ok bool
+			siblingNode, ok = yamlNodeFromRender(siblingRender)
+			if !ok || !utils.IsNodeMap(siblingNode) {
+				return nil, false, nil
+			}
 		}
-		var ok bool
-		siblingNode, ok = yamlNodeFromRender(siblingRender)
-		if !ok || !utils.IsNodeMap(siblingNode) {
-			return nil, false, nil
-		}
-		ref = s.AllOf[1].GetReference()
+		siblingNode.Content = append(siblingNode.Content, outerSiblings...)
+		ref = s.AllOf[refMember].GetReference()
 	} else {
 		siblingNode = high.NewNodeBuilder(s, s.low).Render()
 	}

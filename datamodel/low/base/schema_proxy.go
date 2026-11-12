@@ -171,7 +171,8 @@ func (sp *SchemaProxy) GetTransformedRefReference() string {
 }
 
 // GetTransformedRefAllOfSchema returns the internal allOf schema for an
-// authored $ref-with-siblings node.
+// authored $ref-with-siblings node. unevaluatedProperties and unevaluatedItems
+// sit beside allOf, so when they are the only siblings, allOf holds just the $ref.
 func (sp *SchemaProxy) GetTransformedRefAllOfSchema() *yaml.Node {
 	if !sp.IsTransformedRefWithSiblings() {
 		return nil

@@ -2046,6 +2046,136 @@ func TestSchemaProxy_ParsedTransformedRefWithSiblingsInlinePreservesSemantics(t 
 	assert.Contains(t, string(inlineOut), "type: string")
 }
 
+func TestSchemaProxy_ParsedTransformedRefWithSiblingsKeepsUnevaluatedBesideAllOf(t *testing.T) {
+	spec := `openapi: 3.1.0
+paths: {}
+components:
+  schemas:
+    Thing:
+      type: object
+      properties:
+        a:
+          type: integer
+    Pair:
+      type: array
+      prefixItems:
+        - type: integer
+    Holder:
+      type: object
+      properties:
+        thing:
+          $ref: '#/components/schemas/Thing'
+          required: [a]
+          unevaluatedProperties: false
+        only:
+          $ref: '#/components/schemas/Thing'
+          unevaluatedProperties: false
+        list:
+          $ref: '#/components/schemas/Pair'
+          unevaluatedItems:
+            type: string
+`
+	keys := func(t *testing.T, rendered any) []string {
+		t.Helper()
+		node, ok := rendered.(*yaml.Node)
+		require.True(t, ok)
+		var out []string
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			out = append(out, node.Content[i].Value)
+		}
+		return out
+	}
+
+	t.Run("with other siblings", func(t *testing.T) {
+		sp := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, "thing")
+		sibling := sp.Schema()
+		require.NotNil(t, sibling)
+		require.NotNil(t, sibling.UnevaluatedProperties)
+		assert.False(t, sibling.UnevaluatedProperties.B)
+		assert.Equal(t, []string{"a"}, sibling.Required)
+
+		semantic, err := sp.BuildTransformedRefSemanticSchema(sibling)
+		require.NoError(t, err)
+		require.NotNil(t, semantic.UnevaluatedProperties)
+		assert.False(t, semantic.UnevaluatedProperties.B)
+		require.Len(t, semantic.AllOf, 2)
+		assert.Nil(t, semantic.AllOf[0].Schema().UnevaluatedProperties)
+		assert.Equal(t, []string{"a"}, semantic.AllOf[0].Schema().Required)
+		assert.True(t, semantic.AllOf[1].IsReference())
+
+		inline, err := sp.MarshalYAMLInline()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"allOf", "unevaluatedProperties"}, keys(t, inline))
+
+		rendered, err := sp.MarshalYAML()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"$ref", "required", "unevaluatedProperties"}, keys(t, rendered))
+	})
+
+	t.Run("only unevaluated siblings", func(t *testing.T) {
+		sp := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, "only")
+		sibling := sp.Schema()
+		require.NotNil(t, sibling)
+
+		semantic, err := sp.BuildTransformedRefSemanticSchema(sibling)
+		require.NoError(t, err)
+		require.NotNil(t, semantic.UnevaluatedProperties)
+		require.Len(t, semantic.AllOf, 1)
+		assert.True(t, semantic.AllOf[0].IsReference())
+
+		// the allOf view collapses back to the authored shape.
+		semantic.ParentProxy = sp
+		node, ok, err := sp.renderTransformedRefWithSiblings(semantic)
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, []string{"$ref", "unevaluatedProperties"}, keys(t, node))
+
+		// a keyword added to the sibling view joins allOf.
+		sibling.Required = []string{"a"}
+		semantic, err = sp.BuildTransformedRefSemanticSchema(sibling)
+		require.NoError(t, err)
+		require.Len(t, semantic.AllOf, 2)
+		assert.Equal(t, []string{"a"}, semantic.AllOf[0].Schema().Required)
+		assert.Nil(t, semantic.AllOf[0].Schema().UnevaluatedProperties)
+		assert.True(t, semantic.AllOf[1].IsReference())
+
+		rendered, err := sp.MarshalYAML()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"$ref", "unevaluatedProperties", "required"}, keys(t, rendered))
+	})
+
+	t.Run("other outer keywords keep the allOf", func(t *testing.T) {
+		sp := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, "only")
+		semantic, err := sp.BuildTransformedRefSemanticSchema(sp.Schema())
+		require.NoError(t, err)
+		semantic.ParentProxy = sp
+		semantic.Title = "outer"
+
+		node, ok, err := sp.renderTransformedRefWithSiblings(semantic)
+		require.NoError(t, err)
+		assert.False(t, ok)
+		assert.Nil(t, node)
+	})
+
+	t.Run("unevaluatedItems", func(t *testing.T) {
+		sp := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, "list")
+		semantic, err := sp.BuildTransformedRefSemanticSchema(sp.Schema())
+		require.NoError(t, err)
+		require.NotNil(t, semantic.UnevaluatedItems)
+		assert.Equal(t, []string{"string"}, semantic.UnevaluatedItems.Schema().Type)
+		require.Len(t, semantic.AllOf, 1)
+		assert.True(t, semantic.AllOf[0].IsReference())
+
+		inline, err := sp.MarshalYAMLInline()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"allOf", "unevaluatedItems"}, keys(t, inline))
+
+		rendered, err := sp.MarshalYAML()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"$ref", "unevaluatedItems"}, keys(t, rendered))
+	})
+}
+
 func TestSchemaProxy_ParsedTransformedRefWithSiblingsJSONPreservesReference(t *testing.T) {
 	sp := buildParsedSiblingRefProxy(t, 3.1)
 	schema := sp.Schema()
@@ -2212,6 +2342,11 @@ components:
           description: original description
           title: Original title
 `
+	return buildParsedSiblingRefProxyFromSpec(t, spec, version, "thing")
+}
+
+func buildParsedSiblingRefProxyFromSpec(t *testing.T, spec string, version float32, property string) *SchemaProxy {
+	t.Helper()
 
 	var root yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
@@ -2222,7 +2357,7 @@ components:
 	cfg.TransformSiblingRefs = true
 	idx := index.NewSpecIndexWithConfig(rootNode, cfg)
 
-	refNode := findHighSchemaTestNode(t, rootNode, "components", "schemas", "Holder", "properties", "thing")
+	refNode := findHighSchemaTestNode(t, rootNode, "components", "schemas", "Holder", "properties", property)
 	lowProxy := new(lowbase.SchemaProxy)
 	require.NoError(t, lowProxy.Build(context.Background(), nil, refNode, idx))
 	require.NotNil(t, lowProxy.TransformedRef)

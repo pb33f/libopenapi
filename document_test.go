@@ -2389,6 +2389,68 @@ components:
 	assert.Contains(t, string(modelBytes), "- $ref: '#/components/schemas/Name'")
 }
 
+func TestDocument_SiblingRefUnevaluatedKeywordsStayBesideAllOf(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+    title: Unevaluated sibling refs
+    version: 1.0.0
+paths: {}
+components:
+    schemas:
+        Base:
+            type: object
+            properties:
+                a:
+                    type: integer
+        Closed:
+            $ref: '#/components/schemas/Base'
+            unevaluatedProperties: false
+        Holder:
+            type: object
+            properties:
+                items:
+                    $ref: '#/components/schemas/List'
+                    maxItems: 3
+                    unevaluatedItems:
+                        type: string
+        List:
+            type: array
+            prefixItems:
+                - type: integer
+`
+
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	closed, err := model.Model.Components.Schemas.GetOrZero("Closed").Schema().RenderInline()
+	require.NoError(t, err)
+	assert.Equal(t, `allOf:
+    - type: object
+      properties:
+        a:
+            type: integer
+unevaluatedProperties: false
+`, string(closed))
+
+	items, err := model.Model.Components.Schemas.GetOrZero("Holder").Schema().Properties.GetOrZero("items").Schema().RenderInline()
+	require.NoError(t, err)
+	assert.Equal(t, `allOf:
+    - maxItems: 3
+    - type: array
+      prefixItems:
+        - type: integer
+unevaluatedItems:
+    type: string
+`, string(items))
+
+	modelBytes, err := model.Model.Render()
+	require.NoError(t, err)
+	assert.Equal(t, spec, string(modelBytes))
+}
+
 func TestDocument_Render_OpenAPI30TransformedSiblingRefStaysAllOf(t *testing.T) {
 	spec := `openapi: 3.0.3
 info:
