@@ -2600,3 +2600,36 @@ func TestDocument_BuildV3Model_NoVersionNode(t *testing.T) {
 	require.Error(t, buildErr)
 	assert.Contains(t, buildErr.Error(), "no openapi version/tag found")
 }
+
+func TestDocument_BuildV3Model_RefInSchemaInstanceValue(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: Instance values, version: "1"}
+paths: {}
+components:
+  schemas:
+    Data:
+      type: object
+      enum:
+        - {$ref: '#/nope'}
+      const: {$ref: 'gone.yaml#/x'}
+      default: {$ref: '#/components/schemas/Target'}
+      examples:
+        - {$ref: '#/nope'}
+    Target:
+      type: string
+`
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	schema := model.Model.Components.Schemas.GetOrZero("Data").Schema()
+	var def map[string]string
+	require.NoError(t, schema.Default.Decode(&def))
+	assert.Equal(t, map[string]string{"$ref": "#/components/schemas/Target"}, def, "default is data and is not inlined")
+	var con map[string]string
+	require.NoError(t, schema.Const.Decode(&con))
+	assert.Equal(t, map[string]string{"$ref": "gone.yaml#/x"}, con)
+	require.Len(t, schema.Enum, 1)
+	require.Len(t, schema.Examples, 1)
+}
