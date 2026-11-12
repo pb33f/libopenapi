@@ -154,6 +154,10 @@ func (index *SpecIndex) handleExtractRefsKey(
 		index.registerSchemaIDAt(node, keyIndex, state.seenPath, state.parentBaseURI)
 	}
 
+	if keyNode.Value == "$anchor" {
+		index.registerSchemaAnchorAt(node, keyIndex, state.seenPath, state.scope.BaseUri)
+	}
+
 	if keyNode.Value != "$ref" && keyNode.Value != "$id" && keyNode.Value != "" {
 		action := index.extractNodeMetadata(node, parent, state.seenPath, keyIndex)
 		state.lastAppended = action.appendSegment

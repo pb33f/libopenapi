@@ -89,6 +89,7 @@ type Rolodex struct {
 	logger                     *slog.Logger
 	id                         string // unique ID for the rolodex, can be used to identify it in logs or other contexts.
 	globalSchemaIdRegistry     map[string]*SchemaIdEntry
+	globalSchemaAnchorRegistry map[string]*SchemaIdEntry
 	schemaIdRegistryLock       sync.RWMutex
 }
 
@@ -119,6 +120,7 @@ func (r *Rolodex) Release() {
 	r.infiniteCircularReferences = nil
 	r.ignoredCircularReferences = nil
 	r.globalSchemaIdRegistry = nil
+	r.globalSchemaAnchorRegistry = nil
 	r.indexConfig = nil
 	r.indexingDuration = 0
 	r.indexed = false
@@ -1116,7 +1118,7 @@ func (r *Rolodex) GetAllGlobalSchemaIds() map[string]*SchemaIdEntry {
 	return copySchemaIdRegistry(r.globalSchemaIdRegistry)
 }
 
-// RegisterIdsFromIndex aggregates all $id registrations from an index into the global registry.
+// RegisterIdsFromIndex aggregates all $id and $anchor registrations from an index into the global registry.
 // Called after each index is built to populate the Rolodex global registry.
 func (r *Rolodex) RegisterIdsFromIndex(idx *SpecIndex) {
 	if r == nil || idx == nil {
@@ -1127,4 +1129,27 @@ func (r *Rolodex) RegisterIdsFromIndex(idx *SpecIndex) {
 	for _, entry := range entries {
 		_ = r.RegisterGlobalSchemaId(entry)
 	}
+
+	idx.schemaIdRegistryLock.RLock()
+	anchors := copySchemaIdRegistry(idx.schemaAnchorRegistry)
+	idx.schemaIdRegistryLock.RUnlock()
+	if len(anchors) == 0 {
+		return
+	}
+	r.schemaIdRegistryLock.Lock()
+	defer r.schemaIdRegistryLock.Unlock()
+	if r.globalSchemaAnchorRegistry == nil {
+		r.globalSchemaAnchorRegistry = make(map[string]*SchemaIdEntry)
+	}
+	for key, entry := range anchors {
+		if _, ok := r.globalSchemaAnchorRegistry[key]; !ok {
+			r.globalSchemaAnchorRegistry[key] = entry
+		}
+	}
+}
+
+func (r *Rolodex) lookupSchemaAnchor(uri string) *SchemaIdEntry {
+	r.schemaIdRegistryLock.RLock()
+	defer r.schemaIdRegistryLock.RUnlock()
+	return r.globalSchemaAnchorRegistry[uri]
 }

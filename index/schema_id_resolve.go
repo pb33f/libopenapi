@@ -195,13 +195,20 @@ func buildSchemaIdResolvedReference(index *SpecIndex, entry *SchemaIdEntry, orig
 // 1. Split ref into base URI and fragment
 // 2. Look up base URI in $id registry
 // 3. Navigate to fragment within found schema if present
-// Returns nil if the ref cannot be resolved via $id.
+// A plain-name fragment such as "#foo" is looked up as an $anchor first.
+// Returns nil if the ref cannot be resolved via $id or $anchor.
 func (index *SpecIndex) ResolveRefViaSchemaId(ref string) *Reference {
 	if ref == "" {
 		return nil
 	}
 
 	baseUri, fragment := SplitRefFragment(ref)
+
+	if isSchemaAnchorFragment(fragment) {
+		if resolved := index.resolveRefViaSchemaAnchor(ref, baseUri, fragment); resolved != nil {
+			return resolved
+		}
+	}
 
 	// Local fragment refs are not $id-based
 	if baseUri == "" {
