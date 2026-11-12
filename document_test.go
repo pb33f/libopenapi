@@ -2600,3 +2600,54 @@ func TestDocument_BuildV3Model_NoVersionNode(t *testing.T) {
 	require.Error(t, buildErr)
 	assert.Contains(t, buildErr.Error(), "no openapi version/tag found")
 }
+
+// A plain-name fragment such as "#foo" names an $anchor in the schema resource
+// it appears in, not a JSON Pointer.
+func TestDocument_BuildV3Model_SchemaAnchorRefs(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths: {}
+components:
+  schemas:
+    A:
+      $anchor: foo
+      type: string
+    B:
+      type: object
+      properties:
+        local: {$ref: '#foo'}
+    R:
+      $id: https://example.com/r
+      type: object
+      $defs:
+        X: {$anchor: bar, type: integer}
+      properties:
+        scoped: {$ref: '#bar'}
+        absolute: {$ref: 'https://example.com/r#bar'}
+    U:
+      type: object
+      properties:
+        outside: {$ref: 'https://example.com/r#bar'}
+`
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	assert.Empty(t, m.Index.GetReferenceIndexErrors())
+
+	schemas := m.Model.Components.Schemas
+	for _, tc := range []struct{ schema, property, kind string }{
+		{"B", "local", "string"},
+		{"R", "scoped", "integer"},
+		{"R", "absolute", "integer"},
+		{"U", "outside", "integer"},
+	} {
+		t.Run(tc.schema+"."+tc.property, func(t *testing.T) {
+			prop := schemas.GetOrZero(tc.schema).Schema().Properties.GetOrZero(tc.property)
+			require.NotNil(t, prop)
+			s := prop.Schema()
+			require.NotNil(t, s, prop.GetBuildError())
+			assert.Equal(t, []string{tc.kind}, s.Type)
+		})
+	}
+}
