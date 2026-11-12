@@ -158,6 +158,7 @@ func TestSpecIndex_Release(t *testing.T) {
 		allExternalDocuments:    map[string]*Reference{"ext": {}},
 		externalSpecIndex:       map[string]*SpecIndex{"ext": {}},
 		schemaIdRegistry:        map[string]*SchemaIdEntry{"id": {}},
+		schemaAnchorRegistry:    map[string]*SchemaIdEntry{"#a": {}},
 		uri:                     []string{"test"},
 		globalLinksCount:        2,
 		globalCallbacksCount:    3,
@@ -203,6 +204,7 @@ func TestSpecIndex_Release(t *testing.T) {
 
 	// schema ID registry, uri, logger
 	assert.Nil(t, idx.schemaIdRegistry)
+	assert.Nil(t, idx.schemaAnchorRegistry)
 	assert.Nil(t, idx.uri)
 	assert.Nil(t, idx.logger)
 	assert.Zero(t, idx.globalLinksCount)
