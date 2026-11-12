@@ -148,6 +148,26 @@ func TestSiblingRefTransformer_CreateAllOfStructure(t *testing.T) {
 		assert.Equal(t, "#/components/schemas/Base", refSchema.Content[1].Value)
 	})
 
+	t.Run("create allOf with unevaluatedProperties beside it", func(t *testing.T) {
+		siblings := map[string]*yaml.Node{
+			"title":                 {Kind: yaml.ScalarNode, Value: "Custom Title"},
+			"unevaluatedProperties": {Kind: yaml.ScalarNode, Tag: "!!bool", Value: "false"},
+		}
+
+		result := transformer.CreateAllOfStructure("#/components/schemas/Base", siblings)
+
+		require.Len(t, result.Content, 4)
+		assert.Equal(t, "allOf", result.Content[0].Value)
+		assert.Equal(t, "unevaluatedProperties", result.Content[2].Value)
+		assert.Equal(t, "false", result.Content[3].Value)
+
+		allOfArray := result.Content[1]
+		require.Len(t, allOfArray.Content, 2)
+		require.Len(t, allOfArray.Content[0].Content, 2)
+		assert.Equal(t, "title", allOfArray.Content[0].Content[0].Value)
+		assert.Equal(t, "$ref", allOfArray.Content[1].Content[0].Value)
+	})
+
 	t.Run("create allOf with empty siblings", func(t *testing.T) {
 		siblings := map[string]*yaml.Node{}
 		refValue := "#/components/schemas/Base"
@@ -212,6 +232,55 @@ $ref: "#/components/schemas/Base"`
 		require.NotNil(t, partial)
 		require.Len(t, partial.Content, 2)
 		assert.Equal(t, "title", partial.Content[0].Value)
+	})
+
+	t.Run("unevaluated keywords stay beside allOf", func(t *testing.T) {
+		yml := `$ref: "#/components/schemas/Base"
+unevaluatedProperties: false
+required: [id]
+unevaluatedItems: false`
+
+		var node yaml.Node
+		_ = yaml.Unmarshal([]byte(yml), &node)
+		actualNode := node.Content[0]
+
+		transformed := transformer.transformSiblingRefWithMetadata(actualNode)
+		require.NotNil(t, transformed)
+		result := transformed.allOfNode
+
+		require.Len(t, result.Content, 6)
+		assert.Equal(t, "allOf", result.Content[0].Value)
+		assert.Equal(t, "unevaluatedProperties", result.Content[2].Value)
+		assert.Equal(t, "unevaluatedItems", result.Content[4].Value)
+
+		allOfArray := result.Content[1]
+		require.Len(t, allOfArray.Content, 2)
+		require.Len(t, allOfArray.Content[0].Content, 2)
+		assert.Equal(t, "required", allOfArray.Content[0].Content[0].Value)
+		assert.Equal(t, "$ref", allOfArray.Content[1].Content[0].Value)
+
+		// the sibling view still holds every authored sibling.
+		require.Len(t, transformed.siblingNode.Content, 6)
+		assert.Equal(t, "unevaluatedProperties", transformed.siblingNode.Content[0].Value)
+		assert.Equal(t, "required", transformed.siblingNode.Content[2].Value)
+		assert.Equal(t, "unevaluatedItems", transformed.siblingNode.Content[4].Value)
+	})
+
+	t.Run("only unevaluated siblings", func(t *testing.T) {
+		yml := `$ref: "#/components/schemas/Base"
+unevaluatedProperties: false`
+
+		var node yaml.Node
+		_ = yaml.Unmarshal([]byte(yml), &node)
+
+		result, err := transformer.TransformSiblingRef(node.Content[0])
+		require.NoError(t, err)
+		require.Len(t, result.Content, 4)
+		assert.Equal(t, "allOf", result.Content[0].Value)
+		require.Len(t, result.Content[1].Content, 1)
+		assert.Equal(t, "$ref", result.Content[1].Content[0].Content[0].Value)
+		assert.Equal(t, "unevaluatedProperties", result.Content[2].Value)
+		assert.Equal(t, "false", result.Content[3].Value)
 	})
 
 	t.Run("no transformation for ref only", func(t *testing.T) {
