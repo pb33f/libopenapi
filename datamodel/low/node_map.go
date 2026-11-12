@@ -28,7 +28,8 @@ type AddNodes interface {
 //
 // Node maps are filled for every object built but read only by tools that map lines back to objects, so
 // writes are recorded as they happen and the line index is built when the nodes are first read.
-// NodeLines is safe for concurrent use, and its zero value is ready to use.
+// NodeLines is safe for concurrent use, and its zero value is ready to use. A nil *NodeLines reads as
+// empty and ignores writes.
 type NodeLines struct {
 	mu      sync.Mutex
 	pending []nodeLineWrite
@@ -48,6 +49,9 @@ func (n *NodeLines) Store(line int, value any) {
 
 // Load returns the value held for a line, and whether the line holds one.
 func (n *NodeLines) Load(line int) (any, bool) {
+	if n == nil {
+		return nil, false
+	}
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	value, ok := n.index()[line]
@@ -57,6 +61,9 @@ func (n *NodeLines) Load(line int) (any, bool) {
 // Range calls f for each line and its value, in line order, until f returns false. The lines are read
 // before f is first called, so f may write to the nodes.
 func (n *NodeLines) Range(f func(line int, value any) bool) {
+	if n == nil {
+		return
+	}
 	n.mu.Lock()
 	index := n.index()
 	lines := make([]int, 0, len(index))
@@ -82,6 +89,11 @@ func (n *NodeLines) add(line int, node *yaml.Node) {
 }
 
 func (n *NodeLines) write(w nodeLineWrite) {
+	if n == nil {
+		// Objects that were never built (for example placeholders for external references skipped
+		// by SkipExternalRefResolution) have no node store; there is nothing to record for them.
+		return
+	}
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if n.lines != nil {
