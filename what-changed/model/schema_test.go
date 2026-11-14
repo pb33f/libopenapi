@@ -6,6 +6,8 @@ package model
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
@@ -544,6 +546,59 @@ components:
 	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "two", changes.Changes[0].Original)
 	assert.Equal(t, v3.RequiredLabel, changes.Changes[0].Property)
+}
+
+func TestCompareSchemas_ExternalRequiredLocation(t *testing.T) {
+	const spec = `openapi: 3.1.0
+info: {title: Orders, version: 1.0.0}
+paths: {}
+components:
+  schemas:
+    Order:
+`
+	const ref = "      $ref: './order.yaml'\n"
+	build := func(schema, required string) (*base.SchemaProxy, string) {
+		t.Helper()
+		dir := t.TempDir()
+		filename := filepath.Join(dir, "order.yaml")
+		require.NoError(t, os.WriteFile(filename, []byte("type: object\nproperties: {id: {type: string}, currency: {type: string}}\nrequired: ["+required+"]\n"), 0600))
+		config := datamodel.NewDocumentConfiguration()
+		config.BasePath = dir
+		config.AllowFileReferences = true
+		info, err := datamodel.ExtractSpecInfo([]byte(spec + schema))
+		require.NoError(t, err)
+		doc, err := v3.CreateDocumentFromConfig(info, config)
+		require.NoError(t, err)
+		return doc.Components.Value.FindSchema("Order").Value, filename
+	}
+
+	left, _ := build(ref, "id")
+	right, file := build(ref, "id, currency")
+
+	added := CompareSchemas(left, right)
+	require.NotNil(t, added)
+	require.Len(t, added.Changes, 1)
+	assert.Equal(t, PropertyAdded, added.Changes[0].ChangeType)
+	assert.Equal(t, file, added.Changes[0].Context.DocumentLocation)
+	assert.Equal(t, "currency", added.Changes[0].NewObject.(func() string)())
+
+	removed := CompareSchemas(right, left)
+	require.NotNil(t, removed)
+	require.Len(t, removed.Changes, 1)
+	assert.Equal(t, PropertyRemoved, removed.Changes[0].ChangeType)
+	assert.Equal(t, file, removed.Changes[0].Context.DocumentLocation)
+	assert.Equal(t, "currency", removed.Changes[0].OriginalObject.(func() string)())
+	// A preserved object branch has a different index from its inline wrapper.
+	wrapped, branchFile := build("      anyOf:\n        - $ref: './order.yaml'\n        - type: 'null'\n", "id, currency")
+	widened := CompareSchemas(left, wrapped)
+	require.NotNil(t, widened)
+	for _, change := range widened.GetAllChanges() {
+		if change.Property == v3.RequiredLabel && change.New == "currency" {
+			assert.Equal(t, branchFile, change.Context.DocumentLocation)
+			return
+		}
+	}
+	t.Fatal("missing required currency addition in external branch")
 }
 
 func TestCompareSchemas_EnumSimilar(t *testing.T) {
