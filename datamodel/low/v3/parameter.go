@@ -184,7 +184,9 @@ func (p *Parameter) Hash() uint64 {
 		if p.Style.Value != "" {
 			low.HashString(h, "style", p.Style.Value)
 		}
-		low.HashBool(h, p.Explode.Value)
+		if !p.Explode.IsEmpty() {
+			low.HashBool(h, p.Explode.Value)
+		}
 		h.WriteByte(low.HASH_PIPE)
 		low.HashBool(h, p.AllowReserved.Value)
 		h.WriteByte(low.HASH_PIPE)
