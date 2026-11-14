@@ -326,7 +326,6 @@ func Test_checkLocation(t *testing.T) {
 	rolodex := index.NewRolodex(&index.SpecIndexConfig{})
 	idx.SetRolodex(rolodex)
 	idxB.SetRolodex(rolodex)
-	rolodex.SetRootIndex(idx)
 
 	testHasIndex := &test_hasIndex{
 		index: idxB,
@@ -334,6 +333,8 @@ func Test_checkLocation(t *testing.T) {
 
 	// https://suno.com/s/FtPAc2SaXEw5vTsH
 	idxB.SetAbsolutePath("milly-milk-bottle")
+	assert.False(t, checkLocation(&ChangeContext{}, testHasIndex))
+	rolodex.SetRootIndex(idx)
 	assert.True(t, checkLocation(&ChangeContext{DocumentLocation: "sunny-spain"}, testHasIndex))
 
 }

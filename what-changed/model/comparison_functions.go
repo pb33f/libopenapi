@@ -109,7 +109,7 @@ func checkLocation(ctx *ChangeContext, hs base.HasIndex) bool {
 		if idx.GetRolodex() != nil {
 			r := idx.GetRolodex()
 			rIdx := r.GetRootIndex()
-			if rIdx.GetSpecAbsolutePath() != idx.GetSpecAbsolutePath() {
+			if rIdx != nil && rIdx.GetSpecAbsolutePath() != idx.GetSpecAbsolutePath() {
 				ctx.DocumentLocation = idx.GetSpecAbsolutePath()
 				return true
 			}
