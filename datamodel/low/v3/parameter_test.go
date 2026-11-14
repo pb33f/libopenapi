@@ -382,4 +382,13 @@ func TestParameter_Hash_ExplodePresence(t *testing.T) {
 	assert.NotEqual(t, absent.Hash(), explicitFalse.Hash())
 	assert.NotEqual(t, absent.Hash(), explicitTrue.Hash())
 	assert.Equal(t, explicitTrue.Hash(), build(spec+"explode: true\n").Hash())
+
+	// Key node only, matching a built low parameter that NewParameter treats as present.
+	keyOnly := build(spec)
+	keyOnly.Explode = low.NodeReference[bool]{
+		KeyNode: &yaml.Node{Kind: yaml.ScalarNode, Value: "explode"},
+		Value:   true,
+	}
+	assert.False(t, low.AreEqual(absent, keyOnly))
+	assert.Equal(t, explicitTrue.Hash(), keyOnly.Hash())
 }
