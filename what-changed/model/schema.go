@@ -1152,7 +1152,8 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 	// Deprecated
 	addCheck(lnv, rnv, v3.DeprecatedLabel, PropDeprecated)
 
-	// Required
+	// Required entries carry scalar getters. Their parent proxy retains the source index
+	// even when the comparison uses a normalized schema view.
 	j := make(map[string]int)
 	k := make(map[string]int)
 	if lSchema != nil {
@@ -1170,6 +1171,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 			CreateChange(changes, PropertyAdded, v3.RequiredLabel,
 				nil, rSchema.Required.Value[k[g]].GetValueNode(), BreakingAdded(CompSchema, PropRequired), nil,
 				rSchema.Required.Value[k[g]].GetValue)
+			checkLocation((*changes)[len(*changes)-1].Context, rSchema.ParentProxy.Schema())
 		}
 	}
 	for g := range j {
@@ -1177,6 +1179,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 			CreateChange(changes, PropertyRemoved, v3.RequiredLabel,
 				lSchema.Required.Value[j[g]].GetValueNode(), nil, BreakingRemoved(CompSchema, PropRequired), lSchema.Required.Value[j[g]].GetValue,
 				nil)
+			checkLocation((*changes)[len(*changes)-1].Context, lSchema.ParentProxy.Schema())
 		}
 	}
 
