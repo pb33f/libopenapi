@@ -48,11 +48,18 @@ components:
       $id: https://example.com/self
       $anchor: self
       type: array
+    Tuple:
+      type: array
+      prefixItems:
+        - {$anchor: first, type: string}
+        - {$anchor: second, type: integer}
     B:
       type: object
       properties:
         local: {$ref: '#foo'}
         outside: {$ref: 'https://example.com/r#bar'}
+        first: {$ref: '#first'}
+        second: {$ref: '#second'}
 `
 
 func schemaNodeType(node *yaml.Node) string {
@@ -74,6 +81,10 @@ func TestSchemaAnchorResolution(t *testing.T) {
 		{"anchor in $id resource", "https://example.com/r#bar", "integer"},
 		{"anchor beside $id", "https://example.com/self#self", "array"},
 		{"first duplicate wins", "#dup", "boolean"},
+		{"percent-encoded name", "#f%6Fo", "string"},
+		{"percent-encoded name in $id resource", "https://example.com/r#b%61r", "integer"},
+		{"invalid percent-encoding", "#f%zzo", ""},
+		{"array entry", "#second", "integer"},
 		{"scoped anchor outside its resource", "#bar", ""},
 		{"document anchor under an $id", "https://example.com/r#foo", ""},
 		{"invalid name", "#1bad", ""},
@@ -124,6 +135,17 @@ func TestSchemaAnchorResolvedReference(t *testing.T) {
 	assert.Equal(t, "X", ref.Name)
 	assert.Equal(t, "#/components/schemas/R/$defs/X", ref.Definition)
 	assert.Equal(t, "https://example.com/r", ref.SchemaIdBase)
+
+	ref = idx.ResolveRefViaSchemaId("#second")
+	require.NotNil(t, ref)
+	assert.Equal(t, "1", ref.Name)
+	assert.Equal(t, "#/components/schemas/Tuple/prefixItems/1", ref.Definition)
+
+	// the encoded spelling finds the same anchor, and keeps the ref as written.
+	ref = idx.ResolveRefViaSchemaId("#f%6Fo")
+	require.NotNil(t, ref)
+	assert.Equal(t, "#/components/schemas/A", ref.Definition)
+	assert.Equal(t, "#f%6Fo", ref.RawRef)
 }
 
 func TestSchemaAnchorExtractedRefs(t *testing.T) {
@@ -137,6 +159,207 @@ func TestSchemaAnchorExtractedRefs(t *testing.T) {
 	assert.Equal(t, "#foo", mapped["#/components/schemas/A"].RawRef)
 	require.Contains(t, mapped, "#/components/schemas/R/$defs/X")
 	assert.Equal(t, "integer", schemaNodeType(mapped["#/components/schemas/R/$defs/X"].Node))
+
+	// anchors on two entries of one array are two targets, told apart by the index.
+	require.Contains(t, mapped, "#/components/schemas/Tuple/prefixItems/0")
+	assert.Equal(t, "string", schemaNodeType(mapped["#/components/schemas/Tuple/prefixItems/0"].Node))
+	require.Contains(t, mapped, "#/components/schemas/Tuple/prefixItems/1")
+	assert.Equal(t, "integer", schemaNodeType(mapped["#/components/schemas/Tuple/prefixItems/1"].Node))
+	assert.NotContains(t, mapped, "#/components/schemas/Tuple/prefixItems")
+}
+
+func TestSchemaAnchorFragmentName(t *testing.T) {
+	for fragment, want := range map[string]string{
+		"#foo":     "foo",
+		"#f%6Fo":   "foo",
+		"#":        "",
+		"foo":      "",
+		"#/foo":    "",
+		"#%2Ffoo":  "", // the JSON pointer "/foo"
+		"#f%zzo":   "",
+		"#1bad":    "",
+		"#a%20b":   "",
+		"#_a-b.c9": "_a-b.c9",
+	} {
+		name, ok := schemaAnchorFragmentName(fragment)
+		assert.Equal(t, want, name, fragment)
+		assert.Equal(t, want != "", ok, fragment)
+		assert.Equal(t, want != "", isSchemaAnchorFragment(fragment), fragment)
+	}
+}
+
+func TestSchemaIdentifierDefinitionPath(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`a:
+  b/c:
+    - {$id: 'https://example.com/x'}
+    - - {$id: 'https://example.com/y'}
+      - {$anchor: z}
+  alias: &shared {$anchor: w}
+  ref: *shared
+  merged:
+    <<: *shared
+    v: {$id: 'https://example.com/v'}
+  top: {$anchor: u, other: 1}
+  t~/: {$anchor: tl}
+  named:
+    properties:
+      $id: {$anchor: d}
+      $ref: {properties: {o: {$id: 'https://example.com/o'}}}
+  self: &self
+    $anchor: s
+    loop: *self
+m:
+  <<: {$anchor: mw, type: string}
+  k: 1
+`), &root))
+	cfg := CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "/specs/root.yaml"
+	idx := NewSpecIndexWithConfig(&root, cfg)
+	anchor := func(name string) string {
+		entry := idx.schemaAnchorRegistry["/specs/root.yaml#"+name]
+		require.NotNil(t, entry, name)
+		return entry.DefinitionPath
+	}
+	id := func(uri string) string {
+		entry := idx.GetSchemaById(uri)
+		require.NotNil(t, entry, uri)
+		return entry.DefinitionPath
+	}
+
+	// the path in the tree, with the sequence indices, and each key with "~" written as "~0" and
+	// "/" as "~1".
+	assert.Equal(t, "#/a/b~1c/0", id("https://example.com/x"))
+	assert.Equal(t, "#/a/b~1c/1/0", id("https://example.com/y"))
+	assert.Equal(t, "#/a/b~1c/1/1", anchor("z"))
+	assert.Equal(t, "#/a/top", anchor("u"))
+	assert.Equal(t, "#/a/t~0~1", anchor("tl"))
+	// a property named $id or $ref is a segment like any other.
+	assert.Equal(t, "#/a/named/properties/$id", anchor("d"))
+	assert.Equal(t, "#/a/named/properties/$ref/properties/o", id("https://example.com/o"))
+	// a key beside a merge key keeps its own segment.
+	assert.Equal(t, "#/a/merged/v", id("https://example.com/v"))
+	// a value reached three times, at its declaration and through an alias and a merge key,
+	// registers at its declaration.
+	assert.Equal(t, "#/a/alias", anchor("w"))
+	// a mapping that holds an alias of itself, at its declaration rather than through the loop.
+	assert.Equal(t, "#/a/self", anchor("s"))
+	// an identifier written under a merge key belongs to the mapping that merges it, the one a
+	// reader of m sees; the merged-in mapping has no pointer of its own.
+	assert.Equal(t, "#/m", anchor("mw"))
+	resolved := idx.ResolveRefViaSchemaId("#mw")
+	require.NotNil(t, resolved)
+	assert.Equal(t, "#/m", resolved.Definition)
+	assert.Equal(t, "string", schemaNodeType(resolved.Node))
+}
+
+func TestUnderSchemaDataPath(t *testing.T) {
+	for _, path := range []string{
+		"components/schemas/A/default",
+		"components/schemas/A/const",
+		"components/schemas/A/enum/0",
+		"components/schemas/A/examples/0",
+		"components/schemas/A/example",
+		"components/schemas/A/x-data",
+		"components/x-ext/A",
+		"components/examples/A/value",
+		"x-ext",
+		"paths/~1p/get/responses/200/content/application~1json/examples/E/value",
+		"components/schemas/default/default",
+		"components/schemas/A/properties/default/default",
+		"components/schemas/A/properties/x-named/x-data",
+		"components/parameters/P/schema/default",
+		"paths/~1p/get/parameters/0/schema/x-data",
+		"paths/~1p/get/responses/200/links/L/parameters",
+		"paths/~1p/get/responses/200/links/L/parameters/p",
+		"paths/~1p/get/responses/200/links/L/requestBody",
+		"paths/~1p/get/responses/200/links/parameters/requestBody",
+		"components/responses/R/links/L/parameters/p",
+		"components/links/L/parameters/p",
+		"components/links/L/requestBody",
+		"paths/~1p/get/responses/x-shadow/content/application~1json/schema",
+		"components/pathItems/P/get/responses/x-shadow",
+		"webhooks/hook/post/responses/x-shadow/content/application~1json/schema",
+	} {
+		assert.True(t, underSchemaDataPath(strings.Split(path, "/"), false), path)
+	}
+	for _, path := range []string{
+		"",
+		"components/schemas/A",
+		"components/schemas/default",
+		"components/schemas/x-Named",
+		"components/schemas/x-Named/properties/x-named",
+		"components/schemas/A/properties/default",
+		"components/schemas/A/properties/enum/items",
+		"components/schemas/A/patternProperties/x-",
+		"components/schemas/A/$defs/const",
+		"components/schemas/A/definitions/example",
+		"components/schemas/A/dependentSchemas/examples",
+		"components/schemas/A/dependencies/x-dep",
+		"components/schemas/A/prefixItems/0",
+		"components/responses/default/content/application~1json/schema",
+		"components/headers/x-rate/schema",
+		"paths/~1p/get/responses/default/content/application~1json/schema",
+		"paths/~1p/get/responses/200/headers/x-rate/schema",
+		"paths/~1p/get/requestBody/content/x-custom/schema",
+		"paths/~1p/post/requestBody/content/multipart~1form-data/encoding/x-part/headers/h/schema",
+		"paths/~1p/get/callbacks/x-cb",
+		"paths/~1p/get/responses/200/links/default",
+		"webhooks/x-hook/post",
+		"definitions/default",
+		"parameters/x-param/schema",
+		"responses/default/schema",
+		"paths/~1p/get/parameters/0/schema",
+		"paths/~1p/get/responses/200/links/parameters",
+		"paths/~1p/get/responses/200/links/requestBody/server",
+		"components/links/parameters",
+		"components/links/requestBody",
+		"components/schemas/A/properties/links/properties/parameters",
+		"components/responses/x-foo/content/application~1json/schema",
+		"paths/~1p/get/responses/default/links/x-link",
+		"responses/x-foo/schema",
+	} {
+		segments := strings.Split(path, "/")
+		if path == "" {
+			segments = nil
+		}
+		assert.False(t, underSchemaDataPath(segments, false), path)
+	}
+
+	// from the root of an $id resource, which is a schema, only the schema's keywords count.
+	for _, path := range []string{
+		"default",
+		"const",
+		"enum/0",
+		"examples/0",
+		"example",
+		"x-data",
+		"properties/p/default",
+		"$defs/S/x-data",
+		"components/schemas/x-A",
+		"headers/x-h",
+		"content/x-c",
+		"responses/x-r",
+		"parameters/x-p",
+	} {
+		assert.True(t, underSchemaDataPath(strings.Split(path, "/"), true), path)
+	}
+	for _, path := range []string{
+		"$defs/S",
+		"$defs/default",
+		"properties/x-named",
+		"properties/default/properties/enum",
+		"patternProperties/x-",
+		"definitions/example",
+		"dependentSchemas/const",
+		"dependencies/x-dep",
+		"prefixItems/0",
+		"items/properties/links/properties/parameters",
+		"links/L/parameters",
+		"links/L/requestBody",
+	} {
+		assert.False(t, underSchemaDataPath(strings.Split(path, "/"), true), path)
+	}
 }
 
 func TestSchemaAnchorResolver(t *testing.T) {
@@ -270,17 +493,28 @@ func TestRegisterSchemaAnchorAt_Skips(t *testing.T) {
 		return n.Content[0]
 	}
 
-	idx.registerSchemaAnchorAt(parse("$anchor: a"), 0, []string{"components", "examples", "Sample", "value"}, "test.yaml")
-	idx.registerSchemaAnchorAt(parse("$anchor: [a]"), 0, nil, "test.yaml")
-	idx.registerSchemaAnchorAt(parse("$anchor: 'a b'"), 0, nil, "test.yaml")
+	scope := NewSchemaIdScope("test.yaml")
+	idx.registerSchemaAnchorAt(parse("$anchor: a"), 0, []string{"components", "examples", "Sample", "value"}, scope)
+	idx.registerSchemaAnchorAt(parse("$anchor: [a]"), 0, nil, scope)
+	idx.registerSchemaAnchorAt(parse("$anchor: 'a b'"), 0, nil, scope)
 	truncated := parse("$anchor: a")
 	truncated.Content = truncated.Content[:1]
-	idx.registerSchemaAnchorAt(truncated, 0, nil, "test.yaml")
+	idx.registerSchemaAnchorAt(truncated, 0, nil, scope)
+	// inside the $id resource at x-vendor/Thing, its default is data.
+	resource := NewSchemaIdScope("test.yaml")
+	resource.PushId("https://example.com/thing")
+	resource.resourceDepth = 2
+	idx.registerSchemaAnchorAt(parse("$anchor: d"), 0, []string{"x-vendor", "Thing", "default"}, resource)
 	assert.Empty(t, idx.schemaAnchorRegistry)
 
-	idx.registerSchemaAnchorAt(parse("$anchor: a"), 0, nil, "test.yaml")
+	idx.registerSchemaAnchorAt(parse("$anchor: a"), 0, nil, scope)
 	require.Contains(t, idx.schemaAnchorRegistry, "test.yaml#a")
 	assert.Equal(t, "#", idx.schemaAnchorRegistry["test.yaml#a"].DefinitionPath)
+
+	// the extension holding the resource does not count, only the path within it.
+	idx.registerSchemaAnchorAt(parse("$anchor: s"), 0, []string{"x-vendor", "Thing", "$defs", "S"}, resource)
+	require.Contains(t, idx.schemaAnchorRegistry, "https://example.com/thing#s")
+	assert.Equal(t, "#/x-vendor/Thing/$defs/S", idx.schemaAnchorRegistry["https://example.com/thing#s"].DefinitionPath)
 }
 
 // "#foo" inside an external file names an anchor in that file, not in the root document.

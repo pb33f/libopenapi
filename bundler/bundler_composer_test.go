@@ -3196,3 +3196,49 @@ func TestBuildSchema_UnresolvedReferenceReturnsError(t *testing.T) {
 	require.ErrorContains(t, err, "#/missing")
 	require.Nil(t, schema)
 }
+
+// TestBundleBytesComposed_AnchorRefsIntoPrefixItems checks that plain-name $anchor refs
+// into a tuple are rewritten to pointers at each prefixItems element, not at the array.
+func TestBundleBytesComposed_AnchorRefsIntoPrefixItems(t *testing.T) {
+	spec := []byte(`openapi: 3.1.0
+info:
+  title: t
+  version: '1'
+paths: {}
+components:
+  schemas:
+    Tuple:
+      type: array
+      prefixItems:
+        - $anchor: first
+          type: boolean
+        - $anchor: second
+          type: number
+    T:
+      type: object
+      properties:
+        first:
+          $ref: '#first'
+        second:
+          $ref: '#second'
+`)
+
+	schemaAt := func(t *testing.T, bundled []byte, prop string) map[string]any {
+		t.Helper()
+		var doc map[string]any
+		require.NoError(t, yaml.Unmarshal(bundled, &doc))
+		schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
+		props := schemas["T"].(map[string]any)["properties"].(map[string]any)
+		return props[prop].(map[string]any)
+	}
+
+	composed, err := BundleBytesComposed(spec, &datamodel.DocumentConfiguration{}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "#/components/schemas/Tuple/prefixItems/0", schemaAt(t, composed, "first")["$ref"])
+	assert.Equal(t, "#/components/schemas/Tuple/prefixItems/1", schemaAt(t, composed, "second")["$ref"])
+
+	inlined, err := BundleBytes(spec, &datamodel.DocumentConfiguration{})
+	require.NoError(t, err)
+	assert.Equal(t, "boolean", schemaAt(t, inlined, "first")["type"])
+	assert.Equal(t, "number", schemaAt(t, inlined, "second")["type"])
+}
