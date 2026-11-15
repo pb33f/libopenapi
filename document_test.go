@@ -5,6 +5,7 @@ package libopenapi
 import (
 	"bytes"
 	stdContext "context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/jsonschema/v6"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
@@ -2449,6 +2451,200 @@ unevaluatedItems:
 	modelBytes, err := model.Model.Render()
 	require.NoError(t, err)
 	assert.Equal(t, spec, string(modelBytes))
+}
+
+func TestDocument_SiblingRefUnevaluatedKeywordsKeepResourceScope(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+    title: Unevaluated sibling refs
+    version: 1.0.0
+paths: {}
+components:
+    schemas:
+        Base:
+            $id: 'https://example.com/schemas/base'
+            type: object
+            properties:
+                a:
+                    type: integer
+        Scoped:
+            $ref: 'https://example.com/schemas/base'
+            $id: 'https://example.com/schemas/scoped'
+            $defs:
+                Extra:
+                    type: string
+            unevaluatedProperties:
+                $ref: '#/$defs/Extra'
+`
+
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	proxy := model.Model.Components.Schemas.GetOrZero("Scoped")
+
+	// #/$defs/Extra resolves against $id, so $id and $defs stay in the same schema resource as
+	// unevaluatedProperties, and the allOf schema still resolves the reference on its own.
+	allOf, err := yaml.Marshal(proxy.GoLow().GetTransformedRefAllOfSchema())
+	require.NoError(t, err)
+	assert.Equal(t, `allOf:
+    - $ref: https://example.com/schemas/base
+$id: 'https://example.com/schemas/scoped'
+$defs:
+    Extra:
+        type: string
+unevaluatedProperties:
+    $ref: '#/$defs/Extra'
+`, string(allOf))
+
+	inline, err := proxy.Schema().RenderInline()
+	require.NoError(t, err)
+	assert.Equal(t, `allOf:
+    - $id: 'https://example.com/schemas/base'
+      type: object
+      properties:
+        a:
+            type: integer
+$id: 'https://example.com/schemas/scoped'
+$defs:
+    Extra:
+        type: string
+unevaluatedProperties:
+    type: string
+`, string(inline))
+
+	// a JSON Schema compiler resolves #/$defs/Extra in both, and both validate like the authored
+	// schema: properties the $ref target evaluated are allowed, and any other must be a string.
+	baseSchema, err := model.Model.Components.Schemas.GetOrZero("Base").Render()
+	require.NoError(t, err)
+	for name, resources := range map[string]map[string][]byte{
+		"allOf schema": {"https://example.com/schemas/scoped": allOf, "https://example.com/schemas/base": baseSchema},
+		"inline":       {"https://example.com/schemas/scoped": inline},
+	} {
+		compiler := jsonschema.NewCompiler()
+		for location, schemaYAML := range resources {
+			var value any
+			require.NoError(t, yaml.Unmarshal(schemaYAML, &value), name)
+			schemaJSON, err := json.Marshal(value)
+			require.NoError(t, err, name)
+			doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(schemaJSON))
+			require.NoError(t, err, name)
+			require.NoError(t, compiler.AddResource(location, doc), name)
+		}
+		compiled, err := compiler.Compile("https://example.com/schemas/scoped")
+		require.NoError(t, err, name)
+		for instance, valid := range map[string]bool{
+			`{"a": 1}`:           true,
+			`{"a": 1, "x": "s"}`: true,
+			`{"a": 1, "x": 2}`:   false,
+			`{"a": "s"}`:         false,
+		} {
+			value, err := jsonschema.UnmarshalJSON(strings.NewReader(instance))
+			require.NoError(t, err, name)
+			assert.Equal(t, valid, compiled.Validate(value) == nil, "%s %s", name, instance)
+		}
+	}
+}
+
+func TestDocument_SiblingRefResourceKeywordsStayBesideAllOf(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+    title: Resource sibling refs
+    version: 1.0.0
+paths: {}
+components:
+    schemas:
+        Base:
+            $id: 'https://example.com/schemas/base'
+            type: object
+        Named:
+            $ref: 'https://example.com/schemas/base'
+            $id: 'https://example.com/schemas/named'
+            $schema: 'https://json-schema.org/draft/2020-12/schema'
+            $vocabulary:
+                https://json-schema.org/draft/2020-12/vocab/core: true
+            $anchor: named
+            $dynamicAnchor: node
+            $defs:
+                Extra:
+                    type: string
+            title: Named
+`
+
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	proxy := model.Model.Components.Schemas.GetOrZero("Named")
+
+	// $id, $schema, $vocabulary, $anchor, $dynamicAnchor and $defs sit beside allOf without any
+	// unevaluated* keyword, and the member does not repeat them.
+	inline, err := proxy.Schema().RenderInline()
+	require.NoError(t, err)
+	assert.Equal(t, `allOf:
+    - title: Named
+    - $id: 'https://example.com/schemas/base'
+      type: object
+$id: 'https://example.com/schemas/named'
+$schema: 'https://json-schema.org/draft/2020-12/schema'
+$vocabulary:
+    https://json-schema.org/draft/2020-12/vocab/core: true
+$anchor: named
+$dynamicAnchor: node
+$defs:
+    Extra:
+        type: string
+`, string(inline))
+
+	// the semantic view is built detached, and setting ParentProxy asks for the collapsed $ref
+	// form, which here is the authored one.
+	semantic, err := proxy.BuildTransformedRefSemanticSchema(proxy.Schema())
+	require.NoError(t, err)
+	semantic.ParentProxy = proxy
+	collapsed, err := semantic.Render()
+	require.NoError(t, err)
+	assert.Equal(t, `$ref: 'https://example.com/schemas/base'
+$id: 'https://example.com/schemas/named'
+$schema: 'https://json-schema.org/draft/2020-12/schema'
+$vocabulary:
+    https://json-schema.org/draft/2020-12/vocab/core: true
+$anchor: named
+$dynamicAnchor: node
+$defs:
+    Extra:
+        type: string
+title: Named
+`, string(collapsed))
+
+	modelBytes, err := model.Model.Render()
+	require.NoError(t, err)
+	assert.Equal(t, spec, string(modelBytes))
+
+	// edited values replace the authored ones beside allOf, and the member does not repeat them.
+	sibling := proxy.Schema()
+	sibling.Id = "https://example.com/schemas/renamed"
+	sibling.Anchor = "renamed"
+	semantic, err = proxy.BuildTransformedRefSemanticSchema(sibling)
+	require.NoError(t, err)
+	semanticBytes, err := semantic.Render()
+	require.NoError(t, err)
+	assert.Equal(t, `allOf:
+    - title: Named
+    - $ref: https://example.com/schemas/base
+$id: 'https://example.com/schemas/renamed'
+$schema: 'https://json-schema.org/draft/2020-12/schema'
+$vocabulary:
+    https://json-schema.org/draft/2020-12/vocab/core: true
+$anchor: renamed
+$dynamicAnchor: node
+$defs:
+    Extra:
+        type: string
+`, string(semanticBytes))
 }
 
 func TestDocument_Render_OpenAPI30TransformedSiblingRefStaysAllOf(t *testing.T) {

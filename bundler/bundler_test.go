@@ -3347,3 +3347,100 @@ paths:
 	require.NoError(t, err)
 	require.NotNil(t, bundledBytes)
 }
+
+func TestBundleBytes_SiblingRefUnevaluatedKeywordsStayBesideAllOf(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	rootSpec := `openapi: 3.1.0
+info: {title: bundle, version: '1'}
+paths:
+  /x:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: 'ext.yaml#/components/schemas/Base'
+              required: [a]
+              unevaluatedProperties: false
+      responses:
+        '200':
+          description: ok
+components:
+  schemas:
+    Base:
+      $id: 'https://example.com/schemas/base'
+      type: object
+    Scoped:
+      $ref: 'base'
+      $id: 'https://example.com/schemas/scoped'
+      $defs:
+        Node:
+          type: object
+          properties:
+            next:
+              $ref: '#/$defs/Node'
+      unevaluatedProperties:
+        $ref: '#/$defs/Node'
+`
+	extSpec := `components:
+  schemas:
+    Base:
+      type: object
+      properties:
+        a:
+          type: integer
+`
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "root.yaml"), []byte(rootSpec), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "ext.yaml"), []byte(extSpec), 0o644))
+
+	cfg := datamodel.NewDocumentConfiguration()
+	cfg.BasePath = tmpDir
+	cfg.SpecFilePath = "root.yaml"
+	cfg.AllowFileReferences = true
+	bundled, err := BundleBytes([]byte(rootSpec), cfg)
+	require.NoError(t, err)
+
+	subtree := func(path ...string) string {
+		t.Helper()
+		node := lookupMappingNode(t, bundled, path...)
+		require.NotNil(t, node, strings.Join(path, "."))
+		out, err := yaml.Marshal(node)
+		require.NoError(t, err)
+		return string(out)
+	}
+
+	// unevaluatedProperties only sees properties evaluated by adjacent keywords, so it must stay
+	// beside the allOf; inside an allOf member it would not see what the $ref target evaluated.
+	assert.Equal(t, `allOf:
+    - required:
+        - a
+    - type: object
+      properties:
+        a:
+            type: integer
+unevaluatedProperties: false
+`, subtree("paths", "/x", "post", "requestBody", "content", "application/json", "schema"))
+
+	// $id and $defs stay beside it too: 'base' resolves against Scoped's $id to the local Base,
+	// and '#/$defs/Node' resolves against Scoped's $id.
+	assert.Equal(t, `allOf:
+    - $id: 'https://example.com/schemas/base'
+      type: object
+$id: 'https://example.com/schemas/scoped'
+$defs:
+    Node:
+        type: object
+        properties:
+            next:
+                type: object
+                properties:
+                    next:
+                        $ref: '#/$defs/Node'
+unevaluatedProperties:
+    type: object
+    properties:
+        next:
+            $ref: '#/$defs/Node'
+`, subtree("components", "schemas", "Scoped"))
+}

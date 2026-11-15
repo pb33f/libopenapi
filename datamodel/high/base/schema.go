@@ -540,14 +540,15 @@ func (s *Schema) RenderInline() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Schema object.
 func (s *Schema) MarshalYAML() (interface{}, error) {
-	if node := s.booleanSchemaNode(); node != nil {
-		return node, nil
-	}
-
+	// the sibling view of a $ref with siblings renders like its proxy, even when it is boolean.
 	if s.ParentProxy != nil {
 		if node, ok, err := s.ParentProxy.renderTransformedRefWithSiblings(s); ok || err != nil {
 			return node, err
 		}
+	}
+
+	if node := s.booleanSchemaNode(); node != nil {
+		return node, nil
 	}
 
 	nb := high.NewNodeBuilder(s, s.low)
@@ -564,16 +565,19 @@ func (s *Schema) MarshalYAML() (interface{}, error) {
 
 // MarshalJSON will create a ready to render JSON representation of the Schema object.
 func (s *Schema) MarshalJSON() ([]byte, error) {
-	if s.BooleanSchema != nil {
-		return json.Marshal(*s.BooleanSchema)
-	}
-
-	if s.ParentProxy != nil && s.ParentProxy.isParsedRefWithSiblings() {
-		node, err := s.ParentProxy.referenceYAMLNodeForSchema(s)
+	// like MarshalYAML, render the full schema when the $ref form cannot hold it.
+	if s.ParentProxy != nil {
+		node, ok, err := s.ParentProxy.renderTransformedRefWithSiblings(s)
 		if err != nil {
 			return nil, err
 		}
-		return marshalYAMLNodeJSON(node)
+		if ok {
+			return marshalYAMLNodeJSON(node)
+		}
+	}
+
+	if s.BooleanSchema != nil {
+		return json.Marshal(*s.BooleanSchema)
 	}
 
 	nb := high.NewNodeBuilder(s, s.low)
@@ -596,10 +600,6 @@ func (s *Schema) MarshalJSON() ([]byte, error) {
 // The ctx parameter should be *InlineRenderContext but is typed as any to satisfy the
 // high.RenderableInlineWithContext interface without import cycles.
 func (s *Schema) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
-	if node := s.booleanSchemaNode(); node != nil {
-		return node, nil
-	}
-
 	// ensure we have a valid render context; create default bundle mode context if nil.
 	// this ensures backward compatibility where nil context = bundle mode behavior.
 	renderCtx, ok := ctx.(*InlineRenderContext)
@@ -607,8 +607,13 @@ func (s *Schema) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 		renderCtx = NewInlineRenderContext()
 		ctx = renderCtx
 	}
+	// the sibling view of a $ref with siblings renders like its proxy, even when it is boolean.
 	if s.ParentProxy != nil && s.ParentProxy.isParsedRefWithSiblings() {
 		return s.ParentProxy.marshalParsedRefWithSiblingsInline(renderCtx, s)
+	}
+
+	if node := s.booleanSchemaNode(); node != nil {
+		return node, nil
 	}
 
 	// determine if we should preserve discriminator refs based on rendering mode.
@@ -659,11 +664,12 @@ func (s *Schema) MarshalYAMLInline() (interface{}, error) {
 
 // MarshalJSONInline will render out the Schema pointer as JSON, and all refs will be inlined fully
 func (s *Schema) MarshalJSONInline() ([]byte, error) {
-	if s.BooleanSchema != nil {
+	if s.BooleanSchema != nil && !s.ParentProxy.schemaIsTransformedSiblingView(s) {
 		return json.Marshal(*s.BooleanSchema)
 	}
 
 	if s.ParentProxy != nil && s.ParentProxy.isParsedRefWithSiblings() {
+		// the sibling view renders like its proxy, even when it is boolean.
 		rendered, err := s.MarshalYAMLInline()
 		if err != nil {
 			return nil, err

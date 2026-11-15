@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
@@ -2074,6 +2076,9 @@ components:
           $ref: '#/components/schemas/Pair'
           unevaluatedItems:
             type: string
+        anchored:
+          $ref: '#/components/schemas/Thing'
+          $anchor: anchored
 `
 	keys := func(t *testing.T, rendered any) []string {
 		t.Helper()
@@ -2123,11 +2128,12 @@ components:
 		require.Len(t, semantic.AllOf, 1)
 		assert.True(t, semantic.AllOf[0].IsReference())
 
-		// the allOf view collapses back to the authored shape.
+		// BuildTransformedRefSemanticSchema returns the allOf view without ParentProxy. Setting it
+		// makes the view render the $ref form where that form can hold the schema, which here is
+		// the authored shape. Later subtests set ParentProxy for the same reason.
 		semantic.ParentProxy = sp
-		node, ok, err := sp.renderTransformedRefWithSiblings(semantic)
+		node, err := semantic.MarshalYAML()
 		require.NoError(t, err)
-		require.True(t, ok)
 		assert.Equal(t, []string{"$ref", "unevaluatedProperties"}, keys(t, node))
 
 		// a keyword added to the sibling view joins allOf.
@@ -2144,6 +2150,87 @@ components:
 		assert.Equal(t, []string{"$ref", "unevaluatedProperties", "required"}, keys(t, rendered))
 	})
 
+	t.Run("a keyword added beside only an $anchor joins allOf alone", func(t *testing.T) {
+		sp := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, "anchored")
+		sibling := sp.Schema()
+		require.NotNil(t, sibling)
+		sibling.Required = []string{"a"}
+
+		// allOf only held the $ref, so the added keyword forms a new member, and the $anchor
+		// that moved beside allOf is not repeated in it.
+		inline, err := sp.MarshalYAMLInline()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"allOf", "$anchor"}, keys(t, inline))
+		_, allOf := findYAMLPair(inline.(*yaml.Node), "allOf")
+		require.NotNil(t, allOf)
+		require.Len(t, allOf.Content, 2)
+		assert.Equal(t, []string{"required"}, keys(t, allOf.Content[0]))
+	})
+
+	t.Run("clearing every member keyword leaves allOf holding just the $ref", func(t *testing.T) {
+		sp := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, "thing")
+		sibling := sp.Schema()
+		require.NotNil(t, sibling)
+		sibling.Required = nil
+
+		semantic, err := sp.BuildTransformedRefSemanticSchema(sibling)
+		require.NoError(t, err)
+		require.Len(t, semantic.AllOf, 1)
+		assert.True(t, semantic.AllOf[0].IsReference())
+
+		inline, err := sp.MarshalYAMLInline()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"allOf", "unevaluatedProperties"}, keys(t, inline))
+		_, allOf := findYAMLPair(inline.(*yaml.Node), "allOf")
+		require.NotNil(t, allOf)
+		require.Len(t, allOf.Content, 1)
+		assert.Equal(t, []string{"type", "properties"}, keys(t, allOf.Content[0]))
+	})
+
+	// jsonMatchesYAML checks that MarshalJSON renders the same schema as MarshalYAML.
+	jsonMatchesYAML := func(t *testing.T, s *Schema, rendered any) string {
+		t.Helper()
+		fromYAML, err := marshalYAMLRenderJSON(rendered)
+		require.NoError(t, err)
+		jsonBytes, err := s.MarshalJSON()
+		require.NoError(t, err)
+		assert.JSONEq(t, string(fromYAML), string(jsonBytes))
+		return string(jsonBytes)
+	}
+
+	t.Run("member keywords that move beside allOf keep the allOf", func(t *testing.T) {
+		for name, tc := range map[string]struct {
+			edit func(*Schema)
+			want string
+		}{
+			"anchor": {
+				edit: func(s *Schema) { s.AllOf[0].Schema().Anchor = "inner" },
+				want: `"$anchor":"inner"`,
+			},
+			// the member $ref would clash with the $ref of the collapsed form.
+			"ref": {
+				edit: func(s *Schema) { s.AllOf[0] = CreateSchemaProxyRef("#/components/schemas/Pair") },
+				want: `{"$ref":"#/components/schemas/Pair"}`,
+			},
+		} {
+			sp := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, "thing")
+			semantic, err := sp.BuildTransformedRefSemanticSchema(sp.Schema())
+			require.NoError(t, err)
+			require.Len(t, semantic.AllOf, 2)
+			tc.edit(semantic)
+
+			// the $ref form would move the keyword beside allOf, so the explicit allOf stays.
+			semantic.ParentProxy = sp
+			_, ok, err := sp.renderTransformedRefWithSiblings(semantic)
+			require.NoError(t, err)
+			assert.False(t, ok, name)
+			rendered, err := semantic.MarshalYAML()
+			require.NoError(t, err)
+			assert.Equal(t, []string{"allOf", "unevaluatedProperties"}, keys(t, rendered), name)
+			assert.Contains(t, jsonMatchesYAML(t, semantic, rendered), tc.want, name)
+		}
+	})
+
 	t.Run("other outer keywords keep the allOf", func(t *testing.T) {
 		sp := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, "only")
 		semantic, err := sp.BuildTransformedRefSemanticSchema(sp.Schema())
@@ -2155,6 +2242,49 @@ components:
 		require.NoError(t, err)
 		assert.False(t, ok)
 		assert.Nil(t, node)
+		rendered, err := semantic.MarshalYAML()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"allOf", "unevaluatedProperties", "title"}, keys(t, rendered))
+		assert.Contains(t, jsonMatchesYAML(t, semantic, rendered), `"title":"outer"`)
+	})
+
+	t.Run("the allOf view renders inline without wrapping its allOf again", func(t *testing.T) {
+		sp := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, "thing")
+		semantic, err := sp.BuildTransformedRefSemanticSchema(sp.Schema())
+		require.NoError(t, err)
+		semantic.ParentProxy = sp
+
+		inline, err := semantic.MarshalYAMLInline()
+		require.NoError(t, err)
+		assert.Equal(t, []string{"allOf", "unevaluatedProperties"}, keys(t, inline))
+		_, allOf := findYAMLPair(inline.(*yaml.Node), "allOf")
+		require.NotNil(t, allOf)
+		require.Len(t, allOf.Content, 2)
+		assert.Equal(t, []string{"required"}, keys(t, allOf.Content[0]))
+		jsonInline, err := semantic.MarshalJSONInline()
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"allOf":[{"required":["a"]},{"type":"object","properties":{"a":{"type":"integer"}}}],`+
+			`"unevaluatedProperties":false}`, string(jsonInline))
+	})
+
+	t.Run("a boolean schema that is not the sibling view stays a bare boolean", func(t *testing.T) {
+		sp := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, "thing")
+		semantic, err := sp.BuildTransformedRefSemanticSchema(sp.Schema())
+		require.NoError(t, err)
+		value := true
+		semantic.BooleanSchema = &value
+		semantic.ParentProxy = sp
+
+		for name, render := range map[string]func() ([]byte, error){
+			"yaml": semantic.Render, "inline YAML": semantic.RenderInline,
+			"json": semantic.MarshalJSON, "inline JSON": semantic.MarshalJSONInline,
+		} {
+			b, err := render()
+			require.NoError(t, err, name)
+			var actual any
+			require.NoError(t, yaml.Unmarshal(b, &actual), name)
+			assert.Equal(t, true, actual, name)
+		}
 	})
 
 	t.Run("unevaluatedItems", func(t *testing.T) {
@@ -2173,6 +2303,193 @@ components:
 		rendered, err := sp.MarshalYAML()
 		require.NoError(t, err)
 		assert.Equal(t, []string{"$ref", "unevaluatedItems"}, keys(t, rendered))
+	})
+
+	t.Run("boolean sibling stays in allOf", func(t *testing.T) {
+		const thing = `{"type":"object","properties":{"a":{"type":"integer"}}}`
+		for _, tc := range []struct {
+			property   string
+			value      bool
+			anchor     string
+			want       string
+			wantOuter  []string
+			json       string
+			jsonInline string
+		}{
+			{
+				property: "only", value: false, want: "false", wantOuter: []string{"allOf"},
+				json:       `{"allOf":[false,{"$ref":"#/components/schemas/Thing"}]}`,
+				jsonInline: `{"allOf":[false,` + thing + `]}`,
+			},
+			{
+				property: "thing", value: true, want: "true", wantOuter: []string{"allOf"},
+				json:       `{"allOf":[true,{"$ref":"#/components/schemas/Thing"}]}`,
+				jsonInline: `{"allOf":[true,` + thing + `]}`,
+			},
+			// $anchor names the object rather than asserting anything, so the current $anchor stays
+			// beside allOf.
+			{
+				property: "anchored", value: true, anchor: "current", want: "true", wantOuter: []string{"allOf", "$anchor"},
+				json:       `{"allOf":[true,{"$ref":"#/components/schemas/Thing"}],"$anchor":"current"}`,
+				jsonInline: `{"allOf":[true,` + thing + `],"$anchor":"current"}`,
+			},
+		} {
+			sp := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, tc.property)
+			sibling := sp.Schema()
+			require.NotNil(t, sibling)
+			sibling.BooleanSchema = &tc.value
+			if tc.anchor != "" {
+				sibling.Anchor = tc.anchor
+			}
+
+			inline, err := sp.MarshalYAMLInline()
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantOuter, keys(t, inline), tc.property)
+			_, allOf := findYAMLPair(inline.(*yaml.Node), "allOf")
+			require.NotNil(t, allOf, tc.property)
+			require.Len(t, allOf.Content, 2, tc.property)
+			assert.Equal(t, tc.want, allOf.Content[0].Value, tc.property)
+			if tc.anchor != "" {
+				_, anchor := findYAMLPair(inline.(*yaml.Node), "$anchor")
+				require.NotNil(t, anchor, tc.property)
+				assert.Equal(t, tc.anchor, anchor.Value, tc.property)
+			}
+			// a boolean sibling replaces every authored assertion, unevaluated* included.
+			rendered, err := yaml.Marshal(inline)
+			require.NoError(t, err)
+			assert.NotContains(t, string(rendered), "unevaluated", tc.property)
+
+			// the proxy and the sibling view render the same schema through every entry point.
+			proxyRendered, err := sp.MarshalYAML()
+			require.NoError(t, err)
+			proxyJSON, err := marshalYAMLRenderJSON(proxyRendered)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.json, string(proxyJSON), tc.property)
+			siblingRendered, err := sibling.MarshalYAML()
+			require.NoError(t, err)
+			siblingJSON, err := marshalYAMLRenderJSON(siblingRendered)
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.json, string(siblingJSON), tc.property)
+			siblingJSON, err = sibling.MarshalJSON()
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.json, string(siblingJSON), tc.property)
+			siblingJSON, err = sibling.MarshalJSONInline()
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.jsonInline, string(siblingJSON), tc.property)
+			siblingYAML, err := sibling.RenderInline()
+			require.NoError(t, err)
+			var siblingNode yaml.Node
+			require.NoError(t, yaml.Unmarshal(siblingYAML, &siblingNode))
+			siblingJSON, err = marshalYAMLRenderJSON(siblingNode.Content[0])
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.jsonInline, string(siblingJSON), tc.property)
+
+			// the allOf view keeps its allOf even with ParentProxy set, because the $ref form
+			// cannot hold a boolean schema.
+			semantic, err := sp.BuildTransformedRefSemanticSchema(sibling)
+			require.NoError(t, err)
+			jsonInline, err := semantic.MarshalJSONInline()
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.jsonInline, string(jsonInline), tc.property)
+			semantic.ParentProxy = sp
+			jsonBytes, err := semantic.MarshalJSON()
+			require.NoError(t, err)
+			assert.JSONEq(t, tc.json, string(jsonBytes), tc.property)
+		}
+	})
+}
+
+// The sibling-ref transformer, isBesideAllOfKeyword and the field moves in the allOf view must
+// agree on which keywords sit beside allOf.
+func TestSchemaProxy_BesideAllOfKeywordsMatchTransformer(t *testing.T) {
+	// every keyword Schema renders, plus definitions, which Schema has no field for.
+	keywords := []string{"definitions"}
+	schemaType := reflect.TypeOf(Schema{})
+	for i := 0; i < schemaType.NumField(); i++ {
+		name, _, _ := strings.Cut(schemaType.Field(i).Tag.Get("yaml"), ",")
+		if name != "" && name != "-" {
+			keywords = append(keywords, name)
+		}
+	}
+
+	t.Run("transformer", func(t *testing.T) {
+		cfg := index.CreateOpenAPIIndexConfig()
+		cfg.TransformSiblingRefs = true
+		transformer := lowbase.NewSiblingRefTransformer(index.NewSpecIndexWithConfig(&yaml.Node{}, cfg))
+		for _, keyword := range keywords {
+			node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{
+				utils.CreateStringNode("$ref"), utils.CreateStringNode("#/components/schemas/Thing"),
+				utils.CreateStringNode(keyword), utils.CreateEmptyMapNode(),
+			}}
+			transformed, err := transformer.TransformSiblingRef(node)
+			require.NoError(t, err)
+			// the first pair is the allOf the transformer builds, and moved keywords follow it.
+			_, beside := findYAMLPair(&yaml.Node{Kind: yaml.MappingNode, Content: transformed.Content[2:]}, keyword)
+			assert.Equal(t, isBesideAllOfKeyword(keyword) || keyword == "definitions", beside != nil, keyword)
+		}
+	})
+
+	t.Run("allOf view", func(t *testing.T) {
+		// authors every keyword isBesideAllOfKeyword accepts except $id, plus title, which joins
+		// allOf. An authored $id would change the base URI the $ref resolves against, so $id is
+		// set on the sibling instead.
+		spec := `openapi: 3.1.0
+paths: {}
+components:
+  schemas:
+    Thing:
+      type: object
+    Holder:
+      type: object
+      properties:
+        all:
+          $ref: '#/components/schemas/Thing'
+          title: member
+          $schema: 'https://json-schema.org/draft/2020-12/schema'
+          $vocabulary:
+            'https://json-schema.org/draft/2020-12/vocab/core': true
+          $anchor: all
+          $dynamicAnchor: all
+          $defs:
+            D:
+              type: string
+          unevaluatedProperties: false
+          unevaluatedItems:
+            type: string
+`
+		var want []string
+		for _, keyword := range keywords {
+			if isBesideAllOfKeyword(keyword) {
+				want = append(want, keyword)
+			}
+		}
+		sp := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, "all")
+		sibling := sp.Schema()
+		require.NoError(t, sp.GetBuildError())
+		require.NotNil(t, sibling)
+		sibling.Id = "https://example.com/all"
+		semantic, err := sp.BuildTransformedRefSemanticSchema(sibling)
+		require.NoError(t, err)
+		require.Len(t, semantic.AllOf, 2)
+
+		var outer []string
+		rendered := high.NewNodeBuilder(semantic, semantic.low).Render()
+		for i := 0; i+1 < len(rendered.Content); i += 2 {
+			if key := rendered.Content[i].Value; key != lowbase.AllOfLabel {
+				outer = append(outer, key)
+			}
+		}
+		assert.ElementsMatch(t, want, outer)
+
+		member, err := semantic.AllOf[0].MarshalYAML()
+		require.NoError(t, err)
+		memberNode, ok := yamlNodeFromRender(member)
+		require.True(t, ok)
+		var inner []string
+		for i := 0; i+1 < len(memberNode.Content); i += 2 {
+			inner = append(inner, memberNode.Content[i].Value)
+		}
+		assert.Equal(t, []string{"title"}, inner)
 	})
 }
 
@@ -2203,6 +2520,8 @@ func TestSchemaProxy_ParsedTransformedRefWithSiblingsJSONReturnsErrors(t *testin
 	require.NoError(t, err)
 	require.NotNil(t, semanticSchema)
 	require.Len(t, semanticSchema.AllOf, 2)
+	// with ParentProxy set the allOf view renders the $ref form, which renders the member and so
+	// meets its error.
 	semanticSchema.ParentProxy = sp
 	semanticSchema.AllOf[0] = &SchemaProxy{buildError: errors.New("boom")}
 
