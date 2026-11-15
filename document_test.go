@@ -2874,6 +2874,7 @@ components:
       type: object
       properties:
         local: {$ref: '#foo'}
+        encoded: {$ref: '#f%6Fo'}
     R:
       $id: https://example.com/r
       type: object
@@ -2882,10 +2883,22 @@ components:
       properties:
         scoped: {$ref: '#bar'}
         absolute: {$ref: 'https://example.com/r#bar'}
+        encoded: {$ref: '#b%61r'}
     U:
       type: object
       properties:
         outside: {$ref: 'https://example.com/r#bar'}
+        encodedOutside: {$ref: 'https://example.com/r#b%61r'}
+    Tuple:
+      type: array
+      prefixItems:
+        - {$anchor: first, type: boolean}
+        - {$anchor: second, type: number}
+    T:
+      type: object
+      properties:
+        first: {$ref: '#first'}
+        second: {$ref: '#second'}
 `
 	doc, err := NewDocument([]byte(spec))
 	require.NoError(t, err)
@@ -2896,9 +2909,14 @@ components:
 	schemas := m.Model.Components.Schemas
 	for _, tc := range []struct{ schema, property, kind string }{
 		{"B", "local", "string"},
+		{"B", "encoded", "string"},
 		{"R", "scoped", "integer"},
 		{"R", "absolute", "integer"},
+		{"R", "encoded", "integer"},
 		{"U", "outside", "integer"},
+		{"U", "encodedOutside", "integer"},
+		{"T", "first", "boolean"},
+		{"T", "second", "number"},
 	} {
 		t.Run(tc.schema+"."+tc.property, func(t *testing.T) {
 			prop := schemas.GetOrZero(tc.schema).Schema().Properties.GetOrZero(tc.property)
@@ -2908,4 +2926,254 @@ components:
 			assert.Equal(t, []string{tc.kind}, s.Type)
 		})
 	}
+
+	mapped := m.Index.GetMappedReferences()
+	assert.Contains(t, mapped, "#/components/schemas/Tuple/prefixItems/0")
+	assert.Contains(t, mapped, "#/components/schemas/Tuple/prefixItems/1")
+}
+
+// a default payload is an instance, not a schema, so its $anchor does not take the name from the
+// schema declared after it.
+func TestDocument_BuildV3Model_SchemaAnchorAfterDefaultPayload(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths: {}
+components:
+  schemas:
+    Choice:
+      type: object
+      default: {$anchor: selected, type: integer}
+    Selected:
+      $anchor: selected
+      type: string
+    Uses:
+      type: object
+      properties:
+        pick: {$ref: '#selected'}
+`
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	assert.Empty(t, m.Index.GetReferenceIndexErrors())
+
+	prop := m.Model.Components.Schemas.GetOrZero("Uses").Schema().Properties.GetOrZero("pick")
+	require.NotNil(t, prop)
+	s := prop.Schema()
+	require.NotNil(t, s, prop.GetBuildError())
+	assert.Equal(t, []string{"string"}, s.Type)
+}
+
+// an $id under an extension or a default payload still sets the base URI for the refs inside it.
+func TestDocument_BuildV3Model_SchemaIdInExtensionAndDefault(t *testing.T) {
+	const head = "openapi: 3.1.0\ninfo: {title: ids, version: \"1\"}\npaths: {}\n"
+	build := func(t *testing.T, spec string) {
+		doc, err := NewDocument([]byte(head + spec))
+		require.NoError(t, err)
+		m, err := doc.BuildV3Model()
+		require.NoError(t, err)
+		assert.Empty(t, m.Index.GetReferenceIndexErrors())
+	}
+
+	t.Run("ref inside an $id resource under an extension", func(t *testing.T) {
+		build(t, `x-vendor:
+  Resource:
+    $id: 'https://example.com/vendor'
+    type: object
+    $defs:
+      S: {type: string}
+    properties:
+      s: {$ref: '#/$defs/S'}
+`)
+	})
+
+	t.Run("ref inside an $id resource under a default", func(t *testing.T) {
+		build(t, `components:
+  schemas:
+    Holder:
+      type: object
+      default:
+        $id: 'https://example.com/default'
+        type: object
+        $defs:
+          S: {type: string}
+        properties:
+          s: {$ref: '#/$defs/S'}
+`)
+	})
+}
+
+// a Link Object's parameter values and request body, and an extension on an operation's Responses
+// Object, are data, so an $anchor there does not shadow the schema that declares it.
+func TestDocument_BuildV3Model_SchemaAnchorInLinkAndResponsesExtension(t *testing.T) {
+	const link = `
+          links:
+            L:
+              operationId: getP
+`
+	for name, c := range map[string]struct{ paths, links string }{
+		"link parameter value": {paths: link + `              parameters:
+                p: {$anchor: thing, type: integer}
+`},
+		"link request body": {paths: link + `              requestBody: {$anchor: thing, type: integer}
+`},
+		"responses extension": {paths: `
+        x-shadow:
+          content:
+            application/json:
+              schema: {$anchor: thing, type: integer}
+`},
+		"component link parameter value": {links: `  links:
+    L:
+      operationId: getP
+      parameters:
+        p: {$anchor: thing, type: integer}
+`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths:
+  /p:
+    get:
+      operationId: getP
+      responses:
+        "200":
+          description: ok` + c.paths + `
+components:
+` + c.links + `  schemas:
+    Thing: {$anchor: thing, type: string}
+    Uses:
+      type: object
+      properties:
+        thing: {$ref: '#thing'}
+`
+			doc, err := NewDocument([]byte(spec))
+			require.NoError(t, err)
+			m, err := doc.BuildV3Model()
+			require.NoError(t, err)
+			assert.Empty(t, m.Index.GetReferenceIndexErrors())
+
+			prop := m.Model.Components.Schemas.GetOrZero("Uses").Schema().Properties.GetOrZero("thing")
+			require.NotNil(t, prop)
+			s := prop.Schema()
+			require.NotNil(t, s, prop.GetBuildError())
+			assert.Equal(t, []string{"string"}, s.Type)
+		})
+	}
+}
+
+// a key holding "~" or "/" is escaped in the definition path, and a ref to an anchor beneath it
+// still resolves.
+func TestDocument_BuildV3Model_SchemaAnchorUnderTildeKey(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths: {}
+components:
+  schemas:
+    A:
+      type: object
+      properties:
+        a~b: {$anchor: tilde, type: string}
+        c/d~1e: {$anchor: slash, type: integer}
+    Uses:
+      type: object
+      properties:
+        t: {$ref: '#tilde'}
+        s: {$ref: '#slash'}
+`
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	assert.Empty(t, m.Index.GetReferenceIndexErrors())
+
+	for ref, want := range map[string]struct{ path, prop, kind string }{
+		"#tilde": {path: "#/components/schemas/A/properties/a~0b", prop: "t", kind: "string"},
+		"#slash": {path: "#/components/schemas/A/properties/c~1d~01e", prop: "s", kind: "integer"},
+	} {
+		resolved := m.Index.ResolveRefViaSchemaId(ref)
+		require.NotNil(t, resolved, ref)
+		assert.Equal(t, want.path, resolved.Definition, ref)
+
+		prop := m.Model.Components.Schemas.GetOrZero("Uses").Schema().Properties.GetOrZero(want.prop)
+		require.NotNil(t, prop, ref)
+		s := prop.Schema()
+		require.NotNil(t, s, prop.GetBuildError())
+		assert.Equal(t, []string{want.kind}, s.Type, ref)
+	}
+	props := m.Model.Components.Schemas.GetOrZero("A").Schema().Properties
+	assert.Equal(t, []string{"string"}, props.GetOrZero("a~b").Schema().Type)
+	assert.Equal(t, []string{"integer"}, props.GetOrZero("c/d~1e").Schema().Type)
+}
+
+// an $anchor inside an $id resource is classified by its path from the resource's root, so a
+// resource under an extension or a default keeps its anchors, while data inside the resource still
+// declares none.
+func TestDocument_BuildV3Model_SchemaAnchorInsideIdResource(t *testing.T) {
+	const head = "openapi: 3.1.0\ninfo: {title: anchors, version: \"1\"}\npaths: {}\n"
+	build := func(t *testing.T, spec string) *DocumentModel[v3high.Document] {
+		doc, err := NewDocument([]byte(head + spec))
+		require.NoError(t, err)
+		m, err := doc.BuildV3Model()
+		require.NoError(t, err)
+		assert.Empty(t, m.Index.GetReferenceIndexErrors())
+		return m
+	}
+	kind := func(t *testing.T, m *DocumentModel[v3high.Document], property string) []string {
+		prop := m.Model.Components.Schemas.GetOrZero("Uses").Schema().Properties.GetOrZero(property)
+		require.NotNil(t, prop, property)
+		s := prop.Schema()
+		require.NotNil(t, s, prop.GetBuildError())
+		return s.Type
+	}
+
+	t.Run("resource under an extension", func(t *testing.T) {
+		m := build(t, `x-vendor:
+  Thing: {$id: 'https://example.com/thing', type: object, $defs: {S: {$anchor: s, type: string}}}
+components:
+  schemas:
+    Uses:
+      type: object
+      properties:
+        byId: {$ref: 'https://example.com/thing'}
+        byPointer: {$ref: 'https://example.com/thing#/$defs/S'}
+        byAnchor: {$ref: 'https://example.com/thing#s'}
+`)
+		assert.Equal(t, []string{"object"}, kind(t, m, "byId"))
+		assert.Equal(t, []string{"string"}, kind(t, m, "byPointer"))
+		assert.Equal(t, []string{"string"}, kind(t, m, "byAnchor"))
+	})
+
+	t.Run("default inside a resource under an extension", func(t *testing.T) {
+		m := build(t, `x-vendor:
+  Thing:
+    $id: 'https://example.com/thing'
+    default: {$anchor: s, type: integer}
+    $defs:
+      S: {$anchor: s, type: string}
+components:
+  schemas:
+    Uses:
+      type: object
+      properties:
+        byAnchor: {$ref: 'https://example.com/thing#s'}
+`)
+		assert.Equal(t, []string{"string"}, kind(t, m, "byAnchor"))
+	})
+
+	t.Run("resource in a default payload", func(t *testing.T) {
+		m := build(t, `components:
+  schemas:
+    Holder:
+      type: object
+      default: {$id: 'https://example.com/payload', $anchor: thing, type: integer}
+    Thing: {$anchor: thing, type: string}
+    Uses:
+      type: object
+      properties:
+        thing: {$ref: '#thing'}
+`)
+		assert.Equal(t, []string{"string"}, kind(t, m, "thing"))
+	})
 }

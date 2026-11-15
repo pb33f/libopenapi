@@ -204,8 +204,8 @@ func (index *SpecIndex) ResolveRefViaSchemaId(ref string) *Reference {
 
 	baseUri, fragment := SplitRefFragment(ref)
 
-	if isSchemaAnchorFragment(fragment) {
-		if resolved := index.resolveRefViaSchemaAnchor(ref, baseUri, fragment); resolved != nil {
+	if name, ok := schemaAnchorFragmentName(fragment); ok {
+		if resolved := index.resolveRefViaSchemaAnchor(ref, baseUri, name); resolved != nil {
 			return resolved
 		}
 	}

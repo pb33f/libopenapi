@@ -145,21 +145,20 @@ func (index *SpecIndex) extractReferenceAt(
 	return ref
 }
 
-func (index *SpecIndex) registerSchemaIDAt(node *yaml.Node, keyIndex int, seenPath []string, parentBaseUri string) {
+// registerSchemaIDAt records the $id at node.Content[keyIndex], where pointer is the JSON pointer
+// segments to node and seenPath is the walk's path to it.
+func (index *SpecIndex) registerSchemaIDAt(node *yaml.Node, keyIndex int, seenPath, pointer []string, parentBaseUri string) {
 	if underOpenAPIExamplePath(seenPath) {
 		return
 	}
-	if len(node.Content) <= keyIndex+1 || !utils.IsNodeStringValue(node.Content[keyIndex+1]) {
+	// in a sequence, such as required: [$id, name], "$id" is an entry, not a key.
+	if len(node.Content) <= keyIndex+1 || utils.IsNodeArray(node) || !utils.IsNodeStringValue(node.Content[keyIndex+1]) {
 		return
 	}
 
 	idValue := node.Content[keyIndex+1].Value
 	idNode := node.Content[keyIndex+1]
-
-	definitionPath := "#"
-	if len(seenPath) > 0 {
-		definitionPath = "#/" + strings.Join(seenPath, "/")
-	}
+	definitionPath := schemaPointer(pointer)
 
 	if err := ValidateSchemaId(idValue); err != nil {
 		index.errorLock.Lock()

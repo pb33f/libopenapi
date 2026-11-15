@@ -4,6 +4,7 @@
 package index
 
 import (
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -17,31 +18,54 @@ var schemaAnchorName = regexp.MustCompile(`^[A-Za-z_][-A-Za-z0-9._]*$`)
 // isSchemaAnchorFragment reports whether a fragment such as "#foo" names an $anchor
 // rather than a JSON pointer.
 func isSchemaAnchorFragment(fragment string) bool {
-	return len(fragment) > 1 && fragment[0] == '#' && fragment[1] != '/'
+	_, ok := schemaAnchorFragmentName(fragment)
+	return ok
+}
+
+// schemaAnchorFragmentName returns the anchor name a fragment such as "#foo" names. A URI
+// fragment is percent-encoded, so "#f%6Fo" names foo as well, and "#%2Ffoo" is the JSON
+// pointer "/foo", not an anchor.
+func schemaAnchorFragmentName(fragment string) (string, bool) {
+	if len(fragment) < 2 || fragment[0] != '#' {
+		return "", false
+	}
+	name, err := url.PathUnescape(fragment[1:])
+	if err != nil || !schemaAnchorName.MatchString(name) {
+		return "", false
+	}
+	return name, true
 }
 
 // registerSchemaAnchorAt records an $anchor under the base URI of the schema resource
-// that declares it: the nearest $id, or the document itself.
-func (index *SpecIndex) registerSchemaAnchorAt(node *yaml.Node, keyIndex int, seenPath []string, baseUri string) {
-	if underOpenAPIExamplePath(seenPath) || len(node.Content) <= keyIndex+1 {
+// that declares it: the nearest $id, or the document itself. pointer is the JSON pointer
+// segments to node, and scope is the walk's $id scope there.
+func (index *SpecIndex) registerSchemaAnchorAt(node *yaml.Node, keyIndex int, pointer []string, scope *SchemaIdScope) {
+	// in a sequence, such as required: [$anchor, name], "$anchor" is an entry, not a key.
+	if len(node.Content) <= keyIndex+1 || utils.IsNodeArray(node) {
 		return
 	}
 	anchorNode := node.Content[keyIndex+1]
 	if !utils.IsNodeStringValue(anchorNode) || !schemaAnchorName.MatchString(anchorNode.Value) {
 		return
 	}
-
-	definitionPath := "#"
-	if len(seenPath) > 0 {
-		definitionPath = "#/" + strings.Join(seenPath, "/")
+	// within an $id resource, whose root is a schema, the path from that root decides, so a
+	// resource under an extension or a default keeps its anchors.
+	if depth := scope.resourceDepth; depth > 0 && depth <= len(pointer) {
+		if underSchemaDataPath(pointer[depth:], true) {
+			return
+		}
+	} else if underSchemaDataPath(pointer, false) {
+		return
 	}
+	baseUri := scope.BaseUri
+
 	entry := &SchemaIdEntry{
 		Id:             anchorNode.Value,
 		ResolvedUri:    baseUri + "#" + anchorNode.Value,
 		SchemaNode:     node,
 		ParentId:       baseUri,
 		Index:          index,
-		DefinitionPath: definitionPath,
+		DefinitionPath: schemaPointer(pointer),
 		Line:           anchorNode.Line,
 		Column:         anchorNode.Column,
 	}
@@ -62,13 +86,13 @@ func (index *SpecIndex) getSchemaAnchor(uri string) *SchemaIdEntry {
 	return index.schemaAnchorRegistry[uri]
 }
 
-// resolveRefViaSchemaAnchor resolves a ref whose fragment is a plain-name $anchor. A ref
-// with no base URI, such as "#foo", is looked up in this document.
-func (index *SpecIndex) resolveRefViaSchemaAnchor(ref, baseUri, fragment string) *Reference {
+// resolveRefViaSchemaAnchor resolves ref to the $anchor called name, already decoded from the
+// ref's fragment. A ref with no base URI, such as "#foo", is looked up in this document.
+func (index *SpecIndex) resolveRefViaSchemaAnchor(ref, baseUri, name string) *Reference {
 	if baseUri == "" {
 		baseUri = index.specAbsolutePath
 	}
-	key := baseUri + fragment
+	key := baseUri + "#" + name
 	entry := index.getSchemaAnchor(key)
 	if entry == nil && index.rolodex != nil {
 		entry = index.rolodex.lookupSchemaAnchor(key)
