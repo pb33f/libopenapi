@@ -266,6 +266,38 @@ unevaluatedItems: false`
 		assert.Equal(t, "unevaluatedItems", transformed.siblingNode.Content[4].Value)
 	})
 
+	t.Run("resource keywords stay beside allOf", func(t *testing.T) {
+		mappingKeys := func(n *yaml.Node) []string {
+			var keys []string
+			for i := 0; i+1 < len(n.Content); i += 2 {
+				keys = append(keys, n.Content[i].Value)
+			}
+			return keys
+		}
+		yml := `$ref: "https://example.com/base"
+$id: "https://example.com/thing"
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$vocabulary: {"https://json-schema.org/draft/2020-12/vocab/core": true}
+$anchor: thing
+$dynamicAnchor: node
+title: Thing
+$defs: {Extra: {type: string}}
+definitions: {Legacy: {type: string}}
+unevaluatedProperties: {$ref: "#/$defs/Extra"}`
+
+		var node yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+
+		result, err := transformer.TransformSiblingRef(node.Content[0])
+		require.NoError(t, err)
+		assert.Equal(t, []string{"allOf", "$id", "$schema", "$vocabulary", "$anchor", "$dynamicAnchor",
+			"$defs", "definitions", "unevaluatedProperties"}, mappingKeys(result))
+		allOf := result.Content[1]
+		require.Len(t, allOf.Content, 2)
+		assert.Equal(t, []string{"title"}, mappingKeys(allOf.Content[0]))
+		assert.Equal(t, []string{"$ref"}, mappingKeys(allOf.Content[1]))
+	})
+
 	t.Run("only unevaluated siblings", func(t *testing.T) {
 		yml := `$ref: "#/components/schemas/Base"
 unevaluatedProperties: false`
