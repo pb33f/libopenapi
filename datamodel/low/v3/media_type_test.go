@@ -238,3 +238,67 @@ func TestMediaType_Examples_NotFromSchema(t *testing.T) {
 
 	assert.Equal(t, 0, orderedmap.Len(n.Examples.Value))
 }
+
+// TestMediaType_Build_EncodingFields_DirectKeysOnly checks that encoding, prefixEncoding and itemEncoding are read
+// only from the Media Type's own keys, not from inside itemEncoding or an example.
+func TestMediaType_Build_EncodingFields_DirectKeysOnly(t *testing.T) {
+	for name, tc := range map[string]struct {
+		yml          string
+		itemEncoding bool
+	}{
+		"nested in itemEncoding": {yml: `itemEncoding:
+  contentType: multipart/form-data
+  encoding:
+    photo:
+      contentType: image/png`, itemEncoding: true},
+		"inside example": {yml: `example:
+  encoding:
+    photo:
+      contentType: image/png
+  itemEncoding:
+    contentType: text/plain`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var idxNode yaml.Node
+			_ = yaml.Unmarshal([]byte(tc.yml), &idxNode)
+			idx := index.NewSpecIndex(&idxNode)
+
+			var n MediaType
+			_ = low.BuildModel(idxNode.Content[0], &n)
+			assert.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+
+			assert.True(t, n.Encoding.IsEmpty())
+			assert.Nil(t, n.FindPropertyEncoding("photo"))
+			assert.Equal(t, tc.itemEncoding, !n.ItemEncoding.IsEmpty())
+			if tc.itemEncoding {
+				assert.Equal(t, "image/png", n.ItemEncoding.Value.FindEncoding("photo").Value.ContentType.Value)
+			} else {
+				// no Encoding is allocated when the media type has no itemEncoding key
+				assert.Nil(t, n.ItemEncoding.Value)
+			}
+		})
+	}
+}
+
+// TestMediaType_Build_Encoding_ExtensionPrefixedProperty checks that an encoding entry for a schema property
+// whose name starts with x- is kept.
+func TestMediaType_Build_Encoding_ExtensionPrefixedProperty(t *testing.T) {
+	yml := `encoding:
+  photo:
+    contentType: image/png
+  x-file:
+    contentType: application/pdf
+x-custom: true`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n MediaType
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+
+	assert.Equal(t, 2, orderedmap.Len(n.Encoding.Value))
+	assert.Equal(t, "application/pdf", n.FindPropertyEncoding("x-file").Value.ContentType.Value)
+	assert.NotNil(t, n.FindExtension("x-custom"))
+}

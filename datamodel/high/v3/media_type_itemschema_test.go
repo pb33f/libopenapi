@@ -234,6 +234,64 @@ itemEncoding:
             file:
                 contentType: image/jpeg
 `,
+		"item encoding with nested encoding": `itemEncoding:
+    contentType: multipart/form-data
+    encoding:
+        photo:
+            contentType: image/png
+        x-file:
+            contentType: application/pdf
+`,
+		"encoding keys inside example": `example:
+    encoding:
+        photo:
+            contentType: image/png
+    itemEncoding:
+        contentType: text/plain
+`,
+		"nested part headers": `encoding:
+    batch:
+        contentType: multipart/mixed
+        itemEncoding:
+            headers:
+                X-Part:
+                    schema:
+                        type: string
+`,
+		"item encoding extension": `itemEncoding:
+    contentType: image/png
+    x-vendor: abc
+`,
+		"extensions on every encoding level": `encoding:
+    batch:
+        contentType: multipart/mixed
+        x-batch: true
+        prefixEncoding:
+            - contentType: application/json
+              x-part: first
+        itemEncoding:
+            contentType: image/png
+            x-item: abc
+        encoding:
+            x-file:
+                contentType: application/pdf
+                x-inner: 1
+prefixEncoding:
+    - contentType: application/xml
+      x-part: top
+`,
+		"empty prefix encoding": `schema:
+    type: array
+prefixEncoding: []
+`,
+		"empty prefix encoding on nested parts": `encoding:
+    batch:
+        contentType: multipart/mixed
+        prefixEncoding: []
+itemEncoding:
+    contentType: multipart/mixed
+    prefixEncoding: []
+`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			var idxNode yaml.Node
@@ -286,4 +344,41 @@ itemEncoding:
 	assert.Equal(t, "image/png", batch.PrefixEncoding[1].ContentType)
 	assert.Equal(t, "text/plain", batch.ItemEncoding.ContentType)
 	assert.Equal(t, "form", batch.Encoding.GetOrZero("inner").Style)
+}
+
+func TestMediaType_OAS32Encoding_Extensions(t *testing.T) {
+	yml := `itemEncoding:
+  contentType: image/png
+  x-vendor: abc
+prefixEncoding:
+  - contentType: application/json
+    x-part: first`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var lowMediaType lowv3.MediaType
+	_ = low.BuildModel(&idxNode, &lowMediaType)
+	assert.NoError(t, lowMediaType.Build(context.Background(), nil, idxNode.Content[0], idx))
+	mt := NewMediaType(&lowMediaType)
+
+	assert.Equal(t, "abc", mt.ItemEncoding.Extensions.GetOrZero("x-vendor").Value)
+	assert.Equal(t, "first", mt.PrefixEncoding[0].Extensions.GetOrZero("x-part").Value)
+	assert.Equal(t, 0, mt.Extensions.Len())
+}
+
+func TestMediaType_OAS32Encoding_EmptyPrefixEncodingBuiltByCaller(t *testing.T) {
+	// an empty non-nil slice renders as [], a nil slice is omitted.
+	mt := &MediaType{
+		PrefixEncoding: []*Encoding{},
+		ItemEncoding:   &Encoding{ContentType: "multipart/mixed", PrefixEncoding: []*Encoding{}},
+	}
+	rendered, err := mt.Render()
+	assert.NoError(t, err)
+	assert.Equal(t, "prefixEncoding: []\nitemEncoding:\n    contentType: multipart/mixed\n    prefixEncoding: []\n", string(rendered))
+
+	rendered, err = (&MediaType{ItemEncoding: &Encoding{ContentType: "multipart/mixed"}}).Render()
+	assert.NoError(t, err)
+	assert.Equal(t, "itemEncoding:\n    contentType: multipart/mixed\n", string(rendered))
 }

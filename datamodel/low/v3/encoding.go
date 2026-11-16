@@ -28,6 +28,7 @@ type Encoding struct {
 	Encoding       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]]
 	PrefixEncoding low.NodeReference[[]low.ValueReference[*Encoding]]
 	ItemEncoding   low.NodeReference[*Encoding]
+	Extensions     *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 
 	KeyNode   *yaml.Node
 	RootNode  *yaml.Node
@@ -54,6 +55,16 @@ func (en *Encoding) FindHeader(hType string) *low.ValueReference[*Header] {
 	return low.FindItemInOrderedMap[*Header](hType, en.Headers.Value)
 }
 
+// FindExtension attempts to locate an extension with the supplied name
+func (en *Encoding) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, en.Extensions)
+}
+
+// GetExtensions returns all Encoding extensions and satisfies the low.HasExtensions interface.
+func (en *Encoding) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
+	return en.Extensions
+}
+
 // GetRootNode returns the root yaml node of the Encoding object
 func (en *Encoding) GetRootNode() *yaml.Node {
 	return en.RootNode
@@ -77,12 +88,20 @@ func (en *Encoding) Hash() uint64 {
 		if en.Style.Value != "" {
 			low.HashString(h, "style", en.Style.Value)
 		}
-		low.HashBool(h, en.Explode.Value)
-		h.WriteByte(low.HASH_PIPE)
+		// explode's default depends on style, so an explicit value is hashed apart from an absent one.
+		if !en.Explode.IsEmpty() {
+			low.HashLabel(h, "explode")
+			low.HashBool(h, en.Explode.Value)
+			h.WriteByte(low.HASH_PIPE)
+		}
 		low.HashBool(h, en.AllowReserved.Value)
 		h.WriteByte(low.HASH_PIPE)
 		low.HashMap(h, "encoding", en.Encoding.Value)
-		hashEncodingFields(h, en.PrefixEncoding.Value, en.ItemEncoding.Value)
+		hashEncodingFields(h, en.PrefixEncoding, en.ItemEncoding.Value)
+		for _, ext := range low.HashExtensions(en.Extensions) {
+			h.WriteString(ext)
+			h.WriteByte(low.HASH_PIPE)
+		}
 		return h.Sum64()
 	})
 }
@@ -103,12 +122,16 @@ func (en *Encoding) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	en.Reference = &en.reference
 	en.index = idx
 	en.context = ctx
+	en.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, en.Extensions, en.Nodes)
 
-	headers, hL, hN, err := low.ExtractMap[*Header](ctx, HeadersLabel, root, idx)
-	if err != nil {
-		return err
-	}
-	if headers != nil {
+	// headers is read only from this mapping, so a nested part's headers are not copied onto this one.
+	_, hL, hN := utils.FindKeyNodeFullTop(HeadersLabel, root.Content)
+	if hN != nil {
+		headers, err := low.ExtractMapNoLookupExtensions[*Header](ctx, hN, idx, true)
+		if err != nil {
+			return err
+		}
 		en.Headers = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]{
 			Value:     headers,
 			KeyNode:   hL,
@@ -128,17 +151,20 @@ func (en *Encoding) FindEncoding(eType string) *low.ValueReference[*Encoding] {
 }
 
 // extractEncodingFields builds the encoding, prefixEncoding and itemEncoding fields shared by the
-// Media Type Object and (for nested multipart parts) the Encoding Object.
+// Media Type Object and (for nested multipart parts) the Encoding Object. Each field is read only from the
+// keys of root itself, so fields belonging to a nested part, or appearing inside an example, are left alone.
 func extractEncodingFields(ctx context.Context, root *yaml.Node, idx *index.SpecIndex, nodes *low.NodeLines,
 	encoding *low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]],
 	prefixEncoding *low.NodeReference[[]low.ValueReference[*Encoding]],
 	itemEncoding *low.NodeReference[*Encoding],
 ) error {
-	encs, encsL, encsN, err := low.ExtractMap[*Encoding](ctx, EncodingLabel, root, idx)
-	if err != nil {
-		return err
-	}
-	if encs != nil {
+	// encoding keys are schema property names, so names starting with x- are kept.
+	_, encsL, encsN := utils.FindKeyNodeFullTop(EncodingLabel, root.Content)
+	if encsN != nil {
+		encs, err := low.ExtractMapNoLookupExtensions[*Encoding](ctx, encsN, idx, true)
+		if err != nil {
+			return err
+		}
 		*encoding = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]]{
 			Value:     encs,
 			KeyNode:   encsL,
@@ -163,22 +189,32 @@ func extractEncodingFields(ctx context.Context, root *yaml.Node, idx *index.Spec
 		nodes.Store(prefixL.Line, prefixL)
 	}
 
-	item, err := low.ExtractObject[*Encoding](ctx, ItemEncodingLabel, root, idx)
-	if err != nil {
-		return err
-	}
-	if !item.IsEmpty() {
-		*itemEncoding = item
-		nodes.Store(item.KeyNode.Line, item.KeyNode)
+	_, itemL, itemN := utils.FindKeyNodeFullTop(ItemEncodingLabel, root.Content)
+	if itemN != nil {
+		item, err, _, _ := low.ExtractObjectRaw[*Encoding](ctx, itemL, itemN, idx)
+		if err != nil {
+			return err
+		}
+		*itemEncoding = low.NodeReference[*Encoding]{
+			Value:     item,
+			KeyNode:   itemL,
+			ValueNode: itemN,
+		}
+		itemEncoding.SetReference(item.GetReference(), item.GetReferenceNode())
+		nodes.Store(itemL.Line, itemL)
 	}
 	return nil
 }
 
 // hashEncodingFields hashes prefixEncoding in order, because each entry applies to the part at its position,
-// then itemEncoding.
-func hashEncodingFields(h *maphash.Hash, prefix []low.ValueReference[*Encoding], item *Encoding) {
-	for i := range prefix {
-		low.HashString(h, "prefixEncoding", low.GenerateHashString(prefix[i].Value))
+// then itemEncoding. A present but empty prefixEncoding hashes differently from an absent one.
+func hashEncodingFields(h *maphash.Hash, prefix low.NodeReference[[]low.ValueReference[*Encoding]], item *Encoding) {
+	if !prefix.IsEmpty() {
+		low.HashLabel(h, "prefixEncoding")
+		h.WriteByte(low.HASH_PIPE)
+	}
+	for i := range prefix.Value {
+		low.HashString(h, "prefixEncoding", low.GenerateHashString(prefix.Value[i].Value))
 	}
 	if item != nil {
 		low.HashString(h, "itemEncoding", low.GenerateHashString(item))
