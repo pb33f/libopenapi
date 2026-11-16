@@ -2644,6 +2644,40 @@ func TestSchemaProxy_RenderTransformedRefWithSiblingsFallbacks(t *testing.T) {
 	assert.Nil(t, node)
 }
 
+func TestSchemaProxy_RenderTransformedRefWithSiblingsBooleanBuildError(t *testing.T) {
+	// unevaluatedItems stays beside allOf and builds eagerly, so its missing $ref fails the build of
+	// the outer schema, not just the sibling.
+	spec := `openapi: 3.1.0
+paths: {}
+components:
+  schemas:
+    Thing:
+      type: string
+    Holder:
+      type: object
+      properties:
+        thing:
+          $ref: '#/components/schemas/Thing'
+          unevaluatedItems:
+            $ref: '#/components/schemas/Missing'
+`
+	invalid := buildParsedSiblingRefProxyFromSpec(t, spec, 3.1, "thing")
+	siblingNode := invalid.schema.Value.GetTransformedRefSiblingSchema()
+	require.NotNil(t, siblingNode)
+
+	// a boolean view of the sibling renders through the allOf view, which needs the outer low
+	// schema, so the build error comes back instead of a node.
+	value := false
+	boolean := &Schema{
+		BooleanSchema: &value,
+		low:           &lowbase.Schema{RootNode: siblingNode},
+	}
+	node, ok, err := invalid.renderTransformedRefWithSiblings(boolean)
+	require.ErrorContains(t, err, "#/components/schemas/Missing")
+	assert.True(t, ok)
+	assert.Nil(t, node)
+}
+
 func buildParsedSiblingRefProxy(t *testing.T, version float32) *SchemaProxy {
 	t.Helper()
 
