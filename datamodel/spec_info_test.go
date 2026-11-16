@@ -278,7 +278,7 @@ func TestExtractSpecInfo_OpenAPI31(t *testing.T) {
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi3, r.SpecType)
 	assert.Equal(t, "3.1", r.Version)
-	assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.1/schema/2022-10-07")
+	assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.1/schema/2026-11-05")
 }
 
 func TestExtractSpecInfo_OpenAPI32(t *testing.T) {
@@ -286,7 +286,7 @@ func TestExtractSpecInfo_OpenAPI32(t *testing.T) {
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi3, r.SpecType)
 	assert.Equal(t, "3.2", r.Version)
-	assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.2/schema/2025-09-17")
+	assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.2/schema/2026-11-12")
 }
 
 func TestExtractSpecInfo_AnyDocument(t *testing.T) {
