@@ -45,7 +45,7 @@ func NewMediaType(mediaType *low.MediaType) *MediaType {
 	m.Examples = base.ExtractExamples(mediaType.Examples.Value)
 	m.Extensions = high.ExtractExtensions(mediaType.Extensions)
 	m.Encoding = ExtractEncoding(mediaType.Encoding.Value)
-	m.PrefixEncoding = extractEncodingSlice(mediaType.PrefixEncoding.Value)
+	m.PrefixEncoding = extractEncodingSlice(mediaType.PrefixEncoding)
 	if !mediaType.ItemEncoding.IsEmpty() {
 		m.ItemEncoding = NewEncoding(mediaType.ItemEncoding.Value)
 	}

@@ -174,7 +174,7 @@ func (mt *MediaType) Hash() uint64 {
 		}
 		low.HashMap(h, "examples", mt.Examples.Value)
 		low.HashMap(h, "encoding", mt.Encoding.Value)
-		hashEncodingFields(h, mt.PrefixEncoding.Value, mt.ItemEncoding.Value)
+		hashEncodingFields(h, mt.PrefixEncoding, mt.ItemEncoding.Value)
 		for _, ext := range low.HashExtensions(mt.Extensions) {
 			h.WriteString(ext)
 			h.WriteByte(low.HASH_PIPE)

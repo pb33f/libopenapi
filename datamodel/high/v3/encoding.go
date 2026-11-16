@@ -22,9 +22,10 @@ type Encoding struct {
 	AllowReserved bool                             `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
 
 	// Encoding, PrefixEncoding and ItemEncoding describe nested multipart parts (OpenAPI 3.2+).
-	Encoding       *orderedmap.Map[string, *Encoding] `json:"encoding,omitempty" yaml:"encoding,omitempty"`
-	PrefixEncoding []*Encoding                        `json:"prefixEncoding,omitempty" yaml:"prefixEncoding,omitempty"`
-	ItemEncoding   *Encoding                          `json:"itemEncoding,omitempty" yaml:"itemEncoding,omitempty"`
+	Encoding       *orderedmap.Map[string, *Encoding]  `json:"encoding,omitempty" yaml:"encoding,omitempty"`
+	PrefixEncoding []*Encoding                         `json:"prefixEncoding,omitempty" yaml:"prefixEncoding,omitempty"`
+	ItemEncoding   *Encoding                           `json:"itemEncoding,omitempty" yaml:"itemEncoding,omitempty"`
+	Extensions     *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low            *lowv3.Encoding
 }
 
@@ -38,9 +39,10 @@ func NewEncoding(encoding *lowv3.Encoding) *Encoding {
 		e.Explode = &encoding.Explode.Value
 	}
 	e.AllowReserved = encoding.AllowReserved.Value
+	e.Extensions = high.ExtractExtensions(encoding.Extensions)
 	e.Headers = ExtractHeaders(encoding.Headers.Value)
 	e.Encoding = ExtractEncoding(encoding.Encoding.Value)
-	e.PrefixEncoding = extractEncodingSlice(encoding.PrefixEncoding.Value)
+	e.PrefixEncoding = extractEncodingSlice(encoding.PrefixEncoding)
 	if !encoding.ItemEncoding.IsEmpty() {
 		e.ItemEncoding = NewEncoding(encoding.ItemEncoding.Value)
 	}
@@ -88,13 +90,14 @@ func ExtractEncoding(elements *orderedmap.Map[lowmodel.KeyReference[string], low
 }
 
 // extractEncodingSlice converts a low-level prefixEncoding array into high-level Encoding objects, keeping order.
-func extractEncodingSlice(elements []lowmodel.ValueReference[*lowv3.Encoding]) []*Encoding {
-	if len(elements) == 0 {
+// An absent prefixEncoding becomes nil, and a present but empty one becomes an empty slice so it renders as [].
+func extractEncodingSlice(prefix lowmodel.NodeReference[[]lowmodel.ValueReference[*lowv3.Encoding]]) []*Encoding {
+	if prefix.IsEmpty() && len(prefix.Value) == 0 {
 		return nil
 	}
-	extracted := make([]*Encoding, 0, len(elements))
-	for i := range elements {
-		extracted = append(extracted, NewEncoding(elements[i].Value))
+	extracted := make([]*Encoding, 0, len(prefix.Value))
+	for i := range prefix.Value {
+		extracted = append(extracted, NewEncoding(prefix.Value[i].Value))
 	}
 	return extracted
 }

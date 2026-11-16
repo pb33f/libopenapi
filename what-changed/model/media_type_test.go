@@ -5,6 +5,7 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/pb33f/go-yaml"
@@ -988,6 +989,8 @@ func TestCompareMediaTypes_NestedEncoding_Modified(t *testing.T) {
 
 func TestCompareMediaTypes_EncodingRulesConfigurable(t *testing.T) {
 	low.ClearHashCache()
+	// the cached defaults are merged into below, so they are rebuilt afterwards.
+	defer ResetDefaultBreakingRules()
 	defer ResetActiveBreakingRulesConfig()
 
 	config := GenerateDefaultBreakingRules()
@@ -1007,4 +1010,198 @@ encoding:
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
+}
+
+func TestCompareMediaTypes_EncodingExtensions(t *testing.T) {
+	low.ClearHashCache()
+	ResetActiveBreakingRulesConfig()
+
+	changes := compareMediaTypeYAML(t, `encoding:
+  photo:
+    contentType: image/png
+    x-vendor: abc
+  x-file:
+    contentType: application/pdf
+prefixEncoding:
+  - contentType: application/json
+    x-part: first
+itemEncoding:
+  contentType: image/png
+  x-item: abc`, `encoding:
+  photo:
+    contentType: image/png
+    x-vendor: xyz
+  x-file:
+    contentType: application/pdf
+prefixEncoding:
+  - contentType: application/json
+    x-part: second
+itemEncoding:
+  contentType: image/png`)
+	if !assert.NotNil(t, changes) {
+		return
+	}
+	assert.Nil(t, changes.ExtensionChanges)
+
+	extensionChange := func(ec *EncodingChanges) *Change {
+		if assert.NotNil(t, ec) && assert.NotNil(t, ec.ExtensionChanges) && assert.Len(t, ec.ExtensionChanges.Changes, 1) {
+			return ec.ExtensionChanges.Changes[0]
+		}
+		return &Change{}
+	}
+	photo := extensionChange(changes.EncodingChanges["photo"])
+	assert.Equal(t, Modified, photo.ChangeType)
+	assert.Equal(t, "x-vendor", photo.Property)
+	if assert.Len(t, changes.PrefixEncodingChanges, 1) {
+		assert.Equal(t, Modified, extensionChange(changes.PrefixEncodingChanges[0]).ChangeType)
+	}
+	item := extensionChange(changes.ItemEncodingChanges)
+	assert.Equal(t, ObjectRemoved, item.ChangeType)
+	assert.Equal(t, "x-item", item.Property)
+
+	assert.Equal(t, 3, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 3)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+}
+
+func TestCompareMediaTypes_EncodingExplodeAdded(t *testing.T) {
+	for name, yml := range map[string][2]string{
+		"top level": {"encoding:\n  photo:\n    style: form",
+			"encoding:\n  photo:\n    style: form\n    explode: false"},
+		"nested under itemEncoding": {"itemEncoding:\n  encoding:\n    photo:\n      style: form",
+			"itemEncoding:\n  encoding:\n    photo:\n      style: form\n      explode: false"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			low.ClearHashCache()
+			ResetActiveBreakingRulesConfig()
+
+			changes := compareMediaTypeYAML(t, yml[0], yml[1])
+			assert.NotNil(t, changes)
+			all := changes.GetAllChanges()
+			if assert.Len(t, all, 1) {
+				assert.Equal(t, PropertyAdded, all[0].ChangeType)
+				assert.Equal(t, v3.ExplodeLabel, all[0].Property)
+			}
+
+			assert.Nil(t, compareMediaTypeYAML(t, yml[1], yml[1]))
+		})
+	}
+}
+
+func TestCompareMediaTypes_EmptyPrefixEncodingPresence(t *testing.T) {
+	low.ClearHashCache()
+	ResetActiveBreakingRulesConfig()
+
+	absent := "schema:\n  type: array"
+	empty := "schema:\n  type: array\nprefixEncoding: []"
+
+	// removing an empty prefixEncoding is classified like removing an entry: breaking.
+	changes := compareMediaTypeYAML(t, empty, absent)
+	if assert.NotNil(t, changes) && assert.Len(t, changes.Changes, 1) {
+		assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
+		assert.Equal(t, v3.PrefixEncodingLabel, changes.Changes[0].Property)
+		assert.True(t, changes.Changes[0].Breaking)
+		assert.Equal(t, 1, changes.TotalBreakingChanges())
+	}
+
+	// adding one is not breaking.
+	changes = compareMediaTypeYAML(t, absent, empty)
+	if assert.NotNil(t, changes) && assert.Len(t, changes.Changes, 1) {
+		assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
+		assert.False(t, changes.Changes[0].Breaking)
+		assert.Equal(t, 0, changes.TotalBreakingChanges())
+	}
+
+	assert.Nil(t, compareMediaTypeYAML(t, empty, empty))
+
+	// the same on a nested encoding entry.
+	nested := compareMediaTypeYAML(t, "encoding:\n  batch:\n    prefixEncoding: []", "encoding:\n  batch: {}")
+	if assert.NotNil(t, nested) && assert.NotNil(t, nested.EncodingChanges["batch"]) {
+		batch := nested.EncodingChanges["batch"]
+		if assert.Len(t, batch.Changes, 1) {
+			assert.Equal(t, PropertyRemoved, batch.Changes[0].ChangeType)
+			assert.Equal(t, v3.PrefixEncodingLabel, batch.Changes[0].Property)
+		}
+		assert.Equal(t, 1, nested.TotalBreakingChanges())
+	}
+	nested = compareMediaTypeYAML(t, "itemEncoding:\n  contentType: multipart/mixed",
+		"itemEncoding:\n  contentType: multipart/mixed\n  prefixEncoding: []")
+	if assert.NotNil(t, nested) && assert.NotNil(t, nested.ItemEncodingChanges) {
+		assert.Equal(t, 1, nested.TotalChanges())
+		assert.Equal(t, PropertyAdded, nested.ItemEncodingChanges.Changes[0].ChangeType)
+	}
+}
+
+// prefixIndex returns the Index of a prefixEncoding entry, or -1 when it is not set.
+func prefixIndex(ch *EncodingChanges) int {
+	if ch.Index == nil {
+		return -1
+	}
+	return *ch.Index
+}
+
+func TestCompareMediaTypes_PrefixEncodingIndex(t *testing.T) {
+	low.ClearHashCache()
+	ResetActiveBreakingRulesConfig()
+
+	left := `prefixEncoding:
+  - contentType: a/a
+  - contentType: b/b
+  - contentType: c/c`
+
+	// only the second part changes, so the one entry carries index 1.
+	changes := compareMediaTypeYAML(t, left, `prefixEncoding:
+  - contentType: a/a
+  - contentType: x/x
+  - contentType: c/c`)
+	if assert.NotNil(t, changes) && assert.Len(t, changes.PrefixEncodingChanges, 1) {
+		assert.Equal(t, 1, prefixIndex(changes.PrefixEncodingChanges[0]))
+		out, err := json.Marshal(changes)
+		assert.NoError(t, err)
+		assert.Contains(t, string(out), `"index":1`)
+	}
+
+	// the first and third parts change, the second is unchanged and skipped.
+	changes = compareMediaTypeYAML(t, left, `prefixEncoding:
+  - contentType: x/x
+  - contentType: b/b
+  - contentType: y/y`)
+	if assert.NotNil(t, changes) && assert.Len(t, changes.PrefixEncodingChanges, 2) {
+		assert.Equal(t, 0, prefixIndex(changes.PrefixEncodingChanges[0]))
+		assert.Equal(t, 2, prefixIndex(changes.PrefixEncodingChanges[1]))
+		assert.Equal(t, "y/y", changes.PrefixEncodingChanges[1].Changes[0].New)
+		out, err := json.Marshal(changes)
+		assert.NoError(t, err)
+		assert.Contains(t, string(out), `"index":0`)
+	}
+
+	// a removed part carries its index, and is breaking.
+	changes = compareMediaTypeYAML(t, left, `prefixEncoding:
+  - contentType: a/a
+  - contentType: b/b`)
+	if assert.NotNil(t, changes) && assert.Len(t, changes.PrefixEncodingChanges, 1) {
+		removed := changes.PrefixEncodingChanges[0]
+		assert.Equal(t, 2, prefixIndex(removed))
+		assert.Equal(t, ObjectRemoved, removed.Changes[0].ChangeType)
+		assert.Equal(t, v3.PrefixEncodingLabel, removed.Changes[0].Property)
+		assert.Equal(t, 1, changes.TotalBreakingChanges())
+	}
+
+	// an added part carries its index, and is not breaking.
+	changes = compareMediaTypeYAML(t, left, left+`
+  - contentType: d/d`)
+	if assert.NotNil(t, changes) && assert.Len(t, changes.PrefixEncodingChanges, 1) {
+		added := changes.PrefixEncodingChanges[0]
+		assert.Equal(t, 3, prefixIndex(added))
+		assert.Equal(t, ObjectAdded, added.Changes[0].ChangeType)
+		assert.Equal(t, 0, changes.TotalBreakingChanges())
+	}
+
+	// nested prefixEncoding entries carry their index too.
+	changes = compareMediaTypeYAML(t, "encoding:\n  batch:\n    prefixEncoding:\n      - contentType: a/a\n      - contentType: b/b",
+		"encoding:\n  batch:\n    prefixEncoding:\n      - contentType: a/a\n      - contentType: x/x")
+	if assert.NotNil(t, changes) && assert.NotNil(t, changes.EncodingChanges["batch"]) &&
+		assert.Len(t, changes.EncodingChanges["batch"].PrefixEncodingChanges, 1) {
+		assert.Equal(t, 1, prefixIndex(changes.EncodingChanges["batch"].PrefixEncodingChanges[0]))
+	}
 }
