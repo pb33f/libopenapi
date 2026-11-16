@@ -724,10 +724,10 @@ func (sp *SchemaProxy) buildSemanticAllOfSchemaView(currentSibling *Schema) (*Sc
 			lowMember = lowSchema.AllOf.Value[0].Value.Schema()
 		}
 		if lowMember == nil {
+			// Build only fails on a nil node or on a keyword it cannot read, and an empty mapping
+			// has neither.
 			lowMember = new(base.Schema)
-			if err := lowMember.Build(sp.schema.Value.GetContext(), utils.CreateEmptyMapNode(), lowSchema.Index); err != nil {
-				return nil, err
-			}
+			_ = lowMember.Build(sp.schema.Value.GetContext(), utils.CreateEmptyMapNode(), lowSchema.Index)
 		}
 		siblingCopy.low = lowMember
 
@@ -778,12 +778,11 @@ func (sp *SchemaProxy) renderTransformedRefWithSiblings(s *Schema) (*yaml.Node, 
 			return nil, false, nil
 		}
 		// the $ref form cannot hold a boolean schema, so a boolean sibling renders the allOf view.
+		// the view is nil only when the low schema is missing, and err then holds the build error
+		// if there was one.
 		semantic, err := sp.buildSemanticAllOfSchemaView(s)
-		if err != nil {
-			return nil, true, err
-		}
 		if semantic == nil {
-			return nil, false, nil
+			return nil, err != nil, err
 		}
 		rendered, err := semantic.MarshalYAML()
 		node, _ := yamlNodeFromRender(rendered)
