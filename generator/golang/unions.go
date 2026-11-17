@@ -108,9 +108,55 @@ func (g *Generator) renderDiscriminatedUnion(ir *SchemaIR) {
 		b.WriteString(typeName)
 		b.WriteString("\n\t\tif err := json.Unmarshal(data, &v); err != nil {\n\t\t\treturn err\n\t\t}\n\t\tu.Value = v\n")
 	}
-	b.WriteString("\tdefault:\n\t\treturn fmt.Errorf(\"unknown ")
-	b.WriteString(ir.Union.Discriminator.PropertyName)
-	b.WriteString(" discriminator value %q\", discriminator.Value)\n\t}\n\treturn nil\n}\n")
+	if unknown := ir.Union.UnknownName; unknown != "" {
+		b.WriteString("\tcase \"\":\n\t\treturn fmt.Errorf(\"missing ")
+		b.WriteString(ir.Union.Discriminator.PropertyName)
+		b.WriteString(" discriminator\")\n\tdefault:\n\t\tu.Value = ")
+		b.WriteString(unknown)
+		b.WriteString("{Discriminator: discriminator.Value, Raw: append(json.RawMessage(nil), data...)}\n\t}\n\treturn nil\n}\n")
+		b.WriteString(unknownVariantDecl(ir.Name, unknown))
+	} else {
+		b.WriteString("\tdefault:\n\t\treturn fmt.Errorf(\"unknown ")
+		b.WriteString(ir.Union.Discriminator.PropertyName)
+		b.WriteString(" discriminator value %q\", discriminator.Value)\n\t}\n\treturn nil\n}\n")
+	}
 	g.decls = append(g.decls, b.String())
 	g.recordSchemaMetadata(ir.Name+"Union", ir.SourceSchema)
+}
+
+// claimUnknownVariant reserves the name of the variant that keeps unmapped
+// discriminator values, so it cannot collide with a document schema.
+func (g *Generator) claimUnknownVariant(ir *SchemaIR) {
+	if !g.unknownDiscriminatorVariants || ir.Union == nil || ir.Name == "" {
+		return
+	}
+	preferred := ir.Name + "Unknown"
+	if g.typeNames == nil {
+		ir.Union.UnknownName = preferred
+		return
+	}
+	ir.Union.UnknownName = g.typeNames.Claim(preferred, "")
+	if ir.Union.UnknownName != preferred {
+		g.addDiagnostic(DiagnosticTypeNameCollision, ir.Name, "unknown discriminator variant named "+ir.Union.UnknownName+" because "+preferred+" is taken")
+	}
+}
+
+// unknownVariantDecl renders the variant that carries a discriminator value
+// the union's mapping does not name. It marshals its raw JSON back unchanged.
+func unknownVariantDecl(union, name string) string {
+	var b strings.Builder
+	b.WriteString("\n// ")
+	b.WriteString(name)
+	b.WriteString(" carries a ")
+	b.WriteString(union)
+	b.WriteString(" variant this client was not generated for.\ntype ")
+	b.WriteString(name)
+	b.WriteString(" struct {\n\t// Discriminator is the unmapped discriminator value.\n\tDiscriminator string\n\t// Raw is the variant's JSON exactly as received.\n\tRaw json.RawMessage\n}\n\nfunc (")
+	b.WriteString(name)
+	b.WriteString(") is")
+	b.WriteString(union)
+	b.WriteString("() {}\n\nfunc (u ")
+	b.WriteString(name)
+	b.WriteString(") MarshalJSON() ([]byte, error) {\n\tif len(u.Raw) == 0 {\n\t\treturn []byte(\"null\"), nil\n\t}\n\treturn u.Raw, nil\n}\n")
+	return b.String()
 }

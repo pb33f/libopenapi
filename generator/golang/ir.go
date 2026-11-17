@@ -106,6 +106,10 @@ type UnionIR struct {
 	Discriminator *Discriminator
 	Strategy      UnionStrategy
 	FromMultiType bool
+	// UnknownName names the variant that keeps an unmapped discriminator
+	// value. It is set only for discriminated unions when
+	// WithUnknownDiscriminatorVariants is enabled.
+	UnknownName string
 }
 
 func newObjectIR(name string) *SchemaIR {

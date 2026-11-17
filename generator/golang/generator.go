@@ -31,6 +31,7 @@ type Generator struct {
 	openapiTags                      bool
 	schemaMetadataSidecar            bool
 	untypedAsRawMessage              bool
+	unknownDiscriminatorVariants     bool
 	nestedTypeNameDelimiter          string
 	nameStyle                        NameStyle
 	inlineRoots                      map[string]struct{}
