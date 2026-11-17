@@ -438,6 +438,7 @@ func (g *Generator) populateUnion(ir *SchemaIR, schema *highbase.Schema, path st
 		if disc := discriminatorFromSchema(schema, variants); len(disc.Mapping) > 0 {
 			ir.Union.Discriminator = disc
 			ir.Union.Strategy = UnionDiscriminator
+			g.claimUnknownVariant(ir)
 			return
 		}
 	}
@@ -445,6 +446,7 @@ func (g *Generator) populateUnion(ir *SchemaIR, schema *highbase.Schema, path st
 		ir.Union.Discriminator = disc
 		if !disc.Optional || g.optionalConstDiscriminatorUnions {
 			ir.Union.Strategy = UnionDiscriminator
+			g.claimUnknownVariant(ir)
 			return
 		}
 		g.addDiagnostic(DiagnosticOptionalConstDiscriminator, path, "oneOf has a shared const discriminator property, but it is optional; using json.RawMessage")

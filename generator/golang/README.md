@@ -94,6 +94,8 @@ OpenAPI `oneOf` renders as a typed union when:
 - The variants share an inferable required `const` discriminator property.
 - The variants share an optional `const` discriminator and `WithOptionalConstDiscriminatorUnions(true)` is enabled.
 
+By default, a typed union fails to decode a discriminator value its mapping does not name. With `WithUnknownDiscriminatorVariants(true)`, each typed union also gets a `<Name>Unknown` variant that holds the discriminator value and the raw JSON, and marshals the raw JSON back unchanged. Use it for APIs that add variants over time, so one new variant does not fail a whole response. A missing discriminator still fails to decode.
+
 Ambiguous `oneOf` and all `anyOf` unions render as `json.RawMessage` wrappers. This keeps generated models dependency-free and avoids embedding validation behavior.
 
 For Go reflection to OpenAPI, register interface variants:

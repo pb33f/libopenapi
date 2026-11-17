@@ -245,6 +245,18 @@ func WithOptionalConstDiscriminatorUnions(enabled bool) Option {
 	}
 }
 
+// WithUnknownDiscriminatorVariants makes each discriminated union keep a
+// discriminator value its mapping does not name, instead of failing to decode.
+// The union gains a <Name>Unknown variant that holds the discriminator value
+// and the raw JSON, and marshals the raw JSON back unchanged. Use it for
+// providers that add variants over time: one new variant then no longer fails
+// a whole response. A missing discriminator still fails to decode.
+func WithUnknownDiscriminatorVariants(enabled bool) Option {
+	return func(g *Generator) {
+		g.unknownDiscriminatorVariants = enabled
+	}
+}
+
 // WithAdditionalPropertiesMethods controls whether schema-valued
 // additionalProperties generates JSON marshal/unmarshal methods that round-trip
 // unknown fields through the AdditionalProperties map.
