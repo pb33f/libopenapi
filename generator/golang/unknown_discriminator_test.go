@@ -176,3 +176,21 @@ func main() {
 	}
 }
 `
+
+// Outside a component render (for example the properties-beside-oneOf pass)
+// there is no type name registry; the unknown variant takes its preferred name
+// without claiming it, and the option being off leaves the union untouched.
+func TestClaimUnknownVariantWithoutTypeRegistry(t *testing.T) {
+	on := NewGenerator(WithUnknownDiscriminatorVariants(true))
+	union := &SchemaIR{Name: "Pet", Union: &UnionIR{}}
+	on.claimUnknownVariant(union)
+	if union.Union.UnknownName != "PetUnknown" {
+		t.Fatalf("unknown variant name = %q, want PetUnknown", union.Union.UnknownName)
+	}
+	off := NewGenerator()
+	untouched := &SchemaIR{Name: "Pet", Union: &UnionIR{}}
+	off.claimUnknownVariant(untouched)
+	if untouched.Union.UnknownName != "" {
+		t.Fatalf("option off named an unknown variant %q", untouched.Union.UnknownName)
+	}
+}
