@@ -263,32 +263,40 @@ itemEncoding:
     contentType: image/png
     x-vendor: abc
 `,
-		"extensions on every encoding level": `encoding:
+		"extensions on encoding map levels": `encoding:
     batch:
-        contentType: multipart/mixed
+        contentType: multipart/form-data
         x-batch: true
-        prefixEncoding:
-            - contentType: application/json
-              x-part: first
-        itemEncoding:
-            contentType: image/png
-            x-item: abc
         encoding:
             x-file:
                 contentType: application/pdf
                 x-inner: 1
-prefixEncoding:
+`,
+		"extensions on positional encoding levels": `prefixEncoding:
     - contentType: application/xml
       x-part: top
+itemEncoding:
+    contentType: multipart/mixed
+    x-batch: true
+    prefixEncoding:
+        - contentType: application/json
+          x-part: first
+    itemEncoding:
+        contentType: image/png
+        x-item: abc
 `,
 		"empty prefix encoding": `schema:
     type: array
 prefixEncoding: []
 `,
-		"empty prefix encoding on nested parts": `encoding:
+		"empty prefix encoding on an encoding map entry": `encoding:
     batch:
         contentType: multipart/mixed
         prefixEncoding: []
+`,
+		"empty prefix encoding on nested parts": `prefixEncoding:
+    - contentType: multipart/mixed
+      prefixEncoding: []
 itemEncoding:
     contentType: multipart/mixed
     prefixEncoding: []
@@ -311,7 +319,16 @@ itemEncoding:
 }
 
 func TestMediaType_OAS32Encoding_Model(t *testing.T) {
-	yml := `encoding:
+	mt := buildTestMediaType(t, []byte(`prefixEncoding:
+  - contentType: application/xml
+itemEncoding:
+  contentType: image/gif`))
+
+	assert.Len(t, mt.PrefixEncoding, 1)
+	assert.Equal(t, "application/xml", mt.PrefixEncoding[0].ContentType)
+	assert.Equal(t, "image/gif", mt.ItemEncoding.ContentType)
+
+	mt = buildTestMediaType(t, []byte(`encoding:
   batch:
     contentType: multipart/mixed
     prefixEncoding:
@@ -319,32 +336,17 @@ func TestMediaType_OAS32Encoding_Model(t *testing.T) {
       - contentType: image/png
     itemEncoding:
       contentType: text/plain
+  form:
+    contentType: multipart/form-data
     encoding:
       inner:
-        style: form
-prefixEncoding:
-  - contentType: application/xml
-itemEncoding:
-  contentType: image/gif`
-
-	var idxNode yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &idxNode)
-	idx := index.NewSpecIndex(&idxNode)
-
-	var lowMediaType lowv3.MediaType
-	_ = low.BuildModel(&idxNode, &lowMediaType)
-	assert.NoError(t, lowMediaType.Build(context.Background(), nil, idxNode.Content[0], idx))
-	mt := NewMediaType(&lowMediaType)
-
-	assert.Len(t, mt.PrefixEncoding, 1)
-	assert.Equal(t, "application/xml", mt.PrefixEncoding[0].ContentType)
-	assert.Equal(t, "image/gif", mt.ItemEncoding.ContentType)
+        style: form`))
 
 	batch := mt.Encoding.GetOrZero("batch")
 	assert.Len(t, batch.PrefixEncoding, 2)
 	assert.Equal(t, "image/png", batch.PrefixEncoding[1].ContentType)
 	assert.Equal(t, "text/plain", batch.ItemEncoding.ContentType)
-	assert.Equal(t, "form", batch.Encoding.GetOrZero("inner").Style)
+	assert.Equal(t, "form", mt.Encoding.GetOrZero("form").Encoding.GetOrZero("inner").Style)
 }
 
 func TestMediaType_OAS32Encoding_Extensions(t *testing.T) {
@@ -405,15 +407,16 @@ func TestMediaType_OAS32Encoding_ExplicitFalseRoundTrip(t *testing.T) {
         allowReserved: false
     note:
         style: form
-itemEncoding:
-    encoding:
-        photo:
-            contentType: application/json
-            style: form
-            explode: false
-            allowReserved: false
-        note:
-            style: form
+    batch:
+        contentType: multipart/form-data
+        encoding:
+            photo:
+                contentType: application/json
+                style: form
+                explode: false
+                allowReserved: false
+            note:
+                style: form
 `
 	rendered, err := buildTestMediaType(t, []byte(yml)).Render()
 	assert.NoError(t, err)
@@ -421,8 +424,8 @@ itemEncoding:
 
 	reloaded := buildTestMediaType(t, rendered)
 	for name, enc := range map[string]*orderedmap.Map[string, *Encoding]{
-		"encoding":              reloaded.Encoding,
-		"itemEncoding.encoding": reloaded.ItemEncoding.Encoding,
+		"encoding":                reloaded.Encoding,
+		"encoding.batch.encoding": reloaded.Encoding.GetOrZero("batch").Encoding,
 	} {
 		photo := enc.GetOrZero("photo")
 		if assert.NotNil(t, photo.Explode, name) {
@@ -447,6 +450,8 @@ func TestMediaType_OAS32Encoding_AliasedKeys(t *testing.T) {
             type: string
         &hdr X-Rate-Limit:
             type: integer
+        batch:
+            type: object
 encoding:
     *field :
         contentType: image/png
@@ -454,10 +459,11 @@ encoding:
             *hdr :
                 schema:
                     type: integer
-itemEncoding:
-    encoding:
-        *field :
-            contentType: image/jpeg
+    batch:
+        contentType: multipart/form-data
+        encoding:
+            *field :
+                contentType: image/jpeg
 `))
 
 	photo := mt.Encoding.GetOrZero("photo")
@@ -465,7 +471,7 @@ itemEncoding:
 		assert.Equal(t, "image/png", photo.ContentType)
 		assert.NotNil(t, photo.Headers.GetOrZero("X-Rate-Limit"))
 	}
-	assert.Equal(t, "image/jpeg", mt.ItemEncoding.Encoding.GetOrZero("photo").ContentType)
+	assert.Equal(t, "image/jpeg", mt.Encoding.GetOrZero("batch").Encoding.GetOrZero("photo").ContentType)
 
 	rendered, err := mt.Render()
 	assert.NoError(t, err)
@@ -476,6 +482,8 @@ itemEncoding:
             type: string
         X-Rate-Limit:
             type: integer
+        batch:
+            type: object
 encoding:
     photo:
         contentType: image/png
@@ -483,9 +491,10 @@ encoding:
             X-Rate-Limit:
                 schema:
                     type: integer
-itemEncoding:
-    encoding:
-        photo:
-            contentType: image/jpeg
+    batch:
+        contentType: multipart/form-data
+        encoding:
+            photo:
+                contentType: image/jpeg
 `, string(rendered))
 }

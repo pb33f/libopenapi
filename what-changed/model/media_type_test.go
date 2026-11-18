@@ -938,6 +938,8 @@ func TestCompareMediaTypes_NestedEncoding(t *testing.T) {
       - contentType: application/json
     itemEncoding:
       contentType: image/png
+  form:
+    contentType: multipart/form-data
     encoding:
       inner:
         contentType: text/plain`, `encoding:
@@ -946,13 +948,16 @@ func TestCompareMediaTypes_NestedEncoding(t *testing.T) {
     prefixEncoding:
       - contentType: application/xml
     itemEncoding:
-      contentType: image/gif`)
+      contentType: image/gif
+  form:
+    contentType: multipart/form-data`)
 	assert.NotNil(t, changes)
 	batch := changes.EncodingChanges["batch"]
 	assert.NotNil(t, batch)
 	assert.Len(t, batch.PrefixEncodingChanges, 1)
 	assert.NotNil(t, batch.ItemEncodingChanges)
-	// prefixEncoding[0].contentType, itemEncoding.contentType, encoding.inner removed
+	assert.NotNil(t, changes.EncodingChanges["form"])
+	// batch prefixEncoding[0].contentType, batch itemEncoding.contentType, form encoding.inner removed
 	assert.Equal(t, 3, changes.TotalChanges())
 	assert.Equal(t, 3, changes.TotalBreakingChanges())
 }
@@ -962,26 +967,32 @@ func TestCompareMediaTypes_NestedEncoding_Modified(t *testing.T) {
 	ResetActiveBreakingRulesConfig()
 
 	changes := compareMediaTypeYAML(t, `encoding:
-  batch:
+  form:
     encoding:
       inner:
         contentType: text/plain
+  batch:
     prefixEncoding:
       - itemEncoding:
           contentType: image/png`, `encoding:
-  batch:
+  form:
     encoding:
       inner:
         contentType: text/csv
+  batch:
     prefixEncoding:
       - itemEncoding:
           contentType: image/gif`)
 	assert.NotNil(t, changes)
+	form := changes.EncodingChanges["form"]
+	if assert.NotNil(t, form) {
+		assert.NotNil(t, form.EncodingChanges["inner"])
+	}
 	batch := changes.EncodingChanges["batch"]
-	assert.NotNil(t, batch)
-	assert.NotNil(t, batch.EncodingChanges["inner"])
-	assert.NotNil(t, batch.PrefixEncodingChanges[0].ItemEncodingChanges)
-	// encoding.inner.contentType and prefixEncoding[0].itemEncoding.contentType
+	if assert.NotNil(t, batch) && assert.Len(t, batch.PrefixEncodingChanges, 1) {
+		assert.NotNil(t, batch.PrefixEncodingChanges[0].ItemEncodingChanges)
+	}
+	// form encoding.inner.contentType and batch prefixEncoding[0].itemEncoding.contentType
 	assert.Equal(t, 2, changes.TotalChanges())
 	assert.Equal(t, 2, changes.TotalBreakingChanges())
 	assert.Len(t, changes.GetAllChanges(), 2)
@@ -1002,11 +1013,11 @@ func TestCompareMediaTypes_EncodingRulesConfigurable(t *testing.T) {
 
 	changes := compareMediaTypeYAML(t, `prefixEncoding:
   - contentType: application/json
-encoding:
-  batch:
-    itemEncoding:
-      contentType: image/png`, `encoding:
-  batch: {}`)
+itemEncoding:
+  contentType: multipart/mixed
+  itemEncoding:
+    contentType: image/png`, `itemEncoding:
+  contentType: multipart/mixed`)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
@@ -1016,24 +1027,41 @@ func TestCompareMediaTypes_EncodingExtensions(t *testing.T) {
 	low.ClearHashCache()
 	ResetActiveBreakingRulesConfig()
 
+	extensionChange := func(ec *EncodingChanges) *Change {
+		if assert.NotNil(t, ec) && assert.NotNil(t, ec.ExtensionChanges) && assert.Len(t, ec.ExtensionChanges.Changes, 1) {
+			return ec.ExtensionChanges.Changes[0]
+		}
+		return &Change{}
+	}
+
+	// x-file is an encoding property name, not an extension of the media type.
 	changes := compareMediaTypeYAML(t, `encoding:
   photo:
     contentType: image/png
     x-vendor: abc
   x-file:
-    contentType: application/pdf
-prefixEncoding:
-  - contentType: application/json
-    x-part: first
-itemEncoding:
-  contentType: image/png
-  x-item: abc`, `encoding:
+    contentType: application/pdf`, `encoding:
   photo:
     contentType: image/png
     x-vendor: xyz
   x-file:
-    contentType: application/pdf
-prefixEncoding:
+    contentType: application/pdf`)
+	if !assert.NotNil(t, changes) {
+		return
+	}
+	assert.Nil(t, changes.ExtensionChanges)
+	photo := extensionChange(changes.EncodingChanges["photo"])
+	assert.Equal(t, Modified, photo.ChangeType)
+	assert.Equal(t, "x-vendor", photo.Property)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+	changes = compareMediaTypeYAML(t, `prefixEncoding:
+  - contentType: application/json
+    x-part: first
+itemEncoding:
+  contentType: image/png
+  x-item: abc`, `prefixEncoding:
   - contentType: application/json
     x-part: second
 itemEncoding:
@@ -1042,16 +1070,6 @@ itemEncoding:
 		return
 	}
 	assert.Nil(t, changes.ExtensionChanges)
-
-	extensionChange := func(ec *EncodingChanges) *Change {
-		if assert.NotNil(t, ec) && assert.NotNil(t, ec.ExtensionChanges) && assert.Len(t, ec.ExtensionChanges.Changes, 1) {
-			return ec.ExtensionChanges.Changes[0]
-		}
-		return &Change{}
-	}
-	photo := extensionChange(changes.EncodingChanges["photo"])
-	assert.Equal(t, Modified, photo.ChangeType)
-	assert.Equal(t, "x-vendor", photo.Property)
 	if assert.Len(t, changes.PrefixEncodingChanges, 1) {
 		assert.Equal(t, Modified, extensionChange(changes.PrefixEncodingChanges[0]).ChangeType)
 	}
@@ -1060,8 +1078,8 @@ itemEncoding:
 	assert.Equal(t, "x-item", item.Property)
 	assert.True(t, item.Breaking)
 
-	assert.Equal(t, 3, changes.TotalChanges())
-	assert.Len(t, changes.GetAllChanges(), 3)
+	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 2)
 	// removing an extension is breaking, so the removed x-item is counted.
 	assert.Equal(t, 1, changes.ItemEncodingChanges.TotalBreakingChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
