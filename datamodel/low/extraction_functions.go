@@ -739,6 +739,10 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 		skip := false
 		for i := 0; i < len(root.Content); i++ {
 			node := root.Content[i]
+			if i%2 == 0 {
+				// an aliased key (*name) reads the anchored scalar, not the anchor name.
+				node = utils.NodeAlias(node)
+			}
 			if !includeExtensions {
 				if len(node.Value) >= 2 && (node.Value[0] == 'x' || node.Value[0] == 'X') && node.Value[1] == '-' {
 					skip = true

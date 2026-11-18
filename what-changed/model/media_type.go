@@ -5,7 +5,7 @@ package model
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/v3"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
 // MediaTypeChanges represent changes made between two OpenAPI MediaType instances.
@@ -100,6 +100,7 @@ func (m *MediaTypeChanges) TotalBreakingChanges() int {
 		c += m.PrefixEncodingChanges[i].TotalBreakingChanges()
 	}
 	c += m.ItemEncodingChanges.TotalBreakingChanges()
+	c += m.ExtensionChanges.TotalBreakingChanges()
 	return c
 }
 

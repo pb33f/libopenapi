@@ -29,7 +29,8 @@ func TestCreateSummary_OverallReport(t *testing.T) {
 	// Callbacks are now properly counted as individual expression changes
 	// instead of a single PropertyAdded/PropertyRemoved change
 	assert.Equal(t, 45, report.ChangeReport[v3.PathsLabel].Total)
-	assert.Equal(t, 11, report.ChangeReport[v3.PathsLabel].Breaking)
+	// includes the removed media type extension (x-nice), which is breaking.
+	assert.Equal(t, 12, report.ChangeReport[v3.PathsLabel].Breaking)
 	assert.Equal(t, 3, report.ChangeReport[v3.TagsLabel].Total)
 	assert.Equal(t, 1, report.ChangeReport[v3.ExternalDocsLabel].Total)
 	assert.Equal(t, 2, report.ChangeReport[v3.WebhooksLabel].Total)

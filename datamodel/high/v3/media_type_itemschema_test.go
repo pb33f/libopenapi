@@ -11,6 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
 )
 
@@ -381,4 +382,110 @@ func TestMediaType_OAS32Encoding_EmptyPrefixEncodingBuiltByCaller(t *testing.T) 
 	rendered, err = (&MediaType{ItemEncoding: &Encoding{ContentType: "multipart/mixed"}}).Render()
 	assert.NoError(t, err)
 	assert.Equal(t, "itemEncoding:\n    contentType: multipart/mixed\n", string(rendered))
+}
+
+// buildTestMediaType builds a low MediaType from yml and wraps it in a high MediaType.
+func buildTestMediaType(t *testing.T, yml []byte) *MediaType {
+	t.Helper()
+	var idxNode yaml.Node
+	assert.NoError(t, yaml.Unmarshal(yml, &idxNode))
+	var lowMediaType lowv3.MediaType
+	_ = low.BuildModel(&idxNode, &lowMediaType)
+	assert.NoError(t, lowMediaType.Build(context.Background(), nil, idxNode.Content[0], index.NewSpecIndex(&idxNode)))
+	return NewMediaType(&lowMediaType)
+}
+
+// TestMediaType_OAS32Encoding_ExplicitFalseRoundTrip checks that an explicit explode: false (whose default depends on
+// style) and allowReserved: false survive a render and reload, while an omitted explode stays omitted.
+func TestMediaType_OAS32Encoding_ExplicitFalseRoundTrip(t *testing.T) {
+	yml := `encoding:
+    photo:
+        style: form
+        explode: false
+        allowReserved: false
+    note:
+        style: form
+itemEncoding:
+    encoding:
+        photo:
+            contentType: application/json
+            style: form
+            explode: false
+            allowReserved: false
+        note:
+            style: form
+`
+	rendered, err := buildTestMediaType(t, []byte(yml)).Render()
+	assert.NoError(t, err)
+	assert.Equal(t, yml, string(rendered))
+
+	reloaded := buildTestMediaType(t, rendered)
+	for name, enc := range map[string]*orderedmap.Map[string, *Encoding]{
+		"encoding":              reloaded.Encoding,
+		"itemEncoding.encoding": reloaded.ItemEncoding.Encoding,
+	} {
+		photo := enc.GetOrZero("photo")
+		if assert.NotNil(t, photo.Explode, name) {
+			assert.False(t, *photo.Explode, name)
+		}
+		assert.False(t, photo.GoLow().AllowReserved.IsEmpty(), name)
+		assert.False(t, photo.AllowReserved, name)
+
+		note := enc.GetOrZero("note")
+		assert.Nil(t, note.Explode, name)
+		assert.True(t, note.GoLow().AllowReserved.IsEmpty(), name)
+	}
+}
+
+// TestMediaType_OAS32Encoding_AliasedKeys checks that encoding and headers keys written as YAML aliases build and
+// render under the anchored name, not the anchor's label.
+func TestMediaType_OAS32Encoding_AliasedKeys(t *testing.T) {
+	mt := buildTestMediaType(t, []byte(`schema:
+    type: object
+    properties:
+        &field photo:
+            type: string
+        &hdr X-Rate-Limit:
+            type: integer
+encoding:
+    *field :
+        contentType: image/png
+        headers:
+            *hdr :
+                schema:
+                    type: integer
+itemEncoding:
+    encoding:
+        *field :
+            contentType: image/jpeg
+`))
+
+	photo := mt.Encoding.GetOrZero("photo")
+	if assert.NotNil(t, photo) {
+		assert.Equal(t, "image/png", photo.ContentType)
+		assert.NotNil(t, photo.Headers.GetOrZero("X-Rate-Limit"))
+	}
+	assert.Equal(t, "image/jpeg", mt.ItemEncoding.Encoding.GetOrZero("photo").ContentType)
+
+	rendered, err := mt.Render()
+	assert.NoError(t, err)
+	assert.Equal(t, `schema:
+    type: object
+    properties:
+        photo:
+            type: string
+        X-Rate-Limit:
+            type: integer
+encoding:
+    photo:
+        contentType: image/png
+        headers:
+            X-Rate-Limit:
+                schema:
+                    type: integer
+itemEncoding:
+    encoding:
+        photo:
+            contentType: image/jpeg
+`, string(rendered))
 }

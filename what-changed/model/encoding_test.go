@@ -157,3 +157,32 @@ allowReserved: true`
 	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges()) // both style and header removed are breaking
 }
+
+// Removing an extension is breaking, so it is counted in TotalBreakingChanges as well as TotalChanges.
+func TestCompareEncoding_ExtensionRemovedIsBreaking(t *testing.T) {
+	low.ClearHashCache()
+	ResetActiveBreakingRulesConfig()
+	build := func(yml string) *v3.Encoding {
+		var node yaml.Node
+		_ = yaml.Unmarshal([]byte(yml), &node)
+		var enc v3.Encoding
+		_ = low.BuildModel(node.Content[0], &enc)
+		_ = enc.Build(context.Background(), nil, node.Content[0], nil)
+		return &enc
+	}
+	withExt := build("contentType: image/png\nx-vendor: abc")
+	withoutExt := build("contentType: image/png")
+
+	removed := CompareEncoding(withExt, withoutExt)
+	if assert.NotNil(t, removed) {
+		assert.Equal(t, 1, removed.TotalChanges())
+		assert.Len(t, removed.GetAllChanges(), 1)
+		assert.Equal(t, 1, removed.TotalBreakingChanges())
+	}
+
+	added := CompareEncoding(withoutExt, withExt)
+	if assert.NotNil(t, added) {
+		assert.Equal(t, 1, added.TotalChanges())
+		assert.Equal(t, 0, added.TotalBreakingChanges())
+	}
+}
