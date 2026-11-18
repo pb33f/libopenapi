@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/pb33f/go-yaml"
-	"github.com/pb33f/go-yaml/plugin/limit"
+	"github.com/pb33f/go-yaml/plugin/loaderlimits"
 	"github.com/pb33f/libopenapi/utils"
 )
 
@@ -117,8 +117,8 @@ func isDirectOpenAPIExampleValuePath(seenPath []string) bool {
 }
 
 // Limit plugins are immutable after construction and shared by extraction walks.
-var defaultExtractRefsLimits limit.Plugin
-var unlimitedExtractRefsLimits = limit.New(limit.AliasNone())
+var defaultExtractRefsLimits loaderlimits.Plugin
+var unlimitedExtractRefsLimits = loaderlimits.New(loaderlimits.AliasNone())
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
 // The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
@@ -132,7 +132,7 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 }
 
 type extractRefsTraversal struct {
-	limits     *limit.Plugin
+	limits     *loaderlimits.Plugin
 	ancestry   map[*yaml.Node]struct{}
 	nodes      int
 	aliasNodes int

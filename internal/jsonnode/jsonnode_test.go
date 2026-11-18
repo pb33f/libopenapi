@@ -74,6 +74,7 @@ func TestParse_MatchesYAML(t *testing.T) {
 		`{"inf": 1e400, "tiny": 1e-400}`,
 		`{"nested": {"deeper": {"deepest": [[[{"a": [null]}]]]}}}`,
 		`{"":""}`,
+		`{"solidus": "a\/b", "url": "https:\/\/example.com\/path", "\/key": "\\\/"}`,
 		`{"a":"b" , "c" :"d"}`,
 		"{\"key\":\n  \"value on the next line\"}",
 		`{"dup": 1, "dup": 2}`,
@@ -128,7 +129,6 @@ func TestParse_MatchesYAML(t *testing.T) {
 		`{"a": x}`,
 		`{"a": "unterminated}`,
 		`{"a": "bad \x escape"}`,
-		`{"a": "solidus \/ escape"}`,
 		`{"a": "bad \u12 escape"}`,
 		`{"a": "bad \u12G4 escape"}`,
 		`{"a": "\ud83d\ude00"}`,
@@ -206,7 +206,12 @@ func TestUnmarshal(t *testing.T) {
 		var want, got yaml.Node
 		wantErr := yaml.Unmarshal([]byte(src), &want)
 		gotErr := Unmarshal([]byte(src), &got)
-		require.Equal(t, wantErr, gotErr, "input %q", src)
+		// Errors are compared by message: yaml.LoadError holds a formatter func, which never compares equal.
+		if wantErr == nil {
+			require.NoError(t, gotErr, "input %q", src)
+		} else {
+			require.EqualError(t, gotErr, wantErr.Error(), "input %q", src)
+		}
 		require.NoError(t, sameTree(&want, &got, "doc"), "input %q", src)
 	}
 }

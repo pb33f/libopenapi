@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/require"
@@ -149,7 +150,17 @@ func FuzzAppendJSONString(f *testing.F) {
 	f.Fuzz(func(t *testing.T, s string) {
 		want, err := json.Marshal(s)
 		require.NoError(t, err)
-		require.Equal(t, string(want), string(appendJSONString(nil, s)))
+		got := appendJSONString(nil, s)
+		if utf8.ValidString(s) {
+			require.Equal(t, string(want), string(got))
+			return
+		}
+		// encoding/json writes the U+FFFD replacing invalid UTF-8 as � before Go 1.27 and literally
+		// from Go 1.27, so compare the decoded strings: appendJSONString keeps � on every toolchain.
+		var wantValue, gotValue string
+		require.NoError(t, json.Unmarshal(want, &wantValue))
+		require.NoError(t, json.Unmarshal(got, &gotValue))
+		require.Equal(t, wantValue, gotValue)
 	})
 }
 

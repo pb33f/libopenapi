@@ -72,7 +72,6 @@ func TestLocalFileConcurrentReadAndIndexShareNodes(t *testing.T) {
 
 func TestLocalFileIndexRecoversJSONAfterEarlyParseFailure(t *testing.T) {
 	for _, test := range []struct{ source, value string }{
-		{`{"type":"string","description":"a\/b"}`, "a/b"},
 		{`{"type":"string","description":"\uD83D\uDE00"}`, "😀"},
 	} {
 		file := &LocalFile{data: []byte(test.source), fullPath: "schema.json"}
@@ -92,4 +91,21 @@ func TestLocalFileIndexRecoversJSONAfterEarlyParseFailure(t *testing.T) {
 		require.NoError(t, err)
 		require.Same(t, root, after)
 	}
+}
+
+// yaml decodes the JSON escaped solidus, so such a file parses on the first attempt and indexing reuses that node.
+func TestLocalFileIndexReusesEarlyParseWithEscapedSolidus(t *testing.T) {
+	file := &LocalFile{data: []byte(`{"type":"string","description":"a\/b"}`), fullPath: "schema.json"}
+	early, err := file.GetContentAsYAMLNode()
+	require.NoError(t, err)
+	require.Equal(t, yaml.MappingNode, early.Content[0].Kind)
+	config := CreateOpenAPIIndexConfig()
+	config.AvoidBuildIndex = true
+	indexed, err := file.Index(config)
+	require.NoError(t, err)
+	root := indexed.GetRootNode()
+	require.Same(t, early, root)
+	var schema map[string]any
+	require.NoError(t, root.Decode(&schema))
+	require.Equal(t, "a/b", schema["description"])
 }
