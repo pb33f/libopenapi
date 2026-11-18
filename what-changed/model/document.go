@@ -235,6 +235,10 @@ func CompareDocuments(l, r any) *DocumentChanges {
 		lDoc := l.(*v3.Document)
 		rDoc := r.(*v3.Document)
 
+		// record which schemas requests and responses use, so that schema changes
+		// whose effect depends on direction can be classified.
+		defer trackSchemaUsage(lDoc.Index, rDoc.Index)()
+
 		// version
 		addPropertyCheck(&props, lDoc.Version.ValueNode, rDoc.Version.ValueNode,
 			lDoc.Version.Value, rDoc.Version.Value, &changes, v3.OpenAPILabel,
