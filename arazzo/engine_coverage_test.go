@@ -271,7 +271,7 @@ func TestBuildExecutionRequest_WithHeaderQueryPathCookieParams(t *testing.T) {
 		Outputs: make(map[string]any),
 	}
 
-	req, err := engine.buildExecutionRequest(step, exprCtx)
+	req, err := engine.buildExecutionRequest(nil, step, exprCtx)
 	require.NoError(t, err)
 	assert.Equal(t, "createPet", req.OperationID)
 	assert.Equal(t, "tok123", req.Parameters["X-Token"])
@@ -308,7 +308,7 @@ func TestBuildExecutionRequest_ReusableParameter(t *testing.T) {
 		Outputs: make(map[string]any),
 	}
 
-	req, err := engine.buildExecutionRequest(step, exprCtx)
+	req, err := engine.buildExecutionRequest(nil, step, exprCtx)
 	require.NoError(t, err)
 	assert.Equal(t, "shared-val", req.Parameters["X-Token"])
 }
@@ -330,7 +330,7 @@ func TestBuildExecutionRequest_ParameterResolveError(t *testing.T) {
 		Outputs: make(map[string]any),
 	}
 
-	_, err := engine.buildExecutionRequest(step, exprCtx)
+	_, err := engine.buildExecutionRequest(nil, step, exprCtx)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nil step parameter")
 }
@@ -353,7 +353,7 @@ func TestBuildExecutionRequest_ParameterValueResolveError(t *testing.T) {
 		Outputs: make(map[string]any),
 	}
 
-	_, err := engine.buildExecutionRequest(step, exprCtx)
+	_, err := engine.buildExecutionRequest(nil, step, exprCtx)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to evaluate parameter")
 }
@@ -383,7 +383,7 @@ func TestBuildExecutionRequest_WithRequestBody(t *testing.T) {
 		Outputs: make(map[string]any),
 	}
 
-	req, err := engine.buildExecutionRequest(step, exprCtx)
+	req, err := engine.buildExecutionRequest(nil, step, exprCtx)
 	require.NoError(t, err)
 	assert.Equal(t, "application/json", req.ContentType)
 	assert.NotNil(t, req.RequestBody)
@@ -409,7 +409,7 @@ func TestBuildExecutionRequest_RequestBodyResolveError(t *testing.T) {
 		Outputs: make(map[string]any),
 	}
 
-	_, err := engine.buildExecutionRequest(step, exprCtx)
+	_, err := engine.buildExecutionRequest(nil, step, exprCtx)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to evaluate requestBody")
 }
@@ -428,7 +428,7 @@ func TestBuildExecutionRequest_NoParams_NoBody(t *testing.T) {
 		Outputs: make(map[string]any),
 	}
 
-	req, err := engine.buildExecutionRequest(step, exprCtx)
+	req, err := engine.buildExecutionRequest(nil, step, exprCtx)
 	require.NoError(t, err)
 	assert.Empty(t, req.Parameters)
 	assert.Nil(t, req.RequestBody)
@@ -2400,7 +2400,7 @@ func TestBuildExecutionRequest_CookieParameter(t *testing.T) {
 		Outputs: make(map[string]any),
 	}
 
-	req, err := engine.buildExecutionRequest(step, exprCtx)
+	req, err := engine.buildExecutionRequest(nil, step, exprCtx)
 	require.NoError(t, err)
 	assert.Equal(t, "abc123", req.Parameters["session"])
 	// Cookie params don't go into requestHeaders/Query/Path
@@ -2639,7 +2639,7 @@ func TestBuildExecutionRequest_OperationPath(t *testing.T) {
 		Outputs: make(map[string]any),
 	}
 
-	req, err := engine.buildExecutionRequest(step, exprCtx)
+	req, err := engine.buildExecutionRequest(nil, step, exprCtx)
 	require.NoError(t, err)
 	assert.Equal(t, "/pets/{petId}", req.OperationPath)
 	assert.Equal(t, "", req.OperationID)

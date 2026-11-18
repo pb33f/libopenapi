@@ -629,7 +629,7 @@ func TestEngine_BuildExecutionRequest_PopulatesSource(t *testing.T) {
 		Outputs: make(map[string]any),
 	}
 
-	req, err := engine.buildExecutionRequest(step, exprCtx)
+	req, err := engine.buildExecutionRequest(nil, step, exprCtx)
 	require.NoError(t, err)
 	require.NotNil(t, req.Source)
 	assert.Equal(t, "api", req.Source.Name)
