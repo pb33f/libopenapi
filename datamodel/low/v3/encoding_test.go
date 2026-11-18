@@ -125,29 +125,27 @@ func TestEncoding_Build_ScalarRoot(t *testing.T) {
 }
 
 func TestEncoding_Build_Nested(t *testing.T) {
-	yml := `contentType: multipart/mixed
-encoding:
-  meta:
-    contentType: application/json
+	n := buildTestEncoding(t, `contentType: multipart/mixed
 prefixEncoding:
   - contentType: application/xml
   - contentType: image/png
 itemEncoding:
-  contentType: text/plain`
+  contentType: text/plain`)
 
-	var idxNode yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &idxNode)
-	idx := index.NewSpecIndex(&idxNode)
-
-	var n Encoding
-	_ = low.BuildModel(idxNode.Content[0], &n)
-	assert.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
-
-	assert.Equal(t, "application/json", n.FindEncoding("meta").Value.ContentType.Value)
-	assert.Nil(t, n.FindEncoding("missing"))
 	assert.Len(t, n.PrefixEncoding.Value, 2)
 	assert.Equal(t, "image/png", n.PrefixEncoding.Value[1].Value.ContentType.Value)
 	assert.Equal(t, "text/plain", n.ItemEncoding.Value.ContentType.Value)
+	assert.True(t, n.Encoding.IsEmpty())
+
+	n = buildTestEncoding(t, `contentType: multipart/form-data
+encoding:
+  meta:
+    contentType: application/json`)
+
+	assert.Equal(t, "application/json", n.FindEncoding("meta").Value.ContentType.Value)
+	assert.Nil(t, n.FindEncoding("missing"))
+	assert.True(t, n.PrefixEncoding.IsEmpty())
+	assert.True(t, n.ItemEncoding.IsEmpty())
 }
 
 func TestEncoding_Build_Error_Nested(t *testing.T) {
@@ -173,15 +171,17 @@ func TestEncoding_Build_Error_Nested(t *testing.T) {
 func TestEncoding_Build_DirectKeysOnly(t *testing.T) {
 	yml := `contentType: multipart/mixed
 itemEncoding:
-  contentType: multipart/form-data
+  contentType: multipart/mixed
   headers:
     X-Part:
       description: a part header
-  encoding:
-    photo:
-      contentType: image/png
+      schema:
+        type: string
   prefixEncoding:
-    - contentType: text/plain`
+    - contentType: multipart/form-data
+      encoding:
+        photo:
+          contentType: image/png`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
@@ -197,9 +197,12 @@ itemEncoding:
 
 	item := n.ItemEncoding.Value
 	assert.NotNil(t, item.FindHeader("X-Part"))
-	assert.Equal(t, "image/png", item.FindEncoding("photo").Value.ContentType.Value)
-	assert.Len(t, item.PrefixEncoding.Value, 1)
+	assert.True(t, item.Encoding.IsEmpty())
 	assert.Nil(t, item.ItemEncoding.Value)
+	if assert.Len(t, item.PrefixEncoding.Value, 1) {
+		part := item.PrefixEncoding.Value[0].Value
+		assert.Equal(t, "image/png", part.FindEncoding("photo").Value.ContentType.Value)
+	}
 }
 
 // TestEncoding_Build_ExtensionPrefixedNames checks that encoding property names and header names starting with
@@ -208,6 +211,8 @@ func TestEncoding_Build_ExtensionPrefixedNames(t *testing.T) {
 	yml := `headers:
   x-trace:
     description: trace id
+    schema:
+      type: string
 encoding:
   photo:
     contentType: image/png
@@ -260,26 +265,29 @@ func buildTestEncoding(t *testing.T, yml string) *Encoding {
 func TestEncoding_Build_Extensions(t *testing.T) {
 	n := buildTestEncoding(t, `contentType: multipart/mixed
 x-vendor: abc
-encoding:
-  x-file:
-    contentType: application/pdf
-    x-inner: 1
 prefixEncoding:
   - contentType: application/json
     x-part: first
 itemEncoding:
-  contentType: image/png
-  x-item: abc`)
+  contentType: multipart/form-data
+  x-item: abc
+  encoding:
+    x-file:
+      contentType: application/pdf
+      x-inner: 1`)
 
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 	assert.Equal(t, "abc", n.FindExtension("x-vendor").Value.Value)
-	assert.Equal(t, "1", n.FindEncoding("x-file").Value.FindExtension("x-inner").Value.Value)
 	assert.Equal(t, "first", n.PrefixEncoding.Value[0].Value.FindExtension("x-part").Value.Value)
-	assert.Equal(t, "abc", n.ItemEncoding.Value.FindExtension("x-item").Value.Value)
+
+	item := n.ItemEncoding.Value
+	assert.Equal(t, 1, orderedmap.Len(item.GetExtensions()))
+	assert.Equal(t, "abc", item.FindExtension("x-item").Value.Value)
+	assert.Equal(t, "1", item.FindEncoding("x-file").Value.FindExtension("x-inner").Value.Value)
 
 	// x- keys under encoding are part names, not extensions of the enclosing Encoding Object.
-	assert.Nil(t, n.FindExtension("x-file"))
-	assert.Nil(t, n.FindExtension("x-inner"))
+	assert.Nil(t, item.FindExtension("x-file"))
+	assert.Nil(t, item.FindExtension("x-inner"))
 }
 
 func TestEncoding_Hash_Extensions(t *testing.T) {
