@@ -22,15 +22,28 @@ type Executor interface {
 	Execute(ctx context.Context, req *ExecutionRequest) (*ExecutionResponse, error)
 }
 
+// ResolvedParameter is a step parameter after component and expression resolution.
+type ResolvedParameter struct {
+	Name  string // Parameter name.
+	In    string // Parameter location, as declared in the workflow.
+	Value any    // Evaluated value, preserving its type for serialization by the Executor.
+}
+
 // ExecutionRequest represents a request to execute an API operation.
 type ExecutionRequest struct {
 	Source        *ResolvedSource
 	OperationID   string
 	OperationPath string
 	Method        string
-	Parameters    map[string]any
-	RequestBody   any
-	ContentType   string
+	// Parameters is the legacy name-keyed view. For duplicate names, the last
+	// parameter wins. Use ResolvedParameters when parameter locations are needed.
+	Parameters  map[string]any
+	RequestBody any
+	ContentType string
+	// ResolvedParameters preserves each parameter's name, location, and value in
+	// step order, including names shared by different locations. It is nil when
+	// the step has no parameters. Values are shared with Parameters.
+	ResolvedParameters []ResolvedParameter
 }
 
 // ExecutionResponse represents the response from an API operation execution.

@@ -144,6 +144,9 @@ func (e *Engine) buildExecutionRequest(step *high.Step, exprCtx *expression.Cont
 	requestHeaders := make(map[string]string)
 	requestQuery := make(map[string]string)
 	requestPath := make(map[string]string)
+	if len(step.Parameters) > 0 {
+		req.ResolvedParameters = make([]ResolvedParameter, 0, len(step.Parameters))
+	}
 
 	for _, param := range step.Parameters {
 		resolvedParam, err := e.resolveParameter(param)
@@ -155,6 +158,11 @@ func (e *Engine) buildExecutionRequest(step *high.Step, exprCtx *expression.Cont
 			return nil, fmt.Errorf("failed to evaluate parameter %q for step %q: %w", resolvedParam.Name, step.StepId, err)
 		}
 		req.Parameters[resolvedParam.Name] = value
+		req.ResolvedParameters = append(req.ResolvedParameters, ResolvedParameter{
+			Name:  resolvedParam.Name,
+			In:    resolvedParam.In,
+			Value: value,
+		})
 
 		switch resolvedParam.In {
 		case "header":
