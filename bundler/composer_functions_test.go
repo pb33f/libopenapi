@@ -584,7 +584,7 @@ func newProcessRefForTest(t *testing.T, name, source string) *processRef {
 
 func TestWalkAndRewriteRefs_NilNode(t *testing.T) {
 	require.NotPanics(t, func() {
-		walkAndRewriteRefs(nil, nil, nil, nil, false, nil)
+		walkAndRewriteRefs(nil, nil, nil, nil, nil, nil)
 	})
 }
 
@@ -596,7 +596,7 @@ func TestWalkAndRewriteRefs_SkipsCycles(t *testing.T) {
 	}
 
 	require.NotPanics(t, func() {
-		walkAndRewriteRefs(root, nil, nil, nil, false, nil)
+		walkAndRewriteRefs(root, nil, nil, nil, nil, nil)
 	})
 }
 
@@ -625,13 +625,13 @@ paths: {}`), &root))
 		location: []string{"components", "schemas", "New"},
 	})
 
-	walkAndRewriteRefs(doc, idx, processedNodes, nil, false, nil)
+	walkAndRewriteRefs(doc, idx, processedNodes, nil, nil, nil)
 	assert.Equal(t, "#/components/schemas/New", sharedRefNode.Content[1].Value)
 }
 
 func TestWalkAndRewriteRefs_ScalarNode(t *testing.T) {
 	require.NotPanics(t, func() {
-		walkAndRewriteRefs(&yaml.Node{Kind: yaml.ScalarNode, Value: "plain"}, nil, nil, nil, false, nil)
+		walkAndRewriteRefs(&yaml.Node{Kind: yaml.ScalarNode, Value: "plain"}, nil, nil, nil, nil, nil)
 	})
 }
 
@@ -653,7 +653,7 @@ paths: {}`), &root))
 		location: []string{"components", "schemas", "New"},
 	})
 
-	walkAndRewriteRefs(refNode, idx, processedNodes, nil, false, nil)
+	walkAndRewriteRefs(refNode, idx, processedNodes, nil, nil, nil)
 	assert.Equal(t, "#/components/schemas/New", refNode.Content[1].Value)
 }
 

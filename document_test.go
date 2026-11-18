@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -2887,4 +2888,59 @@ components:
 	assert.Equal(t, map[string]string{"$ref": "gone.yaml#/x"}, con)
 	require.Len(t, schema.Enum, 1)
 	require.Len(t, schema.Examples, 1)
+}
+
+func TestDocument_BuildV2Model_ExcludeExtensionRefsKeepsResponseNamedExtension(t *testing.T) {
+	spec := `swagger: "2.0"
+info: {title: Response definitions, version: "1"}
+paths: {}
+responses:
+  x-shared:
+    description: shared
+    schema: {$ref: '#/definitions/Pet'}
+definitions:
+  Pet:
+    type: object
+`
+	doc, err := NewDocumentWithConfiguration([]byte(spec), &datamodel.DocumentConfiguration{
+		ExcludeExtensionRefs: true,
+	})
+	require.NoError(t, err)
+	model, err := doc.BuildV2Model()
+	require.NoError(t, err)
+	require.NotNil(t, model.Model.Responses.Definitions.GetOrZero("x-shared"), "x-shared is a named response")
+	refs := model.Index.GetRawReferencesSequenced()
+	require.Len(t, refs, 1, "the named response's reference is not excluded")
+	assert.Equal(t, "#/definitions/Pet", refs[0].Definition)
+	assert.Empty(t, model.Index.GetExtensionRefsSequenced())
+}
+
+func TestDocument_BuildV3Model_ExcludeExtensionRefsUnderResponses(t *testing.T) {
+	tmp := t.TempDir()
+	root := `openapi: 3.1.0
+info: {title: Response extensions, version: "1"}
+paths:
+  /pets:
+    $ref: 'pets.yaml'
+`
+	pets := `get:
+  responses:
+    "200":
+      description: ok
+    x-notes:
+      $ref: 'missing.yaml#/notes'
+`
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "pets.yaml"), []byte(pets), 0o644))
+
+	doc, err := NewDocumentWithConfiguration([]byte(root), &datamodel.DocumentConfiguration{
+		BasePath:             tmp,
+		AllowFileReferences:  true,
+		ExcludeExtensionRefs: true,
+	})
+	require.NoError(t, err)
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err, "a Responses Object extension is excluded")
+	responses := model.Model.Paths.PathItems.GetOrZero("/pets").Get.Responses
+	require.NotNil(t, responses.Codes.GetOrZero("200"))
+	require.NotNil(t, responses.Extensions.GetOrZero("x-notes"))
 }

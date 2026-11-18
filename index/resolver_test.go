@@ -2154,3 +2154,61 @@ components:
 		})
 	}
 }
+
+func TestResolver_ExcludeExtensionRefsKeepsSwaggerResponseNamedExtension(t *testing.T) {
+	spec := `swagger: "2.0"
+responses:
+  x-shared:
+    description: shared
+    schema: {$ref: '#/definitions/Pet'}
+definitions:
+  Pet:
+    type: object
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
+	c := CreateOpenAPIIndexConfig()
+	c.ExcludeExtensionRefs = true
+	idx := NewSpecIndexWithConfig(&root, c)
+	refs := idx.GetRawReferencesSequenced()
+	if assert.Len(t, refs, 1, "a root response definition named x-... is a response, not an extension") {
+		assert.False(t, refs[0].IsExtensionRef)
+	}
+
+	_, node := utils.FindKeyNodeTop("responses", root.Content[0].Content)
+	ref := &Reference{Definition: "#/responses", FullDefinition: "#/responses", Index: idx, Node: node}
+	resolver := NewResolver(idx)
+	found := resolver.extractRelatives(ref, node, nil, map[string]bool{}, nil, false, 0, "")
+	require.Len(t, found, 1)
+	assert.Equal(t, "#/definitions/Pet", found[0].Definition)
+}
+
+func TestResolver_ExcludeExtensionRefsUnderResponses(t *testing.T) {
+	spec := `openapi: 3.1.0
+components:
+  pathItems:
+    Pets:
+      get:
+        responses:
+          "200":
+            $ref: '#/components/responses/Ok'
+          x-notes: {$ref: 'missing.yaml#/notes'}
+  responses:
+    Ok:
+      description: ok
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
+	c := CreateOpenAPIIndexConfig()
+	c.ExcludeExtensionRefs = true
+	idx := NewSpecIndexWithConfig(&root, c)
+	_, components := utils.FindKeyNodeTop("components", root.Content[0].Content)
+	_, pathItems := utils.FindKeyNodeTop("pathItems", components.Content)
+	_, node := utils.FindKeyNodeTop("Pets", pathItems.Content)
+	ref := &Reference{Definition: "#/components/pathItems/Pets", FullDefinition: "#/components/pathItems/Pets", Index: idx, Node: node}
+	resolver := NewResolver(idx)
+	found := resolver.extractRelatives(ref, node, nil, map[string]bool{}, nil, false, 0, "")
+	require.Len(t, found, 1)
+	assert.Equal(t, "#/components/responses/Ok", found[0].Definition)
+	assert.Empty(t, resolver.resolvingErrors, "an x- key under responses is an extension")
+}

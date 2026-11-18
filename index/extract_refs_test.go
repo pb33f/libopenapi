@@ -791,83 +791,6 @@ func TestSpecIndex_isExternalReference_Nil(t *testing.T) {
 	assert.False(t, isExternalReference(nil))
 }
 
-func TestUnderOpenAPIExamplePath(t *testing.T) {
-	tests := []struct {
-		name string
-		path []string
-		want bool
-	}{
-		{"empty", nil, false},
-		{"no_example_segments", []string{"paths", "get", "responses", "200", "content", "application/json", "schema"}, false},
-		{"under_example", []string{"paths", "get", "responses", "200", "content", "application/json", "schema", "example"}, true},
-		{"under_examples", []string{"content", "application/json", "schema", "examples", "sample", "value"}, true},
-		{"example_not_whole_segment", []string{"paths", "exampled"}, false},
-		{"example_as_property_name", []string{"components", "schemas", "Foo", "properties", "example"}, false},
-		{"examples_as_property_name", []string{"components", "schemas", "Foo", "properties", "examples"}, false},
-		{"nested_under_property_example", []string{"components", "schemas", "Foo", "properties", "example", "properties", "id"}, false},
-		{"patternProperties_example", []string{"components", "schemas", "Foo", "patternProperties", "example"}, false},
-		{"real_example_after_property_example", []string{"components", "schemas", "Foo", "properties", "example", "example"}, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, underOpenAPIExamplePath(tt.path))
-		})
-	}
-}
-
-func TestUnderOpenAPIExamplePayloadPath(t *testing.T) {
-	tests := []struct {
-		name string
-		path []string
-		want bool
-	}{
-		{"empty", nil, false},
-		{"example_root", []string{"paths", "get", "responses", "200", "content", "application/json", "schema", "example"}, false},
-		{"nested_under_example_payload", []string{"components", "schemas", "Foo", "example", "nested"}, true},
-		{"examples_collection", []string{"components", "examples"}, false},
-		{"example_object_entry", []string{"components", "examples", "ReusableExample"}, false},
-		{"examples_value_payload", []string{"content", "application/json", "examples", "sample", "value"}, true},
-		{"examples_value_nested_payload", []string{"content", "application/json", "examples", "sample", "value", "nested"}, true},
-		{"examples_data_value_payload", []string{"components", "examples", "sample", "dataValue"}, true},
-		{"property_named_example", []string{"components", "schemas", "Foo", "properties", "example"}, false},
-		{"property_named_examples_value", []string{"components", "schemas", "Foo", "properties", "examples", "value"}, false},
-		{"real_example_after_property_example", []string{"components", "schemas", "Foo", "properties", "example", "example"}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, underOpenAPIExamplePayloadPath(tt.path))
-		})
-	}
-}
-
-func TestIsOpenAPIExampleKeywordSegment(t *testing.T) {
-	path := []string{"components", "examples", "ReusableExample"}
-
-	tests := []struct {
-		name string
-		idx  int
-		want bool
-	}{
-		{"negative index", -1, false},
-		{"index too large", len(path), false},
-		{"examples keyword", 1, true},
-		{"non keyword segment", 2, false},
-		{"property named example", 2, false},
-	}
-
-	propertyPath := []string{"components", "schemas", "Foo", "properties", "example"}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			targetPath := path
-			if tt.name == "property named example" {
-				targetPath = propertyPath
-			}
-			assert.Equal(t, tt.want, isOpenAPIExampleKeywordSegment(targetPath, tt.idx))
-		})
-	}
-}
-
 func TestExtractRefs_InlineSchemaHelpers(t *testing.T) {
 	idx := NewTestSpecIndex().Load().(*SpecIndex)
 	idx.specAbsolutePath = "test.yaml"
@@ -1105,6 +1028,8 @@ func TestExtractRefs_WalkHelpers(t *testing.T) {
 	assert.False(t, shouldSkipMapSchemaCollection([]string{"properties", "example"}))
 	assert.False(t, shouldSkipMapSchemaCollection([]string{"patternProperties", "example"}))
 	assert.True(t, shouldSkipMapSchemaCollection([]string{"x-test"}))
+	assert.True(t, shouldSkipMapSchemaCollection([]string{"components", "schemas", "S", "x-model"}))
+	assert.False(t, shouldSkipMapSchemaCollection([]string{"components", "schemas", "S", "properties", "x-meta"}))
 
 	var noAppendNode yaml.Node
 	_ = yaml.Unmarshal([]byte("summary: hello\nvalue: world"), &noAppendNode)
@@ -1271,42 +1196,21 @@ components:
 	}
 }
 
-func TestUnderSchemaInstanceValuePath(t *testing.T) {
-	var seq, mapping yaml.Node
-	require.NoError(t, yaml.Unmarshal([]byte("[{$ref: '#/a'}]"), &seq))
-	require.NoError(t, yaml.Unmarshal([]byte("{named: {$ref: '#/a'}}"), &mapping))
-	tests := []struct {
-		name string
-		path []string
-		node *yaml.Node
-		want bool
-	}{
-		{"empty", nil, nil, false},
-		{"enum", []string{"components", "schemas", "S", "enum"}, nil, true},
-		{"const", []string{"components", "schemas", "S", "const"}, nil, true},
-		{"default", []string{"components", "schemas", "S", "default"}, nil, true},
-		{"below_default", []string{"components", "schemas", "S", "default", "nested"}, nil, true},
-		{"items_enum", []string{"components", "schemas", "S", "items", "enum"}, nil, true},
-		{"examples_array", []string{"components", "schemas", "S", "examples"}, seq.Content[0], true},
-		{"examples_array_element", []string{"components", "schemas", "S", "examples", "[]"}, nil, true},
-		{"examples_map", []string{"content", "application/json", "examples"}, mapping.Content[0], false},
-		{"examples_unknown_node", []string{"components", "schemas", "S", "examples"}, nil, false},
-		{"example_object_named_default", []string{"content", "application/json", "examples", "default"}, nil, false},
-		{"schema_named_default", []string{"components", "schemas", "default"}, nil, false},
-		{"property_named_default", []string{"components", "schemas", "S", "properties", "default"}, nil, false},
-		{"property_named_enum", []string{"components", "schemas", "S", "properties", "enum"}, nil, false},
-		{"property_named_const", []string{"components", "schemas", "S", "properties", "const"}, nil, false},
-		{"default_response", []string{"paths", "~1pets", "get", "responses", "default"}, nil, false},
-		{"default_of_property_named_default", []string{"components", "schemas", "S", "properties", "default", "default"}, nil, true},
-		{"swagger_parameter_named_default", []string{"parameters", "default"}, nil, false},
-		{"operation_parameter_schema_default", []string{"paths", "~1pets", "get", "parameters", "schema", "default"}, nil, true},
-		{"default_response_schema_default", []string{"paths", "~1pets", "get", "responses", "default", "content", "application/json", "schema", "default"}, nil, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, underSchemaInstanceValuePath(tt.path, tt.node))
-		})
-	}
+func TestResolver_MergedFragmentRootDefaultIsData(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`<<: {type: object, description: merged}
+default:
+  $ref: '#/missing'
+`), &root))
+	idx := NewSpecIndexWithConfig(&root, CreateOpenAPIIndexConfig())
+	assert.Empty(t, idx.GetRawReferencesSequenced(), "the index walks the merged view")
+
+	node := root.Content[0]
+	ref := &Reference{Definition: "thing.yaml", FullDefinition: "thing.yaml", Index: idx, Node: node}
+	resolver := NewResolver(idx)
+	found := resolver.extractRelatives(ref, node, nil, map[string]bool{}, nil, false, 0, "")
+	assert.Empty(t, found, "the default of a schema with merged keywords is data")
+	assert.Empty(t, resolver.resolvingErrors)
 }
 
 func TestExtractReferenceAt_IgnoresRefsInsideSchemaInstanceValues(t *testing.T) {
@@ -1394,9 +1298,288 @@ components:
 	assert.Empty(t, idx.GetReferenceIndexErrors())
 }
 
-func TestIsOpenAPIKeywordSegment_OutOfRange(t *testing.T) {
-	path := []string{"components", "schemas", "S", "default"}
-	assert.False(t, isOpenAPIKeywordSegment(path, -1))
-	assert.False(t, isOpenAPIKeywordSegment(path, len(path)))
-	assert.True(t, isOpenAPIKeywordSegment(path, 3))
+func TestSpecIndex_ExtractRefs_ItemSchemaInstanceValueRefsIgnored(t *testing.T) {
+	spec := `openapi: 3.2.0
+info:
+  title: Item schemas
+  version: 1.0.0
+paths:
+  /stream:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/jsonl:
+              itemSchema:
+                description: no keyword says this is a schema
+                default: {$ref: '#/data/item-default'}
+            application/x-ndjson:
+              itemSchema:
+                $ref: '#/components/schemas/Target'
+components:
+  mediaTypes:
+    Events:
+      itemSchema:
+        enum:
+          - {$ref: '#/data/item-enum'}
+  schemas:
+    Named:
+      type: object
+      properties:
+        itemSchema:
+          default: {$ref: '#/data/property-default'}
+          properties:
+            default: {$ref: '#/components/schemas/Target'}
+    Target:
+      type: string
+`
+
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &rootNode))
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+
+	rawRefs := make(map[string]bool)
+	for _, ref := range idx.GetRawReferencesSequenced() {
+		rawRefs[ref.RawRef] = true
+	}
+
+	assert.True(t, rawRefs["#/components/schemas/Target"], "an itemSchema reference and a property named default are references")
+	for raw := range rawRefs {
+		assert.False(t, strings.HasPrefix(raw, "#/data/"), "instance data indexed as a reference: %s", raw)
+	}
+	assert.Empty(t, idx.GetReferenceIndexErrors())
+}
+
+func TestSpecIndex_ExtractRefs_NameSlotsAreNotInstanceValues(t *testing.T) {
+	indexRefs := func(t *testing.T, spec string, exclude bool) map[string]*Reference {
+		t.Helper()
+		var rootNode yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(spec), &rootNode))
+		c := CreateOpenAPIIndexConfig()
+		c.ExcludeExtensionRefs = exclude
+		idx := NewSpecIndexWithConfig(&rootNode, c)
+		refs := make(map[string]*Reference)
+		for _, ref := range idx.GetRawReferencesSequenced() {
+			refs[ref.RawRef] = ref
+		}
+		return refs
+	}
+
+	t.Run("schema named default at a fragment root", func(t *testing.T) {
+		refs := indexRefs(t, `default:
+  type: object
+  properties:
+    pet: {$ref: 'pet.yaml'}
+`, false)
+		assert.Contains(t, refs, "pet.yaml")
+	})
+
+	// A catalog entry named like a schema keyword does not make the catalog a schema.
+	for name, catalog := range map[string]string{
+		"parameter catalog with an entry named type": `default:
+  name: default
+  in: query
+  schema: {$ref: 'pet.yaml'}
+type:
+  name: type
+  in: query
+  schema: {type: string}
+`,
+		"schema catalog with an entry named format": `default:
+  type: object
+  properties:
+    pet: {$ref: 'pet.yaml'}
+format:
+  type: string
+`,
+		"json schema catalog with an entry named required": `{"default": {"type": "object", "properties": {"pet": {"$ref": "pet.yaml"}}},
+ "required": {"type": "string"}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Contains(t, indexRefs(t, catalog, false), "pet.yaml")
+		})
+	}
+
+	t.Run("swagger root parameter named default", func(t *testing.T) {
+		refs := indexRefs(t, `swagger: "2.0"
+info: {title: Pets, version: "1"}
+paths:
+  /pets:
+    post:
+      parameters:
+        - $ref: '#/parameters/default'
+      responses:
+        "200": {description: OK}
+parameters:
+  default:
+    name: default
+    in: body
+    schema: {$ref: '#/definitions/Pet'}
+  type:
+    name: type
+    in: query
+    type: string
+definitions:
+  Pet: {type: object}
+`, false)
+		assert.Contains(t, refs, "#/definitions/Pet")
+	})
+
+	t.Run("additional operation named default", func(t *testing.T) {
+		refs := indexRefs(t, `openapi: 3.2.0
+paths:
+  /pets:
+    additionalOperations:
+      default:
+        responses:
+          "200":
+            $ref: '#/components/responses/Ok'
+components:
+  responses:
+    Ok:
+      description: ok
+`, false)
+		assert.Contains(t, refs, "#/components/responses/Ok")
+	})
+
+	t.Run("example object named brackets", func(t *testing.T) {
+		refs := indexRefs(t, `openapi: 3.1.0
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              examples:
+                "[]":
+                  $ref: '#/components/examples/Sample'
+components:
+  examples:
+    Sample:
+      value: {ok: true}
+`, false)
+		assert.Contains(t, refs, "#/components/examples/Sample")
+	})
+
+	t.Run("property named like an extension with extension refs excluded", func(t *testing.T) {
+		refs := indexRefs(t, `openapi: 3.1.0
+components:
+  schemas:
+    Owner:
+      type: object
+      properties:
+        x-name: {$ref: '#/components/schemas/Target'}
+      x-notes: {$ref: '#/components/schemas/Excluded'}
+    Target:
+      type: string
+`, true)
+		require.Contains(t, refs, "#/components/schemas/Target")
+		assert.False(t, refs["#/components/schemas/Target"].IsExtensionRef)
+		assert.NotContains(t, refs, "#/components/schemas/Excluded")
+	})
+
+	// The properties segment stays in the path below an extension or an x- property, so the
+	// property names under it are names, not schema keywords.
+	t.Run("property named default in an extension schema", func(t *testing.T) {
+		spec := `openapi: 3.1.0
+components:
+  schemas:
+    Owner:
+      type: object
+      x-model:
+        type: object
+        properties:
+          items: {type: array}
+          default: {$ref: 'pet.yaml'}
+`
+		refs := indexRefs(t, spec, false)
+		require.Contains(t, refs, "pet.yaml")
+		assert.True(t, refs["pet.yaml"].IsExtensionRef)
+		assert.NotContains(t, indexRefs(t, spec, true), "pet.yaml")
+	})
+
+	t.Run("property named default below a property named like an extension", func(t *testing.T) {
+		spec := `openapi: 3.1.0
+components:
+  schemas:
+    Owner:
+      type: object
+      properties:
+        x-meta:
+          type: object
+          properties:
+            default: {$ref: 'pet.yaml'}
+`
+		for _, exclude := range []bool{false, true} {
+			refs := indexRefs(t, spec, exclude)
+			require.Contains(t, refs, "pet.yaml", "exclude=%v", exclude)
+			assert.False(t, refs["pet.yaml"].IsExtensionRef)
+		}
+	})
+
+	t.Run("example object named properties", func(t *testing.T) {
+		refs := indexRefs(t, `openapi: 3.1.0
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              examples:
+                properties:
+                  value: {owner: {$ref: 'payload.yaml'}}
+                $defs:
+                  $ref: 'example.yaml'
+`, false)
+		assert.Contains(t, refs, "example.yaml")
+		assert.NotContains(t, refs, "payload.yaml", "example value is data")
+	})
+
+	t.Run("extension under responses with extension refs excluded", func(t *testing.T) {
+		refs := indexRefs(t, `openapi: 3.1.0
+paths:
+  /pets:
+    get:
+      responses:
+        "200":
+          description: ok
+        x-notes: {$ref: 'missing.yaml#/notes'}
+`, true)
+		assert.NotContains(t, refs, "missing.yaml#/notes")
+	})
+}
+
+func TestSpecIndex_ExtractRefs_PathItemFragmentParameterExamples(t *testing.T) {
+	// A path item fragment's parameters field is an array, so example is a Parameter Object field.
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`parameters:
+  - name: filter
+    in: query
+    schema: {$ref: 'filter.yaml'}
+    example:
+      owner: {$ref: 'pet.yaml'}
+  - name: sort
+    in: query
+    schema: {type: string}
+    examples:
+      sample:
+        value: {$ref: 'sample.yaml'}
+get:
+  responses:
+    "200": {description: OK}
+`), &rootNode))
+	idx := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	refs := make(map[string]*Reference)
+	for _, ref := range idx.GetRawReferencesSequenced() {
+		refs[ref.RawRef] = ref
+	}
+	assert.Contains(t, refs, "filter.yaml")
+	assert.NotContains(t, refs, "pet.yaml", "example payload is data")
+	assert.NotContains(t, refs, "sample.yaml", "example value is data")
 }

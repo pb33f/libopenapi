@@ -13,6 +13,8 @@ import (
 
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
+	"github.com/pb33f/testify/assert"
 )
 
 // Tests for defensive nil checks and edge cases in extension_refs.go
@@ -36,7 +38,7 @@ func TestRewriteExtensionRefsForComposedBundle_NilAndRootCases(t *testing.T) {
 	idx := index.NewSpecIndexWithConfig(&node, index.CreateOpenAPIIndexConfig())
 	idx.SetAbsolutePath(filepath.Join(t.TempDir(), "openapi.yaml"))
 	rewriteExtensionRefsForComposedIndex(idx, idx)
-	walkAndRewriteComposedExtensionRefs(nil, idx, idx, false)
+	walkAndRewriteComposedExtensionRefs(nil, idx, idx, false, nil)
 }
 
 func TestRewriteExtensionRefsForComposedBundle_RebasesNestedExtensionRefs(t *testing.T) {
@@ -60,13 +62,46 @@ func TestRewriteExtensionRefsForComposedBundle_RebasesNestedExtensionRefs(t *tes
 	walkAndRewriteComposedExtensionRefs(&yaml.Node{
 		Kind:    yaml.DocumentNode,
 		Content: []*yaml.Node{rootNode},
-	}, sourceIdx, rootIdx, false)
+	}, sourceIdx, rootIdx, false, nil)
 
 	var refValue string
 	findRefValue(rootNode, &refValue)
 	if refValue != "code_samples/C_sharp/echo/post.cs" {
 		t.Fatalf("expected rebased ref, got %q", refValue)
 	}
+}
+
+func TestRewriteExtensionRefsForComposedBundle_SkipsPropertiesNamedExtension(t *testing.T) {
+	rootDir := t.TempDir()
+	rootIdx := newComposedRefIndex(t, filepath.Join(rootDir, "openapi.yaml"), `openapi: 3.1.0`)
+	sourceIdx := newComposedRefIndex(t, filepath.Join(rootDir, "schemas", "owner.yaml"), `type: object
+properties:
+  x-meta:
+    default:
+      $ref: pet.yaml
+  x-doc:
+    $ref: pet.yaml
+x-ext:
+  properties:
+    x-inner:
+      $ref: pet.yaml
+`)
+
+	rewriteExtensionRefsForComposedIndex(sourceIdx, rootIdx)
+
+	root := sourceIdx.GetRootNode().Content[0]
+	_, properties := utils.FindKeyNodeTop("properties", root.Content)
+	_, meta := utils.FindKeyNodeTop("x-meta", properties.Content)
+	_, metaDefault := utils.FindKeyNodeTop("default", meta.Content)
+	_, doc := utils.FindKeyNodeTop("x-doc", properties.Content)
+	_, ext := utils.FindKeyNodeTop("x-ext", root.Content)
+	var metaRef, docRef, extRef string
+	findRefValue(metaDefault, &metaRef)
+	findRefValue(doc, &docRef)
+	findRefValue(ext, &extRef)
+	assert.Equal(t, "pet.yaml", metaRef, "a property named x-meta is not an extension")
+	assert.Equal(t, "pet.yaml", docRef, "a property named x-doc is not an extension")
+	assert.Equal(t, "schemas/pet.yaml", extRef, "everything under an extension is rebased")
 }
 
 func TestRebaseExtensionRefForComposed(t *testing.T) {

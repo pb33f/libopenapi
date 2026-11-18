@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/libopenapi/internal/specpath"
 	"github.com/pb33f/libopenapi/utils"
 )
 
@@ -26,13 +27,13 @@ func (index *SpecIndex) extractReferenceAt(
 	if len(node.Content) <= keyIndex+1 {
 		return nil
 	}
-	if underOpenAPIExamplePayloadPath(seenPath) || underSchemaInstanceValuePath(seenPath, nil) {
+	if specpath.UnderOpenAPIExamplePayloadPath(seenPath) || specpath.UnderSchemaInstanceValuePath(seenPath, nil, nil) {
 		return nil
 	}
 
 	isExtensionPath := false
-	for _, spi := range seenPath {
-		if strings.HasPrefix(spi, "x-") {
+	for i := range seenPath {
+		if specpath.IsOpenAPIExtensionSegment(seenPath, i) {
 			isExtensionPath = true
 			break
 		}
@@ -135,7 +136,7 @@ func (index *SpecIndex) extractReferenceAt(
 }
 
 func (index *SpecIndex) registerSchemaIDAt(node *yaml.Node, keyIndex int, seenPath []string, parentBaseUri string) {
-	if underOpenAPIExamplePath(seenPath) {
+	if specpath.UnderOpenAPIExamplePath(seenPath) {
 		return
 	}
 	if len(node.Content) <= keyIndex+1 || !utils.IsNodeStringValue(node.Content[keyIndex+1]) {

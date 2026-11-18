@@ -186,6 +186,14 @@ func isSingularExampleSourceSegment(sourcePath []string, index int) bool {
 	}
 }
 
+// isSchemaSourceSegment reports whether sourcePath[index] places a $ref in a schema slot.
+//
+// isSchemaLocation in internal/specpath, which finds schema instance values for the index and the
+// composer, uses a similar list. They differ: this one lacks itemSchema, additionalItems and
+// contentSchema, so a $ref there is classified by the slots around it, and it takes a schemas
+// parent at any depth rather than only components/schemas. It is checked at every segment of
+// sourcePath and never looks at the target node. Sharing the list would change which component
+// bucket such refs are lifted into.
 func isSchemaSourceSegment(sourcePath []string, index int) bool {
 	segment := sourcePath[index]
 	previous := ""
