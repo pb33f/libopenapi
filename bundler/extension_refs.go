@@ -14,6 +14,7 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/internal/specpath"
 )
 
 // resolveExtensionRefs resolves $ref pointers within extension fields (x-*).
@@ -114,21 +115,24 @@ func rewriteExtensionRefsForComposedIndex(sourceIdx, rootIdx *index.SpecIndex) {
 	if sourceIdx.GetSpecAbsolutePath() == rootIdx.GetSpecAbsolutePath() {
 		return
 	}
-	walkAndRewriteComposedExtensionRefs(sourceIdx.GetRootNode(), sourceIdx, rootIdx, false)
+	walkAndRewriteComposedExtensionRefs(sourceIdx.GetRootNode(), sourceIdx, rootIdx, false, make([]string, 0, 16))
 }
 
-func walkAndRewriteComposedExtensionRefs(node *yaml.Node, sourceIdx, rootIdx *index.SpecIndex, inExtension bool) {
+// walkAndRewriteComposedExtensionRefs rebases the $ref values under extension keys. path holds the
+// mapping keys from the document root, so a schema property named x-... is not taken for an
+// extension, as in the index.
+func walkAndRewriteComposedExtensionRefs(node *yaml.Node, sourceIdx, rootIdx *index.SpecIndex, inExtension bool, path []string) {
 	if node == nil {
 		return
 	}
 	switch node.Kind {
 	case yaml.DocumentNode:
 		for _, child := range node.Content {
-			walkAndRewriteComposedExtensionRefs(child, sourceIdx, rootIdx, inExtension)
+			walkAndRewriteComposedExtensionRefs(child, sourceIdx, rootIdx, inExtension, path)
 		}
 	case yaml.SequenceNode:
 		for _, child := range node.Content {
-			walkAndRewriteComposedExtensionRefs(child, sourceIdx, rootIdx, inExtension)
+			walkAndRewriteComposedExtensionRefs(child, sourceIdx, rootIdx, inExtension, path)
 		}
 	case yaml.MappingNode:
 		for i := 0; i+1 < len(node.Content); i += 2 {
@@ -137,12 +141,13 @@ func walkAndRewriteComposedExtensionRefs(node *yaml.Node, sourceIdx, rootIdx *in
 			if keyNode == nil {
 				continue
 			}
-			childInExtension := inExtension || strings.HasPrefix(keyNode.Value, "x-")
+			childPath := append(path, keyNode.Value)
+			childInExtension := inExtension || specpath.IsOpenAPIExtensionSegment(childPath, len(childPath)-1)
 			if childInExtension && keyNode.Value == "$ref" && valueNode != nil && valueNode.Kind == yaml.ScalarNode {
 				valueNode.Value = rebaseExtensionRefForComposed(valueNode.Value, sourceIdx, rootIdx)
 				continue
 			}
-			walkAndRewriteComposedExtensionRefs(valueNode, sourceIdx, rootIdx, childInExtension)
+			walkAndRewriteComposedExtensionRefs(valueNode, sourceIdx, rootIdx, childInExtension, childPath)
 		}
 	}
 }

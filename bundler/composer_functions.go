@@ -19,6 +19,7 @@ import (
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/internal/specpath"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 )
@@ -28,11 +29,6 @@ const (
 	defaultCompositionDelimiter = "__"
 	fallbackSchemaComponentName = "schema"
 )
-
-type rewriteVisitKey struct {
-	node        *yaml.Node
-	inExtension bool
-}
 
 // extractFragment returns the JSON pointer fragment from a full definition.
 // e.g., "file.yaml#/components/schemas/Pet" -> "#/components/schemas/Pet"
@@ -768,16 +764,23 @@ func rewriteAllRefs(
 	processedNodes *orderedmap.Map[string, *processRef],
 	rolodex *index.Rolodex,
 ) {
-	walkAndRewriteRefs(idx.GetRootNode(), idx, processedNodes, rolodex, false, make(map[rewriteVisitKey]struct{}))
+	walkAndRewriteRefs(idx.GetRootNode(), idx, processedNodes, rolodex, make(map[*yaml.Node]struct{}), nil)
 }
 
+// walkAndRewriteRefs rewrites the $ref values below node to their composed locations. path holds
+// the mapping keys from the document root, and a sequence element adds none.
+//
+// The walk does not follow alias nodes, so an anchored node is walked once, at its anchor and under
+// the anchor's path, and a rewrite there shows at every alias of it. An anchor skipped as literal
+// data stays unrewritten at its aliases too. visited is keyed by node and stops a second walk of a
+// node that sits at more than one position as the same pointer.
 func walkAndRewriteRefs(
 	node *yaml.Node,
 	sourceIdx *index.SpecIndex,
 	processedNodes *orderedmap.Map[string, *processRef],
 	rolodex *index.Rolodex,
-	inExtension bool, // Tracks if we're under an x-* key
-	visited map[rewriteVisitKey]struct{},
+	visited map[*yaml.Node]struct{},
+	path []string,
 ) {
 	if node == nil {
 		return
@@ -790,38 +793,39 @@ func walkAndRewriteRefs(
 		return
 	}
 	if visited == nil {
-		visited = make(map[rewriteVisitKey]struct{})
+		visited = make(map[*yaml.Node]struct{})
 	}
-	key := rewriteVisitKey{node: node, inExtension: inExtension}
-	if _, ok := visited[key]; ok {
+	if _, ok := visited[node]; ok {
 		return
 	}
-	visited[key] = struct{}{}
+	visited[node] = struct{}{}
 
 	switch node.Kind {
 	case yaml.DocumentNode:
 		if len(node.Content) > 0 {
-			walkAndRewriteRefs(node.Content[0], sourceIdx, processedNodes, rolodex, inExtension, visited)
+			walkAndRewriteRefs(node.Content[0], sourceIdx, processedNodes, rolodex, visited, path)
 		}
 	case yaml.SequenceNode:
 		for _, child := range node.Content {
-			walkAndRewriteRefs(child, sourceIdx, processedNodes, rolodex, inExtension, visited)
+			walkAndRewriteRefs(child, sourceIdx, processedNodes, rolodex, visited, path)
 		}
 	case yaml.MappingNode:
 		for i := 0; i < len(node.Content); i += 2 {
 			keyNode := node.Content[i]
 			valueNode := node.Content[i+1]
 
-			// Track extension scope
-			childInExtension := inExtension || strings.HasPrefix(keyNode.Value, "x-")
-
 			if keyNode.Value == "$ref" && valueNode.Kind == yaml.ScalarNode {
 				newRef := resolveRefToComposed(valueNode.Value, sourceIdx, processedNodes, rolodex)
 				if newRef != valueNode.Value {
 					valueNode.Value = newRef
 				}
-			} else {
-				walkAndRewriteRefs(valueNode, sourceIdx, processedNodes, rolodex, childInExtension, visited)
+			} else if valueNode.Kind == yaml.MappingNode || valueNode.Kind == yaml.SequenceNode {
+				childPath := append(path, keyNode.Value)
+				// A $ref inside literal data, such as a schema default, is not a reference.
+				if specpath.IsLiteralValue(childPath, valueNode, node) {
+					continue
+				}
+				walkAndRewriteRefs(valueNode, sourceIdx, processedNodes, rolodex, visited, childPath)
 			}
 		}
 	}
