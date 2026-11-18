@@ -94,8 +94,12 @@ func (en *Encoding) Hash() uint64 {
 			low.HashBool(h, en.Explode.Value)
 			h.WriteByte(low.HASH_PIPE)
 		}
-		low.HashBool(h, en.AllowReserved.Value)
-		h.WriteByte(low.HASH_PIPE)
+		// a present allowReserved, like style and explode, switches a part to RFC6570 serialization.
+		if !en.AllowReserved.IsEmpty() {
+			low.HashLabel(h, "allowReserved")
+			low.HashBool(h, en.AllowReserved.Value)
+			h.WriteByte(low.HASH_PIPE)
+		}
 		low.HashMap(h, "encoding", en.Encoding.Value)
 		hashEncodingFields(h, en.PrefixEncoding, en.ItemEncoding.Value)
 		for _, ext := range low.HashExtensions(en.Extensions) {

@@ -84,6 +84,7 @@ func (e *EncodingChanges) TotalBreakingChanges() int {
 		c += e.PrefixEncodingChanges[k].TotalBreakingChanges()
 	}
 	c += e.ItemEncodingChanges.TotalBreakingChanges()
+	c += e.ExtensionChanges.TotalBreakingChanges()
 	return c
 }
 

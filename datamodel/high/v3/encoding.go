@@ -18,7 +18,7 @@ type Encoding struct {
 	ContentType   string                           `json:"contentType,omitempty" yaml:"contentType,omitempty"`
 	Headers       *orderedmap.Map[string, *Header] `json:"headers,omitempty" yaml:"headers,omitempty"`
 	Style         string                           `json:"style,omitempty" yaml:"style,omitempty"`
-	Explode       *bool                            `json:"explode,omitempty" yaml:"explode,omitempty"`
+	Explode       *bool                            `json:"explode,renderZero,omitempty" yaml:"explode,renderZero,omitempty"`
 	AllowReserved bool                             `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
 
 	// Encoding, PrefixEncoding and ItemEncoding describe nested multipart parts (OpenAPI 3.2+).

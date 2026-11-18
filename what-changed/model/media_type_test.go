@@ -1058,10 +1058,33 @@ itemEncoding:
 	item := extensionChange(changes.ItemEncodingChanges)
 	assert.Equal(t, ObjectRemoved, item.ChangeType)
 	assert.Equal(t, "x-item", item.Property)
+	assert.True(t, item.Breaking)
 
 	assert.Equal(t, 3, changes.TotalChanges())
 	assert.Len(t, changes.GetAllChanges(), 3)
-	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	// removing an extension is breaking, so the removed x-item is counted.
+	assert.Equal(t, 1, changes.ItemEncodingChanges.TotalBreakingChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+func TestCompareMediaTypes_ExtensionRemovedIsBreaking(t *testing.T) {
+	low.ClearHashCache()
+	ResetActiveBreakingRulesConfig()
+
+	changes := compareMediaTypeYAML(t, "schema:\n  type: string\nx-vendor: abc", "schema:\n  type: string")
+	if !assert.NotNil(t, changes) || !assert.NotNil(t, changes.ExtensionChanges) {
+		return
+	}
+	assert.True(t, changes.ExtensionChanges.Changes[0].Breaking)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+
+	// adding an extension is not breaking.
+	changes = compareMediaTypeYAML(t, "schema:\n  type: string", "schema:\n  type: string\nx-vendor: abc")
+	if assert.NotNil(t, changes) {
+		assert.Equal(t, 1, changes.TotalChanges())
+		assert.Equal(t, 0, changes.TotalBreakingChanges())
+	}
 }
 
 func TestCompareMediaTypes_EncodingExplodeAdded(t *testing.T) {
@@ -1084,6 +1107,34 @@ func TestCompareMediaTypes_EncodingExplodeAdded(t *testing.T) {
 			}
 
 			assert.Nil(t, compareMediaTypeYAML(t, yml[1], yml[1]))
+		})
+	}
+}
+
+// A present allowReserved switches a part to RFC6570 serialization, so removing an explicit false is a change.
+func TestCompareMediaTypes_EncodingAllowReservedRemoved(t *testing.T) {
+	for name, yml := range map[string][2]string{
+		"top level": {"encoding:\n  photo:\n    contentType: application/json\n    allowReserved: false",
+			"encoding:\n  photo:\n    contentType: application/json"},
+		"nested under itemEncoding": {
+			"itemEncoding:\n  encoding:\n    photo:\n      contentType: application/json\n      allowReserved: false",
+			"itemEncoding:\n  encoding:\n    photo:\n      contentType: application/json"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			low.ClearHashCache()
+			ResetActiveBreakingRulesConfig()
+
+			changes := compareMediaTypeYAML(t, yml[0], yml[1])
+			if assert.NotNil(t, changes) {
+				all := changes.GetAllChanges()
+				if assert.Len(t, all, 1) {
+					assert.Equal(t, PropertyRemoved, all[0].ChangeType)
+					assert.Equal(t, v3.AllowReservedLabel, all[0].Property)
+				}
+				assert.Equal(t, 1, changes.TotalChanges())
+			}
+
+			assert.Nil(t, compareMediaTypeYAML(t, yml[0], yml[0]))
 		})
 	}
 }

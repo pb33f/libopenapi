@@ -29,7 +29,8 @@ func TestCompareOpenAPIDocuments(t *testing.T) {
 	changes := CompareOpenAPIDocuments(origDoc, modDoc)
 	// Callbacks are now properly counted as individual expression changes
 	assert.Equal(t, 77, changes.TotalChanges())
-	assert.Equal(t, 20, changes.TotalBreakingChanges())
+	// includes the removed media type extension (x-nice), which is breaking.
+	assert.Equal(t, 21, changes.TotalBreakingChanges())
 }
 
 func TestCompareSwaggerDocuments(t *testing.T) {
@@ -260,7 +261,7 @@ func ExampleCompareOpenAPIDocuments() {
 	// Print out some interesting stats.
 	fmt.Printf("There are %d changes, of which %d are breaking. %v schemas have changes.",
 		changes.TotalChanges(), changes.TotalBreakingChanges(), len(schemaChanges))
-	// Output: There are 77 changes, of which 20 are breaking. 6 schemas have changes.
+	// Output: There are 77 changes, of which 21 are breaking. 6 schemas have changes.
 }
 
 func TestCheckExplodedFileCheck(t *testing.T) {

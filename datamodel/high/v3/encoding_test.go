@@ -35,6 +35,7 @@ explode: true`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 
+	// an explicit false is rendered, like Parameter.Explode, because explode's default depends on style.
 	explode = false
 	encoding.Explode = &explode
 	rend, _ = encoding.Render()
@@ -43,7 +44,8 @@ explode: true`
 headers:
     x-pizza-time:
         description: oh yes please
-style: simple`
+style: simple
+explode: false`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 
@@ -65,7 +67,8 @@ style: simple`
 headers:
     x-pizza-time:
         description: oh yes please
-style: simple`
+style: simple
+explode: false`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 }

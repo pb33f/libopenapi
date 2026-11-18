@@ -312,6 +312,56 @@ func TestEncoding_Hash_ExplodePresence(t *testing.T) {
 	assert.NotEqual(t, nested, nestedFalse)
 }
 
+func TestEncoding_Hash_AllowReservedPresence(t *testing.T) {
+	low.ClearHashCache()
+	absent := buildTestEncoding(t, "contentType: application/json").Hash()
+	explicitFalse := buildTestEncoding(t, "contentType: application/json\nallowReserved: false").Hash()
+	explicitTrue := buildTestEncoding(t, "contentType: application/json\nallowReserved: true").Hash()
+
+	assert.NotEqual(t, absent, explicitFalse)
+	assert.NotEqual(t, absent, explicitTrue)
+	assert.NotEqual(t, explicitFalse, explicitTrue)
+
+	nested := buildTestEncoding(t, "itemEncoding:\n  encoding:\n    photo:\n      contentType: application/json").Hash()
+	nestedFalse := buildTestEncoding(t,
+		"itemEncoding:\n  encoding:\n    photo:\n      contentType: application/json\n      allowReserved: false").Hash()
+	assert.NotEqual(t, nested, nestedFalse)
+}
+
+// An aliased encoding or headers key reads the anchored name, as the schema property it points at does.
+func TestEncoding_Build_AliasedKeys(t *testing.T) {
+	var root yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte(`schema:
+  properties:
+    &field photo:
+      type: string
+    &hdr X-Rate-Limit:
+      type: integer
+part:
+  contentType: multipart/form-data
+  headers:
+    *hdr :
+      schema:
+        type: integer
+  encoding:
+    *field :
+      contentType: image/png`), &root))
+	partNode := root.Content[0].Content[3]
+
+	var n Encoding
+	_ = low.BuildModel(partNode, &n)
+	assert.NoError(t, n.Build(context.Background(), nil, partNode, index.NewSpecIndex(&root)))
+
+	if assert.NotNil(t, n.FindHeader("X-Rate-Limit")) {
+		assert.Nil(t, n.FindHeader("hdr"))
+	}
+	photo := n.FindEncoding("photo")
+	if assert.NotNil(t, photo) {
+		assert.Equal(t, "image/png", photo.Value.ContentType.Value)
+		assert.Nil(t, n.FindEncoding("field"))
+	}
+}
+
 func TestEncoding_Hash_EmptyPrefixEncodingPresence(t *testing.T) {
 	low.ClearHashCache()
 	absent := buildTestEncoding(t, "contentType: multipart/mixed").Hash()
