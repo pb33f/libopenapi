@@ -15,7 +15,6 @@ import (
 )
 
 func (e *Engine) executeStep(ctx context.Context, step *high.Step, wf *high.Workflow, exprCtx *expression.Context, state *executionState) *StepResult {
-	_ = wf // retained for future per-workflow step configuration
 	start := time.Now()
 	result := &StepResult{
 		StepId:  step.StepId,
@@ -32,22 +31,20 @@ func (e *Engine) executeStep(ctx context.Context, step *high.Step, wf *high.Work
 	var stepInputs map[string]any
 
 	if step.WorkflowId != "" {
-		if len(step.Parameters) > 0 {
-			stepInputs = make(map[string]any, len(step.Parameters))
-			for _, param := range step.Parameters {
-				resolvedParam, err := e.resolveParameter(param)
+		params, err := e.effectiveParameters(wf, step)
+		if err != nil {
+			result.Success = false
+			result.Error = err
+		} else if len(params) > 0 {
+			stepInputs = make(map[string]any, len(params))
+			for _, param := range params {
+				value, err := e.resolveYAMLNodeValue(param.Value, exprCtx)
 				if err != nil {
 					result.Success = false
-					result.Error = err
+					result.Error = fmt.Errorf("failed to evaluate parameter %q for step %q: %w", param.Name, step.StepId, err)
 					break
 				}
-				value, err := e.resolveYAMLNodeValue(resolvedParam.Value, exprCtx)
-				if err != nil {
-					result.Success = false
-					result.Error = fmt.Errorf("failed to evaluate parameter %q for step %q: %w", resolvedParam.Name, step.StepId, err)
-					break
-				}
-				stepInputs[resolvedParam.Name] = value
+				stepInputs[param.Name] = value
 			}
 		}
 		if result.Success {
@@ -62,7 +59,7 @@ func (e *Engine) executeStep(ctx context.Context, step *high.Step, wf *high.Work
 			exprCtx.Workflows = copyWorkflowContexts(state.workflowContexts)
 		}
 	} else {
-		req, err := e.buildExecutionRequest(step, exprCtx)
+		req, err := e.buildExecutionRequest(wf, step, exprCtx)
 		if err != nil {
 			result.Success = false
 			result.Error = err
@@ -134,7 +131,7 @@ func (e *Engine) evaluateStepSuccessCriteria(step *high.Step, exprCtx *expressio
 	return nil
 }
 
-func (e *Engine) buildExecutionRequest(step *high.Step, exprCtx *expression.Context) (*ExecutionRequest, error) {
+func (e *Engine) buildExecutionRequest(wf *high.Workflow, step *high.Step, exprCtx *expression.Context) (*ExecutionRequest, error) {
 	req := &ExecutionRequest{
 		OperationID:   step.OperationId,
 		OperationPath: step.OperationPath,
@@ -144,15 +141,15 @@ func (e *Engine) buildExecutionRequest(step *high.Step, exprCtx *expression.Cont
 	requestHeaders := make(map[string]string)
 	requestQuery := make(map[string]string)
 	requestPath := make(map[string]string)
-	if len(step.Parameters) > 0 {
-		req.ResolvedParameters = make([]ResolvedParameter, 0, len(step.Parameters))
+	params, err := e.effectiveParameters(wf, step)
+	if err != nil {
+		return nil, err
+	}
+	if len(params) > 0 {
+		req.ResolvedParameters = make([]ResolvedParameter, 0, len(params))
 	}
 
-	for _, param := range step.Parameters {
-		resolvedParam, err := e.resolveParameter(param)
-		if err != nil {
-			return nil, err
-		}
+	for _, resolvedParam := range params {
 		value, err := e.resolveYAMLNodeValue(resolvedParam.Value, exprCtx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to evaluate parameter %q for step %q: %w", resolvedParam.Name, step.StepId, err)
@@ -226,6 +223,46 @@ func (e *Engine) resolveStepSource(step *high.Step) *ResolvedSource {
 		}
 	}
 	return nil
+}
+
+// effectiveParameters returns the resolved parameters that apply to a step:
+// workflow-level parameters the step does not override, followed by the step's
+// own parameters. A step parameter overrides a workflow-level parameter with
+// the same name and location.
+func (e *Engine) effectiveParameters(wf *high.Workflow, step *high.Step) ([]*high.Parameter, error) {
+	total := len(step.Parameters)
+	if wf != nil {
+		total += len(wf.Parameters)
+	}
+	if total == 0 {
+		return nil, nil
+	}
+	params := make([]*high.Parameter, 0, total)
+	if wf != nil {
+		for _, param := range wf.Parameters {
+			resolved, err := e.resolveParameter(param)
+			if err != nil {
+				return nil, err
+			}
+			params = append(params, resolved)
+		}
+	}
+	inherited := len(params)
+	for _, param := range step.Parameters {
+		resolved, err := e.resolveParameter(param)
+		if err != nil {
+			return nil, err
+		}
+		for i := 0; i < inherited; i++ {
+			if params[i].Name == resolved.Name && params[i].In == resolved.In {
+				params = append(params[:i], params[i+1:]...)
+				inherited--
+				break
+			}
+		}
+		params = append(params, resolved)
+	}
+	return params, nil
 }
 
 func (e *Engine) resolveParameter(param *high.Parameter) (*high.Parameter, error) {

@@ -662,7 +662,7 @@ func TestGap_ExecuteStepAndHelpers(t *testing.T) {
 			Outputs: map[string]any{},
 			Steps:   map[string]*expression.StepContext{},
 		}
-		_, err := e.buildExecutionRequest(&high.Step{
+		_, err := e.buildExecutionRequest(nil, &high.Step{
 			StepId:      "s1",
 			OperationId: "op1",
 			RequestBody: &high.RequestBody{
@@ -674,7 +674,7 @@ func TestGap_ExecuteStepAndHelpers(t *testing.T) {
 		}, exprCtx)
 		require.Error(t, err)
 
-		_, err = e.buildExecutionRequest(&high.Step{
+		_, err = e.buildExecutionRequest(nil, &high.Step{
 			StepId:      "s1",
 			OperationId: "op1",
 			RequestBody: &high.RequestBody{
@@ -689,7 +689,7 @@ func TestGap_ExecuteStepAndHelpers(t *testing.T) {
 
 	t.Run("buildExecutionRequest request body conversion error", func(t *testing.T) {
 		e := NewEngine(&high.Arazzo{}, nil, nil)
-		_, err := e.buildExecutionRequest(&high.Step{
+		_, err := e.buildExecutionRequest(nil, &high.Step{
 			StepId:      "s1",
 			OperationId: "op1",
 			RequestBody: &high.RequestBody{

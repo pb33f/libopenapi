@@ -40,9 +40,10 @@ type ExecutionRequest struct {
 	Parameters  map[string]any
 	RequestBody any
 	ContentType string
-	// ResolvedParameters preserves each parameter's name, location, and value in
-	// step order, including names shared by different locations. It is nil when
-	// the step has no parameters. Values are shared with Parameters.
+	// ResolvedParameters preserves each parameter's name, location, and value,
+	// including names shared by different locations. Workflow-level parameters
+	// the step does not override come first, then the step's parameters in order.
+	// It is nil when no parameters apply. Values are shared with Parameters.
 	ResolvedParameters []ResolvedParameter
 }
 
