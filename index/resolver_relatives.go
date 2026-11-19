@@ -297,13 +297,8 @@ func (resolver *Resolver) buildRelativeLookupDefinitions(ref *Reference, value, 
 			}
 		}
 	} else if isSchemaAnchorFragment(value) {
-		// plain-name fragment (e.g. "#foo") — an $anchor in the parent's document.
-		baseLocation := ref.FullDefinition
-		if ref.RemoteLocation != "" {
-			baseLocation = ref.RemoteLocation
-		}
-		fileDef, _ := SplitRefFragment(baseLocation)
-		fullDef = fileDef + value
+		// plain-name fragment (e.g. "#foo"): an $anchor in the parent's document.
+		fullDef = schemaAnchorDefinition(ref, value)
 	} else if strings.HasPrefix(value, "http") {
 		// No fragment, absolute HTTP URL — use as-is.
 		fullDef = value

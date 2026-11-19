@@ -84,8 +84,15 @@ func handleIndex(c *handleIndexConfig) error {
 				sequenced.FullDefinition, siblingKeys, sequenced.Node.Line, sequenced.Node.Column)
 		}
 
+		// a plain-name fragment such as "pet.yaml#name" is not a JSON pointer, so locate its
+		// document and component through the schema it resolved to.
+		definition := sequenced.FullDefinition
+		if mappedReference != nil && isNonPointerFragment(definition) {
+			definition = mappedReference.FullDefinition
+		}
+
 		// if we're in the root document, don't bundle anything.
-		refExp := strings.Split(sequenced.FullDefinition, "#/")
+		refExp := strings.Split(definition, "#/")
 		var foundIndex *index.SpecIndex
 
 		// make sure to use the correct index.
@@ -95,7 +102,7 @@ func handleIndex(c *handleIndexConfig) error {
 				foundIndex = i
 				if mappedReference != nil && !mappedReference.Circular {
 
-					lookup := sequenced.FullDefinition
+					lookup := definition
 					mr := i.FindComponent(context.Background(), lookup)
 					if mr != nil {
 						// Use the component from the matching index.
@@ -135,6 +142,13 @@ func handleIndex(c *handleIndexConfig) error {
 		}
 	}
 	return nil
+}
+
+// isNonPointerFragment reports whether definition has a fragment that is not a JSON
+// pointer, such as the plain-name fragment in "pet.yaml#name".
+func isNonPointerFragment(definition string) bool {
+	_, fragment := index.SplitRefFragment(definition)
+	return len(fragment) > 1 && fragment[1] != '/'
 }
 
 // openAPIRootKeys contains known OpenAPI root-level keys that should NOT be

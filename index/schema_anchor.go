@@ -36,6 +36,17 @@ func schemaAnchorFragmentName(fragment string) (string, bool) {
 	return name, true
 }
 
+// schemaAnchorDefinition returns the full definition of a plain-name fragment such as "#foo"
+// found inside ref: the anchor is looked up in the document that holds ref.
+func schemaAnchorDefinition(ref *Reference, fragment string) string {
+	base := ref.FullDefinition
+	if ref.RemoteLocation != "" {
+		base = ref.RemoteLocation
+	}
+	document, _ := SplitRefFragment(base)
+	return document + fragment
+}
+
 // registerSchemaAnchorAt records an $anchor under the base URI of the schema resource
 // that declares it: the nearest $id, or the document itself. pointer is the JSON pointer
 // segments to node, and scope is the walk's $id scope there.
