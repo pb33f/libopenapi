@@ -2376,3 +2376,26 @@ func TestDetermineWhitespaceLengthBytes(t *testing.T) {
 		assert.Equal(t, 4, DetermineWhitespaceLengthBytes(input))
 	})
 }
+
+func TestResolveMergeNodes_AliasedKeyOverridesMergedKey(t *testing.T) {
+	yml := `anchors:
+  &code '200': anchor
+base: &base
+  '200': merged
+  '404': not found
+responses:
+  <<: *base
+  *code : local`
+
+	var node yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+
+	resolved := ResolveMergeNodes(node.Content[0].Content[5])
+	values := map[string][]string{}
+	for i := 0; i+1 < len(resolved.Content); i += 2 {
+		k := NodeAlias(resolved.Content[i]).Value
+		values[k] = append(values[k], resolved.Content[i+1].Value)
+	}
+	// the local alias key matches the merged '200' as its anchored scalar, so only the local entry stays
+	assert.Equal(t, map[string][]string{"200": {"local"}, "404": {"not found"}}, values)
+}

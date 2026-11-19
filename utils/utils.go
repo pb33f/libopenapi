@@ -352,6 +352,15 @@ func hasMergeKeys(nodes []*yaml.Node) bool {
 	return false
 }
 
+// mergeKeyValue returns the key a merge override is matched on. An aliased key (*name) matches as
+// the anchored scalar, so a local `*code :` overrides a merged '200' when code anchors '200'.
+func mergeKeyValue(key *yaml.Node) string {
+	if key.Kind == yaml.AliasNode && key.Alias != nil && key.Alias.Kind == yaml.ScalarNode {
+		return key.Alias.Value
+	}
+	return key.Value
+}
+
 func expandMergeContent(node *yaml.Node, visited map[*yaml.Node]struct{}) []*yaml.Node {
 	if node == nil {
 		return nil
@@ -391,7 +400,7 @@ func expandMergeContent(node *yaml.Node, visited map[*yaml.Node]struct{}) []*yam
 			value = node.Content[i+1]
 		}
 		expanded = append(expanded, key, value)
-		seenKeys[key.Value] = struct{}{}
+		seenKeys[mergeKeyValue(key)] = struct{}{}
 	}
 
 	for _, mergeValue := range mergedValues {
@@ -428,7 +437,7 @@ func appendExpandedMergeContent(
 		if key == nil {
 			continue
 		}
-		if _, ok := seenKeys[key.Value]; ok {
+		if _, ok := seenKeys[mergeKeyValue(key)]; ok {
 			continue
 		}
 		value := key
@@ -436,7 +445,7 @@ func appendExpandedMergeContent(
 			value = content[i+1]
 		}
 		target = append(target, key, value)
-		seenKeys[key.Value] = struct{}{}
+		seenKeys[mergeKeyValue(key)] = struct{}{}
 	}
 	return target
 }

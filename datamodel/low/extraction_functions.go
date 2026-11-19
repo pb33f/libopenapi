@@ -7,12 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/pb33f/go-yaml"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/internal/weakcache"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
 	"hash/maphash"
 	"math/big"
 	"os"
@@ -22,6 +16,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/internal/weakcache"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 )
 
 // stringBuilderPool is a sync.Pool that reuses strings.Builder instances to reduce memory allocations
@@ -736,15 +737,20 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 	root = utils.ResolveMergeNodes(root)
 	if utils.IsNodeMap(root) {
 		var currentKey *yaml.Node
+		var currentKeyValue string
 		skip := false
 		for i := 0; i < len(root.Content); i++ {
 			node := root.Content[i]
+			keyValue := node.Value
 			if i%2 == 0 {
-				// an aliased key (*name) reads the anchored scalar, not the anchor name.
-				node = utils.NodeAlias(node)
+				// An aliased key (*name) takes its value from the anchored scalar, for the map key and
+				// the extension check. The authored key node is kept, so source locations point at the
+				// key rather than at the anchor declaration.
+				keyValue = utils.NodeAlias(node).Value
 			}
-			if !includeExtensions {
-				if len(node.Value) >= 2 && (node.Value[0] == 'x' || node.Value[0] == 'X') && node.Value[1] == '-' {
+			// only keys are checked; an x- value (x-owner: x-team) must not skip the next entry.
+			if !includeExtensions && i%2 == 0 {
+				if len(keyValue) >= 2 && (keyValue[0] == 'x' || keyValue[0] == 'X') && keyValue[1] == '-' {
 					skip = true
 					continue
 				}
@@ -755,6 +761,7 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 			}
 			if i%2 == 0 {
 				currentKey = node
+				currentKeyValue = keyValue
 				continue
 			}
 
@@ -786,7 +793,7 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 					SetReference(n, rv, node)
 					v := ValueReference[PT]{Value: n, ValueNode: node}
 					v.SetReference(rv, node)
-					valueMap.Set(KeyReference[string]{Value: currentKey.Value, KeyNode: currentKey}, v)
+					valueMap.Set(KeyReference[string]{Value: currentKeyValue, KeyNode: currentKey}, v)
 					continue
 				} else {
 					if err != nil {
@@ -815,7 +822,7 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 
 				valueMap.Set(
 					KeyReference[string]{
-						Value:   currentKey.Value,
+						Value:   currentKeyValue,
 						KeyNode: currentKey,
 					},
 					v,
@@ -1084,10 +1091,13 @@ func ExtractExtensions(root *yaml.Node) *orderedmap.Map[KeyReference[string], Va
 	content := root.Content
 	for i := 0; i+1 < len(content); i += 2 {
 		key := content[i]
-		if strings.HasPrefix(key.Value, "x-") {
+		// an aliased key (*name) is an extension when the anchored scalar is; the authored key node
+		// is kept for source locations.
+		keyValue := utils.NodeAlias(key).Value
+		if strings.HasPrefix(keyValue, "x-") {
 			value := utils.NodeAlias(content[i+1])
 			extensionMap.Set(KeyReference[string]{
-				Value:   key.Value,
+				Value:   keyValue,
 				KeyNode: key,
 			}, ValueReference[*yaml.Node]{Value: value, ValueNode: value})
 		}

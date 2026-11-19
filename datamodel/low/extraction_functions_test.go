@@ -1019,19 +1019,25 @@ map:
 	things, err := ExtractMapNoLookupExtensions[*test_Good](context.Background(), mapNode, idx, true)
 	assert.NoError(t, err)
 	var keys []string
+	var lines []int
 	for k := range things.KeysFromOldest() {
 		keys = append(keys, k.Value)
-		assert.Equal(t, yaml.ScalarNode, k.KeyNode.Kind)
+		// the key node is the authored alias, so its location is the map entry, not the anchor
+		lines = append(lines, k.KeyNode.Line)
 	}
 	assert.Equal(t, []string{"one", "x-hey"}, keys)
+	assert.Equal(t, []int{5, 7}, lines)
 
 	things, err = ExtractMapNoLookupExtensions[*test_Good](context.Background(), mapNode, idx, false)
 	assert.NoError(t, err)
 	keys = keys[:0]
+	lines = lines[:0]
 	for k := range things.KeysFromOldest() {
 		keys = append(keys, k.Value)
+		lines = append(lines, k.KeyNode.Line)
 	}
 	assert.Equal(t, []string{"one"}, keys)
+	assert.Equal(t, []int{5}, lines)
 }
 
 func TestExtractMap_WithExtensions(t *testing.T) {
@@ -4576,4 +4582,42 @@ func TestExtractObject_RootRef_SkipExternalRef_EmbeddedReference(t *testing.T) {
 	require.NotNil(t, result.Value)
 	assert.True(t, result.Value.IsReference())
 	assert.Equal(t, "./models/Pet.yaml#/Pet", result.Value.GetReference())
+}
+
+func TestExtractMap_NoLookupExtensionValueKeepsNextKey(t *testing.T) {
+	var cNode yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte(`x-owner: x-team-a
+one:
+  x-choo: choo
+two:
+  x-choo: choo`), &cNode))
+	idx := index.NewSpecIndexWithConfig(&cNode, index.CreateClosedAPIIndexConfig())
+
+	// an x- value must not be taken for an extension key and skip the entry after it
+	things, err := ExtractMapNoLookupExtensions[*test_Good](context.Background(), cNode.Content[0], idx, false)
+	assert.NoError(t, err)
+	var keys []string
+	for k := range things.KeysFromOldest() {
+		keys = append(keys, k.Value)
+	}
+	assert.Equal(t, []string{"one", "two"}, keys)
+}
+
+func TestExtractExtensions_AliasedKey(t *testing.T) {
+	var cNode yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte(`anchors:
+  &ext x-hey: anchor
+  &name one: anchor
+map:
+  *ext : you
+  *name : me`), &cNode))
+
+	exts := ExtractExtensions(cNode.Content[0].Content[3])
+	require.Equal(t, 1, orderedmap.Len(exts))
+	for k, v := range exts.FromOldest() {
+		assert.Equal(t, "x-hey", k.Value)
+		// the key node is the authored alias, so its location is the map entry, not the anchor
+		assert.Equal(t, 5, k.KeyNode.Line)
+		assert.Equal(t, "you", v.Value.Value)
+	}
 }

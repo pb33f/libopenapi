@@ -108,3 +108,26 @@ func TestResponses_MarshalYAMLInline(t *testing.T) {
 	rend, _ := r.RenderInline()
 	assert.Equal(t, yml, strings.TrimSpace(string(rend)))
 }
+
+func TestResponses_MarshalYAML_AliasedCodeKeepsQuoteStyle(t *testing.T) {
+	yml := `x-keys:
+  names:
+    &code '200': anchor
+responses:
+  *code :
+    description: ok`
+
+	var idxNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &idxNode))
+	idx := index.NewSpecIndex(&idxNode)
+	root := idxNode.Content[0].Content[3]
+
+	var n v3.Responses
+	require.NoError(t, low.BuildModel(root, &n))
+	require.NoError(t, n.Build(context.Background(), nil, root, idx))
+
+	rend, err := NewResponses(&n).Render()
+	require.NoError(t, err)
+	// the quote style comes from the anchored scalar, not the alias node
+	assert.Equal(t, "'200':\n    description: ok\n", string(rend))
+}
