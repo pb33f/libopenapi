@@ -106,7 +106,7 @@ func (index *SpecIndex) extractReferenceAt(
 	}
 
 	if poly {
-		index.polymorphicRefs[value] = ref
+		index.polymorphicRefs[refKey] = ref
 		switch pName {
 		case "anyOf":
 			index.polymorphicAnyOfRefs = append(index.polymorphicAnyOfRefs, ref)

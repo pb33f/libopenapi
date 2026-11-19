@@ -570,3 +570,148 @@ components:
 	require.NotNil(t, found)
 	assert.Equal(t, "string", schemaNodeType(found.Node))
 }
+
+// the same "#item" under oneOf in different resources must map to each resource's own anchor.
+func TestSchemaAnchorPolymorphicScopedByResource(t *testing.T) {
+	build := func(t *testing.T, spec string) *SpecIndex {
+		var root yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
+		cfg := CreateClosedAPIIndexConfig()
+		cfg.SpecAbsolutePath = "/specs/root.yaml"
+		return NewSpecIndexWithConfig(&root, cfg)
+	}
+
+	t.Run("both resources mapped", func(t *testing.T) {
+		idx := build(t, `openapi: 3.1.0
+info: {title: anchors, version: '1'}
+paths: {}
+components:
+  schemas:
+    R1:
+      $id: https://example.com/r1
+      $defs: {X: {$anchor: item, type: integer}}
+      oneOf: [{$ref: '#item'}]
+    R2:
+      $id: https://example.com/r2
+      $defs: {X: {$anchor: item, type: string}}
+      oneOf: [{$ref: '#item'}]
+`)
+		assert.Empty(t, idx.GetReferenceIndexErrors())
+
+		poly := idx.GetPolyReferences()
+		assert.Len(t, poly, 2)
+		assert.Contains(t, poly, "https://example.com/r1#item")
+		assert.Contains(t, poly, "https://example.com/r2#item")
+
+		mapped := idx.GetMappedReferences()
+		for def, kind := range map[string]string{
+			"/specs/root.yaml#/components/schemas/R1/$defs/X": "integer",
+			"/specs/root.yaml#/components/schemas/R2/$defs/X": "string",
+		} {
+			require.Contains(t, mapped, def)
+			assert.Equal(t, kind, schemaNodeType(mapped[def].Node), def)
+		}
+	})
+
+	t.Run("missing anchor in the first resource is reported", func(t *testing.T) {
+		idx := build(t, `openapi: 3.1.0
+info: {title: anchors, version: '1'}
+paths: {}
+components:
+  schemas:
+    R1:
+      $id: https://example.com/r1
+      oneOf: [{$ref: '#item'}]
+    R2:
+      $id: https://example.com/r2
+      $defs: {X: {$anchor: item, type: string}}
+      oneOf: [{$ref: '#item'}]
+`)
+		errs := idx.GetReferenceIndexErrors()
+		require.Len(t, errs, 1)
+		assert.Contains(t, errs[0].Error(), "#item")
+	})
+}
+
+// a oneOf that loops back through an $anchor is as circular as the same loop through a JSON pointer.
+func TestSchemaAnchorPolymorphicCircularReference(t *testing.T) {
+	circular := func(t *testing.T, ref string) []*CircularReferenceResult {
+		var root yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(`openapi: 3.1.0
+info: {title: anchors, version: '1'}
+paths: {}
+components:
+  schemas:
+    A:
+      $anchor: a
+      type: object
+      oneOf: [{$ref: '`+ref+`'}]
+`), &root))
+		cfg := CreateClosedAPIIndexConfig()
+		cfg.SpecAbsolutePath = "/specs/root.yaml"
+		idx := NewSpecIndexWithConfig(&root, cfg)
+		require.Empty(t, idx.GetReferenceIndexErrors())
+
+		resolver := NewResolver(idx)
+		resolver.CheckForCircularReferences()
+		return resolver.GetCircularReferences()
+	}
+
+	byPointer := circular(t, "#/components/schemas/A")
+	require.Len(t, byPointer, 1)
+	assert.True(t, byPointer[0].IsPolymorphicResult)
+
+	byAnchor := circular(t, "#a")
+	require.Len(t, byAnchor, 1)
+	assert.True(t, byAnchor[0].IsPolymorphicResult)
+	assert.Equal(t, byPointer[0].LoopPoint.FullDefinition, byAnchor[0].LoopPoint.FullDefinition)
+}
+
+// every use of "#name" is inlined by a destructive resolve, not just the first, and each
+// resource's uses get that resource's anchor.
+func TestSchemaAnchorResolverInlinesEveryUse(t *testing.T) {
+	const spec = `openapi: 3.1.0
+info: {title: anchors, version: '1'}
+paths: {}
+components:
+  schemas:
+    N: {$anchor: name, type: string}
+    A:
+      type: object
+      properties:
+        x: {$ref: '#name'}
+        y: {$ref: '#name'}
+    R:
+      $id: https://example.com/r
+      $defs: {X: {$anchor: name, type: integer}}
+      properties:
+        p: {$ref: '#name'}
+        q: {$ref: '#name'}
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
+	cfg := CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "/specs/root.yaml"
+	idx := NewSpecIndexWithConfig(&root, cfg)
+
+	resolver := NewResolver(idx)
+	assert.Empty(t, resolver.Resolve())
+	resolver.ResolvePendingNodes()
+
+	out, err := yaml.Marshal(&root)
+	require.NoError(t, err)
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &doc))
+	schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
+	for schema, props := range map[string]map[string]string{
+		"A": {"x": "string", "y": "string"},
+		"R": {"p": "integer", "q": "integer"},
+	} {
+		properties := schemas[schema].(map[string]any)["properties"].(map[string]any)
+		for prop, kind := range props {
+			resolved := properties[prop].(map[string]any)
+			assert.NotContains(t, resolved, "$ref", schema+"."+prop)
+			assert.Equal(t, kind, resolved["type"], schema+"."+prop)
+		}
+	}
+}

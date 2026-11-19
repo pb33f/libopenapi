@@ -3174,3 +3174,48 @@ components:
 		assert.Equal(t, []string{"string"}, kind(t, m, "thing"))
 	})
 }
+
+func TestDocument_BuildV3Model_SchemaAnchorPolymorphicScopedByResource(t *testing.T) {
+	const head = "openapi: 3.1.0\ninfo: {title: anchors, version: \"1\"}\npaths: {}\n"
+
+	t.Run("each resource resolves its own anchor", func(t *testing.T) {
+		doc, err := NewDocument([]byte(head + `components:
+  schemas:
+    R1:
+      $id: https://example.com/r1
+      $defs: {X: {$anchor: item, type: integer}}
+      oneOf: [{$ref: '#item'}]
+    R2:
+      $id: https://example.com/r2
+      $defs: {X: {$anchor: item, type: string}}
+      oneOf: [{$ref: '#item'}]
+`))
+		require.NoError(t, err)
+		m, err := doc.BuildV3Model()
+		require.NoError(t, err)
+		for name, kind := range map[string]string{"R1": "integer", "R2": "string"} {
+			oneOf := m.Model.Components.Schemas.GetOrZero(name).Schema().OneOf
+			require.Len(t, oneOf, 1, name)
+			s := oneOf[0].Schema()
+			require.NotNil(t, s, name)
+			assert.Equal(t, []string{kind}, s.Type, name)
+		}
+	})
+
+	t.Run("missing anchor in the first resource is an error", func(t *testing.T) {
+		doc, err := NewDocument([]byte(head + `components:
+  schemas:
+    R1:
+      $id: https://example.com/r1
+      oneOf: [{$ref: '#item'}]
+    R2:
+      $id: https://example.com/r2
+      $defs: {X: {$anchor: item, type: string}}
+      oneOf: [{$ref: '#item'}]
+`))
+		require.NoError(t, err)
+		_, err = doc.BuildV3Model()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "#item")
+	})
+}
