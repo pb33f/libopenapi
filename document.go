@@ -114,6 +114,11 @@ type Document interface {
 	// Release nils all internal state so that the YAML tree, SpecIndex, Rolodex,
 	// and model objects can be garbage-collected even if something still holds
 	// a reference to the Document interface value.
+	//
+	// Release ends the document's life. It waits for any model build in progress, but it is not safe
+	// to call while anything else still uses the document: it clears the SpecInfo returned by
+	// GetSpecInfo in place, and the SpecIndex shares that SpecInfo. Finish every other call, and stop
+	// using any SpecInfo obtained from the document, before calling Release.
 	Release()
 }
 
@@ -191,6 +196,9 @@ func (d *document) Release() {
 	}
 	d.buildMu.Lock()
 	defer d.buildMu.Unlock()
+	// SpecInfo is cleared in place, not just detached: the SpecIndex keeps a reference to it, and
+	// clearing it is what lets the YAML tree and spec bytes be collected while the index lives on.
+	// Readers still holding it race with this, which is why Release must come after all other use.
 	if info := d.info.Swap(nil); info != nil {
 		info.Release()
 	}
