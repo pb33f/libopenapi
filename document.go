@@ -16,6 +16,8 @@ package libopenapi
 import (
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 
@@ -56,12 +58,16 @@ type Document interface {
 	// If there are any issues, then no model will be returned, instead a slice of errors will explain all the
 	// problems that occurred. This method will only support version 2 specifications and will throw an error for
 	// any other types.
+	//
+	// BuildV2Model is safe for concurrent use. The model is built once, and concurrent callers wait for it.
 	BuildV2Model() (*DocumentModel[v2high.Swagger], error)
 
 	// BuildV3Model will build out an OpenAPI (version 3+) model from the specification used to create the document
 	// If there are any issues, then no model will be returned, instead a slice of errors will explain all the
 	// problems that occurred. This method will only support version 3 specifications and will throw an error for
 	// any other types.
+	//
+	// BuildV3Model is safe for concurrent use. The model is built once, and concurrent callers wait for it.
 	BuildV3Model() (*DocumentModel[v3high.Document], error)
 
 	// RenderAndReload will render the high level model as it currently exists (including any mutations, additions
@@ -112,12 +118,15 @@ type Document interface {
 }
 
 type document struct {
-	rolodex           *index.Rolodex
+	// buildMu serializes model builds and Release. Reads go through the atomic fields below
+	// without locking, so getters and cached builds never wait on each other.
+	buildMu           sync.Mutex
 	version           string
-	info              *datamodel.SpecInfo
-	config            *datamodel.DocumentConfiguration
-	highOpenAPI3Model *DocumentModel[v3high.Document]
-	highSwaggerModel  *DocumentModel[v2high.Swagger]
+	rolodex           atomic.Pointer[index.Rolodex]
+	info              atomic.Pointer[datamodel.SpecInfo]
+	config            atomic.Pointer[datamodel.DocumentConfiguration]
+	highOpenAPI3Model atomic.Pointer[DocumentModel[v3high.Document]]
+	highSwaggerModel  atomic.Pointer[DocumentModel[v2high.Swagger]]
 }
 
 // DocumentModel represents either a Swagger document (version 2) or an OpenAPI document (version 3) that is
@@ -150,7 +159,7 @@ func NewDocumentWithTypeCheck(specByteArray []byte, bypassCheck bool) (Document,
 	}
 	d := new(document)
 	d.version = info.Version
-	d.info = info
+	d.info.Store(info)
 	return d, nil
 }
 
@@ -171,8 +180,8 @@ func NewDocumentWithConfiguration(specByteArray []byte, configuration *datamodel
 
 	d := new(document)
 	d.version = info.Version
-	d.info = info
-	d.config = configuration
+	d.info.Store(info)
+	d.config.Store(configuration)
 	return d, nil
 }
 
@@ -180,9 +189,10 @@ func (d *document) Release() {
 	if d == nil {
 		return
 	}
-	if d.info != nil {
-		d.info.Release()
-		d.info = nil
+	d.buildMu.Lock()
+	defer d.buildMu.Unlock()
+	if info := d.info.Swap(nil); info != nil {
+		info.Release()
 	}
 	// This method intentionally does not call SpecIndex.Release(). Low-level
 	// model objects (Schema, PathItem, etc.) retain their own references to the
@@ -190,14 +200,14 @@ func (d *document) Release() {
 	// operations that may run after a Document is released. Callers that own the
 	// full lifecycle should call SpecIndex.Release() separately once all model
 	// consumers are finished.
-	d.rolodex = nil
-	d.config = nil
-	d.highOpenAPI3Model = nil
-	d.highSwaggerModel = nil
+	d.rolodex.Store(nil)
+	d.config.Store(nil)
+	d.highOpenAPI3Model.Store(nil)
+	d.highSwaggerModel.Store(nil)
 }
 
 func (d *document) GetRolodex() *index.Rolodex {
-	return d.rolodex
+	return d.rolodex.Load()
 }
 
 func (d *document) GetVersion() string {
@@ -205,25 +215,26 @@ func (d *document) GetVersion() string {
 }
 
 func (d *document) GetSpecInfo() *datamodel.SpecInfo {
-	return d.info
+	return d.info.Load()
 }
 
 func (d *document) GetConfiguration() *datamodel.DocumentConfiguration {
-	return d.config
+	return d.config.Load()
 }
 
 func (d *document) SetConfiguration(configuration *datamodel.DocumentConfiguration) {
-	d.config = configuration
+	d.config.Store(configuration)
 }
 
 func (d *document) Serialize() ([]byte, error) {
-	if d.info == nil {
+	info := d.GetSpecInfo()
+	if info == nil {
 		return nil, fmt.Errorf("unable to serialize, document has not yet been initialized")
 	}
-	if d.info.SpecFileType == datamodel.YAMLFileType {
-		return yaml.Marshal(d.info.RootNode)
+	if info.SpecFileType == datamodel.YAMLFileType {
+		return yaml.Marshal(info.RootNode)
 	} else {
-		yamlData, _ := yaml.Marshal(d.info.RootNode)
+		yamlData, _ := yaml.Marshal(info.RootNode)
 		return utils.ConvertYAMLtoJSON(yamlData)
 	}
 }
@@ -234,7 +245,7 @@ func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Do
 		return nil, nil, nil, rerr
 	}
 
-	newDoc, err := NewDocumentWithConfiguration(newBytes, d.config)
+	newDoc, err := NewDocumentWithConfiguration(newBytes, d.GetConfiguration())
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -249,56 +260,67 @@ func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Do
 }
 
 func (d *document) Render() ([]byte, error) {
-	if d.highOpenAPI3Model == nil {
+	openAPIModel, swaggerModel, info := d.highOpenAPI3Model.Load(), d.highSwaggerModel.Load(), d.info.Load()
+
+	if openAPIModel == nil {
 		// check for Swagger model first, to give a more helpful error message.
-		if d.highSwaggerModel != nil {
+		if swaggerModel != nil {
 			return nil, errors.New("this method only supports OpenAPI 3 documents, not Swagger")
 		}
 		return nil, errors.New("unable to render, no openapi model has been built for the document")
 	}
-	if d.info == nil {
+	if info == nil {
 		return nil, errors.New("unable to render, no specification has been loaded")
 	}
 
 	var newBytes []byte
 	var jsonErr error
-	if d.info.SpecFileType == datamodel.JSONFileType {
+	if info.SpecFileType == datamodel.JSONFileType {
 		jsonIndent := "  "
-		i := d.info.OriginalIndentation
+		i := info.OriginalIndentation
 		if i > 2 {
 			for l := 0; l < i-2; l++ {
 				jsonIndent += " "
 			}
 		}
-		newBytes, jsonErr = d.highOpenAPI3Model.Model.RenderJSON(jsonIndent)
+		newBytes, jsonErr = openAPIModel.Model.RenderJSON(jsonIndent)
 	}
-	if d.info.SpecFileType == datamodel.YAMLFileType {
-		newBytes = d.highOpenAPI3Model.Model.RenderWithIndention(d.info.OriginalIndentation)
+	if info.SpecFileType == datamodel.YAMLFileType {
+		newBytes = openAPIModel.Model.RenderWithIndention(info.OriginalIndentation)
 	}
 	return newBytes, jsonErr
 }
 
 func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], error) {
-	if d.highSwaggerModel != nil {
-		return d.highSwaggerModel, nil
+	if built := d.highSwaggerModel.Load(); built != nil {
+		return built, nil
+	}
+	// concurrent callers wait here for the first build, then return its cached model
+	d.buildMu.Lock()
+	defer d.buildMu.Unlock()
+	if built := d.highSwaggerModel.Load(); built != nil {
+		return built, nil
 	}
 	var errs []error
-	if d.info == nil {
+	info := d.info.Load()
+	if info == nil {
 		return nil, fmt.Errorf("unable to build swagger document, no specification has been loaded")
 	}
-	if d.info.SpecFormat != datamodel.OAS2 {
+	if info.SpecFormat != datamodel.OAS2 {
 		return nil, fmt.Errorf("unable to build swagger document, "+
-			"supplied spec is a different version (%v). Try 'BuildV3Model()'", d.info.SpecFormat)
+			"supplied spec is a different version (%v). Try 'BuildV3Model()'", info.SpecFormat)
 	}
 
 	var lowDoc *v2low.Swagger
-	if d.config == nil {
-		d.config = datamodel.NewDocumentConfiguration()
+	config := d.config.Load()
+	if config == nil {
+		config = datamodel.NewDocumentConfiguration()
+		d.config.Store(config)
 	}
 
 	var docErr error
-	lowDoc, docErr = v2low.CreateDocumentFromConfig(d.info, d.config)
-	d.rolodex = lowDoc.Rolodex
+	lowDoc, docErr = v2low.CreateDocumentFromConfig(info, config)
+	d.rolodex.Store(lowDoc.Rolodex)
 
 	if docErr != nil {
 		errs = append(errs, utils.UnwrapErrors(docErr)...)
@@ -316,39 +338,49 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], error) {
 	}
 	highDoc := v2high.NewSwaggerDocument(lowDoc)
 
-	d.highSwaggerModel = &DocumentModel[v2high.Swagger]{
+	built := &DocumentModel[v2high.Swagger]{
 		Model: *highDoc,
 		Index: lowDoc.Index,
 	}
+	d.highSwaggerModel.Store(built)
 	lowbase.SchemaQuickHashMap.Clear()
-	return d.highSwaggerModel, errors.Join(errs...)
+	return built, errors.Join(errs...)
 }
 
 func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], error) {
-	if d.highOpenAPI3Model != nil {
-		return d.highOpenAPI3Model, nil
+	if built := d.highOpenAPI3Model.Load(); built != nil {
+		return built, nil
+	}
+	// concurrent callers wait here for the first build, then return its cached model
+	d.buildMu.Lock()
+	defer d.buildMu.Unlock()
+	if built := d.highOpenAPI3Model.Load(); built != nil {
+		return built, nil
 	}
 	var errs []error
-	if d.info == nil {
+	info := d.info.Load()
+	if info == nil {
 		return nil, fmt.Errorf("unable to build document, no specification has been loaded")
 	}
-	if d.info.SpecFormat != datamodel.OAS3 && d.info.SpecFormat != datamodel.OAS31 && d.info.SpecFormat != datamodel.OAS32 {
+	if info.SpecFormat != datamodel.OAS3 && info.SpecFormat != datamodel.OAS31 && info.SpecFormat != datamodel.OAS32 {
 		return nil, fmt.Errorf("unable to build openapi document, "+
-			"supplied spec is a different version (%v). Try 'BuildV2Model()'", d.info.SpecFormat)
+			"supplied spec is a different version (%v). Try 'BuildV2Model()'", info.SpecFormat)
 	}
 
 	var lowDoc *v3low.Document
-	if d.config == nil {
-		d.config = datamodel.NewDocumentConfiguration()
+	config := d.config.Load()
+	if config == nil {
+		config = datamodel.NewDocumentConfiguration()
+		d.config.Store(config)
 	}
 
 	var docErr error
-	lowDoc, docErr = v3low.CreateDocumentFromConfig(d.info, d.config)
+	lowDoc, docErr = v3low.CreateDocumentFromConfig(info, config)
 	if lowDoc == nil {
 		// no openapi version tag was found, so there is nothing to extract.
 		return nil, docErr
 	}
-	d.rolodex = lowDoc.Rolodex
+	d.rolodex.Store(lowDoc.Rolodex)
 
 	if docErr != nil {
 		errs = append(errs, utils.UnwrapErrors(docErr)...)
@@ -368,12 +400,13 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], error) {
 	highDoc := v3high.NewDocument(lowDoc)
 	highDoc.Rolodex = lowDoc.Index.GetRolodex()
 
-	d.highOpenAPI3Model = &DocumentModel[v3high.Document]{
+	built := &DocumentModel[v3high.Document]{
 		Model: *highDoc,
 		Index: lowDoc.Index,
 	}
+	d.highOpenAPI3Model.Store(built)
 	lowbase.SchemaQuickHashMap.Clear()
-	return d.highOpenAPI3Model, errors.Join(errs...)
+	return built, errors.Join(errs...)
 }
 
 // CompareDocuments will accept a left and right Document implementing struct, build a model for the correct

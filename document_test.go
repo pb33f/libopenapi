@@ -550,12 +550,9 @@ func TestDocument_Render_Missing_Model_Error(t *testing.T) {
 }
 
 func TestDocument_Render_Missing_Info_Error(t *testing.T) {
-	doc := &document{
-		// set the highOpenAPI3Model to a non-nil model to mock an existing model
-		highOpenAPI3Model: &DocumentModel[v3high.Document]{},
-		// do not set the info property
-		info: nil,
-	}
+	// set the highOpenAPI3Model to a non-nil model to mock an existing model, and leave info unset
+	doc := &document{}
+	doc.highOpenAPI3Model.Store(&DocumentModel[v3high.Document]{})
 	_, e := doc.Render()
 	assert.Error(t, e)
 	assert.Equal(t, "unable to render, no specification has been loaded", e.Error())
@@ -2725,10 +2722,10 @@ paths: {}`
 
 	// after release, internal state is cleared
 	d := doc.(*document)
-	assert.Nil(t, d.info)
-	assert.Nil(t, d.rolodex)
-	assert.Nil(t, d.config)
-	assert.Nil(t, d.highOpenAPI3Model)
+	assert.Nil(t, d.info.Load())
+	assert.Nil(t, d.rolodex.Load())
+	assert.Nil(t, d.config.Load())
+	assert.Nil(t, d.highOpenAPI3Model.Load())
 }
 
 func TestDocument_Release_Nil(t *testing.T) {
@@ -2748,7 +2745,7 @@ paths: {}`
 	doc.Release() // second call must not panic
 
 	d := doc.(*document)
-	assert.Nil(t, d.info)
+	assert.Nil(t, d.info.Load())
 }
 
 func TestDocument_Release_PreservesSpecIndexForComparison(t *testing.T) {
