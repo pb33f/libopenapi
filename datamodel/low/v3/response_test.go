@@ -494,3 +494,80 @@ links:
 //	assert.Equal(t, "a link", link.Value.Description.Value)
 //
 //}
+
+func TestResponses_Build_AliasedCodeKeepsAuthoredLocation(t *testing.T) {
+	cleanHashCacheForTest(t)
+	yml := `x-keys:
+  names:
+    &code '200': anchor
+responses:
+  '404':
+    description: not found
+  # aliased response code
+  *code :
+    description: ok`
+
+	var idxNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &idxNode))
+	idx := index.NewSpecIndex(&idxNode)
+	root := idxNode.Content[0].Content[3]
+
+	var n Responses
+	require.NoError(t, low.BuildModel(root, &n))
+	require.NoError(t, n.Build(context.Background(), nil, root, idx))
+
+	resp := n.FindResponseByCode("200")
+	require.NotNil(t, resp)
+	assert.Equal(t, "ok", resp.Value.Description.Value)
+	// the alias key resolves to the anchored code, but locations point at the authored key
+	assert.Equal(t, 8, resp.Value.GetKeyNode().Line)
+
+	var found bool
+	for k := range n.Codes.KeysFromOldest() {
+		if k.Value == "200" {
+			found = true
+			assert.Equal(t, 8, k.KeyNode.Line)
+		}
+	}
+	assert.True(t, found)
+}
+
+func TestResponses_Build_AliasedExtensionAndMergeOverride(t *testing.T) {
+	cleanHashCacheForTest(t)
+	yml := `x-keys:
+  names:
+    &ext x-thing: anchor
+    &code '200': anchor
+x-base: &base
+  '200':
+    description: merged
+responses:
+  <<: *base
+  *ext : extension
+  *code :
+    description: local`
+
+	var idxNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &idxNode))
+	idx := index.NewSpecIndex(&idxNode)
+	root := idxNode.Content[0].Content[5]
+
+	var n Responses
+	require.NoError(t, low.BuildModel(root, &n))
+	require.NoError(t, n.Build(context.Background(), nil, root, idx))
+
+	// the aliased x- key is an extension, not a response code
+	var exts []string
+	for k, v := range n.GetExtensions().FromOldest() {
+		exts = append(exts, k.Value+"="+v.Value.Value)
+	}
+	assert.Equal(t, []string{"x-thing=extension"}, exts)
+
+	// the local aliased code overrides the merged one, leaving a single 200
+	var codes []string
+	for k := range n.Codes.KeysFromOldest() {
+		codes = append(codes, k.Value)
+	}
+	assert.Equal(t, []string{"200"}, codes)
+	assert.Equal(t, "local", n.FindResponseByCode("200").Value.Description.Value)
+}
