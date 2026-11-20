@@ -588,3 +588,30 @@ func TestResolveOperationReference_EmptyTagNode(t *testing.T) {
 	assert.Equal(t, "from-empty-tag-node", resolvedNode.Content[1].Value)
 	assert.NotNil(t, foundCtx.Value(index.FoundIndexKey))
 }
+
+// a value that starts with `x-` (or equals `parameters`) is not a key. It must not skip the
+// entry after it: that dropped the operation, or panicked when nothing came before it.
+func TestPathItem_Build_ValueThatLooksLikeAKey_KeepsNextEntry(t *testing.T) {
+	cases := map[string]string{
+		"summary starting with X-":      "summary: X-Ray traced\nget:\n  description: kept",
+		"description equal Parameters":  "description: Parameters\nget:\n  description: kept",
+		"extension value first":         "x-note: x-internal\nget:\n  description: kept",
+		"extension value after a field": "summary: s\nx-a: x-b\nget:\n  description: kept",
+		"parameters value parameters":   "parameters: []\nsummary: parameters\nget:\n  description: kept",
+	}
+	for name, yml := range cases {
+		t.Run(name, func(t *testing.T) {
+			var idxNode yaml.Node
+			require.NoError(t, yaml.Unmarshal([]byte(yml), &idxNode))
+			idx := index.NewSpecIndex(&idxNode)
+
+			var n PathItem
+			require.NoError(t, low.BuildModel(idxNode.Content[0], &n))
+			require.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+
+			require.NotNil(t, n.Get.Value)
+			assert.Equal(t, "kept", n.Get.Value.Description.Value)
+			assert.Equal(t, "get", n.Get.KeyNode.Value)
+		})
+	}
+}
