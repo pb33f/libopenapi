@@ -739,18 +739,14 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 		skip := false
 		for i := 0; i < len(root.Content); i++ {
 			node := root.Content[i]
-			if !includeExtensions {
-				if len(node.Value) >= 2 && (node.Value[0] == 'x' || node.Value[0] == 'X') && node.Value[1] == '-' {
-					skip = true
-					continue
-				}
-			}
-			if skip {
-				skip = false
+			if i%2 == 0 {
+				// only a key decides whether its entry is skipped; an extension value such as
+				// `x-owner: x-team` must not skip the entry that follows it.
+				skip = !includeExtensions && len(node.Value) >= 2 && (node.Value[0] == 'x' || node.Value[0] == 'X') && node.Value[1] == '-'
+				currentKey = node
 				continue
 			}
-			if i%2 == 0 {
-				currentKey = node
+			if skip {
 				continue
 			}
 
