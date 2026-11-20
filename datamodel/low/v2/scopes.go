@@ -43,7 +43,9 @@ func (s *Scopes) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecIndex
 	if utils.IsNodeMap(root) {
 		for k := range root.Content {
 			if k%2 == 0 {
-				if strings.Contains(root.Content[k].Value, "x-") {
+				// extensions are extracted above. A scope name can contain `x-` (`inbox-read`), so
+				// only a key that starts with it is an extension.
+				if strings.HasPrefix(root.Content[k].Value, "x-") {
 					continue
 				}
 				valueMap.Set(

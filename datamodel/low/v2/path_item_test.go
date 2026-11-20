@@ -192,3 +192,29 @@ parameters:
 	assert.Equal(t, n.Hash(), n2.Hash())
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
+
+// a value that starts with `x-`, or mentions `$ref`, is not a key. It must not skip the entry
+// after it, be read as the path item's `$ref`, or index past the end of the mapping.
+func TestPathItem_Build_ValueThatLooksLikeAKey_KeepsNextEntry(t *testing.T) {
+	cases := map[string]string{
+		"extension value first":         "x-note: x-internal\nget:\n  description: kept",
+		"extension value after a field": "parameters: []\nx-a: X-b\nget:\n  description: kept",
+		"extension value mentions $ref": "x-note: see $ref\nget:\n  description: kept",
+		"last value mentions $ref":      "get:\n  description: kept\nx-note: see $ref",
+	}
+	for name, yml := range cases {
+		t.Run(name, func(t *testing.T) {
+			var idxNode yaml.Node
+			require.NoError(t, yaml.Unmarshal([]byte(yml), &idxNode))
+			idx := index.NewSpecIndex(&idxNode)
+
+			var n PathItem
+			require.NoError(t, low.BuildModel(idxNode.Content[0], &n))
+			require.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+
+			require.NotNil(t, n.Get.Value)
+			assert.Equal(t, "kept", n.Get.Value.Description.Value)
+			assert.Empty(t, n.Ref.Value)
+		})
+	}
+}
