@@ -16,6 +16,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 func TestPaths_Build(t *testing.T) {
@@ -600,4 +601,29 @@ func TestPaths_Build_Fail_Many(t *testing.T) {
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	errors := strings.Split(buf.String(), "\n")
 	assert.Len(t, errors, 1001)
+}
+
+// An extension whose value starts with x- must not skip the path after it. The path's value
+// was built against a nil key, which panicked inside a build goroutine.
+func TestExtractPathItemsMap_ExtensionValueThatLooksLikeAKey(t *testing.T) {
+	yml := `x-note: x-internal
+"/a":
+  get:
+    description: a
+x-b: X-also
+"/b":
+  get:
+    description: b`
+
+	var idxNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &idxNode))
+
+	pathMap, err := extractPathItemsMap(context.Background(), idxNode.Content[0], index.NewSpecIndex(&idxNode))
+	require.NoError(t, err)
+	require.Equal(t, 2, pathMap.Len())
+	for _, p := range []string{"a", "b"} {
+		path := low.FindItemInOrderedMap("/"+p, pathMap)
+		require.NotNil(t, path)
+		assert.Equal(t, p, path.Value.Get.Value.Description.Value)
+	}
 }

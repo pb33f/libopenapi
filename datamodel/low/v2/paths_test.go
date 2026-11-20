@@ -123,3 +123,33 @@ func TestPaths_Build_Fail_Many(t *testing.T) {
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
+
+// An extension value that starts with x- must not skip the path after it. The path's value
+// was built against a nil key, which panicked inside a build goroutine.
+func TestPaths_Build_ExtensionValueThatLooksLikeAKey(t *testing.T) {
+	yml := `x-note: x-internal
+"/a":
+  get:
+    description: a
+x-b: X-also
+"/b":
+  get:
+    description: b`
+
+	var idxNode yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte(yml), &idxNode))
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Paths
+	assert.NoError(t, low.BuildModel(&idxNode, &n))
+	assert.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+
+	if assert.Equal(t, 2, n.PathItems.Len()) {
+		for _, p := range []string{"a", "b"} {
+			path := n.FindPath("/" + p)
+			if assert.NotNil(t, path) {
+				assert.Equal(t, p, path.Value.Get.Value.Description.Value)
+			}
+		}
+	}
+}

@@ -720,6 +720,13 @@ func ExtractArrayNoLookup[T Buildable[N], N any](
 	return extractArrayValueReferences[T, N](ctx, label, labelNode, valueNode, idx, false)
 }
 
+// IsExtensionKey reports whether a mapping key names a specification extension: it starts with
+// `x-` (or `X-`). Test keys only. A value can start with `x-` too (`summary: X-Ray traced`), and
+// treating it as a key shifts every entry that follows it.
+func IsExtensionKey(key string) bool {
+	return len(key) >= 2 && (key[0] == 'x' || key[0] == 'X') && key[1] == '-'
+}
+
 // ExtractMapNoLookupExtensions will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'NoLookup' part
 // refers to the fact that there is no key supplied as part of the extraction, there  is no lookup performed and the
 // root yaml.Node pointer is used directly. Pass a true bit to includeExtensions to include extension keys in the map.
@@ -739,18 +746,14 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 		skip := false
 		for i := 0; i < len(root.Content); i++ {
 			node := root.Content[i]
-			if !includeExtensions {
-				if len(node.Value) >= 2 && (node.Value[0] == 'x' || node.Value[0] == 'X') && node.Value[1] == '-' {
-					skip = true
-					continue
-				}
-			}
-			if skip {
-				skip = false
+			if i%2 == 0 {
+				// only a key decides whether its entry is skipped; an extension value such as
+				// `x-owner: x-team` must not skip the entry that follows it.
+				skip = !includeExtensions && IsExtensionKey(node.Value)
+				currentKey = node
 				continue
 			}
-			if i%2 == 0 {
-				currentKey = node
+			if skip {
 				continue
 			}
 

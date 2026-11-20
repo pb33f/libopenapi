@@ -115,3 +115,26 @@ x-tea: warm`
 	assert.Equal(t, n.Hash(), n2.Hash())
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
+
+// An extension value that starts with x- must not drop the response code after it.
+func TestResponses_Build_ExtensionValueThatLooksLikeAKey(t *testing.T) {
+	yml := `x-note: x-internal
+"200":
+  description: ok
+x-a: X-b
+"404":
+  description: not found`
+
+	var idxNode yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte(yml), &idxNode))
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Responses
+	assert.NoError(t, low.BuildModel(&idxNode, &n))
+	assert.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+
+	if assert.Equal(t, 2, n.Codes.Len()) {
+		assert.Equal(t, "ok", n.FindResponseByCode("200").Value.Description.Value)
+		assert.Equal(t, "not found", n.FindResponseByCode("404").Value.Description.Value)
+	}
+}

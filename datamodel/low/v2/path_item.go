@@ -72,29 +72,25 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 	}
 
 	for i, pathNode := range root.Content {
-		if len(pathNode.Value) >= 2 && (pathNode.Value[0] == 'x' || pathNode.Value[0] == 'X') && pathNode.Value[1] == '-' {
-			skip = true
+		if i%2 == 0 {
+			// only a key decides whether its entry is skipped. A value that starts with `x-` or
+			// mentions `$ref` must not skip the entry that follows it, or be taken for a key.
+			skip = low.IsExtensionKey(pathNode.Value)
+			currentNode = pathNode
+			continue
+		}
+		if skip {
 			continue
 		}
 		// because (for some reason) the spec for swagger docs allows for a '$ref' property for path items.
 		// this is kinda nuts, because '$ref' is a reserved keyword for JSON references, which is ALSO used
 		// in swagger. Why this choice was made, I do not know.
-		if strings.Contains(strings.ToLower(pathNode.Value), "$ref") {
-			rn := root.Content[i+1]
+		if strings.Contains(strings.ToLower(currentNode.Value), "$ref") {
 			p.Ref = low.NodeReference[string]{
-				Value:     rn.Value,
-				ValueNode: rn,
-				KeyNode:   pathNode,
+				Value:     pathNode.Value,
+				ValueNode: pathNode,
+				KeyNode:   currentNode,
 			}
-			skip = true
-			continue
-		}
-		if skip {
-			skip = false
-			continue
-		}
-		if i%2 == 0 {
-			currentNode = pathNode
 			continue
 		}
 

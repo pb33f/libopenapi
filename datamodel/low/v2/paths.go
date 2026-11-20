@@ -86,16 +86,14 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 		skip := false
 		var currentNode *yaml.Node
 		for i, pathNode := range root.Content {
-			if len(pathNode.Value) >= 2 && (pathNode.Value[0] == 'x' || pathNode.Value[0] == 'X') && pathNode.Value[1] == '-' {
-				skip = true
+			if i%2 == 0 {
+				// only a key decides whether its entry is skipped; an extension value such as
+				// `x-note: x-internal` must not skip the path that follows it.
+				skip = low.IsExtensionKey(pathNode.Value)
+				currentNode = pathNode
 				continue
 			}
 			if skip {
-				skip = false
-				continue
-			}
-			if i%2 == 0 {
-				currentNode = pathNode
 				continue
 			}
 
