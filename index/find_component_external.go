@@ -45,6 +45,8 @@ func (index *SpecIndex) lookupRolodex(ctx context.Context, uri []string) *Refere
 		if rError != nil {
 			index.logger.Error("unable to open the rolodex file, check specification references and base path",
 				"file", absoluteFileLocation, "error", rError)
+			// Keep the cause so a missing reference can report why it is missing.
+			index.refOpenErrors.Store(uri[0], rError)
 			return nil
 		}
 		if rFile == nil {

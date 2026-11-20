@@ -546,7 +546,7 @@ func TestNewRemoteFS_RemoteBaseURL_Error400(t *testing.T) {
 	x, y := rfs.Open("https://pb33f.io/woof.yaml")
 	assert.Nil(t, x)
 	assert.Error(t, y)
-	assert.Equal(t, "unable to fetch remote document 'https://pb33f.io/woof.yaml' (error 400)", y.Error())
+	assert.Equal(t, "unable to fetch remote document 'https://pb33f.io/woof.yaml' (error 400 Bad Request)", y.Error())
 }
 
 func TestNewRemoteFS_RemoteBaseURL_ReadBodyFail(t *testing.T) {

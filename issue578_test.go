@@ -123,7 +123,8 @@ func TestIssue578HttpPrefixedLocalRefDoesNotPanic(t *testing.T) {
 			require.NotPanics(t, func() {
 				_, err = doc.BuildV3Model()
 			})
-			require.EqualError(t, err, "component `httpdocs/pet.yaml` does not exist in the specification")
+			require.EqualError(t, err, "component `httpdocs/pet.yaml` cannot be resolved: "+
+				"remote URL 'httpdocs/pet.yaml' has no scheme, unable to fetch it")
 			require.Contains(t, logs.String(), "remote URL 'httpdocs/pet.yaml' has no scheme, unable to fetch it")
 
 			mu.Lock()

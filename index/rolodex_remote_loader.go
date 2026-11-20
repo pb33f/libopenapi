@@ -630,8 +630,8 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 		i.releaseRemoteProcessingWaiter(processingWaiter, cacheKey, nil, waitErr)
 		i.logger.Error("unable to fetch remote document",
 			"file", remoteParsedURL.Path, "status", response.StatusCode, "resp", string(responseBytes))
-		return nil, fmt.Errorf("unable to fetch remote document '%s' (error %d)", remoteParsedURL.String(),
-			response.StatusCode)
+		return nil, fmt.Errorf("unable to fetch remote document '%s' (error %d %s)", remoteParsedURL.String(),
+			response.StatusCode, http.StatusText(response.StatusCode))
 	}
 
 	remoteFile := i.createRemoteFile(remoteParsedURL, fileExt, responseBytes, response.Header)
