@@ -265,30 +265,17 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			p.Nodes.Store(ln.Line, ln)
 		}
 	}
-	prevExt := false
 	for i, pathNode := range root.Content {
-		if len(pathNode.Value) >= 2 && (pathNode.Value[0] == 'x' || pathNode.Value[0] == 'X') && pathNode.Value[1] == '-' {
-			skip = true
-			prevExt = true
+		if i%2 == 0 {
+			// only a key decides whether its entry is skipped. Extensions and parameters are
+			// extracted above; a value such as `summary: X-Ray traced` or `x-a: parameters` must
+			// not skip the entry that follows it (https://github.com/pb33f/libopenapi/issues/388).
+			skip = (len(pathNode.Value) >= 2 && (pathNode.Value[0] == 'x' || pathNode.Value[0] == 'X') && pathNode.Value[1] == '-') ||
+				strings.EqualFold(pathNode.Value, ParametersLabel)
+			currentNode = pathNode
 			continue
-		}
-		// https://github.com/pb33f/libopenapi/issues/388
-		// in the case where a user has an extension with the value 'parameters', make sure we handle
-		// it correctly, by not skipping.
-		if strings.EqualFold(pathNode.Value, "parameters") {
-			if !prevExt { // this
-				skip = true
-				continue
-			} else {
-				prevExt = false
-			}
 		}
 		if skip {
-			skip = false
-			continue
-		}
-		if i%2 == 0 {
-			currentNode = pathNode
 			continue
 		}
 

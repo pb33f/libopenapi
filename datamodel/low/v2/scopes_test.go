@@ -12,6 +12,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 func TestScopes_Hash(t *testing.T) {
@@ -42,4 +43,26 @@ burgers: chips`
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
+}
+
+// a scope name that contains `x-` without starting with it is a scope, not an extension.
+func TestScopes_Build_NameContainingExtensionPrefix(t *testing.T) {
+	yml := `inbox-read: read the inbox
+fax-send: send faxes
+write: write things
+x-ext: an extension`
+
+	var idxNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &idxNode))
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Scopes
+	require.NoError(t, low.BuildModel(idxNode.Content[0], &n))
+	require.NoError(t, n.Build(context.Background(), nil, idxNode.Content[0], idx))
+
+	require.Equal(t, 3, orderedmap.Len(n.Values))
+	assert.Equal(t, "read the inbox", n.FindScope("inbox-read").Value)
+	assert.Equal(t, "send faxes", n.FindScope("fax-send").Value)
+	assert.Equal(t, "write things", n.FindScope("write").Value)
+	assert.Equal(t, 1, orderedmap.Len(n.Extensions))
 }

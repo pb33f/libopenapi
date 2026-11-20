@@ -2858,3 +2858,52 @@ func TestDocument_BuildV3Model_NoVersionNode(t *testing.T) {
 	require.Error(t, buildErr)
 	assert.Contains(t, buildErr.Error(), "no openapi version/tag found")
 }
+
+// a mapping value that starts with `x-`, or equals `parameters`, is not a key. It used to skip
+// the key after it, dropping operations, paths and response codes, and panicking a build goroutine
+// (which no caller can recover) when the skipped key had nothing before it.
+func TestDocument_BuildV3Model_ValueThatLooksLikeAKey(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: t, version: "1"}
+paths:
+  x-note: x-internal
+  /summary:
+    summary: X-Ray traced
+    get: {responses: {"200": {description: ok}}}
+  /description:
+    description: Parameters
+    get: {responses: {"200": {description: ok}}}
+  /first:
+    x-note: x-internal
+    get: {responses: {"200": {description: ok}}}
+  /responses:
+    get:
+      responses:
+        x-note: x-internal
+        "200": {description: ok}
+        x-a: X-b
+        "404": {description: not found}
+`
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	require.NotNil(t, m.Model.Paths)
+	require.Equal(t, 4, m.Model.Paths.PathItems.Len())
+
+	for path, codes := range map[string][]string{
+		"/summary":     {"200"},
+		"/description": {"200"},
+		"/first":       {"200"},
+		"/responses":   {"200", "404"},
+	} {
+		pi := m.Model.Paths.PathItems.GetOrZero(path)
+		require.NotNil(t, pi, path)
+		require.NotNil(t, pi.Get, path)
+		var got []string
+		for code := range pi.Get.Responses.Codes.KeysFromOldest() {
+			got = append(got, code)
+		}
+		assert.Equal(t, codes, got, path)
+	}
+}

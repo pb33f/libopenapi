@@ -4546,3 +4546,25 @@ func TestExtractObject_RootRef_SkipExternalRef_EmbeddedReference(t *testing.T) {
 	assert.True(t, result.Value.IsReference())
 	assert.Equal(t, "./models/Pet.yaml#/Pet", result.Value.GetReference())
 }
+
+// an extension value that starts with `x-` is not a key. It must not skip the entry after it.
+func TestExtractMapNoLookup_ExtensionValueThatLooksLikeAKey(t *testing.T) {
+	yml := `x-hey: x-you
+one:
+  description: one
+x-a: X-b
+two:
+  description: two`
+
+	var cNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(yml), &cNode))
+	idx := index.NewSpecIndexWithConfig(&cNode, index.CreateClosedAPIIndexConfig())
+
+	things, err := ExtractMapNoLookup[*test_Good](context.Background(), cNode.Content[0], idx)
+	require.NoError(t, err)
+	var keys []string
+	for k := range things.KeysFromOldest() {
+		keys = append(keys, k.Value)
+	}
+	assert.Equal(t, []string{"one", "two"}, keys)
+}
