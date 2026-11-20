@@ -409,6 +409,7 @@ type SpecIndex struct {
 	allExternalDocuments                map[string]*Reference                         // all external documents
 	externalSpecIndex                   map[string]*SpecIndex                         // create a primary index of all external specs and componentIds
 	refErrors                           []error                                       // errors when indexing references
+	refOpenErrors                       sync.Map                                      // why a referenced document could not be opened, keyed by its location
 	operationParamErrors                []error                                       // errors when indexing parameters
 	allDescriptions                     []*DescriptionReference                       // every single description found in the spec.
 	allSummaries                        []*DescriptionReference                       // every single summary found in the spec.
@@ -631,6 +632,7 @@ func (index *SpecIndex) releaseDerivedState() {
 	index.arrayCircularReferences = nil
 	index.tagCircularReferences = nil
 	index.refErrors = nil
+	index.refOpenErrors.Clear()
 	index.operationParamErrors = nil
 	index.cache = nil
 	index.highModelCache = nil
