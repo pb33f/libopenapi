@@ -2089,3 +2089,126 @@ func TestResolverDeepExamplePaths(t *testing.T) {
 	require.Len(t, found, 1)
 	require.Equal(t, "#/components/schemas/Target", found[0].Definition)
 }
+
+func TestResolver_SchemaInstanceValueRefsNotResolved(t *testing.T) {
+	spec := `openapi: 3.1.0
+components:
+  schemas:
+    Data:
+      type: object
+      enum:
+        - {$ref: '#/missing/enum'}
+      const: {$ref: 'missing.yaml#/const'}
+      default:
+        nested: {$ref: '#/missing/default'}
+      examples:
+        - {$ref: '#/missing/examples'}
+      properties:
+        default: {$ref: '#/components/schemas/Target'}
+    Target:
+      type: string
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
+	idx := NewSpecIndexWithConfig(&root, CreateOpenAPIIndexConfig())
+	ref, _ := idx.SearchIndexForReference("#/components/schemas/Data")
+	require.NotNil(t, ref)
+	found := NewResolver(idx).extractRelatives(ref, ref.Node, nil, map[string]bool{}, nil, false, 0, "")
+	require.Len(t, found, 1, "only the property named default is a reference")
+	require.Equal(t, "#/components/schemas/Target", found[0].Definition)
+
+	require.Empty(t, NewResolver(idx).Resolve())
+}
+
+func TestResolver_ExcludeExtensionRefs(t *testing.T) {
+	spec := `openapi: 3.1.0
+components:
+  schemas:
+    Pasta:
+      type: object
+      x-hello:
+        thing: {$ref: 'gone.yaml#/x'}
+      properties:
+        x-name: {$ref: '#/components/schemas/Target'}
+    Target:
+      type: string
+`
+	for _, exclude := range []bool{false, true} {
+		t.Run(fmt.Sprintf("exclude=%v", exclude), func(t *testing.T) {
+			var root yaml.Node
+			require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
+			c := CreateOpenAPIIndexConfig()
+			c.ExcludeExtensionRefs = exclude
+			idx := NewSpecIndexWithConfig(&root, c)
+			ref, _ := idx.SearchIndexForReference("#/components/schemas/Pasta")
+			require.NotNil(t, ref)
+			resolver := NewResolver(idx)
+			found := resolver.extractRelatives(ref, ref.Node, nil, map[string]bool{}, nil, false, 0, "")
+			require.Len(t, found, 1, "a property named x-name is a schema")
+			require.Equal(t, "#/components/schemas/Target", found[0].Definition)
+			if exclude {
+				require.Empty(t, resolver.resolvingErrors)
+			} else {
+				require.Len(t, resolver.resolvingErrors, 1)
+			}
+		})
+	}
+}
+
+func TestResolver_ExcludeExtensionRefsKeepsSwaggerResponseNamedExtension(t *testing.T) {
+	spec := `swagger: "2.0"
+responses:
+  x-shared:
+    description: shared
+    schema: {$ref: '#/definitions/Pet'}
+definitions:
+  Pet:
+    type: object
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
+	c := CreateOpenAPIIndexConfig()
+	c.ExcludeExtensionRefs = true
+	idx := NewSpecIndexWithConfig(&root, c)
+	refs := idx.GetRawReferencesSequenced()
+	if assert.Len(t, refs, 1, "a root response definition named x-... is a response, not an extension") {
+		assert.False(t, refs[0].IsExtensionRef)
+	}
+
+	_, node := utils.FindKeyNodeTop("responses", root.Content[0].Content)
+	ref := &Reference{Definition: "#/responses", FullDefinition: "#/responses", Index: idx, Node: node}
+	resolver := NewResolver(idx)
+	found := resolver.extractRelatives(ref, node, nil, map[string]bool{}, nil, false, 0, "")
+	require.Len(t, found, 1)
+	assert.Equal(t, "#/definitions/Pet", found[0].Definition)
+}
+
+func TestResolver_ExcludeExtensionRefsUnderResponses(t *testing.T) {
+	spec := `openapi: 3.1.0
+components:
+  pathItems:
+    Pets:
+      get:
+        responses:
+          "200":
+            $ref: '#/components/responses/Ok'
+          x-notes: {$ref: 'missing.yaml#/notes'}
+  responses:
+    Ok:
+      description: ok
+`
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
+	c := CreateOpenAPIIndexConfig()
+	c.ExcludeExtensionRefs = true
+	idx := NewSpecIndexWithConfig(&root, c)
+	_, components := utils.FindKeyNodeTop("components", root.Content[0].Content)
+	_, pathItems := utils.FindKeyNodeTop("pathItems", components.Content)
+	_, node := utils.FindKeyNodeTop("Pets", pathItems.Content)
+	ref := &Reference{Definition: "#/components/pathItems/Pets", FullDefinition: "#/components/pathItems/Pets", Index: idx, Node: node}
+	resolver := NewResolver(idx)
+	found := resolver.extractRelatives(ref, node, nil, map[string]bool{}, nil, false, 0, "")
+	require.Len(t, found, 1)
+	assert.Equal(t, "#/components/responses/Ok", found[0].Definition)
+	assert.Empty(t, resolver.resolvingErrors, "an x- key under responses is an extension")
+}

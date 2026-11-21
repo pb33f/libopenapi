@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/libopenapi/internal/specpath"
 	"github.com/pb33f/libopenapi/utils"
 )
 
@@ -123,7 +124,7 @@ func isMetadataPropertyNamePath(seenPath []string) bool {
 }
 
 func metadataPathContainsExamples(seenPath []string) bool {
-	return underOpenAPIExamplePath(seenPath)
+	return specpath.UnderOpenAPIExamplePath(seenPath)
 }
 
 func (index *SpecIndex) collectSecurityRequirementMetadata(node *yaml.Node, keyIndex int, basePath string) {
