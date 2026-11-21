@@ -59,27 +59,18 @@ func (d documentComparison) requiredAdditionRule(l, r *base.SchemaProxy, old, ne
 	if !restrictsProperties(old.AdditionalProperties.Value) && !restrictsProperties(old.UnevaluatedProperties.Value) {
 		return func(string) bool { return false }
 	}
-	// A required dictionary key still follows the same schema for additional values
-	// unless the new document declares the key or changes the old restriction.
-	changedRestriction := restrictionChanged(old.AdditionalProperties.Value, next.AdditionalProperties.Value) ||
-		restrictionChanged(old.UnevaluatedProperties.Value, next.UnevaluatedProperties.Value)
-	newFields := make(map[string]bool)
-	for key := range next.Properties.Value.KeysFromOldest() {
-		newFields[key.Value] = true
-	}
+	// Existing properties were already accepted by the old object. For dictionary keys,
+	// compare the rest of the contract once: patterns or applicators can admit new fields.
+	declared := make(map[string]bool)
 	for key := range old.Properties.Value.KeysFromOldest() {
-		newFields[key.Value] = false
+		declared[key.Value] = true
 	}
-	return func(name string) bool {
-		if added, declared := newFields[name]; declared {
-			return added
-		}
-		return changedRestriction
-	}
-}
-
-func restrictionChanged(old, next *base.SchemaDynamicValue[*base.SchemaProxy, bool]) bool {
-	return restrictsProperties(old) && !low.AreEqual(old, next)
+	otherChanges := sync.OnceValue(func() bool {
+		view := copySchemaPublicFields(old)
+		view.Required = next.Required
+		return view.Hash() != next.Hash()
+	})
+	return func(name string) bool { return !declared[name] && otherChanges() }
 }
 
 func restrictsProperties(rule *base.SchemaDynamicValue[*base.SchemaProxy, bool]) bool {

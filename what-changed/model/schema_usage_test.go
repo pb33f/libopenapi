@@ -377,3 +377,9 @@ func TestSchemaUsageEmptyPaths(t *testing.T) {
 	doc := buildUsageDocument(t, spec)
 	assert.Empty(t, buildSchemaUsage(doc.Index))
 }
+
+func TestRequiredNewPatternInClosedResponse(t *testing.T) {
+	old := usageSpec(usageResponseOnly, `    Widget: {type: object, additionalProperties: false, properties: {name: {type: string}}, required: [name]}`)
+	next := strings.Replace(old, "required: [name]", "patternProperties: {'^id$': {type: string}}, required: [name, id]", 1)
+	requireEntryBreaking(t, old, next, true)
+}
