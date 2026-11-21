@@ -1170,7 +1170,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 	for g := range k {
 		if _, ok := j[g]; !ok {
 			if addedBreaking == nil {
-				addedBreaking = c.requiredAdditionRule(lProxy, rProxy, lSchema)
+				addedBreaking = c.requiredAdditionRule(lProxy, rProxy, lSchema, rSchema)
 			}
 			CreateChange(changes, PropertyAdded, v3.RequiredLabel,
 				nil, rSchema.Required.Value[k[g]].GetValueNode(), addedBreaking(g), nil,
