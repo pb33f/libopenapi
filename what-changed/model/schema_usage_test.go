@@ -80,15 +80,16 @@ func usageWidget(required string) string {
 
 func compareUsageDocuments(t *testing.T, left, right string) *DocumentChanges {
 	t.Helper()
-	lInfo, err := datamodel.ExtractSpecInfo([]byte(left))
+	return CompareDocuments(buildUsageDocument(t, left), buildUsageDocument(t, right))
+}
+
+func buildUsageDocument(t *testing.T, spec string) *v3.Document {
+	t.Helper()
+	info, err := datamodel.ExtractSpecInfo([]byte(spec))
 	require.NoError(t, err)
-	rInfo, err := datamodel.ExtractSpecInfo([]byte(right))
+	doc, err := v3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	require.NoError(t, err)
-	lDoc, err := v3.CreateDocumentFromConfig(lInfo, datamodel.NewDocumentConfiguration())
-	require.NoError(t, err)
-	rDoc, err := v3.CreateDocumentFromConfig(rInfo, datamodel.NewDocumentConfiguration())
-	require.NoError(t, err)
-	return CompareDocuments(lDoc, rDoc)
+	return doc
 }
 
 func TestCompareDocuments_SchemaRequiredDirectionInlineAndNested(t *testing.T) {
@@ -344,4 +345,35 @@ func TestRequiredEncodingHeader(t *testing.T) {
 		return strings.Replace(usageSpec(op, usageWidget(required)), "3.1.0", "3.2.0", 1)
 	}
 	requireEntryBreaking(t, build("name, id"), build("name"), false)
+}
+
+func TestRequiredDictionaryValue(t *testing.T) {
+	old := usageSpec(usageResponseOnly, `    Widget: {type: object, additionalProperties: {type: string}, required: [name]}`)
+	next := strings.Replace(old, "[name]", "[name, id]", 1)
+	requireEntryBreaking(t, old, next, false)
+	requireEntryBreaking(t, old, strings.Replace(next, "additionalProperties: {type: string}", "additionalProperties: true", 1), true)
+}
+
+func TestRequiredResponseClosedByParent(t *testing.T) {
+	const ref = "{$ref: '#/components/schemas/Widget'}"
+	for _, applicator := range []string{"allOf: [" + ref + "]", "if: {type: object}, then: " + ref} {
+		op := strings.Replace(usageResponseOnly, ref, "{unevaluatedProperties: false, "+applicator+"}", 1)
+		left := strings.Replace(usageSpec(op, usageWidget("name")), "\n        id: {type: string}", "", 1)
+		requireEntryBreaking(t, left, usageSpec(op, usageWidget("name, id")), true)
+	}
+}
+
+func TestUsageRequiresAReachableReferenceTarget(t *testing.T) {
+	doc := buildUsageDocument(t, usageSpec(usageResponseOnly, usageWidget("name"))+"\n    Alias: {$ref: '#/components/schemas/Widget'}")
+	proxy := doc.Components.Value.FindSchema("Alias").Value
+	require.True(t, proxy.IsReference())
+	// When only the reference site is known, its target may be used in either direction.
+	usage := schemaUsage{proxy.GetValueNode(): responseSchema}
+	assert.Zero(t, usage.direction(proxy))
+}
+
+func TestSchemaUsageEmptyPaths(t *testing.T) {
+	spec := "openapi: 3.1.0\ninfo: {title: Empty, version: '1'}\npaths:\n"
+	doc := buildUsageDocument(t, spec)
+	assert.Empty(t, buildSchemaUsage(doc.Index))
 }

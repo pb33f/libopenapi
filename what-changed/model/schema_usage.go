@@ -14,7 +14,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 )
 
@@ -52,7 +51,7 @@ func (d documentComparison) exclusively(l, r *base.SchemaProxy, direction schema
 }
 
 // requiredAdditionRule checks a closed response's declared names once, even when many become required.
-func (d documentComparison) requiredAdditionRule(l, r *base.SchemaProxy, old *base.Schema) func(string) bool {
+func (d documentComparison) requiredAdditionRule(l, r *base.SchemaProxy, old, next *base.Schema) func(string) bool {
 	breaking := BreakingAdded(CompSchema, PropRequired)
 	if !breaking || !d.exclusively(l, r, responseSchema) {
 		return func(string) bool { return breaking }
@@ -60,11 +59,27 @@ func (d documentComparison) requiredAdditionRule(l, r *base.SchemaProxy, old *ba
 	if !restrictsProperties(old.AdditionalProperties.Value) && !restrictsProperties(old.UnevaluatedProperties.Value) {
 		return func(string) bool { return false }
 	}
-	declared := make(map[string]bool, orderedmap.Len(old.Properties.Value))
-	for key := range old.Properties.Value.KeysFromOldest() {
-		declared[key.Value] = true
+	// A required dictionary key still follows the same schema for additional values
+	// unless the new document declares the key or changes the old restriction.
+	changedRestriction := restrictionChanged(old.AdditionalProperties.Value, next.AdditionalProperties.Value) ||
+		restrictionChanged(old.UnevaluatedProperties.Value, next.UnevaluatedProperties.Value)
+	newFields := make(map[string]bool)
+	for key := range next.Properties.Value.KeysFromOldest() {
+		newFields[key.Value] = true
 	}
-	return func(name string) bool { return !declared[name] }
+	for key := range old.Properties.Value.KeysFromOldest() {
+		newFields[key.Value] = false
+	}
+	return func(name string) bool {
+		if added, declared := newFields[name]; declared {
+			return added
+		}
+		return changedRestriction
+	}
+}
+
+func restrictionChanged(old, next *base.SchemaDynamicValue[*base.SchemaProxy, bool]) bool {
+	return restrictsProperties(old) && !low.AreEqual(old, next)
 }
 
 func restrictsProperties(rule *base.SchemaDynamicValue[*base.SchemaProxy, bool]) bool {
@@ -75,9 +90,9 @@ func restrictsProperties(rule *base.SchemaDynamicValue[*base.SchemaProxy, bool])
 func (usage schemaUsage) direction(proxy *base.SchemaProxy) schemaDirection {
 	d := usage[utils.NodeAlias(proxy.GetValueNode())]
 	if d != 0 && proxy.IsReference() {
-		resolved, _, _, _ := low.LocateRefEnd(proxy.GetContext(), proxy.GetReferenceNode(), proxy.GetIndex(), 0)
+		resolved, _, err, _ := low.LocateRefEnd(proxy.GetContext(), proxy.GetReferenceNode(), proxy.GetIndex(), 0)
 		target := usage[utils.NodeAlias(resolved)]
-		if target == 0 {
+		if err != nil || target == 0 {
 			return 0
 		}
 		return d | target
@@ -179,16 +194,26 @@ func (w *usageWalker) walk(node *yaml.Node, object usageObject, dir schemaDirect
 		return
 	}
 	visited[node] |= dir
-	if object == schemaObject && utils.ResolveMergeNodes(node) != node {
-		// The index may return a distinct expanded mapping for each reference to this schema.
-		w.unknown = true
-		return
+	sameInstance := dir
+	if object == schemaObject {
+		if utils.ResolveMergeNodes(node) != node {
+			// The index may return a distinct expanded mapping for each reference to this schema.
+			w.unknown = true
+			return
+		}
+		// A field declared by a subschema can bypass its parent's unevaluatedProperties rule.
+		for key, value := range usageFields(node) {
+			if key == v3.UnevaluatedPropertiesLabel && !(utils.IsNodeBoolValue(value) && utils.NodeAlias(value).Value == "true") {
+				sameInstance = sharedSchema
+				break
+			}
+		}
 	}
 	for key, value := range usageFields(node) {
 		if key == v3.RefLabel {
 			ref := utils.NodeAlias(value).Value
 			if target := w.localTarget(ref); target != nil {
-				w.walk(target, object, dir)
+				w.walk(target, object, sameInstance)
 				continue
 			}
 			w.unknown = true
@@ -211,7 +236,7 @@ func (w *usageWalker) walk(node *yaml.Node, object usageObject, dir schemaDirect
 				w.walk(value, payloadObject, dir)
 			}
 		case schemaObject:
-			w.schemaField(key, value, dir)
+			w.schemaField(key, value, dir, sameInstance)
 		}
 	}
 }
@@ -233,13 +258,16 @@ func (w *usageWalker) operationField(key string, value *yaml.Node, inherited sch
 	}
 }
 
-func (w *usageWalker) schemaField(key string, value *yaml.Node, dir schemaDirection) {
+func (w *usageWalker) schemaField(key string, value *yaml.Node, dir, sameInstance schemaDirection) {
 	switch key {
-	case v3.PropertiesLabel, v3.PatternPropertiesLabel, v3.DependentSchemasLabel,
-		v3.AllOfLabel, v3.AnyOfLabel, v3.PrefixItemsLabel:
+	case v3.AllOfLabel, v3.AnyOfLabel, v3.DependentSchemasLabel:
+		w.each(value, schemaObject, sameInstance)
+	case v3.ThenLabel, v3.ElseLabel:
+		w.walk(value, schemaObject, sameInstance)
+	case v3.PropertiesLabel, v3.PatternPropertiesLabel, v3.PrefixItemsLabel:
 		w.each(value, schemaObject, dir)
 	case v3.ItemsLabel, v3.AdditionalPropertiesLabel, v3.UnevaluatedPropertiesLabel,
-		v3.UnevaluatedItemsLabel, v3.ThenLabel, v3.ElseLabel, v3.PropertyNamesLabel, base.ContentSchemaLabel:
+		v3.UnevaluatedItemsLabel, v3.PropertyNamesLabel, base.ContentSchemaLabel:
 		w.walk(value, schemaObject, dir)
 	// Narrowing a predicate can widen the enclosing schema (or change which branch matches).
 	case v3.NotLabel, v3.IfLabel, v3.ContainsLabel:
