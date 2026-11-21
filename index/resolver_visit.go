@@ -100,8 +100,25 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 		}
 	}
 
+	// mapped references are keyed by where they were found. a ref such as "#name" names its
+	// target another way, so look it up by the definition it was extracted with.
+	var locatedByRef map[string]*Reference
+	for _, ref := range mapped {
+		if ref == nil || ref.OriginalReference == nil || ref.Reference == nil ||
+			ref.OriginalReference.FullDefinition == ref.Reference.FullDefinition {
+			continue
+		}
+		if locatedByRef == nil {
+			locatedByRef = make(map[string]*Reference)
+		}
+		locatedByRef[ref.OriginalReference.FullDefinition] = ref.Reference
+	}
+
 	for _, sequenced := range idx.GetAllSequencedReferences() {
 		locatedDef := mappedIndex[sequenced.FullDefinition]
+		if locatedDef == nil {
+			locatedDef = locatedByRef[sequenced.FullDefinition]
+		}
 		if locatedDef != nil && !locatedDef.Circular {
 			sequenced.Node.Content = locatedDef.Node.Content
 		}

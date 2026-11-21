@@ -62,6 +62,9 @@ func (resolver *Resolver) buildDefPath(ref *Reference, l string) string {
 			fdexp := strings.Split(ref.FullDefinition, "#/")
 			def = fdexp[0] + "#/" + exp[1]
 		}
+	} else if isSchemaAnchorFragment(l) {
+		// Plain-name fragment (e.g. "#foo"): an $anchor in the parent's document, not a file path.
+		def = schemaAnchorDefinition(ref, l)
 	} else if strings.HasPrefix(l, "http") {
 		// No fragment, absolute HTTP URL — use as-is.
 		def = l

@@ -108,13 +108,6 @@ func (index *SpecIndex) SearchIndexForReferenceWithContext(ctx context.Context, 
 }
 
 func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx context.Context, searchRef *Reference) (*Reference, *SpecIndex, context.Context) {
-	if index.cache != nil {
-		if v, ok := index.cache.Load(searchRef.FullDefinition); ok {
-			idx := index.extractIndex(v.(*Reference))
-			return v.(*Reference), idx, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
-		}
-	}
-
 	// --- Step 1: JSON Schema $id resolution ---
 	// Resolve the ref against JSON Schema $id values first. Specs using JSON Schema 2020-12
 	// register schemas by their $id URI (e.g. "$id: https://example.com/a.json"), so a bare
@@ -125,6 +118,18 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 			schemaIdBase = scope.BaseUri
 		}
 	}
+	// "#foo" names an $anchor in the current resource, so cache it under that resource.
+	cacheKey := searchRef.FullDefinition
+	if isSchemaAnchorFragment(cacheKey) && schemaIdBase != "" {
+		cacheKey = resolveRefWithSchemaBase(cacheKey, schemaIdBase)
+	}
+
+	if index.cache != nil {
+		if v, ok := index.cache.Load(cacheKey); ok {
+			idx := index.extractIndex(v.(*Reference))
+			return v.(*Reference), idx, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
+		}
+	}
 
 	rawRef := searchRef.FullDefinition
 	if searchRef.RawRef != "" && schemaIdBase != "" {
@@ -132,7 +137,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 	}
 	normalizedRef := resolveRefWithSchemaBase(rawRef, schemaIdBase)
 
-	if index.cache != nil && normalizedRef != searchRef.FullDefinition {
+	if index.cache != nil && normalizedRef != cacheKey {
 		if v, ok := index.cache.Load(normalizedRef); ok {
 			idx := index.extractIndex(v.(*Reference))
 			return v.(*Reference), idx, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
@@ -142,8 +147,8 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 	// Try the $id registry for an exact match, then fall back to path-only matching.
 	if resolved := index.ResolveRefViaSchemaId(normalizedRef); resolved != nil {
 		if index.cache != nil {
-			index.cache.Store(searchRef.FullDefinition, resolved)
-			if normalizedRef != searchRef.FullDefinition {
+			index.cache.Store(cacheKey, resolved)
+			if normalizedRef != cacheKey {
 				index.cache.Store(normalizedRef, resolved)
 			}
 		}
@@ -158,8 +163,8 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 	if pathRef != "" {
 		if resolved := index.resolveRefViaSchemaIdPath(pathRef); resolved != nil {
 			if index.cache != nil {
-				index.cache.Store(searchRef.FullDefinition, resolved)
-				if normalizedRef != searchRef.FullDefinition {
+				index.cache.Store(cacheKey, resolved)
+				if normalizedRef != cacheKey {
 					index.cache.Store(normalizedRef, resolved)
 				}
 			}

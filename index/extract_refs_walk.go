@@ -5,6 +5,7 @@ package index
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/pb33f/go-yaml"
@@ -17,6 +18,7 @@ type extractRefsState struct {
 	scope         *SchemaIdScope
 	parentBaseURI string
 	seenPath      []string
+	pointer       []string // JSON pointer segments to the node being walked; never stored
 	lastAppended  bool
 	level         int
 	poly          bool
@@ -27,7 +29,7 @@ type extractRefsState struct {
 func (index *SpecIndex) initializeExtractRefsState(
 	ctx context.Context,
 	nodeID string,
-	seenPath []string,
+	seenPath, pointer []string,
 	level int,
 	poly bool,
 	pName string,
@@ -46,6 +48,7 @@ func (index *SpecIndex) initializeExtractRefsState(
 		}
 		scope = scope.Copy()
 		scope.PushId(resolvedNodeID)
+		scope.resourceDepth = len(pointer)
 		ctx = WithSchemaIdScope(ctx, scope)
 	}
 
@@ -54,6 +57,7 @@ func (index *SpecIndex) initializeExtractRefsState(
 		scope:         scope,
 		parentBaseURI: parentBaseURI,
 		seenPath:      seenPath,
+		pointer:       pointer,
 		level:         level,
 		poly:          poly,
 		polyName:      pName,
@@ -66,6 +70,7 @@ func (index *SpecIndex) walkExtractRefs(node, parent *yaml.Node, state *extractR
 	}
 
 	var found []*Reference
+	sequence := utils.IsNodeArray(node)
 	for i, n := range node.Content {
 		// In YAML mapping nodes, Content alternates key-value: even indices (0, 2, 4...)
 		// are keys, odd indices (1, 3, 5...) are values.
@@ -80,7 +85,7 @@ func (index *SpecIndex) walkExtractRefs(node, parent *yaml.Node, state *extractR
 			if inherited {
 				walk.aliasDepth++
 			}
-			found = append(found, index.walkChildExtractRefs(n, node, state, walk)...)
+			found = append(found, index.walkChildExtractRefs(n, node, childPointer(node, state.pointer, i, sequence), state, walk)...)
 			if inherited {
 				walk.aliasDepth--
 			}
@@ -95,7 +100,21 @@ func (index *SpecIndex) walkExtractRefs(node, parent *yaml.Node, state *extractR
 	return found
 }
 
-func (index *SpecIndex) walkChildExtractRefs(node, parent *yaml.Node, state *extractRefsState, walk *extractRefsTraversal) []*Reference {
+// childPointer returns the pointer to node.Content[i]. In a sequence it appends the index. In a
+// mapping it appends the key to a value, with "~" written as "~0" and "/" as "~1", and returns
+// pointer unchanged for the key node itself. The result shares pointer's array, which is safe
+// because the walk is depth first and turns a pointer into a string before descending further.
+func childPointer(node *yaml.Node, pointer []string, i int, sequence bool) []string {
+	if sequence {
+		return append(pointer, strconv.Itoa(i))
+	}
+	if i%2 == 1 && node.Content[i-1] != nil {
+		return append(pointer, strings.ReplaceAll(strings.ReplaceAll(node.Content[i-1].Value, "~", "~0"), "/", "~1"))
+	}
+	return pointer
+}
+
+func (index *SpecIndex) walkChildExtractRefs(node, parent *yaml.Node, pointer []string, state *extractRefsState, walk *extractRefsTraversal) []*Reference {
 	if underOpenAPIExamplePayloadPath(state.seenPath) {
 		return nil
 	}
@@ -109,7 +128,7 @@ func (index *SpecIndex) walkChildExtractRefs(node, parent *yaml.Node, state *ext
 			state.polyName = state.prev
 		}
 	}
-	return index.extractRefs(state.ctx, node, parent, state.seenPath, state.level, state.poly, state.polyName, walk)
+	return index.extractRefs(state.ctx, node, parent, state.seenPath, pointer, state.level, state.poly, state.polyName, walk)
 }
 
 func isDirectOpenAPIExampleRefNode(node *yaml.Node) bool {
@@ -151,7 +170,11 @@ func (index *SpecIndex) handleExtractRefsKey(
 	}
 
 	if keyNode.Value == "$id" {
-		index.registerSchemaIDAt(node, keyIndex, state.seenPath, state.parentBaseURI)
+		index.registerSchemaIDAt(node, keyIndex, state.seenPath, state.pointer, state.parentBaseURI)
+	}
+
+	if keyNode.Value == "$anchor" {
+		index.registerSchemaAnchorAt(node, keyIndex, state.pointer, state.scope)
 	}
 
 	if keyNode.Value != "$ref" && keyNode.Value != "$id" && keyNode.Value != "" {

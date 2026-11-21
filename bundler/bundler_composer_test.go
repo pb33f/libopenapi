@@ -3196,3 +3196,112 @@ func TestBuildSchema_UnresolvedReferenceReturnsError(t *testing.T) {
 	require.ErrorContains(t, err, "#/missing")
 	require.Nil(t, schema)
 }
+
+// TestBundleBytesComposed_AnchorRefsIntoPrefixItems checks that plain-name $anchor refs
+// into a tuple are rewritten to pointers at each prefixItems element, not at the array.
+func TestBundleBytesComposed_AnchorRefsIntoPrefixItems(t *testing.T) {
+	spec := []byte(`openapi: 3.1.0
+info:
+  title: t
+  version: '1'
+paths: {}
+components:
+  schemas:
+    Tuple:
+      type: array
+      prefixItems:
+        - $anchor: first
+          type: boolean
+        - $anchor: second
+          type: number
+    T:
+      type: object
+      properties:
+        first:
+          $ref: '#first'
+        second:
+          $ref: '#second'
+`)
+
+	schemaAt := func(t *testing.T, bundled []byte, prop string) map[string]any {
+		t.Helper()
+		var doc map[string]any
+		require.NoError(t, yaml.Unmarshal(bundled, &doc))
+		schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
+		props := schemas["T"].(map[string]any)["properties"].(map[string]any)
+		return props[prop].(map[string]any)
+	}
+
+	composed, err := BundleBytesComposed(spec, &datamodel.DocumentConfiguration{}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "#/components/schemas/Tuple/prefixItems/0", schemaAt(t, composed, "first")["$ref"])
+	assert.Equal(t, "#/components/schemas/Tuple/prefixItems/1", schemaAt(t, composed, "second")["$ref"])
+
+	inlined, err := BundleBytes(spec, &datamodel.DocumentConfiguration{})
+	require.NoError(t, err)
+	assert.Equal(t, "boolean", schemaAt(t, inlined, "first")["type"])
+	assert.Equal(t, "number", schemaAt(t, inlined, "second")["type"])
+}
+
+// TestBundleBytesComposed_AnchorRefInExternalFile checks that a plain-name $anchor ref inside
+// an external file lifts that file's anchored schema, rather than leaving a ref to the file.
+func TestBundleBytesComposed_AnchorRefInExternalFile(t *testing.T) {
+	root := `openapi: 3.1.0
+info:
+  title: t
+  version: '1'
+paths: {}
+components:
+  schemas:
+    RootName:
+      $anchor: name
+      type: integer
+    Pet:
+      $ref: 'pet.yaml#/components/schemas/Pet'
+    Own:
+      type: object
+      properties:
+        id:
+          $ref: '#name'
+`
+	pet := `components:
+  schemas:
+    Name:
+      $anchor: name
+      type: string
+    Pet:
+      type: object
+      properties:
+        name:
+          $ref: '#name'
+`
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "root.yaml"), []byte(root), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "pet.yaml"), []byte(pet), 0o644))
+
+	out, err := BundleBytesComposed([]byte(root), &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &doc))
+	schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
+	component := func(ref any) map[string]any {
+		t.Helper()
+		pointer, ok := ref.(string)
+		require.True(t, ok)
+		require.True(t, strings.HasPrefix(pointer, "#/components/schemas/"), pointer)
+		found, ok := schemas[strings.TrimPrefix(pointer, "#/components/schemas/")].(map[string]any)
+		require.True(t, ok, pointer)
+		return found
+	}
+
+	ownID := schemas["Own"].(map[string]any)["properties"].(map[string]any)["id"].(map[string]any)
+	assert.Equal(t, "integer", component(ownID["$ref"])["type"])
+
+	lifted := component(schemas["Pet"].(map[string]any)["$ref"])
+	name := lifted["properties"].(map[string]any)["name"].(map[string]any)
+	assert.Equal(t, "string", component(name["$ref"])["type"])
+}

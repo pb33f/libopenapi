@@ -18,7 +18,7 @@ func TestExtractRefsStopsAtAliasLimit(t *testing.T) {
 		ancestry: make(map[*yaml.Node]struct{}),
 		nodes:    1000, aliasNodes: 1000, aliasDepth: 1,
 	}
-	require.Nil(t, idx.extractRefs(context.Background(), root.Content[0], &root, []string{"x-shared"}, 0, false, "", walk))
+	require.Nil(t, idx.extractRefs(context.Background(), root.Content[0], &root, []string{"x-shared"}, []string{"x-shared"}, 0, false, "", walk))
 	require.True(t, walk.stopped)
 	require.Len(t, idx.GetReferenceIndexErrors(), 1)
 	err := idx.GetReferenceIndexErrors()[0].(*ResolvingError)
@@ -26,7 +26,7 @@ func TestExtractRefsStopsAtAliasLimit(t *testing.T) {
 	require.Same(t, root.Content[0], err.Node)
 	require.Equal(t, "$.x-shared", err.Path)
 	// Once stopped, later siblings do not continue work or add duplicate errors.
-	require.Nil(t, idx.extractRefs(context.Background(), root.Content[0], &root, nil, 0, false, "", walk))
+	require.Nil(t, idx.extractRefs(context.Background(), root.Content[0], &root, nil, nil, 0, false, "", walk))
 	require.Len(t, idx.GetReferenceIndexErrors(), 1)
 	require.Equal(t, 1001, walk.nodes)
 }
@@ -44,7 +44,7 @@ func TestExtractRefsMergeCycleWithoutAliasInWalk(t *testing.T) {
 	require.NoError(t, yaml.Unmarshal([]byte("x: &x {b: {<<: *x}}\n"), &root))
 	idx := NewSpecIndex(nil)
 	walk := &extractRefsTraversal{}
-	idx.extractRefs(context.Background(), &root, nil, nil, 0, false, "", walk)
+	idx.extractRefs(context.Background(), &root, nil, nil, nil, 0, false, "", walk)
 	require.False(t, walk.stopped)
 	require.Empty(t, idx.GetReferenceIndexErrors())
 	require.Empty(t, walk.ancestry)
@@ -62,7 +62,7 @@ components:
 `), &root))
 	idx := NewSpecIndex(nil)
 	walk := &extractRefsTraversal{}
-	refs := idx.extractRefs(context.Background(), &root, nil, nil, 0, false, "", walk)
+	refs := idx.extractRefs(context.Background(), &root, nil, nil, nil, 0, false, "", walk)
 	require.Len(t, refs, 1)
 	require.Nil(t, walk.ancestry)
 	require.Zero(t, walk.aliasNodes)
@@ -81,7 +81,7 @@ target:
 	t.Run("only inherited descendants", func(t *testing.T) {
 		idx := NewSpecIndex(nil)
 		walk := &extractRefsTraversal{ancestry: make(map[*yaml.Node]struct{}), nodes: 1000}
-		idx.extractRefs(context.Background(), target, nil, nil, 0, false, "", walk)
+		idx.extractRefs(context.Background(), target, nil, nil, nil, 0, false, "", walk)
 		require.False(t, walk.stopped)
 		require.Empty(t, idx.GetReferenceIndexErrors())
 		require.Equal(t, 1005, walk.nodes)
@@ -91,7 +91,7 @@ target:
 	t.Run("inherited descendants reach limit", func(t *testing.T) {
 		idx := NewSpecIndex(nil)
 		walk := &extractRefsTraversal{ancestry: make(map[*yaml.Node]struct{}), nodes: 997, aliasNodes: 997}
-		idx.extractRefs(context.Background(), target, nil, []string{"target"}, 0, false, "", walk)
+		idx.extractRefs(context.Background(), target, nil, []string{"target"}, []string{"target"}, 0, false, "", walk)
 		require.True(t, walk.stopped)
 		require.Len(t, idx.GetReferenceIndexErrors(), 1)
 		require.ErrorContains(t, idx.GetReferenceIndexErrors()[0], "document contains excessive aliasing")

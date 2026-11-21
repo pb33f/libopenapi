@@ -66,6 +66,17 @@ func (index *SpecIndex) extractReferenceAt(
 	}
 
 	fullDefinitionPath, componentName := index.resolveReferenceTarget(value)
+	refKey := value
+	if isSchemaAnchorFragment(value) {
+		// "#foo" names an $anchor in the enclosing resource, so the same text can
+		// point at different schemas. key it by the resource.
+		base := index.specAbsolutePath
+		if scope != nil && scope.BaseUri != "" {
+			base = scope.BaseUri
+		}
+		fullDefinitionPath = base + value
+		refKey = fullDefinitionPath
+	}
 	_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(componentName)
 
 	siblingProps, siblingKeys := extractSiblingRefProperties(node)
@@ -95,7 +106,7 @@ func (index *SpecIndex) extractReferenceAt(
 	}
 
 	if poly {
-		index.polymorphicRefs[value] = ref
+		index.polymorphicRefs[refKey] = ref
 		switch pName {
 		case "anyOf":
 			index.polymorphicAnyOfRefs = append(index.polymorphicAnyOfRefs, ref)
@@ -107,7 +118,7 @@ func (index *SpecIndex) extractReferenceAt(
 		return nil
 	}
 
-	if index.allRefs[value] != nil {
+	if index.allRefs[refKey] != nil {
 		return nil
 	}
 
@@ -134,21 +145,20 @@ func (index *SpecIndex) extractReferenceAt(
 	return ref
 }
 
-func (index *SpecIndex) registerSchemaIDAt(node *yaml.Node, keyIndex int, seenPath []string, parentBaseUri string) {
+// registerSchemaIDAt records the $id at node.Content[keyIndex], where pointer is the JSON pointer
+// segments to node and seenPath is the walk's path to it.
+func (index *SpecIndex) registerSchemaIDAt(node *yaml.Node, keyIndex int, seenPath, pointer []string, parentBaseUri string) {
 	if underOpenAPIExamplePath(seenPath) {
 		return
 	}
-	if len(node.Content) <= keyIndex+1 || !utils.IsNodeStringValue(node.Content[keyIndex+1]) {
+	// in a sequence, such as required: [$id, name], "$id" is an entry, not a key.
+	if len(node.Content) <= keyIndex+1 || utils.IsNodeArray(node) || !utils.IsNodeStringValue(node.Content[keyIndex+1]) {
 		return
 	}
 
 	idValue := node.Content[keyIndex+1].Value
 	idNode := node.Content[keyIndex+1]
-
-	definitionPath := "#"
-	if len(seenPath) > 0 {
-		definitionPath = "#/" + strings.Join(seenPath, "/")
-	}
+	definitionPath := schemaPointer(pointer)
 
 	if err := ValidateSchemaId(idValue); err != nil {
 		index.errorLock.Lock()
