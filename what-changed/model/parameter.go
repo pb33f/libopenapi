@@ -242,12 +242,20 @@ func addCommonParameterProperties(left, right low.SharedParameters, changes *[]*
 
 // CompareParametersV3 is an OpenAPI type safe proxy for CompareParameters
 func CompareParametersV3(l, r *v3.Parameter) *ParameterChanges {
-	return CompareParameters(l, r)
+	return documentComparison{}.compareParametersV3(l, r)
+}
+
+func (d documentComparison) compareParametersV3(l, r *v3.Parameter) *ParameterChanges {
+	return d.compareParameters(l, r)
 }
 
 // CompareParameters compares a left and right Swagger or OpenAPI Parameter object for any changes. If found returns
 // a pointer to ParameterChanges. If nothing is found, returns nil.
 func CompareParameters(l, r any) *ParameterChanges {
+	return documentComparison{}.compareParameters(l, r)
+}
+
+func (d documentComparison) compareParameters(l, r any) *ParameterChanges {
 	var changes []*Change
 	var props []*PropertyCheck
 
@@ -334,12 +342,12 @@ func CompareParameters(l, r any) *ParameterChanges {
 
 		// content
 		pc.ContentChanges = CheckMapForChanges(lParam.Content.Value, rParam.Content.Value,
-			&changes, v3.ContentLabel, CompareMediaTypes)
+			&changes, v3.ContentLabel, d.compareMediaTypes)
 	}
 	CheckProperties(props)
 
 	if lSchema != nil && rSchema != nil {
-		pc.SchemaChanges = CompareSchemas(lSchema, rSchema)
+		pc.SchemaChanges = d.compareSchemas(lSchema, rSchema)
 	}
 	if lSchema != nil && rSchema == nil {
 		CreateChange(&changes, ObjectRemoved, v3.SchemaLabel,

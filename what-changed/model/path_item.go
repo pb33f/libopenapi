@@ -181,6 +181,10 @@ func ComparePathItemsV3(l, r *v3.PathItem) *PathItemChanges {
 // ComparePathItems compare a left and right Swagger or OpenAPI PathItem object for changes. If found, returns
 // a pointer to PathItemChanges, or returns nil if nothing is found.
 func ComparePathItems(l, r any) *PathItemChanges {
+	return documentComparison{}.comparePathItems(l, r)
+}
+
+func (d documentComparison) comparePathItems(l, r any) *PathItemChanges {
 	var changes []*Change
 	var props []*PropertyCheck
 
@@ -198,7 +202,7 @@ func ComparePathItems(l, r any) *PathItemChanges {
 			return nil
 		}
 
-		props = append(props, compareSwaggerPathItem(lPath, rPath, &changes, pc)...)
+		props = append(props, d.compareSwaggerPathItem(lPath, rPath, &changes, pc)...)
 	}
 
 	// OpenAPI
@@ -223,7 +227,7 @@ func ComparePathItems(l, r any) *PathItemChanges {
 			lPath.Summary.ValueNode, rPath.Summary.ValueNode,
 			v3.SummaryLabel, &changes, lPath, rPath))
 
-		compareOpenAPIPathItem(lPath, rPath, &changes, pc)
+		d.compareOpenAPIPathItem(lPath, rPath, &changes, pc)
 	}
 
 	CheckProperties(props)
@@ -231,7 +235,7 @@ func ComparePathItems(l, r any) *PathItemChanges {
 	return pc
 }
 
-func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *PathItemChanges) []*PropertyCheck {
+func (d documentComparison) compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *PathItemChanges) []*PropertyCheck {
 	var props []*PropertyCheck
 
 	totalOps := 0
@@ -239,7 +243,7 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 	// get
 	if !lPath.Get.IsEmpty() && !rPath.Get.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Get.Value, rPath.Get.Value, opChan, v3.GetLabel)
+		go d.checkOperation(lPath.Get.Value, rPath.Get.Value, opChan, v3.GetLabel)
 	}
 	if !lPath.Get.IsEmpty() && rPath.Get.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.GetLabel,
@@ -253,7 +257,7 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 	// put
 	if !lPath.Put.IsEmpty() && !rPath.Put.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Put.Value, rPath.Put.Value, opChan, v3.PutLabel)
+		go d.checkOperation(lPath.Put.Value, rPath.Put.Value, opChan, v3.PutLabel)
 	}
 	if !lPath.Put.IsEmpty() && rPath.Put.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.PutLabel,
@@ -267,7 +271,7 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 	// post
 	if !lPath.Post.IsEmpty() && !rPath.Post.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Post.Value, rPath.Post.Value, opChan, v3.PostLabel)
+		go d.checkOperation(lPath.Post.Value, rPath.Post.Value, opChan, v3.PostLabel)
 	}
 	if !lPath.Post.IsEmpty() && rPath.Post.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.PostLabel,
@@ -281,7 +285,7 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 	// delete
 	if !lPath.Delete.IsEmpty() && !rPath.Delete.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Delete.Value, rPath.Delete.Value, opChan, v3.DeleteLabel)
+		go d.checkOperation(lPath.Delete.Value, rPath.Delete.Value, opChan, v3.DeleteLabel)
 	}
 	if !lPath.Delete.IsEmpty() && rPath.Delete.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.DeleteLabel,
@@ -295,7 +299,7 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 	// options
 	if !lPath.Options.IsEmpty() && !rPath.Options.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Options.Value, rPath.Options.Value, opChan, v3.OptionsLabel)
+		go d.checkOperation(lPath.Options.Value, rPath.Options.Value, opChan, v3.OptionsLabel)
 	}
 	if !lPath.Options.IsEmpty() && rPath.Options.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.OptionsLabel,
@@ -309,7 +313,7 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 	// head
 	if !lPath.Head.IsEmpty() && !rPath.Head.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Head.Value, rPath.Head.Value, opChan, v3.HeadLabel)
+		go d.checkOperation(lPath.Head.Value, rPath.Head.Value, opChan, v3.HeadLabel)
 	}
 	if !lPath.Head.IsEmpty() && rPath.Head.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.HeadLabel,
@@ -323,7 +327,7 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 	// patch
 	if !lPath.Patch.IsEmpty() && !rPath.Patch.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Patch.Value, rPath.Patch.Value, opChan, v3.PatchLabel)
+		go d.checkOperation(lPath.Patch.Value, rPath.Patch.Value, opChan, v3.PatchLabel)
 	}
 	if !lPath.Patch.IsEmpty() && rPath.Patch.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.PatchLabel,
@@ -339,7 +343,7 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 		lParams := lPath.Parameters.Value
 		rParams := rPath.Parameters.Value
 		lp, rp := extractV2ParametersIntoInterface(lParams, rParams)
-		checkParameters(lp, rp, changes, pc)
+		d.checkParameters(lp, rp, changes, pc)
 	}
 	if !lPath.Parameters.IsEmpty() && rPath.Parameters.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.ParametersLabel,
@@ -431,7 +435,7 @@ func extractV3ParametersIntoInterface(l, r []low.ValueReference[*v3.Parameter]) 
 	return lp, rp
 }
 
-func checkParameters(lParams, rParams []low.ValueReference[low.SharedParameters], changes *[]*Change, pc *PathItemChanges) {
+func (d documentComparison) checkParameters(lParams, rParams []low.ValueReference[low.SharedParameters], changes *[]*Change, pc *PathItemChanges) {
 	lv := make(map[string]low.SharedParameters, len(lParams))
 	rv := make(map[string]low.SharedParameters, len(rParams))
 	lRefs := make(map[string]*low.ValueReference[low.SharedParameters], len(lParams))
@@ -452,7 +456,7 @@ func checkParameters(lParams, rParams []low.ValueReference[low.SharedParameters]
 	for n := range lv {
 		if _, ok := rv[n]; ok {
 			if !low.AreEqual(lv[n], rv[n]) {
-				ch := CompareParameters(lv[n], rv[n])
+				ch := d.compareParameters(lv[n], rv[n])
 				if ch != nil {
 					// Preserve reference information if this parameter is a $ref
 					PreserveParameterReference(lRefs, rRefs, n, ch)
@@ -476,7 +480,7 @@ func checkParameters(lParams, rParams []low.ValueReference[low.SharedParameters]
 	pc.ParameterChanges = paramChanges
 }
 
-func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *PathItemChanges) {
+func (d documentComparison) compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *PathItemChanges) {
 	// var props []*PropertyCheck
 
 	totalOps := 0
@@ -485,7 +489,7 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	// get
 	if !lPath.Get.IsEmpty() && !rPath.Get.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Get.Value, rPath.Get.Value, opChan, v3.GetLabel)
+		go d.checkOperation(lPath.Get.Value, rPath.Get.Value, opChan, v3.GetLabel)
 	}
 	if !lPath.Get.IsEmpty() && rPath.Get.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.GetLabel,
@@ -499,7 +503,7 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	// put
 	if !lPath.Put.IsEmpty() && !rPath.Put.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Put.Value, rPath.Put.Value, opChan, v3.PutLabel)
+		go d.checkOperation(lPath.Put.Value, rPath.Put.Value, opChan, v3.PutLabel)
 	}
 	if !lPath.Put.IsEmpty() && rPath.Put.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.PutLabel,
@@ -513,7 +517,7 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	// post
 	if !lPath.Post.IsEmpty() && !rPath.Post.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Post.Value, rPath.Post.Value, opChan, v3.PostLabel)
+		go d.checkOperation(lPath.Post.Value, rPath.Post.Value, opChan, v3.PostLabel)
 	}
 	if !lPath.Post.IsEmpty() && rPath.Post.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.PostLabel,
@@ -527,7 +531,7 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	// delete
 	if !lPath.Delete.IsEmpty() && !rPath.Delete.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Delete.Value, rPath.Delete.Value, opChan, v3.DeleteLabel)
+		go d.checkOperation(lPath.Delete.Value, rPath.Delete.Value, opChan, v3.DeleteLabel)
 	}
 	if !lPath.Delete.IsEmpty() && rPath.Delete.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.DeleteLabel,
@@ -541,7 +545,7 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	// options
 	if !lPath.Options.IsEmpty() && !rPath.Options.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Options.Value, rPath.Options.Value, opChan, v3.OptionsLabel)
+		go d.checkOperation(lPath.Options.Value, rPath.Options.Value, opChan, v3.OptionsLabel)
 	}
 	if !lPath.Options.IsEmpty() && rPath.Options.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.OptionsLabel,
@@ -555,7 +559,7 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	// head
 	if !lPath.Head.IsEmpty() && !rPath.Head.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Head.Value, rPath.Head.Value, opChan, v3.HeadLabel)
+		go d.checkOperation(lPath.Head.Value, rPath.Head.Value, opChan, v3.HeadLabel)
 	}
 	if !lPath.Head.IsEmpty() && rPath.Head.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.HeadLabel,
@@ -569,7 +573,7 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	// patch
 	if !lPath.Patch.IsEmpty() && !rPath.Patch.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Patch.Value, rPath.Patch.Value, opChan, v3.PatchLabel)
+		go d.checkOperation(lPath.Patch.Value, rPath.Patch.Value, opChan, v3.PatchLabel)
 	}
 	if !lPath.Patch.IsEmpty() && rPath.Patch.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.PatchLabel,
@@ -583,7 +587,7 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	// trace
 	if !lPath.Trace.IsEmpty() && !rPath.Trace.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Trace.Value, rPath.Trace.Value, opChan, v3.TraceLabel)
+		go d.checkOperation(lPath.Trace.Value, rPath.Trace.Value, opChan, v3.TraceLabel)
 	}
 	if !lPath.Trace.IsEmpty() && rPath.Trace.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.TraceLabel,
@@ -597,7 +601,7 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	// query
 	if !lPath.Query.IsEmpty() && !rPath.Query.IsEmpty() {
 		totalOps++
-		go checkOperation(lPath.Query.Value, rPath.Query.Value, opChan, v3.QueryLabel)
+		go d.checkOperation(lPath.Query.Value, rPath.Query.Value, opChan, v3.QueryLabel)
 	}
 	if !lPath.Query.IsEmpty() && rPath.Query.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.QueryLabel,
@@ -636,7 +640,7 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 					found = true
 					// compare the two operations
 					totalOps++
-					go checkOperation(lPath.AdditionalOperations.Value.GetOrZero(lKeys[j]).Value,
+					go d.checkOperation(lPath.AdditionalOperations.Value.GetOrZero(lKeys[j]).Value,
 						rPath.AdditionalOperations.Value.GetOrZero(rKeys[j]).Value, opChan, lKeys[i].Value)
 					break
 				}
@@ -676,7 +680,7 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 		lParams := lPath.Parameters.Value
 		rParams := rPath.Parameters.Value
 		lp, rp := extractV3ParametersIntoInterface(lParams, rParams)
-		checkParameters(lp, rp, changes, pc)
+		d.checkParameters(lp, rp, changes, pc)
 	}
 
 	if !lPath.Parameters.IsEmpty() && rPath.Parameters.IsEmpty() {
@@ -738,9 +742,9 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	pc.ExtensionChanges = CompareExtensions(lPath.Extensions, rPath.Extensions)
 }
 
-func checkOperation(l, r any, done chan opCheck, method string) {
+func (d documentComparison) checkOperation(l, r any, done chan opCheck, method string) {
 	done <- opCheck{
 		label:   method,
-		changes: CompareOperations(l, r),
+		changes: d.compareOperations(l, r),
 	}
 }

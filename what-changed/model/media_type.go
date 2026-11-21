@@ -107,6 +107,10 @@ func (m *MediaTypeChanges) TotalBreakingChanges() int {
 // CompareMediaTypes compares a left and a right MediaType object for any changes. If found, a pointer to a
 // MediaTypeChanges instance is returned; otherwise nothing is returned.
 func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
+	return documentComparison{}.compareMediaTypes(l, r)
+}
+
+func (d documentComparison) compareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 	var props []*PropertyCheck
 	var changes []*Change
 
@@ -129,7 +133,7 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 
 	// schema
 	if !l.Schema.IsEmpty() && !r.Schema.IsEmpty() {
-		mc.SchemaChanges = CompareSchemas(l.Schema.Value, r.Schema.Value)
+		mc.SchemaChanges = d.compareSchemas(l.Schema.Value, r.Schema.Value)
 	}
 	if !l.Schema.IsEmpty() && r.Schema.IsEmpty() {
 		CreateChange(&changes, ObjectRemoved, v3.SchemaLabel, l.Schema.ValueNode,
@@ -145,13 +149,13 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 		&changes, v3.ExamplesLabel, CompMediaType, PropExamples)
 
 	// encoding, prefixEncoding, itemEncoding
-	mc.EncodingChanges, mc.PrefixEncodingChanges, mc.ItemEncodingChanges = compareEncodingFields(
+	mc.EncodingChanges, mc.PrefixEncodingChanges, mc.ItemEncodingChanges = d.compareEncodingFields(
 		CompMediaType, l.Encoding.Value, r.Encoding.Value, l.PrefixEncoding, r.PrefixEncoding,
 		l.ItemEncoding, r.ItemEncoding, &changes, false)
 
 	// itemSchema
 	if !l.ItemSchema.IsEmpty() && !r.ItemSchema.IsEmpty() {
-		mc.ItemSchemaChanges = CompareSchemas(l.ItemSchema.Value, r.ItemSchema.Value)
+		mc.ItemSchemaChanges = d.compareSchemas(l.ItemSchema.Value, r.ItemSchema.Value)
 	}
 	if !l.ItemSchema.IsEmpty() && r.ItemSchema.IsEmpty() {
 		CreateChange(&changes, ObjectRemoved, v3.ItemSchemaLabel, l.ItemSchema.ValueNode,

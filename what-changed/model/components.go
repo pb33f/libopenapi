@@ -46,6 +46,10 @@ type ComponentsChanges struct {
 // CompareComponents will compare OpenAPI components for any changes. Accepts Swagger Definition objects
 // like ParameterDefinitions or Definitions etc.
 func CompareComponents(l, r any) *ComponentsChanges {
+	return documentComparison{}.compareComponents(l, r)
+}
+
+func (d documentComparison) compareComponents(l, r any) *ComponentsChanges {
 	var changes []*Change
 
 	cc := new(ComponentsChanges)
@@ -92,7 +96,7 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		if rDef != nil {
 			b = rDef.Schemas
 		}
-		cc.SchemaChanges = CheckMapForChanges(a, b, &changes, v2.DefinitionsLabel, CompareSchemas)
+		cc.SchemaChanges = CheckMapForChanges(a, b, &changes, v2.DefinitionsLabel, d.compareSchemas)
 	}
 
 	// Swagger Security Definitions
@@ -129,19 +133,19 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		if !lComponents.Schemas.IsEmpty() || !rComponents.Schemas.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.Schemas.Value, rComponents.Schemas.Value,
-				&changes, v3.SchemasLabel, CompareSchemas, doneChan)
+				&changes, v3.SchemasLabel, d.compareSchemas, doneChan)
 		}
 
 		if !lComponents.Responses.IsEmpty() || !rComponents.Responses.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.Responses.Value, rComponents.Responses.Value,
-				&changes, v3.ResponsesLabel, CompareResponseV3, doneChan)
+				&changes, v3.ResponsesLabel, d.compareResponseV3, doneChan)
 		}
 
 		if !lComponents.Parameters.IsEmpty() || !rComponents.Parameters.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.Parameters.Value, rComponents.Parameters.Value,
-				&changes, v3.ParametersLabel, CompareParametersV3, doneChan)
+				&changes, v3.ParametersLabel, d.compareParametersV3, doneChan)
 		}
 
 		if !lComponents.Examples.IsEmpty() || !rComponents.Examples.IsEmpty() {
@@ -153,13 +157,13 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		if !lComponents.RequestBodies.IsEmpty() || !rComponents.RequestBodies.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.RequestBodies.Value, rComponents.RequestBodies.Value,
-				&changes, v3.RequestBodiesLabel, CompareRequestBodies, doneChan)
+				&changes, v3.RequestBodiesLabel, d.compareRequestBodies, doneChan)
 		}
 
 		if !lComponents.Headers.IsEmpty() || !rComponents.Headers.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.Headers.Value, rComponents.Headers.Value,
-				&changes, v3.HeadersLabel, CompareHeadersV3, doneChan)
+				&changes, v3.HeadersLabel, d.compareHeadersV3, doneChan)
 		}
 
 		if !lComponents.SecuritySchemes.IsEmpty() || !rComponents.SecuritySchemes.IsEmpty() {
@@ -183,7 +187,7 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		if !lComponents.MediaTypes.IsEmpty() || !rComponents.MediaTypes.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.MediaTypes.Value, rComponents.MediaTypes.Value,
-				&changes, v3.MediaTypesLabel, CompareMediaTypes, doneChan)
+				&changes, v3.MediaTypesLabel, d.compareMediaTypes, doneChan)
 		}
 
 		cc.ExtensionChanges = CompareExtensions(lComponents.Extensions, rComponents.Extensions)

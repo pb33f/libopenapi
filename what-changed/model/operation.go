@@ -159,7 +159,7 @@ func addSharedOperationProperties(left, right low.SharedOperations, changes *[]*
 }
 
 // check shared objects
-func compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change, opChanges *OperationChanges) {
+func (d documentComparison) compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change, opChanges *OperationChanges) {
 	// external docs
 	if !l.GetExternalDocs().IsEmpty() && !r.GetExternalDocs().IsEmpty() {
 		lExtDoc := l.GetExternalDocs().Value.(*base.ExternalDoc)
@@ -181,7 +181,7 @@ func compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change
 
 	// responses
 	if !l.GetResponses().IsEmpty() && !r.GetResponses().IsEmpty() {
-		opChanges.ResponsesChanges = CompareResponses(l.GetResponses().Value, r.GetResponses().Value)
+		opChanges.ResponsesChanges = d.compareResponses(l.GetResponses().Value, r.GetResponses().Value)
 	}
 	if l.GetResponses().IsEmpty() && !r.GetResponses().IsEmpty() {
 		CreateChange(changes, PropertyAdded, v3.ResponsesLabel,
@@ -198,6 +198,10 @@ func compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change
 // CompareOperations compares a left and right Swagger or OpenAPI Operation object. If changes are found, returns
 // a pointer to an OperationChanges instance, or nil if nothing is found.
 func CompareOperations(l, r any) *OperationChanges {
+	return documentComparison{}.compareOperations(l, r)
+}
+
+func (d documentComparison) compareOperations(l, r any) *OperationChanges {
 	var changes []*Change
 	var props []*PropertyCheck
 
@@ -217,7 +221,7 @@ func CompareOperations(l, r any) *OperationChanges {
 
 		props = append(props, addSharedOperationProperties(lOperation, rOperation, &changes)...)
 
-		compareSharedOperationObjects(lOperation, rOperation, &changes, oc)
+		d.compareSharedOperationObjects(lOperation, rOperation, &changes, oc)
 
 		// parameters
 		lParamsUntyped := lOperation.GetParameters()
@@ -246,7 +250,7 @@ func CompareOperations(l, r any) *OperationChanges {
 			for n := range lv {
 				if _, ok := rv[n]; ok {
 					if !low.AreEqual(lv[n], rv[n]) {
-						ch := CompareParameters(lv[n], rv[n])
+						ch := d.compareParameters(lv[n], rv[n])
 						if ch != nil {
 							// Preserve reference information if this parameter is a $ref
 							PreserveParameterReference(lRefs, rRefs, n, ch)
@@ -326,7 +330,7 @@ func CompareOperations(l, r any) *OperationChanges {
 		}
 
 		props = append(props, addSharedOperationProperties(lOperation, rOperation, &changes)...)
-		compareSharedOperationObjects(lOperation, rOperation, &changes, oc)
+		d.compareSharedOperationObjects(lOperation, rOperation, &changes, oc)
 
 		// parameters
 		lParamsUntyped := lOperation.GetParameters()
@@ -355,7 +359,7 @@ func CompareOperations(l, r any) *OperationChanges {
 			for n := range lv {
 				if _, ok := rv[n]; ok {
 					if !low.AreEqual(lv[n], rv[n]) {
-						ch := CompareParameters(lv[n], rv[n])
+						ch := d.compareParameters(lv[n], rv[n])
 						if ch != nil {
 							// Preserve reference information if this parameter is a $ref
 							PreserveParameterReference(lRefs, rRefs, n, ch)
@@ -415,7 +419,7 @@ func CompareOperations(l, r any) *OperationChanges {
 		// request body
 		if !lOperation.RequestBody.IsEmpty() && !rOperation.RequestBody.IsEmpty() {
 			if !low.AreEqual(lOperation.RequestBody.Value, rOperation.RequestBody.Value) {
-				oc.RequestBodyChanges = CompareRequestBodies(lOperation.RequestBody.Value, rOperation.RequestBody.Value)
+				oc.RequestBodyChanges = d.compareRequestBodies(lOperation.RequestBody.Value, rOperation.RequestBody.Value)
 			}
 		}
 		if !lOperation.RequestBody.IsEmpty() && rOperation.RequestBody.IsEmpty() {

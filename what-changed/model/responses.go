@@ -75,6 +75,10 @@ func (r *ResponsesChanges) TotalBreakingChanges() int {
 // CompareResponses compares a left and right Swagger or OpenAPI Responses object for any changes. If found
 // returns a pointer to ResponsesChanges, or returns nil.
 func CompareResponses(l, r any) *ResponsesChanges {
+	return documentComparison{}.compareResponses(l, r)
+}
+
+func (d documentComparison) compareResponses(l, r any) *ResponsesChanges {
 	var changes []*Change
 
 	rc := new(ResponsesChanges)
@@ -92,7 +96,7 @@ func CompareResponses(l, r any) *ResponsesChanges {
 		}
 
 		if !lResponses.Default.IsEmpty() && !rResponses.Default.IsEmpty() {
-			rc.DefaultChanges = CompareResponse(lResponses.Default.Value, rResponses.Default.Value)
+			rc.DefaultChanges = d.compareResponse(lResponses.Default.Value, rResponses.Default.Value)
 		}
 		if !lResponses.Default.IsEmpty() && rResponses.Default.IsEmpty() {
 			CreateChange(&changes, ObjectRemoved, v3.DefaultLabel,
@@ -124,7 +128,7 @@ func CompareResponses(l, r any) *ResponsesChanges {
 		}
 
 		if !lResponses.Default.IsEmpty() && !rResponses.Default.IsEmpty() {
-			rc.DefaultChanges = CompareResponse(lResponses.Default.Value, rResponses.Default.Value)
+			rc.DefaultChanges = d.compareResponse(lResponses.Default.Value, rResponses.Default.Value)
 		}
 		if !lResponses.Default.IsEmpty() && rResponses.Default.IsEmpty() {
 			CreateChange(&changes, ObjectRemoved, v3.DefaultLabel,
@@ -138,7 +142,7 @@ func CompareResponses(l, r any) *ResponsesChanges {
 		}
 
 		rc.ResponseChanges = CheckMapForChangesWithRules(lResponses.Codes, rResponses.Codes,
-			&changes, v3.CodesLabel, CompareResponseV3, CompResponses, PropCodes)
+			&changes, v3.CodesLabel, d.compareResponseV3, CompResponses, PropCodes)
 
 		rc.ExtensionChanges = CompareExtensions(lResponses.Extensions, rResponses.Extensions)
 
