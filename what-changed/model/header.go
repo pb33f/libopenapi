@@ -221,12 +221,20 @@ func CompareHeadersV2(l, r *v2.Header) *HeaderChanges {
 // CompareHeadersV3 is an OpenAPI 3+ compatible, typed signature used for other generic functions. It simply
 // wraps CompareHeaders and provides nothing other that a typed interface.
 func CompareHeadersV3(l, r *v3.Header) *HeaderChanges {
-	return CompareHeaders(l, r)
+	return documentComparison{}.compareHeadersV3(l, r)
+}
+
+func (d documentComparison) compareHeadersV3(l, r *v3.Header) *HeaderChanges {
+	return d.compareHeaders(l, r)
 }
 
 // CompareHeaders will compare left and right Header objects (any version of Swagger or OpenAPI) and return
 // a pointer to HeaderChanges with anything that has changed, or nil if nothing changed.
 func CompareHeaders(l, r any) *HeaderChanges {
+	return documentComparison{}.compareHeaders(l, r)
+}
+
+func (d documentComparison) compareHeaders(l, r any) *HeaderChanges {
 	var changes []*Change
 	var props []*PropertyCheck
 	hc := new(HeaderChanges)
@@ -281,7 +289,7 @@ func CompareHeaders(l, r any) *HeaderChanges {
 
 		// header
 		if !lHeader.Schema.IsEmpty() || !rHeader.Schema.IsEmpty() {
-			hc.SchemaChanges = CompareSchemas(lHeader.Schema.Value, rHeader.Schema.Value)
+			hc.SchemaChanges = d.compareSchemas(lHeader.Schema.Value, rHeader.Schema.Value)
 		}
 
 		// examples
@@ -290,7 +298,7 @@ func CompareHeaders(l, r any) *HeaderChanges {
 
 		// content
 		hc.ContentChanges = CheckMapForChanges(lHeader.Content.Value, rHeader.Content.Value,
-			&changes, v3.ContentLabel, CompareMediaTypes)
+			&changes, v3.ContentLabel, d.compareMediaTypes)
 
 		hc.ExtensionChanges = CompareExtensions(lHeader.Extensions, rHeader.Extensions)
 

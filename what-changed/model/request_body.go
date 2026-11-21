@@ -58,6 +58,10 @@ func (rb *RequestBodyChanges) TotalBreakingChanges() int {
 // CompareRequestBodies compares a left and right OpenAPI RequestBody object for changes. If found returns a pointer
 // to a RequestBodyChanges instance. Returns nil if nothing was found.
 func CompareRequestBodies(l, r *v3.RequestBody) *RequestBodyChanges {
+	return documentComparison{}.compareRequestBodies(l, r)
+}
+
+func (d documentComparison) compareRequestBodies(l, r *v3.RequestBody) *RequestBodyChanges {
 	if low.AreEqual(l, r) {
 		return nil
 	}
@@ -78,7 +82,7 @@ func CompareRequestBodies(l, r *v3.RequestBody) *RequestBodyChanges {
 
 	rbc := new(RequestBodyChanges)
 	rbc.ContentChanges = CheckMapForChanges(l.Content.Value, r.Content.Value,
-		&changes, v3.ContentLabel, CompareMediaTypes)
+		&changes, v3.ContentLabel, d.compareMediaTypes)
 	rbc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
 	rbc.PropertyChanges = NewPropertyChanges(changes)
 	return rbc

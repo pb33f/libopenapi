@@ -91,6 +91,10 @@ func (e *EncodingChanges) TotalBreakingChanges() int {
 // CompareEncoding returns a pointer to *EncodingChanges that contain all changes made between a left and right
 // set of Encoding objects.
 func CompareEncoding(l, r *v3.Encoding) *EncodingChanges {
+	return documentComparison{}.compareEncoding(l, r)
+}
+
+func (d documentComparison) compareEncoding(l, r *v3.Encoding) *EncodingChanges {
 	var changes []*Change
 	props := make([]*PropertyCheck, 0, 4)
 
@@ -114,10 +118,10 @@ func CompareEncoding(l, r *v3.Encoding) *EncodingChanges {
 	ec := new(EncodingChanges)
 
 	// headers
-	ec.HeaderChanges = CheckMapForChanges(l.Headers.Value, r.Headers.Value, &changes, v3.HeadersLabel, CompareHeadersV3)
+	ec.HeaderChanges = CheckMapForChanges(l.Headers.Value, r.Headers.Value, &changes, v3.HeadersLabel, d.compareHeadersV3)
 
 	// nested encoding, prefixEncoding, itemEncoding (OpenAPI 3.2+)
-	ec.EncodingChanges, ec.PrefixEncodingChanges, ec.ItemEncodingChanges = compareEncodingFields(
+	ec.EncodingChanges, ec.PrefixEncodingChanges, ec.ItemEncodingChanges = d.compareEncodingFields(
 		CompEncoding, l.Encoding.Value, r.Encoding.Value, l.PrefixEncoding, r.PrefixEncoding,
 		l.ItemEncoding, r.ItemEncoding, &changes, true)
 	ec.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
@@ -132,7 +136,7 @@ func CompareEncoding(l, r *v3.Encoding) *EncodingChanges {
 // Object and the Encoding Object. prefixEncoding entries are compared by position, because each one applies to the
 // part at its position. The encoding map uses the component's breaking rules only when withEncodingRule is set.
 // The Media Type Object's encoding map predates the rules system and keeps its hardcoded behavior.
-func compareEncodingFields(component string,
+func (d documentComparison) compareEncodingFields(component string,
 	lEnc, rEnc *orderedmap.Map[low.KeyReference[string], low.ValueReference[*v3.Encoding]],
 	lPrefix, rPrefix low.NodeReference[[]low.ValueReference[*v3.Encoding]],
 	lItem, rItem low.NodeReference[*v3.Encoding],
@@ -140,10 +144,10 @@ func compareEncodingFields(component string,
 ) (map[string]*EncodingChanges, []*EncodingChanges, *EncodingChanges) {
 	var encChanges map[string]*EncodingChanges
 	if withEncodingRule {
-		encChanges = CheckMapForChangesWithRules(lEnc, rEnc, changes, v3.EncodingLabel, CompareEncoding,
+		encChanges = CheckMapForChangesWithRules(lEnc, rEnc, changes, v3.EncodingLabel, d.compareEncoding,
 			component, PropEncoding)
 	} else {
-		encChanges = CheckMapForChanges(lEnc, rEnc, changes, v3.EncodingLabel, CompareEncoding)
+		encChanges = CheckMapForChanges(lEnc, rEnc, changes, v3.EncodingLabel, d.compareEncoding)
 	}
 
 	// each changed, added or removed part gets its own entry, carrying its array position in Index.
@@ -163,7 +167,7 @@ func compareEncodingFields(component string,
 				BreakingAdded(component, PropPrefixEncoding), nil, rp[i].Value)
 			ch = &EncodingChanges{PropertyChanges: NewPropertyChanges(partChanges)}
 		default:
-			ch = CompareEncoding(lp[i].Value, rp[i].Value)
+			ch = d.compareEncoding(lp[i].Value, rp[i].Value)
 		}
 		if ch != nil {
 			ch.Index = &i
@@ -184,7 +188,7 @@ func compareEncodingFields(component string,
 	var itemChanges *EncodingChanges
 	switch {
 	case !lItem.IsEmpty() && !rItem.IsEmpty():
-		itemChanges = CompareEncoding(lItem.Value, rItem.Value)
+		itemChanges = d.compareEncoding(lItem.Value, rItem.Value)
 	case !lItem.IsEmpty():
 		CreateChange(changes, ObjectRemoved, v3.ItemEncodingLabel, lItem.ValueNode, nil,
 			BreakingRemoved(component, PropItemEncoding), lItem.Value, nil)

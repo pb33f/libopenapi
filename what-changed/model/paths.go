@@ -70,6 +70,10 @@ func (p *PathsChanges) TotalBreakingChanges() int {
 // ComparePaths compares a left and right Swagger or OpenAPI Paths Object for changes. If found, returns a pointer
 // to a PathsChanges instance. Returns nil if nothing is found.
 func ComparePaths(l, r any) *PathsChanges {
+	return documentComparison{}.comparePaths(l, r)
+}
+
+func (d documentComparison) comparePaths(l, r any) *PathsChanges {
 	var changes []*Change
 
 	pc := new(PathsChanges)
@@ -101,7 +105,7 @@ func ComparePaths(l, r any) *PathsChanges {
 		compare := func(path string, _ map[string]*PathItemChanges, l, r *v2.PathItem, doneChan chan struct{}) {
 			if !low.AreEqual(l, r) {
 				mLock.Lock()
-				pathChanges[path] = ComparePathItems(l, r)
+				pathChanges[path] = d.comparePathItems(l, r)
 				mLock.Unlock()
 			}
 			doneChan <- struct{}{}
@@ -175,7 +179,7 @@ func ComparePaths(l, r any) *PathsChanges {
 		compare := func(path string, _ map[string]*PathItemChanges, l, r *v3.PathItem, doneChan chan struct{}) {
 			if !low.AreEqual(l, r) {
 				mLock.Lock()
-				pathChanges[path] = ComparePathItems(l, r)
+				pathChanges[path] = d.comparePathItems(l, r)
 				mLock.Unlock()
 			}
 			doneChan <- struct{}{}

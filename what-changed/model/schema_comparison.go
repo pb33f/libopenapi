@@ -12,6 +12,7 @@ import (
 // Each report owns its visited pairs. Candidate scores are shared within one
 // public comparison, but scoring never marks a pair visited in the report.
 type schemaComparison struct {
+	documentComparison
 	visited   map[schemaComparisonPair]struct{}
 	inherited map[schemaComparisonPair]struct{}
 	previous  map[schemaComparisonPair]struct{}
@@ -47,7 +48,7 @@ func (c *schemaComparison) branch(count int, task func(int, *schemaComparison)) 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			fork := schemaComparison{inherited: c.visited, scores: c.scores, serial: true}
+			fork := schemaComparison{documentComparison: c.documentComparison, inherited: c.visited, scores: c.scores, serial: true}
 			for i := worker; i < count; i += workers {
 				fork.visited = nil
 				task(i, &fork)
@@ -173,7 +174,7 @@ func (c *schemaComparison) score(left, right *base.SchemaProxy) schemaScore {
 	}
 	// Each candidate must see a complete comparison, independent of earlier
 	// candidates and report placement. Keep only its counts, not its report nodes.
-	candidate := schemaComparison{scores: c.scores, scoring: c.scoring, serial: true}
+	candidate := schemaComparison{documentComparison: c.documentComparison, scores: c.scores, scoring: c.scoring, serial: true}
 	var score schemaScore
 	if changes := candidate.compareSchemas(left, right); changes != nil {
 		score = schemaScore{changes.TotalChanges(), changes.TotalBreakingChanges()}

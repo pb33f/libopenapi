@@ -113,12 +113,20 @@ func CompareResponseV2(l, r *v2.Response) *ResponseChanges {
 
 // CompareResponseV3 is an OpenAPI type safe proxy for CompareResponse
 func CompareResponseV3(l, r *v3.Response) *ResponseChanges {
-	return CompareResponse(l, r)
+	return documentComparison{}.compareResponseV3(l, r)
+}
+
+func (d documentComparison) compareResponseV3(l, r *v3.Response) *ResponseChanges {
+	return d.compareResponse(l, r)
 }
 
 // CompareResponse compares a left and right Swagger or OpenAPI Response object. If anything is found
 // a pointer to a ResponseChanges is returned, otherwise it returns nil.
 func CompareResponse(l, r any) *ResponseChanges {
+	return documentComparison{}.compareResponse(l, r)
+}
+
+func (d documentComparison) compareResponse(l, r any) *ResponseChanges {
 	var changes []*Change
 	var props []*PropertyCheck
 
@@ -139,7 +147,7 @@ func CompareResponse(l, r any) *ResponseChanges {
 			lResponse.Description.Value, rResponse.Description.Value, &changes, v3.DescriptionLabel, false, CompResponse, PropDescription)
 
 		if !lResponse.Schema.IsEmpty() && !rResponse.Schema.IsEmpty() {
-			rc.SchemaChanges = CompareSchemas(lResponse.Schema.Value, rResponse.Schema.Value)
+			rc.SchemaChanges = d.compareSchemas(lResponse.Schema.Value, rResponse.Schema.Value)
 		}
 		if !lResponse.Schema.IsEmpty() && rResponse.Schema.IsEmpty() {
 			CreateChange(&changes, ObjectRemoved, v3.SchemaLabel,
@@ -193,10 +201,10 @@ func CompareResponse(l, r any) *ResponseChanges {
 			BreakingModified(CompResponse, PropDescription), CompResponse, PropDescription)
 
 		rc.HeadersChanges = CheckMapForChanges(lResponse.Headers.Value, rResponse.Headers.Value,
-			&changes, v3.HeadersLabel, CompareHeadersV3)
+			&changes, v3.HeadersLabel, d.compareHeadersV3)
 
 		rc.ContentChanges = CheckMapForChanges(lResponse.Content.Value, rResponse.Content.Value,
-			&changes, v3.ContentLabel, CompareMediaTypes)
+			&changes, v3.ContentLabel, d.compareMediaTypes)
 
 		rc.LinkChanges = CheckMapForChanges(lResponse.Links.Value, rResponse.Links.Value,
 			&changes, v3.LinksLabel, CompareLinks)

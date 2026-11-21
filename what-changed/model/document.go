@@ -144,6 +144,9 @@ func (d *DocumentChanges) TotalBreakingChanges() int {
 
 // CompareDocuments will compare any two OpenAPI documents (either Swagger or OpenAPI) and return a pointer to
 // DocumentChanges that outlines everything that was found to have changed.
+// For OpenAPI 3, exclusive request use can make a removed schema required entry
+// compatible. Exclusive response use can make an added entry compatible. Both
+// documents must establish the direction for the configured rule to be relaxed.
 func CompareDocuments(l, r any) *DocumentChanges {
 	var changes []*Change
 	var props []*PropertyCheck
@@ -234,6 +237,7 @@ func CompareDocuments(l, r any) *DocumentChanges {
 	if reflect.TypeOf(&v3.Document{}) == reflect.TypeOf(l) && reflect.TypeOf(&v3.Document{}) == reflect.TypeOf(r) {
 		lDoc := l.(*v3.Document)
 		rDoc := r.(*v3.Document)
+		d := newDocumentComparison(lDoc.Index, rDoc.Index)
 
 		// version
 		addPropertyCheck(&props, lDoc.Version.ValueNode, rDoc.Version.ValueNode,
@@ -255,7 +259,7 @@ func CompareDocuments(l, r any) *DocumentChanges {
 
 		// paths
 		if !lDoc.Paths.IsEmpty() || !rDoc.Paths.IsEmpty() {
-			dc.PathsChanges = ComparePaths(lDoc.Paths.Value, rDoc.Paths.Value)
+			dc.PathsChanges = d.comparePaths(lDoc.Paths.Value, rDoc.Paths.Value)
 		}
 
 		// external docs
@@ -271,7 +275,7 @@ func CompareDocuments(l, r any) *DocumentChanges {
 
 		// compare components.
 		if !lDoc.Components.IsEmpty() && !rDoc.Components.IsEmpty() {
-			if n := CompareComponents(lDoc.Components.Value, rDoc.Components.Value); n != nil {
+			if n := d.compareComponents(lDoc.Components.Value, rDoc.Components.Value); n != nil {
 				dc.ComponentsChanges = n
 			}
 		}

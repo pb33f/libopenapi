@@ -1166,18 +1166,23 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 			k[rSchema.Required.Value[i].Value] = i
 		}
 	}
+	var addedBreaking func(string) bool
 	for g := range k {
 		if _, ok := j[g]; !ok {
+			if addedBreaking == nil {
+				addedBreaking = c.requiredAdditionRule(lProxy, rProxy, lSchema)
+			}
 			CreateChange(changes, PropertyAdded, v3.RequiredLabel,
-				nil, rSchema.Required.Value[k[g]].GetValueNode(), BreakingAdded(CompSchema, PropRequired), nil,
+				nil, rSchema.Required.Value[k[g]].GetValueNode(), addedBreaking(g), nil,
 				rSchema.Required.Value[k[g]].GetValue)
 			checkLocation((*changes)[len(*changes)-1].Context, rSchema.ParentProxy.Schema())
 		}
 	}
 	for g := range j {
 		if _, ok := k[g]; !ok {
+			breaking := BreakingRemoved(CompSchema, PropRequired) && !c.exclusively(lProxy, rProxy, requestSchema)
 			CreateChange(changes, PropertyRemoved, v3.RequiredLabel,
-				lSchema.Required.Value[j[g]].GetValueNode(), nil, BreakingRemoved(CompSchema, PropRequired), lSchema.Required.Value[j[g]].GetValue,
+				lSchema.Required.Value[j[g]].GetValueNode(), nil, breaking, lSchema.Required.Value[j[g]].GetValue,
 				nil)
 			checkLocation((*changes)[len(*changes)-1].Context, lSchema.ParentProxy.Schema())
 		}
