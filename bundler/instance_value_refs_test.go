@@ -150,6 +150,14 @@ format:
 `},
 		"json schema catalog with an entry named required": {"catalog.json": `{"default": {"type": "object", "properties": {"pet": {"$ref": "pet.yaml"}}},
  "required": {"type": "string"}}`},
+		"schema catalog with an entry named properties": {"catalog.yaml": `properties:
+  type: string
+default:
+  type: object
+  properties:
+    pet:
+      $ref: 'pet.yaml'
+`},
 	} {
 		t.Run(name, func(t *testing.T) {
 			files := map[string]string{"pet.yaml": instanceValuePetSchema}
@@ -613,4 +621,234 @@ properties:
 			assert.Equal(t, []any{map[string]any{"$ref": "pet.yaml#/properties"}}, xMeta["examples"])
 		})
 	}
+}
+
+func TestBundleBytesComposed_DefaultExtensionKeysNotRebased(t *testing.T) {
+	_, parsed := bundleComposedFiles(t, map[string]string{
+		"main.yaml": `openapi: 3.1.0
+info:
+  title: Default holding x- keys
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Owner:
+      $ref: 'schemas/owner.yaml'
+`,
+		"schemas/owner.yaml": `type: object
+x-ext:
+  $ref: 'invoice.yaml'
+default:
+  x-record:
+    $ref: 'invoice.yaml'
+`,
+		"schemas/invoice.yaml": "type: string\n",
+	}, nil)
+
+	owner := composedSchemas(t, parsed)["owner"].(map[string]any)
+	assert.Equal(t, map[string]any{"$ref": "schemas/invoice.yaml"}, owner["x-ext"], "an extension's ref is rebased to the root")
+	assert.Equal(t, map[string]any{"x-record": map[string]any{"$ref": "invoice.yaml"}}, owner["default"], "default is data")
+}
+
+func TestBundleBytesComposed_CatalogFragmentExtensionRebased(t *testing.T) {
+	_, parsed := bundleComposedFiles(t, map[string]string{
+		"main.yaml": `openapi: 3.1.0
+info:
+  title: Catalog entry with an extension
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Owner:
+      $ref: 'schemas/catalog.yaml#/default'
+`,
+		// The entry named properties does not make the catalog a schema, so the selected entry
+		// named default is a schema, not instance data.
+		"schemas/catalog.yaml": `properties:
+  type: string
+default:
+  type: object
+  x-link:
+    $ref: 'other.yaml'
+`,
+		"schemas/other.yaml": "type: string\n",
+	}, nil)
+
+	entry := composedSchemas(t, parsed)["default"].(map[string]any)
+	assert.Equal(t, map[string]any{"$ref": "schemas/other.yaml"}, entry["x-link"])
+}
+
+func TestBundleBytesComposed_ConstOnlySchemaFileKeepsData(t *testing.T) {
+	t.Run("missing target", func(t *testing.T) {
+		_, parsed := bundleComposedFiles(t, map[string]string{
+			"main.yaml": `openapi: 3.1.0
+info:
+  title: Const only schema
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Owner:
+      $ref: 'owner.yaml'
+`,
+			// A schema references the file, so its const is data even with no other schema keyword.
+			"owner.yaml": "const: {$ref: 'missing.yaml'}\n",
+		}, nil)
+
+		owner := composedSchemas(t, parsed)["Owner"].(map[string]any)
+		assert.Equal(t, map[string]any{"$ref": "missing.yaml"}, owner["const"])
+	})
+
+	t.Run("target composed elsewhere", func(t *testing.T) {
+		_, parsed := bundleComposedFiles(t, map[string]string{
+			"main.yaml": `openapi: 3.1.0
+info:
+  title: Const only schema
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Owner:
+      $ref: 'schemas/owner.yaml'
+    Other:
+      $ref: 'schemas/other.yaml'
+`,
+			"schemas/owner.yaml": "const: {$ref: 'other.yaml'}\n",
+			"schemas/other.yaml": "type: string\n",
+		}, nil)
+
+		schemas := composedSchemas(t, parsed)
+		assert.Equal(t, "#/components/schemas/other", schemas["Other"].(map[string]any)["$ref"])
+		assert.Equal(t, map[string]any{"$ref": "other.yaml"}, schemas["Owner"].(map[string]any)["const"])
+	})
+}
+
+// chainedConstOnlySchemaFiles reach a file holding only const through another file, which passes
+// on the schema context it is referenced from.
+var chainedConstOnlySchemaFiles = map[string]map[string]string{
+	"wrapper file": {
+		"main.yaml": `openapi: 3.1.0
+info:
+  title: Chained const only schema
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Owner:
+      $ref: 'wrapper.yaml'
+`,
+		"wrapper.yaml": "$ref: 'owner.yaml'\n",
+		"owner.yaml":   "const: {$ref: 'missing.yaml'}\n",
+	},
+	"catalog wrapper": {
+		"main.yaml": `openapi: 3.1.0
+info:
+  title: Chained const only schema
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Owner:
+      $ref: 'wrapper.yaml#/Owner'
+`,
+		"wrapper.yaml": "Owner:\n  $ref: 'owner.yaml'\n",
+		"owner.yaml":   "const: {$ref: 'missing.yaml'}\n",
+	},
+	"catalog chain": {
+		"main.yaml": `openapi: 3.1.0
+info:
+  title: Chained const only schema
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Owner:
+      $ref: 'wrapper.yaml#/A'
+`,
+		"wrapper.yaml": "A:\n  $ref: '#/B'\nB:\n  $ref: '#/C'\nC:\n  $ref: 'owner.yaml'\n",
+		"owner.yaml":   "const: {$ref: 'missing.yaml'}\n",
+	},
+}
+
+func TestBundleBytes_ChainedConstOnlySchemaFileKeepsData(t *testing.T) {
+	for name, files := range chainedConstOnlySchemaFiles {
+		t.Run(name, func(t *testing.T) {
+			parsed := bundleInlineFiles(t, files, &datamodel.DocumentConfiguration{})
+			owner := composedSchemas(t, parsed)["Owner"].(map[string]any)
+			assert.Equal(t, map[string]any{"$ref": "missing.yaml"}, owner["const"])
+		})
+	}
+}
+
+func TestBundleBytesComposed_ChainedConstOnlySchemaFileKeepsData(t *testing.T) {
+	for name, files := range chainedConstOnlySchemaFiles {
+		t.Run(name, func(t *testing.T) {
+			bundled, parsed := bundleComposedFiles(t, files, nil)
+			assert.Contains(t, bundled, "$ref: 'missing.yaml'")
+			assert.NotNil(t, composedSchemas(t, parsed)["Owner"])
+		})
+	}
+
+	t.Run("target composed elsewhere", func(t *testing.T) {
+		_, parsed := bundleComposedFiles(t, map[string]string{
+			"main.yaml": `openapi: 3.1.0
+info:
+  title: Chained const only schema
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Owner:
+      $ref: 'schemas/wrapper.yaml'
+    Other:
+      $ref: 'schemas/other.yaml'
+`,
+			"schemas/wrapper.yaml": "$ref: 'owner.yaml'\n",
+			"schemas/owner.yaml":   "const: {$ref: 'other.yaml'}\n",
+			"schemas/other.yaml":   "type: string\n",
+		}, nil)
+
+		schemas := composedSchemas(t, parsed)
+		assert.Equal(t, "#/components/schemas/other", schemas["Other"].(map[string]any)["$ref"])
+		var consts []any
+		for _, schema := range schemas {
+			if c, ok := schema.(map[string]any)["const"]; ok {
+				consts = append(consts, c)
+			}
+		}
+		assert.Equal(t, []any{map[string]any{"$ref": "other.yaml"}}, consts)
+	})
+}
+
+// exampleSelectingSchemaDefault has an example wrapper select the default of the schema beside it.
+var exampleSelectingSchemaDefault = map[string]string{
+	"main.yaml": `openapi: 3.1.0
+info:
+  title: Example selecting a default
+  version: 1.0.0
+paths:
+  /owners:
+    get:
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: 'owner.yaml'
+              example:
+                $ref: 'owner.yaml#/default'
+`,
+	"owner.yaml": "type: object\ndefault:\n  owner:\n    $ref: 'missing.yaml'\n",
+}
+
+func TestBundleBytes_ExampleSelectingSchemaDefaultKeepsData(t *testing.T) {
+	parsed := bundleInlineFiles(t, exampleSelectingSchemaDefault, &datamodel.DocumentConfiguration{})
+	media := parsed["paths"].(map[string]any)["/owners"].(map[string]any)["get"].(map[string]any)["responses"].(map[string]any)["200"].(map[string]any)["content"].(map[string]any)["application/json"].(map[string]any)
+	assert.Equal(t, map[string]any{"owner": map[string]any{"$ref": "missing.yaml"}}, media["schema"].(map[string]any)["default"])
+}
+
+func TestBundleBytesComposed_ExampleSelectingSchemaDefaultKeepsData(t *testing.T) {
+	bundled, _ := bundleComposedFiles(t, exampleSelectingSchemaDefault, nil)
+	assert.Contains(t, bundled, "$ref: 'missing.yaml'")
 }

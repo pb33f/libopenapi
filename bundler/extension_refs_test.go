@@ -26,19 +26,19 @@ func TestResolveExtensionRefs_NilRolodex(t *testing.T) {
 }
 
 func TestRewriteExtensionRefsForComposedBundle_NilAndRootCases(t *testing.T) {
-	rewriteExtensionRefsForComposedBundle(nil)
+	rewriteExtensionRefsForComposedBundle(nil, nil)
 
 	rolo := index.NewRolodex(index.CreateOpenAPIIndexConfig())
-	rewriteExtensionRefsForComposedBundle(rolo)
+	rewriteExtensionRefsForComposedBundle(rolo, nil)
 
-	rewriteExtensionRefsForComposedIndex(nil, nil)
+	rewriteExtensionRefsForComposedIndex(nil, nil, nil)
 
 	var node yaml.Node
 	_ = yaml.Unmarshal([]byte(`openapi: 3.1.0`), &node)
 	idx := index.NewSpecIndexWithConfig(&node, index.CreateOpenAPIIndexConfig())
 	idx.SetAbsolutePath(filepath.Join(t.TempDir(), "openapi.yaml"))
-	rewriteExtensionRefsForComposedIndex(idx, idx)
-	walkAndRewriteComposedExtensionRefs(nil, idx, idx, false, nil)
+	rewriteExtensionRefsForComposedIndex(idx, idx, nil)
+	walkAndRewriteComposedExtensionRefs(nil, idx, idx, false, nil, nil)
 }
 
 func TestRewriteExtensionRefsForComposedBundle_RebasesNestedExtensionRefs(t *testing.T) {
@@ -62,7 +62,7 @@ func TestRewriteExtensionRefsForComposedBundle_RebasesNestedExtensionRefs(t *tes
 	walkAndRewriteComposedExtensionRefs(&yaml.Node{
 		Kind:    yaml.DocumentNode,
 		Content: []*yaml.Node{rootNode},
-	}, sourceIdx, rootIdx, false, nil)
+	}, sourceIdx, rootIdx, false, nil, nil)
 
 	var refValue string
 	findRefValue(rootNode, &refValue)
@@ -87,7 +87,7 @@ x-ext:
       $ref: pet.yaml
 `)
 
-	rewriteExtensionRefsForComposedIndex(sourceIdx, rootIdx)
+	rewriteExtensionRefsForComposedIndex(sourceIdx, rootIdx, nil)
 
 	root := sourceIdx.GetRootNode().Content[0]
 	_, properties := utils.FindKeyNodeTop("properties", root.Content)

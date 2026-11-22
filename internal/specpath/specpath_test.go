@@ -92,12 +92,16 @@ func TestIsOpenAPIExampleKeywordSegment(t *testing.T) {
 }
 
 func TestUnderSchemaInstanceValuePath(t *testing.T) {
-	var seq, mapping, schema, catalog, swaggerParameters yaml.Node
+	var seq, mapping, schema, catalog, swaggerParameters, namedItems, namedIn, parameter, variants yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte("[{$ref: '#/a'}]"), &seq))
 	require.NoError(t, yaml.Unmarshal([]byte("{named: {$ref: '#/a'}}"), &mapping))
 	require.NoError(t, yaml.Unmarshal([]byte("{type: object, default: {$ref: '#/a'}}"), &schema))
 	require.NoError(t, yaml.Unmarshal([]byte("{default: {type: object}, other: {type: string}}"), &catalog))
 	require.NoError(t, yaml.Unmarshal([]byte("{default: {name: default, in: body, schema: {$ref: '#/a'}}, type: {name: type, in: query, type: string}}"), &swaggerParameters))
+	require.NoError(t, yaml.Unmarshal([]byte("{items: {name: items, in: query, type: integer}, default: {name: body, in: body, schema: {$ref: '#/a'}}}"), &namedItems))
+	require.NoError(t, yaml.Unmarshal([]byte("{in: {name: in, in: query, type: string}, items: {name: items, in: query, type: integer}}"), &namedIn))
+	require.NoError(t, yaml.Unmarshal([]byte("{name: limit, in: query, type: integer, default: {$ref: '#/a'}}"), &parameter))
+	require.NoError(t, yaml.Unmarshal([]byte("{items: {}, default: {$ref: '#/a'}}"), &variants))
 	tests := []struct {
 		name   string
 		path   []string
@@ -127,6 +131,12 @@ func TestUnderSchemaInstanceValuePath(t *testing.T) {
 		{"default_of_property_named_default", []string{"components", "schemas", "S", "properties", "default", "default"}, nil, nil, true},
 		{"swagger_parameter_named_default", []string{"parameters", "default"}, nil, nil, false},
 		{"swagger_parameter_named_default_in_map", []string{"parameters", "default"}, nil, swaggerParameters.Content[0], false},
+		{"swagger_parameter_named_default_beside_items", []string{"parameters", "default"}, nil, namedItems.Content[0], false},
+		{"swagger_parameter_named_default_beside_in", []string{"parameters", "default"}, nil, namedIn.Content[0], false},
+		{"default_of_path_item_fragment_parameter", []string{"parameters", "default"}, nil, parameter.Content[0], true},
+		{"extension_entry_named_default", []string{"components", "schemas", "S", "x-variants", "default"}, nil, variants.Content[0], false},
+		{"below_extension_default", []string{"components", "schemas", "S", "x-variants", "default", "nested"}, nil, nil, false},
+		{"default_of_property_named_x", []string{"components", "schemas", "S", "properties", "x-variants", "default"}, nil, nil, true},
 		{"operation_parameter_schema_default", []string{"paths", "~1pets", "get", "parameters", "schema", "default"}, nil, nil, true},
 		{"default_response_schema_default", []string{"paths", "~1pets", "get", "responses", "default", "content", "application/json", "schema", "default"}, nil, nil, true},
 		{"item_schema_default", []string{"paths", "~1pets", "get", "responses", "200", "content", "application/jsonl", "itemSchema", "default"}, nil, nil, true},
@@ -273,4 +283,13 @@ func TestIsDirectOpenAPIExampleRefNode(t *testing.T) {
 	assert.True(t, isDirectOpenAPIExampleRefNode(merged.Content[0].Content[3]), "a $ref merged with << counts")
 	assert.False(t, isDirectOpenAPIExampleRefNode(nil))
 	assert.False(t, isDirectOpenAPIExampleRefNode(&yaml.Node{Kind: yaml.ScalarNode, Value: "x"}))
+}
+
+func TestHoldsExamplePayload(t *testing.T) {
+	assert.True(t, HoldsExamplePayload([]string{"paths", "~1a", "get", "responses", "200", "content", "application/json", "example"}))
+	assert.True(t, HoldsExamplePayload([]string{"components", "schemas", "S", "example", "nested"}))
+	assert.True(t, HoldsExamplePayload([]string{"components", "examples", "E", "value"}))
+	assert.False(t, HoldsExamplePayload([]string{"components", "examples", "E"}), "an Example Object is structure")
+	assert.False(t, HoldsExamplePayload([]string{"components", "schemas", "S", "properties", "example"}))
+	assert.False(t, HoldsExamplePayload(nil))
 }

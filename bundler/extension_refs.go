@@ -94,7 +94,7 @@ func replaceRefNodeWithContent(refNode, content *yaml.Node) {
 
 // rewriteExtensionRefsForComposedBundle rebases $ref values found under x-* extension
 // keys from their original source file location to the bundled root document.
-func rewriteExtensionRefsForComposedBundle(rolodex *index.Rolodex) {
+func rewriteExtensionRefsForComposedBundle(rolodex *index.Rolodex, selections refSelections) {
 	if rolodex == nil {
 		return
 	}
@@ -102,37 +102,49 @@ func rewriteExtensionRefsForComposedBundle(rolodex *index.Rolodex) {
 	if rootIdx == nil {
 		return
 	}
-	rewriteExtensionRefsForComposedIndex(rootIdx, rootIdx)
+	rewriteExtensionRefsForComposedIndex(rootIdx, rootIdx, selections)
 	for _, idx := range rolodex.GetIndexes() {
-		rewriteExtensionRefsForComposedIndex(idx, rootIdx)
+		rewriteExtensionRefsForComposedIndex(idx, rootIdx, selections)
 	}
 }
 
-func rewriteExtensionRefsForComposedIndex(sourceIdx, rootIdx *index.SpecIndex) {
+func rewriteExtensionRefsForComposedIndex(sourceIdx, rootIdx *index.SpecIndex, selections refSelections) {
 	if sourceIdx == nil || rootIdx == nil {
 		return
 	}
 	if sourceIdx.GetSpecAbsolutePath() == rootIdx.GetSpecAbsolutePath() {
 		return
 	}
-	walkAndRewriteComposedExtensionRefs(sourceIdx.GetRootNode(), sourceIdx, rootIdx, false, make([]string, 0, 16))
+	w := newSelectionWalk()
+	w.walkSelected(selections, sourceIdx.GetSpecAbsolutePath(), sourceIdx.GetRootNode(), func(node *yaml.Node, path []string) {
+		walkAndRewriteComposedExtensionRefs(node, sourceIdx, rootIdx, false, path, w)
+	})
 }
 
 // walkAndRewriteComposedExtensionRefs rebases the $ref values under extension keys. path holds the
 // mapping keys from the document root, so a schema property named x-... is not taken for an
-// extension, as in the index.
-func walkAndRewriteComposedExtensionRefs(node *yaml.Node, sourceIdx, rootIdx *index.SpecIndex, inExtension bool, path []string) {
+// extension, as in the index. A literal value, such as a schema default, holds data, not
+// extensions, so the walk leaves it alone. w stops a second walk of a node, so a ref is not rebased
+// twice.
+func walkAndRewriteComposedExtensionRefs(node *yaml.Node, sourceIdx, rootIdx *index.SpecIndex, inExtension bool, path []string, w *selectionWalk) {
 	if node == nil {
 		return
 	}
 	switch node.Kind {
-	case yaml.DocumentNode:
+	case yaml.DocumentNode, yaml.SequenceNode, yaml.MappingNode:
+	default:
+		return
+	}
+	if w == nil {
+		w = newSelectionWalk()
+	}
+	if !w.enter(node) {
+		return
+	}
+	switch node.Kind {
+	case yaml.DocumentNode, yaml.SequenceNode:
 		for _, child := range node.Content {
-			walkAndRewriteComposedExtensionRefs(child, sourceIdx, rootIdx, inExtension, path)
-		}
-	case yaml.SequenceNode:
-		for _, child := range node.Content {
-			walkAndRewriteComposedExtensionRefs(child, sourceIdx, rootIdx, inExtension, path)
+			walkAndRewriteComposedExtensionRefs(child, sourceIdx, rootIdx, inExtension, path, w)
 		}
 	case yaml.MappingNode:
 		for i := 0; i+1 < len(node.Content); i += 2 {
@@ -142,12 +154,15 @@ func walkAndRewriteComposedExtensionRefs(node *yaml.Node, sourceIdx, rootIdx *in
 				continue
 			}
 			childPath := append(path, keyNode.Value)
+			if !inExtension && w.isLiteral(childPath, valueNode, node) {
+				continue
+			}
 			childInExtension := inExtension || specpath.IsOpenAPIExtensionSegment(childPath, len(childPath)-1)
 			if childInExtension && keyNode.Value == "$ref" && valueNode != nil && valueNode.Kind == yaml.ScalarNode {
 				valueNode.Value = rebaseExtensionRefForComposed(valueNode.Value, sourceIdx, rootIdx)
 				continue
 			}
-			walkAndRewriteComposedExtensionRefs(valueNode, sourceIdx, rootIdx, childInExtension, childPath)
+			walkAndRewriteComposedExtensionRefs(valueNode, sourceIdx, rootIdx, childInExtension, childPath, w)
 		}
 	}
 }

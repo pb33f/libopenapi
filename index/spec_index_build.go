@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/libopenapi/internal/specpath"
 )
 
 const (
@@ -38,7 +39,22 @@ func NewSpecIndexWithConfigAndContext(ctx context.Context, rootNode *yaml.Node, 
 		return index
 	}
 	index.root = rootNode
+	index.deferGuessedValues = deferGuessedValues(rootNode, config.Rolodex)
 	return createNewIndex(ctx, rootNode, index, config.AvoidBuildIndex)
+}
+
+// deferGuessedValues reports whether an index of rootNode records guessed instance values for the
+// rolodex to settle, see settleGuessedValues. Only documents other than the root, indexed while the
+// rolodex indexes, and not themselves OpenAPI descriptions, take their context from references.
+func deferGuessedValues(rootNode *yaml.Node, rolodex *Rolodex) bool {
+	if rolodex == nil || !rolodex.settlingValues.Load() || rootNode == rolodex.rootNode {
+		return false
+	}
+	root := rootNode
+	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
+		root = root.Content[0]
+	}
+	return root.Kind == yaml.MappingNode && !specpath.IsOpenAPIDocument(root)
 }
 
 // NewSpecIndexWithConfig creates a new SpecIndex from the given root YAML node and configuration,

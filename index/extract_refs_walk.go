@@ -14,6 +14,7 @@ import (
 
 type extractRefsState struct {
 	mergeStart    int
+	source        *yaml.Node // the mapping or sequence walked, before merge keys are expanded
 	ctx           context.Context
 	scope         *SchemaIdScope
 	parentBaseURI string
@@ -97,17 +98,32 @@ func (index *SpecIndex) walkExtractRefs(node, parent *yaml.Node, state *extractR
 }
 
 func (index *SpecIndex) walkChildExtractRefs(node, parent *yaml.Node, state *extractRefsState, walk *extractRefsTraversal) []*Reference {
-	if specpath.IsLiteralValue(state.seenPath, node, parent) {
+	literal, guessed := specpath.ClassifyValue(state.seenPath, node, parent)
+	if guessed && index.deferGuessedValues {
+		level, poly, polyName := index.childExtractRefsState(state)
+		index.deferGuessedValue(node, parent, state, literal, level, poly, polyName)
+		if !literal {
+			// Leave the state for the siblings as walking the value would.
+			state.level, state.poly, state.polyName = level, poly, polyName
+		}
 		return nil
 	}
-	state.level++
+	if literal {
+		return nil
+	}
+	state.level, state.poly, state.polyName = index.childExtractRefsState(state)
+	return index.extractRefs(state.ctx, node, parent, state.seenPath, state.level, state.poly, state.polyName, walk)
+}
+
+func (index *SpecIndex) childExtractRefsState(state *extractRefsState) (int, bool, string) {
+	level, poly, polyName := state.level+1, state.poly, state.polyName
 	if isPoly, _ := index.checkPolymorphicNode(state.prev); isPoly {
-		state.poly = true
+		poly = true
 		if state.prev != "" {
-			state.polyName = state.prev
+			polyName = state.prev
 		}
 	}
-	return index.extractRefs(state.ctx, node, parent, state.seenPath, state.level, state.poly, state.polyName, walk)
+	return level, poly, polyName
 }
 
 func (index *SpecIndex) handleExtractRefsKey(

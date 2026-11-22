@@ -1427,6 +1427,41 @@ definitions:
 		assert.Contains(t, refs, "#/definitions/Pet")
 	})
 
+	t.Run("swagger root parameter named default beside one named items", func(t *testing.T) {
+		refs := indexRefs(t, `swagger: "2.0"
+info: {title: Pets, version: "1"}
+paths: {}
+parameters:
+  items:
+    name: items
+    in: query
+    type: integer
+  default:
+    name: body
+    in: body
+    schema: {$ref: '#/definitions/Pet'}
+definitions:
+  Pet: {type: object}
+`, false)
+		assert.Contains(t, refs, "#/definitions/Pet")
+	})
+
+	t.Run("extension entry named default beside one named items", func(t *testing.T) {
+		refs := indexRefs(t, `openapi: 3.1.0
+info: {title: Pets, version: "1"}
+paths: {}
+components:
+  schemas:
+    A:
+      type: object
+      x-variants:
+        items: {}
+        default: {$ref: '#/components/schemas/B'}
+    B: {type: object}
+`, false)
+		assert.Contains(t, refs, "#/components/schemas/B")
+	})
+
 	t.Run("additional operation named default", func(t *testing.T) {
 		refs := indexRefs(t, `openapi: 3.2.0
 paths:

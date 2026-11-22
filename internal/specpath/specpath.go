@@ -82,38 +82,38 @@ func IsOpenAPIExtensionSegment(seenPath []string, idx int) bool {
 	return isOpenAPIKeywordSegment(seenPath, idx)
 }
 
-// isSchemaLocation reports whether path ends at a Schema Object: the value of a keyword that holds
-// a schema or an array of schemas, an element of a schema array, or an entry of properties,
-// patternProperties, definitions, $defs, dependentSchemas or components/schemas. These path rules
-// do not look at node. Only when none matches, as at the root of a referenced file or below a name
-// the document chose, is node checked for schema keywords; a nil node then gives false.
+// isSchemaPath reports whether path ends at a Schema Object by its segments alone: the value of a
+// keyword that holds a schema or an array of schemas, an element of a schema array, or an entry of
+// properties, patternProperties, definitions, $defs, dependentSchemas or components/schemas. When
+// none matches, as at the root of a referenced file or below a name the document chose, callers
+// check the node for schema keywords, see hasSchemaKeyword.
 //
 // isSchemaSourceSegment in the bundler classifies a $ref's source path with a similar list; the
 // two differ on purpose, see the comment there.
-func isSchemaLocation(path []string, node *yaml.Node) bool {
-	if n := len(path); n > 0 {
-		switch path[n-1] {
-		case "schema", "itemSchema", "items", "additionalItems", "additionalProperties", "contains",
-			"not", "if", "then", "else", "propertyNames", "contentSchema", "unevaluatedItems",
-			"unevaluatedProperties",
-			// The index walk adds no segment for array elements.
+func isSchemaPath(path []string) bool {
+	n := len(path)
+	if n == 0 {
+		return false
+	}
+	switch path[n-1] {
+	case "schema", "itemSchema", "items", "additionalItems", "additionalProperties", "contains",
+		"not", "if", "then", "else", "propertyNames", "contentSchema", "unevaluatedItems",
+		"unevaluatedProperties",
+		// The index walk adds no segment for array elements.
+		"allOf", "anyOf", "oneOf", "prefixItems":
+		return true
+	}
+	if n > 1 {
+		switch path[n-2] {
+		case "properties", "patternProperties", "definitions", "$defs", "dependentSchemas",
+			// An element of a schema array, by resolver marker or JSON pointer index.
 			"allOf", "anyOf", "oneOf", "prefixItems":
 			return true
-		}
-		if n > 1 {
-			switch path[n-2] {
-			case "properties", "patternProperties", "definitions", "$defs", "dependentSchemas",
-				// An element of a schema array, by resolver marker or JSON pointer index.
-				"allOf", "anyOf", "oneOf", "prefixItems":
-				return true
-			case "schemas":
-				if n == 3 && path[0] == "components" {
-					return true
-				}
-			}
+		case "schemas":
+			return n == 3 && path[0] == "components"
 		}
 	}
-	return hasSchemaKeyword(node)
+	return false
 }
 
 // hasSchemaKeyword reports whether node is a mapping that uses a schema keyword, such as type,
@@ -171,6 +171,14 @@ func hasSchemaKeyword(node *yaml.Node) bool {
 // as a sequence element has no key, and it is checked for schema keywords when the path cannot tell
 // whether it is a schema.
 func UnderSchemaInstanceValuePath(path []string, node, parent *yaml.Node) bool {
+	literal, _ := schemaInstanceValue(path, node, parent)
+	return literal
+}
+
+// schemaInstanceValue is UnderSchemaInstanceValuePath. guessed reports that the answer for the last
+// segment rested on the schema keywords of parent, because no path rule placed parent at a Schema
+// Object.
+func schemaInstanceValue(path []string, node, parent *yaml.Node) (literal, guessed bool) {
 	last := len(path) - 1
 	for i, segment := range path {
 		switch segment {
@@ -191,8 +199,44 @@ func UnderSchemaInstanceValuePath(path []string, node, parent *yaml.Node) bool {
 			}
 			holder = parent
 		}
-		if isOpenAPIKeywordSegment(path, i) && isSchemaLocation(path[:i], holder) {
+		if !isOpenAPIKeywordSegment(path, i) {
+			continue
+		}
+		if underOpenAPIExtension(path[:i]) {
+			// Vendor data, which the schema rules do not describe.
+			return false, false
+		}
+		if isSchemaPath(path[:i]) {
+			return true, false
+		}
+		if holder != nil {
+			if i == 1 && path[0] == "parameters" && !isParameter(holder) {
+				// The root parameters map of Swagger 2.0, keyed by parameter name.
+				return false, false
+			}
+			return hasSchemaKeyword(holder), true
+		}
+	}
+	return false, false
+}
+
+func underOpenAPIExtension(path []string) bool {
+	for i := range path {
+		if IsOpenAPIExtensionSegment(path, i) {
 			return true
+		}
+	}
+	return false
+}
+
+// isParameter reports whether node is a Parameter Object, which names its location with in. A map
+// of parameters by name holds Parameter Objects instead.
+func isParameter(node *yaml.Node) bool {
+	node = utils.ResolveMergeNodes(node)
+	for i := 0; i+1 < len(node.Content); i += 2 {
+		if key := node.Content[i]; key != nil && key.Value == "in" {
+			value := utils.NodeAlias(node.Content[i+1])
+			return value != nil && value.Kind == yaml.ScalarNode
 		}
 	}
 	return false
@@ -203,13 +247,22 @@ func UnderSchemaInstanceValuePath(path []string, node, parent *yaml.Node) bool {
 // value of default, enum or const. A $ref key inside literal data is not a reference. A sequence
 // element may add no segment to path or a "[]" segment. parent may be nil when it is not known.
 func IsLiteralValue(path []string, node, parent *yaml.Node) bool {
+	literal, _ := ClassifyValue(path, node, parent)
+	return literal
+}
+
+// ClassifyValue is IsLiteralValue. guessed reports that the answer rested on whether parent looks
+// like a schema, because path alone could not tell. Such an answer can change with the context of
+// a reference that selects parent from another document: a file holding only const is a schema
+// when a schema references it, and a catalog with an entry named properties is not one.
+func ClassifyValue(path []string, node, parent *yaml.Node) (literal, guessed bool) {
 	if UnderOpenAPIExamplePayloadPath(path) {
-		return true
+		return true, false
 	}
 	if isDirectOpenAPIExampleValuePath(path) && !isDirectOpenAPIExampleRefNode(node) {
-		return true
+		return true, false
 	}
-	return UnderSchemaInstanceValuePath(path, node, parent)
+	return schemaInstanceValue(path, node, parent)
 }
 
 // UnderOpenAPIExamplePayloadPath reports whether seenPath points to raw example payload content.
@@ -236,6 +289,13 @@ func UnderOpenAPIExamplePayloadPath(seenPath []string) bool {
 		}
 	}
 	return false
+}
+
+// HoldsExamplePayload reports whether the content at path is example payload: the value of an
+// OpenAPI example field, or anything below it or below an Example Object's value. A node a $ref
+// wrapper there selects is payload as well, wherever it sits in its own document.
+func HoldsExamplePayload(path []string) bool {
+	return UnderOpenAPIExamplePayloadPath(path) || isDirectOpenAPIExampleValuePath(path)
 }
 
 // isDirectOpenAPIExampleValuePath reports whether seenPath points at the value of an OpenAPI
