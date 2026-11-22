@@ -104,6 +104,32 @@ x-ext:
 	assert.Equal(t, "schemas/pet.yaml", extRef, "everything under an extension is rebased")
 }
 
+// An inlined reference shares the content of its target, so a value a selection read as data also
+// sits below the inlined copy, where the walk from the root would read it as structure.
+func TestRewriteExtensionRefsForComposedBundle_InlinedCopyKeepsSelectedData(t *testing.T) {
+	rootDir := t.TempDir()
+	rootIdx := newComposedRefIndex(t, filepath.Join(rootDir, "openapi.yaml"), `openapi: 3.1.0`)
+	sourcePath := filepath.Join(rootDir, "schemas", "catalog.yaml")
+	sourceIdx := newComposedRefIndex(t, sourcePath, `Owner:
+  const:
+    x-link:
+      $ref: pet.yaml
+Copy:
+  $ref: '#/Owner'
+`)
+	root := sourceIdx.GetRootNode().Content[0]
+	_, owner := utils.FindKeyNodeTop("Owner", root.Content)
+	_, copied := utils.FindKeyNodeTop("Copy", root.Content)
+	inlineRefNode(copied, owner)
+
+	selections := refSelections{sourcePath: {{Node: owner, Path: []string{"components", "schemas", "Owner"}}}}
+	rewriteExtensionRefsForComposedIndex(sourceIdx, rootIdx, selections)
+
+	var ref string
+	findRefValue(owner, &ref)
+	assert.Equal(t, "pet.yaml", ref, "const of a schema is data, at the inlined copy too")
+}
+
 func TestRebaseExtensionRefForComposed(t *testing.T) {
 	rootDir := t.TempDir()
 	rootIdx := newComposedRefIndex(t, filepath.Join(rootDir, "openapi.yaml"), `openapi: 3.1.0`)

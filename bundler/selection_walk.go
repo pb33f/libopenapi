@@ -18,9 +18,6 @@ import (
 type refSelections map[string][]specpath.Selection
 
 func collectRefSelections(rolodex *index.Rolodex) refSelections {
-	if rolodex == nil {
-		return nil
-	}
 	rootIdx := rolodex.GetRootIndex()
 	indexes := rolodex.GetIndexes()
 	if rootIdx != nil {
