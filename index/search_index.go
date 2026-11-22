@@ -154,6 +154,17 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		}
 		return resolved, resolved.Index, context.WithValue(ctx, CurrentPathKey, resolved.RemoteLocation)
 	}
+	// "other.yaml#foo" names an $anchor in other.yaml.
+	if file, fragment := SplitRefFragment(normalizedRef); filepath.Ext(file) != "" {
+		if name, ok := schemaAnchorFragmentName(fragment); ok {
+			if resolved := index.findSchemaAnchorInFile(ctx, file, normalizedRef, name); resolved != nil {
+				if index.cache != nil {
+					index.cache.Store(cacheKey, resolved)
+				}
+				return resolved, resolved.Index, context.WithValue(ctx, CurrentPathKey, resolved.RemoteLocation)
+			}
+		}
+	}
 	pathRef := ""
 	if strings.HasPrefix(normalizedRef, "/") {
 		pathRef = normalizedRef

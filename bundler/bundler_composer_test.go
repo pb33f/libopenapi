@@ -7,6 +7,9 @@ import (
 	"bytes"
 	"errors"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -3237,10 +3240,11 @@ components:
 	assert.Equal(t, "#/components/schemas/Tuple/prefixItems/0", schemaAt(t, composed, "first")["$ref"])
 	assert.Equal(t, "#/components/schemas/Tuple/prefixItems/1", schemaAt(t, composed, "second")["$ref"])
 
+	// inline bundling keeps a ref within the root document, as it does "#/components/..." refs.
 	inlined, err := BundleBytes(spec, &datamodel.DocumentConfiguration{})
 	require.NoError(t, err)
-	assert.Equal(t, "boolean", schemaAt(t, inlined, "first")["type"])
-	assert.Equal(t, "number", schemaAt(t, inlined, "second")["type"])
+	assert.Equal(t, "#first", schemaAt(t, inlined, "first")["$ref"])
+	assert.Equal(t, "#second", schemaAt(t, inlined, "second")["$ref"])
 }
 
 // TestBundleBytesComposed_AnchorRefInExternalFile checks that a plain-name $anchor ref inside
@@ -3304,4 +3308,119 @@ components:
 	lifted := component(schemas["Pet"].(map[string]any)["$ref"])
 	name := lifted["properties"].(map[string]any)["name"].(map[string]any)
 	assert.Equal(t, "string", component(name["$ref"])["type"])
+}
+
+// TestBundleBytes_AnchorSelfRefInExternalIdResource checks that a "#name" ref inside an $id
+// resource in an external file resolves against that resource when bundling.
+func TestBundleBytes_AnchorSelfRefInExternalIdResource(t *testing.T) {
+	pet := `openapi: 3.1.0
+info: {title: pet, version: '1'}
+paths: {}
+components:
+  schemas:
+    Tag:
+      $id: 'https://example.com/tag'
+      $anchor: tag
+      type: object
+      properties:
+        self: {$ref: '#tag'}
+`
+	root := `openapi: 3.1.0
+info: {title: root, version: '1'}
+paths: {}
+components:
+  schemas:
+    T: {$ref: 'pet.yaml#/components/schemas/Tag'}
+`
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "pet.yaml"), []byte(pet), 0o644))
+	config := &datamodel.DocumentConfiguration{BasePath: tmp, AllowFileReferences: true}
+	selfRef := func(t *testing.T, out []byte) string {
+		t.Helper()
+		var doc map[string]any
+		require.NoError(t, yaml.Unmarshal(out, &doc))
+		schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
+		assert.Equal(t, "#/components/schemas/Tag", schemas["T"].(map[string]any)["$ref"])
+		tag := schemas["Tag"].(map[string]any)
+		assert.Equal(t, "https://example.com/tag", tag["$id"])
+		return tag["properties"].(map[string]any)["self"].(map[string]any)["$ref"].(string)
+	}
+
+	composed, err := BundleBytesComposed([]byte(root), config, nil)
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com/tag#tag", selfRef(t, composed))
+
+	inlined, err := BundleBytes([]byte(root), config)
+	require.NoError(t, err)
+	assert.Equal(t, "#/components/schemas/Tag", selfRef(t, inlined))
+}
+
+// TestBundleBytes_RecursiveAnchorRef checks that inline bundling keeps a recursive "#name" ref in
+// the root document as a ref, as it does a recursive "#/components/..." ref, rather than failing.
+func TestBundleBytes_RecursiveAnchorRef(t *testing.T) {
+	spec := []byte(`openapi: 3.1.0
+info: {title: t, version: '1'}
+paths: {}
+components:
+  schemas:
+    Node:
+      $anchor: node
+      type: object
+      properties:
+        children:
+          type: array
+          items: {$ref: '#node'}
+        parent: {$ref: '#node'}
+`)
+	out, err := BundleBytes(spec, &datamodel.DocumentConfiguration{})
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &doc))
+	node := doc["components"].(map[string]any)["schemas"].(map[string]any)["Node"].(map[string]any)
+	props := node["properties"].(map[string]any)
+	assert.Equal(t, "#node", props["parent"].(map[string]any)["$ref"])
+	assert.Equal(t, "#node", props["children"].(map[string]any)["items"].(map[string]any)["$ref"])
+
+	reparsed, err := libopenapi.NewDocument(out)
+	require.NoError(t, err)
+	_, err = reparsed.BuildV3Model()
+	require.NoError(t, err)
+}
+
+// TestBundleBytesComposed_RemoteAnchorRef checks that a plain-name $anchor ref into a remote file
+// is rewritten to the component its schema is lifted into.
+func TestBundleBytesComposed_RemoteAnchorRef(t *testing.T) {
+	root := `openapi: 3.1.0
+info: {title: t, version: '1'}
+paths: {}
+components:
+  schemas:
+    CatName: {$ref: 'cat.yaml#name'}
+`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/specs/cat.yaml" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte("type: object\n$defs:\n  N: {$anchor: name, type: string}\n"))
+	}))
+	defer server.Close()
+	baseURL, err := url.Parse(server.URL + "/specs/")
+	require.NoError(t, err)
+
+	out, err := BundleBytesComposed([]byte(root), &datamodel.DocumentConfiguration{
+		BaseURL:               baseURL,
+		AllowRemoteReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &doc))
+	schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
+	ref := schemas["CatName"].(map[string]any)["$ref"].(string)
+	require.True(t, strings.HasPrefix(ref, "#/components/schemas/"), ref)
+	lifted := schemas[strings.TrimPrefix(ref, "#/components/schemas/")].(map[string]any)
+	assert.Equal(t, "string", lifted["type"])
+	assert.Equal(t, "name", lifted["$anchor"])
 }

@@ -17,12 +17,9 @@ func navigateReferenceFragment(root *yaml.Node, fragment string) *yaml.Node {
 		return nil
 	}
 
-	if !strings.HasPrefix(fragment, "#") && !strings.HasPrefix(fragment, "/") {
-		return nil
-	}
-
+	// a plain-name fragment such as "#foo" names an $anchor, not a path.
 	path := strings.TrimPrefix(fragment, "#")
-	if path == "" || path == "/" {
+	if !strings.HasPrefix(path, "/") || path == "/" {
 		return nil
 	}
 

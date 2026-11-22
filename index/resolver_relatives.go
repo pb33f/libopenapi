@@ -312,7 +312,7 @@ func (resolver *Resolver) buildRelativeLookupDefinitions(ref *Reference, value, 
 		if strings.HasPrefix(fileDef[0], "http") {
 			fullDef = resolveRefWithSchemaBase(value, fileDef[0])
 		} else {
-			fullDef = resolver.resolveLocalRefPath(filepath.Dir(fileDef[0]), exp[0])
+			fullDef = resolver.resolveLocalFileRef(filepath.Dir(fileDef[0]), exp[0])
 		}
 	}
 

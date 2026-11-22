@@ -205,6 +205,9 @@ func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node
 		walk.ancestry[node] = struct{}{}
 	}
 	state := index.initializeExtractRefsState(ctx, nodeID, seenPath, pointer, level, poly, pName)
+	if len(state.scope.Chain) > 0 && node.Kind == yaml.MappingNode {
+		index.recordSchemaIdBase(node, state.scope.BaseUri)
+	}
 	state.mergeStart = len(view.Content)
 	if view != node {
 		// Merge views retain explicit pairs first, then append inherited pairs.

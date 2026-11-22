@@ -17,6 +17,7 @@ type extractRefsState struct {
 	ctx           context.Context
 	scope         *SchemaIdScope
 	parentBaseURI string
+	parentDepth   int // resourceDepth of the scope around the node, before any $id of its own
 	seenPath      []string
 	pointer       []string // JSON pointer segments to the node being walked; never stored
 	lastAppended  bool
@@ -41,7 +42,8 @@ func (index *SpecIndex) initializeExtractRefsState(
 	}
 
 	parentBaseURI := scope.BaseUri
-	if nodeID != "" && !underOpenAPIExamplePath(seenPath) {
+	parentDepth := scope.resourceDepth
+	if nodeID != "" && !schemaIdInData(seenPath, pointer, parentDepth) {
 		resolvedNodeID, _ := ResolveSchemaId(nodeID, parentBaseURI)
 		if resolvedNodeID == "" {
 			resolvedNodeID = nodeID
@@ -56,6 +58,7 @@ func (index *SpecIndex) initializeExtractRefsState(
 		ctx:           ctx,
 		scope:         scope,
 		parentBaseURI: parentBaseURI,
+		parentDepth:   parentDepth,
 		seenPath:      seenPath,
 		pointer:       pointer,
 		level:         level,
@@ -170,7 +173,7 @@ func (index *SpecIndex) handleExtractRefsKey(
 	}
 
 	if keyNode.Value == "$id" {
-		index.registerSchemaIDAt(node, keyIndex, state.seenPath, state.pointer, state.parentBaseURI)
+		index.registerSchemaIDAt(node, keyIndex, state.seenPath, state.pointer, state.parentBaseURI, state.parentDepth)
 	}
 
 	if keyNode.Value == "$anchor" {

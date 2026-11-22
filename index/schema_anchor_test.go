@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
@@ -146,6 +147,9 @@ func TestSchemaAnchorResolvedReference(t *testing.T) {
 	require.NotNil(t, ref)
 	assert.Equal(t, "#/components/schemas/A", ref.Definition)
 	assert.Equal(t, "#f%6Fo", ref.RawRef)
+
+	// a plain name the resource declares no anchor for is not read as one of its keywords.
+	assert.Nil(t, idx.ResolveRefViaSchemaId("https://example.com/r#properties"))
 }
 
 func TestSchemaAnchorExtractedRefs(t *testing.T) {
@@ -185,6 +189,7 @@ func TestSchemaAnchorFragmentName(t *testing.T) {
 		assert.Equal(t, want, name, fragment)
 		assert.Equal(t, want != "", ok, fragment)
 		assert.Equal(t, want != "", isSchemaAnchorFragment(fragment), fragment)
+		assert.Equal(t, want != "", IsSchemaAnchorFragment(fragment), fragment)
 	}
 }
 
@@ -281,7 +286,7 @@ func TestUnderSchemaDataPath(t *testing.T) {
 		"components/pathItems/P/get/responses/x-shadow",
 		"webhooks/hook/post/responses/x-shadow/content/application~1json/schema",
 	} {
-		assert.True(t, underSchemaDataPath(strings.Split(path, "/"), false), path)
+		assert.True(t, underSchemaDataPath(strings.Split(path, "/"), false, true), path)
 	}
 	for _, path := range []string{
 		"",
@@ -323,7 +328,7 @@ func TestUnderSchemaDataPath(t *testing.T) {
 		if path == "" {
 			segments = nil
 		}
-		assert.False(t, underSchemaDataPath(segments, false), path)
+		assert.False(t, underSchemaDataPath(segments, false, true), path)
 	}
 
 	// from the root of an $id resource, which is a schema, only the schema's keywords count.
@@ -342,7 +347,7 @@ func TestUnderSchemaDataPath(t *testing.T) {
 		"responses/x-r",
 		"parameters/x-p",
 	} {
-		assert.True(t, underSchemaDataPath(strings.Split(path, "/"), true), path)
+		assert.True(t, underSchemaDataPath(strings.Split(path, "/"), true, true), path)
 	}
 	for _, path := range []string{
 		"$defs/S",
@@ -358,8 +363,28 @@ func TestUnderSchemaDataPath(t *testing.T) {
 		"links/L/parameters",
 		"links/L/requestBody",
 	} {
-		assert.False(t, underSchemaDataPath(strings.Split(path, "/"), true), path)
+		assert.False(t, underSchemaDataPath(strings.Split(path, "/"), true, true), path)
 	}
+}
+
+func TestInSchemaData(t *testing.T) {
+	split := func(path string) []string { return strings.Split(path, "/") }
+
+	// an $id under an extension starts a resource, while one in a literal value is data.
+	assert.True(t, inSchemaData(split("x-vendor/Thing"), 0, true))
+	assert.False(t, inSchemaData(split("x-vendor/Thing"), 0, false))
+	assert.True(t, inSchemaData(split("paths/~1p/get/responses/x-r"), 0, true))
+	assert.False(t, inSchemaData(split("paths/~1p/get/responses/x-r"), 0, false))
+	assert.True(t, inSchemaData(split("x-vendor/Thing/default"), 0, false))
+	assert.True(t, inSchemaData(split("components/links/L/parameters"), 0, false))
+	assert.True(t, inSchemaData(split("components/schemas/W/default"), 0, false))
+
+	// inside a resource the path from its root decides, where a schema name is a keyword.
+	assert.True(t, inSchemaData(split("x-vendor/Thing/default"), 2, false))
+	assert.False(t, inSchemaData(split("x-vendor/Thing/properties/default"), 2, false))
+	assert.True(t, inSchemaData(split("components/schemas/W/$defs/S/const"), 3, false))
+	// a depth past the pointer falls back to the document root.
+	assert.False(t, inSchemaData(split("components/schemas/W"), 4, false))
 }
 
 func TestSchemaAnchorResolver(t *testing.T) {
@@ -714,4 +739,178 @@ components:
 			assert.Equal(t, kind, resolved["type"], schema+"."+prop)
 		}
 	}
+}
+
+// "other.yaml#foo" names the $anchor foo in other.yaml's root resource: its $id, or the file.
+func TestSchemaAnchorInOtherFile(t *testing.T) {
+	dir := t.TempDir()
+	const root = `openapi: 3.1.0
+info: {title: anchors, version: '1'}
+paths: {}
+components:
+  schemas:
+    Root:
+      $anchor: name
+      type: boolean
+    Foo: {$ref: 'other.yaml#foo'}
+    Wid: {$ref: 'withid.yaml#wid'}
+    Chain: {$ref: 'chain.yaml#/components/schemas/Chain'}
+`
+	files := map[string]string{
+		"other.yaml": `components:
+  schemas:
+    Foo: {$anchor: foo, type: string}
+`,
+		"withid.yaml": `$id: 'https://example.com/wid'
+$anchor: wid
+type: integer
+`,
+		"chain.yaml": `components:
+  schemas:
+    Chain:
+      type: object
+      properties:
+        leaf: {$ref: 'sub/leaf.yaml#leaf'}
+`,
+		"sub/leaf.yaml": `components:
+  schemas:
+    Leaf: {$anchor: leaf, type: number}
+`,
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "root.yaml"), []byte(root), 0o600))
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "sub"), 0o700))
+	for name, content := range files {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o600))
+	}
+
+	var rootNode yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(root), &rootNode))
+	cfg := CreateOpenAPIIndexConfig()
+	cfg.BasePath = dir
+	cfg.SpecAbsolutePath = filepath.Join(dir, "root.yaml")
+	rolodex := NewRolodex(cfg)
+	rolodex.SetRootNode(&rootNode)
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{BaseDirectory: dir, IndexConfig: cfg})
+	require.NoError(t, err)
+	rolodex.AddLocalFS(dir, fileFS)
+
+	require.NoError(t, rolodex.IndexTheRolodex(context.Background()))
+	rolodex.Resolve()
+	assert.Empty(t, rolodex.GetCaughtErrors())
+
+	idx := rolodex.GetRootIndex()
+	for ref, kind := range map[string]string{
+		"other.yaml#foo":  "string",
+		"withid.yaml#wid": "integer",
+	} {
+		found, _ := idx.SearchIndexForReference(ref)
+		require.NotNil(t, found, ref)
+		assert.Equal(t, kind, schemaNodeType(found.Node), ref)
+	}
+
+	// an anchor on the file's root names the whole file, and is searched for by its $id URI.
+	wid := idx.FindComponent(context.Background(), "withid.yaml#wid")
+	require.NotNil(t, wid)
+	assert.Equal(t, filepath.Join(dir, "withid.yaml"), wid.FullDefinition)
+	assert.Equal(t, "https://example.com/wid#wid", wid.RawRef)
+
+	// "#leaf", reached through chain.yaml, resolves against sub/leaf.yaml.
+	leaf := idx.FindComponent(context.Background(), "chain.yaml#/components/schemas/Chain/properties/leaf")
+	require.NotNil(t, leaf)
+	assert.Equal(t, "number", schemaNodeType(leaf.Node))
+
+	found, _ := idx.SearchIndexForReference("withid.yaml#missing")
+	assert.Nil(t, found)
+	assert.Nil(t, idx.findSchemaAnchorInFile(context.Background(), filepath.Join(dir, "withid.yaml"), "withid.yaml#missing", "missing"))
+
+	// the file is this document.
+	self := idx.findSchemaAnchorInFile(context.Background(), cfg.SpecAbsolutePath, "root.yaml#name", "name")
+	require.NotNil(t, self)
+	assert.Equal(t, "boolean", schemaNodeType(self.Node))
+}
+
+func TestFindSchemaAnchorInFile_NoRolodex(t *testing.T) {
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(schemaAnchorSpec), &root))
+	cfg := CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "/specs/root.yaml"
+	idx := NewSpecIndexWithConfig(&root, cfg)
+	assert.Nil(t, idx.findSchemaAnchorInFile(context.Background(), "/specs/other.yaml", "other.yaml#foo", "foo"))
+}
+
+func TestGetSchemaIdBaseForNode(t *testing.T) {
+	var nilIndex *SpecIndex
+	node := &yaml.Node{Kind: yaml.MappingNode}
+	assert.Empty(t, nilIndex.GetSchemaIdBaseForNode(node))
+
+	idx := &SpecIndex{}
+	assert.Empty(t, idx.GetSchemaIdBaseForNode(nil))
+	assert.Empty(t, idx.GetSchemaIdBaseForNode(node))
+
+	// a node reached again keeps the base it was first seen with.
+	idx.recordSchemaIdBase(node, "https://example.com/a")
+	idx.recordSchemaIdBase(node, "https://example.com/b")
+	assert.Equal(t, "https://example.com/a", idx.GetSchemaIdBaseForNode(node))
+}
+
+func TestResolveLocalFileRef(t *testing.T) {
+	resolver := &Resolver{}
+	base := filepath.Join(string(filepath.Separator), "specs")
+	assert.Equal(t, filepath.Join(base, "sub", "leaf.yaml")+"#leaf", resolver.resolveLocalFileRef(base, "sub/leaf.yaml#leaf"))
+	assert.Equal(t, filepath.Join(base, "sub", "leaf.yaml"), resolver.resolveLocalFileRef(base, "sub/leaf.yaml"))
+}
+
+// TestFindSchemaAnchorInPendingFile checks that an $anchor in a file still being indexed is found
+// from the file's parsed YAML, without waiting for its index.
+func TestFindSchemaAnchorInPendingFile(t *testing.T) {
+	dir := t.TempDir()
+	cfg := CreateOpenAPIIndexConfig()
+	cfg.BasePath = dir
+	cfg.SpecAbsolutePath = filepath.Join(dir, "root.yaml")
+	rolo := NewRolodex(cfg)
+	cfg.Rolodex = rolo
+	files, err := NewLocalFSWithConfig(&LocalFSConfig{BaseDirectory: dir, IndexConfig: cfg})
+	require.NoError(t, err)
+	pending := func(name, content string) string {
+		path := filepath.Join(dir, name)
+		file := &LocalFile{fullPath: path, data: []byte(content), indexingComplete: make(chan struct{})}
+		files.Files.Store(path, file)
+		t.Cleanup(func() { close(file.indexingComplete) })
+		return path
+	}
+	cat := pending("cat.yaml", "type: object\n$defs:\n  N: {$anchor: name, type: string}\n")
+	tag := pending("tag.yaml", "$id: 'https://example.com/tag'\n$defs:\n  T: {$anchor: tag, type: integer}\n")
+	rolo.AddLocalFS(dir, files)
+
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("openapi: 3.1.0\ncomponents: {}\n"), &root))
+	idx := NewSpecIndexWithConfig(&root, cfg)
+
+	result := make(chan [3]*Reference, 1)
+	go func() {
+		ctx := context.Background()
+		result <- [3]*Reference{
+			idx.findSchemaAnchorInFile(ctx, cat, "cat.yaml#name", "name"),
+			idx.findSchemaAnchorInFile(ctx, tag, "tag.yaml#tag", "tag"),
+			idx.findSchemaAnchorInFile(ctx, cat, "cat.yaml#missing", "missing"),
+		}
+	}()
+	var found [3]*Reference
+	select {
+	case found = <-result:
+	case <-time.After(5 * time.Second):
+		t.Fatal("anchor lookup waited for the file's index")
+	}
+
+	require.NotNil(t, found[0])
+	assert.Nil(t, found[0].Index)
+	assert.Equal(t, cat+"#/$defs/N", found[0].FullDefinition)
+	assert.Equal(t, "string", found[0].Node.Content[3].Value)
+
+	require.NotNil(t, found[1])
+	assert.Nil(t, found[1].Index)
+	assert.Equal(t, "https://example.com/tag#tag", found[1].RawRef)
+	assert.Equal(t, "integer", found[1].Node.Content[3].Value)
+
+	assert.Nil(t, found[2])
 }

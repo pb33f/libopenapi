@@ -495,7 +495,7 @@ func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *pr
 		if sequenced.IsExtensionRef {
 			continue
 		}
-		rewireRef(idx, sequenced, sequenced.FullDefinition, processedNodes)
+		rewireRef(idx, sequenced, rewireDefinition(idx, sequenced, processedNodes), processedNodes)
 	}
 
 	mapped := idx.GetMappedReferences()
@@ -514,6 +514,28 @@ func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *pr
 		mapped[mRef.FullDefinition] = mRef
 		mapped[origDef] = mRef
 	}
+}
+
+// rewireDefinition returns the definition ref is renamed by. A plain-name fragment such as
+// "cat.yaml#name" is not a JSON pointer, so it is renamed by the schema it resolved to once that
+// schema is lifted into components. Inside an $id resource it resolves against the resource, which
+// is kept, so it is left as it is.
+func rewireDefinition(idx *index.SpecIndex, ref *index.Reference, processedNodes *orderedmap.Map[string, *processRef]) string {
+	definition := ref.FullDefinition
+	if ref.SchemaIdBase != "" || !isNonPointerFragment(definition) {
+		return definition
+	}
+	target := idx.GetMappedReferences()[definition]
+	if target == nil {
+		target, _ = idx.SearchIndexForReference(definition)
+	}
+	if target != nil {
+		if pr := processedRefFor(processedNodes, target.FullDefinition, ref); pr != nil &&
+			len(pr.location) > 0 && pr.location[0] == v3low.ComponentsLabel {
+			return target.FullDefinition
+		}
+	}
+	return definition
 }
 
 // encodeJSONPointerSegment encodes a string for use in a JSON Pointer per RFC 6901.
@@ -640,6 +662,12 @@ func buildSchema(node *yaml.Node, idx *index.SpecIndex) (*base.SchemaProxy, erro
 	}
 	schema := lowbase.Schema{}
 	ctx := context.Background()
+	// a schema inside an $id resource resolves its refs, such as "#foo", against that resource.
+	if base := idx.GetSchemaIdBaseForNode(node); base != "" {
+		scope := index.NewSchemaIdScope(base)
+		scope.PushId(base)
+		ctx = index.WithSchemaIdScope(ctx, scope)
+	}
 	if err := schema.Build(ctx, node, idx); err != nil {
 		return nil, err
 	}

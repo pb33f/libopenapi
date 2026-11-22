@@ -32,7 +32,11 @@ func (resolver *Resolver) collectReferenceRelatives(
 	journey []*Reference,
 	resolve bool,
 ) []*Reference {
-	base := resolver.resolveSchemaIdBase(ref.SchemaIdBase, ref.Node)
+	// a schema inside an $id resource resolves against that resource wherever the ref came from.
+	base := resolver.schemaIdBaseForNode(ref)
+	if base == "" {
+		base = resolver.resolveSchemaIdBase(ref.SchemaIdBase, ref.Node)
+	}
 	return resolver.extractRelatives(ref, ref.Node, nil, seen, journey, resolve, 0, base)
 }
 

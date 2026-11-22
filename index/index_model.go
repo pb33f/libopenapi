@@ -443,7 +443,8 @@ type SpecIndex struct {
 	highModelCache                      Cache
 	schemaIdRegistry                    map[string]*SchemaIdEntry // registry of $id declarations for JSON Schema 2020-12
 	schemaAnchorRegistry                map[string]*SchemaIdEntry // $anchor declarations, keyed by resource base URI + "#" + name
-	schemaIdRegistryLock                sync.RWMutex              // lock for concurrent access to schemaIdRegistry and schemaAnchorRegistry
+	schemaIdBaseByNode                  map[*yaml.Node]string     // base URI of each mapping inside an $id resource
+	schemaIdRegistryLock                sync.RWMutex              // lock for concurrent access to schemaIdRegistry, schemaAnchorRegistry and schemaIdBaseByNode
 }
 
 // GetResolver returns the resolver for this index.
@@ -639,6 +640,7 @@ func (index *SpecIndex) releaseDerivedState() {
 	index.highModelCache = nil
 	index.schemaIdRegistry = nil
 	index.schemaAnchorRegistry = nil
+	index.schemaIdBaseByNode = nil
 	index.pendingResolve = nil
 	index.uri = nil
 	index.logger = nil
