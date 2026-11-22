@@ -71,6 +71,8 @@ type Rolodex struct {
 	manualBuilt                bool
 	resolved                   bool
 	circChecked                bool
+	settlingValues             atomic.Bool         // indexes built while set hold guessed values, see settleGuessedValues
+	settledValues              map[*yaml.Node]bool // whether each guessed value turned out to be instance data
 	indexConfig                *SpecIndexConfig
 	indexingDuration           time.Duration
 	indexes                    []*SpecIndex
@@ -114,6 +116,7 @@ func (r *Rolodex) Release() {
 	r.circRefCacheLock.Unlock()
 
 	r.rootNode = nil
+	r.settledValues = nil
 	r.caughtErrors = nil
 	r.safeCircularReferences = nil
 	r.infiniteCircularReferences = nil
@@ -340,6 +343,7 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 	if r.indexed {
 		return nil
 	}
+	r.settlingValues.Store(true)
 
 	var caughtErrors []error
 
@@ -463,22 +467,16 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 
 	for _, idx := range indexBuildQueue {
 		idx.BuildIndex()
+	}
+	// The resolvers walk into documents other indexes reference, so they wait until the values
+	// whose meaning depends on those references are settled.
+	settleAndCheckBuildQueue := func() {
+		r.settleGuessedValues()
 		if r.indexConfig.AvoidCircularReferenceCheck {
-			continue
+			return
 		}
-		errs := idx.resolver.CheckForCircularReferences()
-		for e := range errs {
-			caughtErrors = append(caughtErrors, errs[e])
-		}
-		if len(idx.resolver.GetIgnoredCircularPolyReferences()) > 0 {
-			r.ignoredCircularReferences = append(
-				r.ignoredCircularReferences, idx.resolver.GetIgnoredCircularPolyReferences()...,
-			)
-		}
-		if len(idx.resolver.GetIgnoredCircularArrayReferences()) > 0 {
-			r.ignoredCircularReferences = append(
-				r.ignoredCircularReferences, idx.resolver.GetIgnoredCircularArrayReferences()...,
-			)
+		for _, idx := range indexBuildQueue {
+			r.checkIndexCircularReferences(idx, &caughtErrors)
 		}
 	}
 
@@ -557,6 +555,7 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 		r.logger.Debug("[rolodex] starting root index build")
 		index.BuildIndex()
 		r.logger.Debug("[rolodex] root index build completed")
+		settleAndCheckBuildQueue()
 
 		if !r.indexConfig.AvoidCircularReferenceCheck {
 			resolvingErrors := resolver.CheckForCircularReferences()
@@ -579,6 +578,8 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 		if len(index.refErrors) > 0 {
 			caughtErrors = append(caughtErrors, index.refErrors...)
 		}
+	} else {
+		settleAndCheckBuildQueue()
 	}
 	// Root reference lookup can load additional files after the initial build queue.
 	// Include fatal extraction errors from those indexes before returning a model.
@@ -595,6 +596,16 @@ func (r *Rolodex) IndexTheRolodex(ctx context.Context) error {
 	r.caughtErrors = caughtErrors
 	r.built = true
 	return errors.Join(caughtErrors...)
+}
+
+// checkIndexCircularReferences runs the circular reference check of a supporting index, collecting
+// its errors and the circular references it ignored.
+func (r *Rolodex) checkIndexCircularReferences(idx *SpecIndex, caughtErrors *[]error) {
+	for _, err := range idx.resolver.CheckForCircularReferences() {
+		*caughtErrors = append(*caughtErrors, err)
+	}
+	r.ignoredCircularReferences = append(r.ignoredCircularReferences, idx.resolver.GetIgnoredCircularPolyReferences()...)
+	r.ignoredCircularReferences = append(r.ignoredCircularReferences, idx.resolver.GetIgnoredCircularArrayReferences()...)
 }
 
 // CheckForCircularReferences checks for circular references in the rolodex.

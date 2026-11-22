@@ -8,11 +8,13 @@ import (
 	"strings"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/libopenapi/internal/specpath"
 	"github.com/pb33f/libopenapi/utils"
 )
 
 type extractRefsState struct {
 	mergeStart    int
+	source        *yaml.Node // the mapping or sequence walked, before merge keys are expanded
 	ctx           context.Context
 	scope         *SchemaIdScope
 	parentBaseURI string
@@ -39,7 +41,7 @@ func (index *SpecIndex) initializeExtractRefsState(
 	}
 
 	parentBaseURI := scope.BaseUri
-	if nodeID != "" && !underOpenAPIExamplePath(seenPath) {
+	if nodeID != "" && !specpath.UnderOpenAPIExamplePath(seenPath) {
 		resolvedNodeID, _ := ResolveSchemaId(nodeID, parentBaseURI)
 		if resolvedNodeID == "" {
 			resolvedNodeID = nodeID
@@ -96,25 +98,32 @@ func (index *SpecIndex) walkExtractRefs(node, parent *yaml.Node, state *extractR
 }
 
 func (index *SpecIndex) walkChildExtractRefs(node, parent *yaml.Node, state *extractRefsState, walk *extractRefsTraversal) []*Reference {
-	if underOpenAPIExamplePayloadPath(state.seenPath) {
-		return nil
-	}
-	if isDirectOpenAPIExampleValuePath(state.seenPath) && !isDirectOpenAPIExampleRefNode(node) {
-		return nil
-	}
-	state.level++
-	if isPoly, _ := index.checkPolymorphicNode(state.prev); isPoly {
-		state.poly = true
-		if state.prev != "" {
-			state.polyName = state.prev
+	literal, guessed := specpath.ClassifyValue(state.seenPath, node, parent)
+	if guessed && index.deferGuessedValues {
+		level, poly, polyName := index.childExtractRefsState(state)
+		index.deferGuessedValue(node, parent, state, literal, level, poly, polyName)
+		if !literal {
+			// Leave the state for the siblings as walking the value would.
+			state.level, state.poly, state.polyName = level, poly, polyName
 		}
+		return nil
 	}
+	if literal {
+		return nil
+	}
+	state.level, state.poly, state.polyName = index.childExtractRefsState(state)
 	return index.extractRefs(state.ctx, node, parent, state.seenPath, state.level, state.poly, state.polyName, walk)
 }
 
-func isDirectOpenAPIExampleRefNode(node *yaml.Node) bool {
-	node = utils.ResolveMergeNodes(node)
-	return utils.IsNodeMap(node) && utils.GetRefValueNode(node) != nil && len(node.Content) == 2
+func (index *SpecIndex) childExtractRefsState(state *extractRefsState) (int, bool, string) {
+	level, poly, polyName := state.level+1, state.poly, state.polyName
+	if isPoly, _ := index.checkPolymorphicNode(state.prev); isPoly {
+		poly = true
+		if state.prev != "" {
+			polyName = state.prev
+		}
+	}
+	return level, poly, polyName
 }
 
 func (index *SpecIndex) handleExtractRefsKey(
@@ -135,6 +144,10 @@ func (index *SpecIndex) handleExtractRefsKey(
 
 	if isMapOfSchemaContainingNode(keyNode.Value) && !utils.IsNodeArray(node) && keyIndex+1 < len(node.Content) {
 		if shouldSkipMapSchemaCollection(state.seenPath) {
+			// Keep the segment: the keys below it are names, not keywords.
+			state.seenPath = append(state.seenPath, keyNode.Value)
+			state.lastAppended = true
+			state.prev = keyNode.Value
 			return true
 		}
 		index.collectMapSchemaDefinitions(parent, node, state.seenPath, keyIndex)
@@ -167,16 +180,15 @@ func (index *SpecIndex) handleExtractRefsKey(
 	return false
 }
 
+// shouldSkipMapSchemaCollection reports whether seenPath is inside an extension or an example,
+// where maps of schemas are not collected. A property named x-... is a schema, not an extension.
 func shouldSkipMapSchemaCollection(seenPath []string) bool {
-	if len(seenPath) == 0 {
-		return false
-	}
-	for _, p := range seenPath {
-		if strings.HasPrefix(p, "x-") {
+	for i := range seenPath {
+		if specpath.IsOpenAPIExtensionSegment(seenPath, i) {
 			return true
 		}
 	}
-	return underOpenAPIExamplePath(seenPath)
+	return specpath.UnderOpenAPIExamplePath(seenPath)
 }
 
 func (index *SpecIndex) unwindExtractRefsPath(node *yaml.Node, state *extractRefsState, currentIndex int) {

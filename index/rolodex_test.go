@@ -2932,6 +2932,7 @@ func TestRolodex_Release(t *testing.T) {
 	rolodex.localFS = map[string]fs.FS{"local": os.DirFS(".")}
 	rolodex.remoteFS = map[string]fs.FS{"remote": os.DirFS(".")}
 	rolodex.rootNode = &yaml.Node{Value: "root"}
+	rolodex.settledValues = map[*yaml.Node]bool{rolodex.rootNode: true}
 	rolodex.rootIndex = idx
 	rolodex.caughtErrors = []error{fmt.Errorf("test")}
 	rolodex.safeCircularReferences = []*CircularReferenceResult{{}}
@@ -2957,6 +2958,7 @@ func TestRolodex_Release(t *testing.T) {
 	assert.Nil(t, rolodex.indexMap)
 	assert.Nil(t, rolodex.rootIndex)
 	assert.Nil(t, rolodex.rootNode)
+	assert.Nil(t, rolodex.settledValues)
 	assert.Nil(t, rolodex.caughtErrors)
 	assert.Nil(t, rolodex.safeCircularReferences)
 	assert.Nil(t, rolodex.infiniteCircularReferences)

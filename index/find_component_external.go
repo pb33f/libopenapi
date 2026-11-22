@@ -74,10 +74,13 @@ func (index *SpecIndex) lookupRolodex(ctx context.Context, uri []string) *Refere
 			parsedDocument = parsedDocument.Content[0]
 		}
 		var parentNode *yaml.Node
-		if index.allRefs[absoluteFileLocation] != nil {
-			parentNode = index.allRefs[absoluteFileLocation].ParentNode
+		var sourcePath []string
+		if source := index.allRefs[absoluteFileLocation]; source != nil {
+			parentNode = source.ParentNode
+			sourcePath = append([]string(nil), source.SourcePath...)
 		}
 		return &Reference{
+			SourcePath:            sourcePath,
 			ParentNode:            parentNode,
 			FullDefinition:        absoluteFileLocation,
 			Definition:            fileName,

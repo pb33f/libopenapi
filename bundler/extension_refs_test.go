@@ -13,6 +13,8 @@ import (
 
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
+	"github.com/pb33f/testify/assert"
 )
 
 // Tests for defensive nil checks and edge cases in extension_refs.go
@@ -24,19 +26,19 @@ func TestResolveExtensionRefs_NilRolodex(t *testing.T) {
 }
 
 func TestRewriteExtensionRefsForComposedBundle_NilAndRootCases(t *testing.T) {
-	rewriteExtensionRefsForComposedBundle(nil)
+	rewriteExtensionRefsForComposedBundle(nil, nil)
 
 	rolo := index.NewRolodex(index.CreateOpenAPIIndexConfig())
-	rewriteExtensionRefsForComposedBundle(rolo)
+	rewriteExtensionRefsForComposedBundle(rolo, nil)
 
-	rewriteExtensionRefsForComposedIndex(nil, nil)
+	rewriteExtensionRefsForComposedIndex(nil, nil, nil)
 
 	var node yaml.Node
 	_ = yaml.Unmarshal([]byte(`openapi: 3.1.0`), &node)
 	idx := index.NewSpecIndexWithConfig(&node, index.CreateOpenAPIIndexConfig())
 	idx.SetAbsolutePath(filepath.Join(t.TempDir(), "openapi.yaml"))
-	rewriteExtensionRefsForComposedIndex(idx, idx)
-	walkAndRewriteComposedExtensionRefs(nil, idx, idx, false)
+	rewriteExtensionRefsForComposedIndex(idx, idx, nil)
+	walkAndRewriteComposedExtensionRefs(nil, idx, idx, false, nil, nil)
 }
 
 func TestRewriteExtensionRefsForComposedBundle_RebasesNestedExtensionRefs(t *testing.T) {
@@ -60,13 +62,72 @@ func TestRewriteExtensionRefsForComposedBundle_RebasesNestedExtensionRefs(t *tes
 	walkAndRewriteComposedExtensionRefs(&yaml.Node{
 		Kind:    yaml.DocumentNode,
 		Content: []*yaml.Node{rootNode},
-	}, sourceIdx, rootIdx, false)
+	}, sourceIdx, rootIdx, false, nil, nil)
 
 	var refValue string
 	findRefValue(rootNode, &refValue)
 	if refValue != "code_samples/C_sharp/echo/post.cs" {
 		t.Fatalf("expected rebased ref, got %q", refValue)
 	}
+}
+
+func TestRewriteExtensionRefsForComposedBundle_SkipsPropertiesNamedExtension(t *testing.T) {
+	rootDir := t.TempDir()
+	rootIdx := newComposedRefIndex(t, filepath.Join(rootDir, "openapi.yaml"), `openapi: 3.1.0`)
+	sourceIdx := newComposedRefIndex(t, filepath.Join(rootDir, "schemas", "owner.yaml"), `type: object
+properties:
+  x-meta:
+    default:
+      $ref: pet.yaml
+  x-doc:
+    $ref: pet.yaml
+x-ext:
+  properties:
+    x-inner:
+      $ref: pet.yaml
+`)
+
+	rewriteExtensionRefsForComposedIndex(sourceIdx, rootIdx, nil)
+
+	root := sourceIdx.GetRootNode().Content[0]
+	_, properties := utils.FindKeyNodeTop("properties", root.Content)
+	_, meta := utils.FindKeyNodeTop("x-meta", properties.Content)
+	_, metaDefault := utils.FindKeyNodeTop("default", meta.Content)
+	_, doc := utils.FindKeyNodeTop("x-doc", properties.Content)
+	_, ext := utils.FindKeyNodeTop("x-ext", root.Content)
+	var metaRef, docRef, extRef string
+	findRefValue(metaDefault, &metaRef)
+	findRefValue(doc, &docRef)
+	findRefValue(ext, &extRef)
+	assert.Equal(t, "pet.yaml", metaRef, "a property named x-meta is not an extension")
+	assert.Equal(t, "pet.yaml", docRef, "a property named x-doc is not an extension")
+	assert.Equal(t, "schemas/pet.yaml", extRef, "everything under an extension is rebased")
+}
+
+// An inlined reference shares the content of its target, so a value a selection read as data also
+// sits below the inlined copy, where the walk from the root would read it as structure.
+func TestRewriteExtensionRefsForComposedBundle_InlinedCopyKeepsSelectedData(t *testing.T) {
+	rootDir := t.TempDir()
+	rootIdx := newComposedRefIndex(t, filepath.Join(rootDir, "openapi.yaml"), `openapi: 3.1.0`)
+	sourcePath := filepath.Join(rootDir, "schemas", "catalog.yaml")
+	sourceIdx := newComposedRefIndex(t, sourcePath, `Owner:
+  const:
+    x-link:
+      $ref: pet.yaml
+Copy:
+  $ref: '#/Owner'
+`)
+	root := sourceIdx.GetRootNode().Content[0]
+	_, owner := utils.FindKeyNodeTop("Owner", root.Content)
+	_, copied := utils.FindKeyNodeTop("Copy", root.Content)
+	inlineRefNode(copied, owner)
+
+	selections := refSelections{sourcePath: {{Node: owner, Path: []string{"components", "schemas", "Owner"}}}}
+	rewriteExtensionRefsForComposedIndex(sourceIdx, rootIdx, selections)
+
+	var ref string
+	findRefValue(owner, &ref)
+	assert.Equal(t, "pet.yaml", ref, "const of a schema is data, at the inlined copy too")
 }
 
 func TestRebaseExtensionRefForComposed(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/libopenapi/internal/specpath"
 	"github.com/pb33f/libopenapi/utils"
 )
 
@@ -61,10 +62,7 @@ func (resolver *Resolver) extractRelativesWithState(
 	state relativeWalkState,
 	walkPath []string,
 ) []*Reference {
-	if underOpenAPIExamplePayloadPath(walkPath) {
-		return nil
-	}
-	if isDirectOpenAPIExampleValuePath(walkPath) && !isDirectOpenAPIExampleRefNode(node) {
+	if resolver.isLiteralValue(walkPath, node, parent) {
 		return nil
 	}
 	// Guard against stack overflow from deeply nested or circular specs.
@@ -92,6 +90,11 @@ func (resolver *Resolver) extractRelativesWithState(
 				childPath := walkPath
 				if node.Kind == yaml.MappingNode && i%2 == 1 {
 					childPath = append(walkPath, node.Content[i-1].Value)
+					// The index does not extract references under excluded extensions, so the
+					// resolver must not look for them there either.
+					if resolver.excludeExtensionRefs() && specpath.IsOpenAPIExtensionSegment(childPath, len(childPath)-1) {
+						continue
+					}
 				} else if node.Kind == yaml.SequenceNode {
 					childPath = append(walkPath, "[]")
 				}
@@ -117,6 +120,23 @@ func (resolver *Resolver) extractRelativesWithState(
 
 	resolver.relativesSeen += len(found)
 	return found
+}
+
+// isLiteralValue reports whether node is instance data. The rolodex has already decided values
+// whose meaning depends on how their document is referenced, and the walk follows that decision:
+// a walk entering a document through a reference held in another one only knows the path of the
+// reference, not the context that document was itself referenced from.
+func (resolver *Resolver) isLiteralValue(walkPath []string, node, parent *yaml.Node) bool {
+	if resolver.specIndex != nil {
+		if literal, settled := resolver.specIndex.GetRolodex().settledValue(node); settled {
+			return literal
+		}
+	}
+	return specpath.IsLiteralValue(walkPath, node, parent)
+}
+
+func (resolver *Resolver) excludeExtensionRefs() bool {
+	return resolver.specIndex != nil && resolver.specIndex.config != nil && resolver.specIndex.config.ExcludeExtensionRefs
 }
 
 func (resolver *Resolver) handleRelativeDepthLimit(ref *Reference, state relativeWalkState) []*Reference {

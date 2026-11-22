@@ -537,7 +537,8 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 	if err := handleDiscriminatorMappingIndexes(cf, rootIndex, rolodex); err != nil {
 		return nil, err
 	}
-	rewriteExtensionRefsForComposedBundle(rolodex)
+	selections := collectRefSelections(rolodex)
+	rewriteExtensionRefsForComposedBundle(rolodex, selections)
 
 	processedNodes := orderedmap.New[string, *processRef]()
 	var errs []error
@@ -572,9 +573,9 @@ func composeWithOrigins(model *v3.Document, compositionConfig *BundleComposition
 
 	// Rewrite any remaining unindexed refs after mapping resolution loads new indexes.
 	allLoadedIndexes := rolodex.GetIndexes()
-	rewriteAllRefs(rootIndex, processedNodes, rolodex)
+	rewriteAllRefs(rootIndex, processedNodes, rolodex, selections)
 	for _, idx := range allLoadedIndexes {
-		rewriteAllRefs(idx, processedNodes, rolodex)
+		rewriteAllRefs(idx, processedNodes, rolodex, selections)
 	}
 
 	rewriteInlinedAbsoluteRefs(rolodex, allLoadedIndexes, inlinedPaths)
@@ -648,7 +649,8 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	if err := handleDiscriminatorMappingIndexes(cf, rootIndex, rolodex); err != nil {
 		return nil, err
 	}
-	rewriteExtensionRefsForComposedBundle(rolodex)
+	selections := collectRefSelections(rolodex)
+	rewriteExtensionRefsForComposedBundle(rolodex, selections)
 
 	processedNodes := orderedmap.New[string, *processRef]()
 	var errs []error
@@ -683,9 +685,9 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 
 	// Rewrite any remaining unindexed refs after mapping resolution loads new indexes.
 	allLoadedIndexes := rolodex.GetIndexes()
-	rewriteAllRefs(rootIndex, processedNodes, rolodex)
+	rewriteAllRefs(rootIndex, processedNodes, rolodex, selections)
 	for _, idx := range allLoadedIndexes {
-		rewriteAllRefs(idx, processedNodes, rolodex)
+		rewriteAllRefs(idx, processedNodes, rolodex, selections)
 	}
 
 	rewriteInlinedAbsoluteRefs(rolodex, allLoadedIndexes, inlinedPaths)
