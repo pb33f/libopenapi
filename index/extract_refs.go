@@ -128,7 +128,11 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 	if index.config != nil && index.config.AllowExcessiveAliases {
 		walk.limits = unlimitedExtractRefsLimits
 	}
-	return index.extractRefs(ctx, node, parent, seenPath, level, poly, pName, walk)
+	// pointer gets its own array, so the walk's appends never write into seenPath's, and spare
+	// capacity for a typical document's depth, so those appends rarely reallocate.
+	pointer := make([]string, len(seenPath), len(seenPath)+64)
+	copy(pointer, seenPath)
+	return index.extractRefs(ctx, node, parent, seenPath, pointer, level, poly, pName, walk)
 }
 
 type extractRefsTraversal struct {
@@ -155,7 +159,9 @@ func (walk *extractRefsTraversal) visit() error {
 
 // Ancestry tracks canonical source nodes, not the shallow views created during
 // merge expansion. A shared anchor is visited again at each distinct path.
-func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string, walk *extractRefsTraversal) []*Reference {
+// pointer holds the JSON pointer segments to node. Unlike seenPath it has every sequence index and
+// every key, and a value reached through a merge key sits under the mapping that merges it.
+func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node, seenPath, pointer []string, level int, poly bool, pName string, walk *extractRefsTraversal) []*Reference {
 	if node == nil || walk.stopped {
 		return nil
 	}
@@ -198,7 +204,10 @@ func (index *SpecIndex) extractRefs(ctx context.Context, node, parent *yaml.Node
 		}
 		walk.ancestry[node] = struct{}{}
 	}
-	state := index.initializeExtractRefsState(ctx, nodeID, seenPath, level, poly, pName)
+	state := index.initializeExtractRefsState(ctx, nodeID, seenPath, pointer, level, poly, pName)
+	if len(state.scope.Chain) > 0 && node.Kind == yaml.MappingNode {
+		index.recordSchemaIdBase(node, state.scope.BaseUri)
+	}
 	state.mergeStart = len(view.Content)
 	if view != node {
 		// Merge views retain explicit pairs first, then append inherited pairs.

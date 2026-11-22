@@ -945,19 +945,20 @@ func TestRegisterSchemaIDAt_HelperBranches(t *testing.T) {
 
 	var invalidNode yaml.Node
 	_ = yaml.Unmarshal([]byte(`$id: '#/bad'`), &invalidNode)
-	idx.registerSchemaIDAt(invalidNode.Content[0], 0, []string{"components", "schemas", "Pet"}, "test.yaml")
+	pet := []string{"components", "schemas", "Pet"}
+	idx.registerSchemaIDAt(invalidNode.Content[0], 0, pet, pet, "test.yaml", 0)
 	assert.NotEmpty(t, idx.refErrors)
 
 	var nonStringNode yaml.Node
 	_ = yaml.Unmarshal([]byte(`$id:
   type: string`), &nonStringNode)
 	errorsBefore := len(idx.refErrors)
-	idx.registerSchemaIDAt(nonStringNode.Content[0], 0, nil, "test.yaml")
+	idx.registerSchemaIDAt(nonStringNode.Content[0], 0, nil, nil, "test.yaml", 0)
 	assert.Len(t, idx.refErrors, errorsBefore)
 
 	var fallbackNode yaml.Node
 	_ = yaml.Unmarshal([]byte(`$id: schema.json`), &fallbackNode)
-	idx.registerSchemaIDAt(fallbackNode.Content[0], 0, []string{"components", "schemas", "Pet"}, "://bad-base")
+	idx.registerSchemaIDAt(fallbackNode.Content[0], 0, pet, pet, "://bad-base", 0)
 	entry := idx.schemaIdRegistry["schema.json"]
 	assert.NotNil(t, entry)
 	assert.Equal(t, "schema.json", entry.ResolvedUri)
@@ -971,7 +972,8 @@ func TestRegisterSchemaIDAt_SkipsExamplePaths(t *testing.T) {
 	var node yaml.Node
 	_ = yaml.Unmarshal([]byte(`$id: https://example.com/schema.json`), &node)
 
-	idx.registerSchemaIDAt(node.Content[0], 0, []string{"components", "examples", "Sample", "value"}, "test.yaml")
+	sample := []string{"components", "examples", "Sample", "value"}
+	idx.registerSchemaIDAt(node.Content[0], 0, sample, sample, "test.yaml", 0)
 
 	assert.Empty(t, idx.schemaIdRegistry)
 	assert.Empty(t, idx.refErrors)
@@ -1088,7 +1090,7 @@ properties:
 
 func TestExtractRefs_WalkHelpers(t *testing.T) {
 	idx := NewTestSpecIndex().Load().(*SpecIndex)
-	state := idx.initializeExtractRefsState(context.Background(), "", nil, 0, false, "")
+	state := idx.initializeExtractRefsState(context.Background(), "", nil, nil, 0, false, "")
 
 	node := &yaml.Node{
 		Kind: yaml.MappingNode,

@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -2854,4 +2855,628 @@ func TestDocument_BuildV3Model_NoVersionNode(t *testing.T) {
 	assert.Nil(t, m)
 	require.Error(t, buildErr)
 	assert.Contains(t, buildErr.Error(), "no openapi version/tag found")
+}
+
+// A plain-name fragment such as "#foo" names an $anchor in the schema resource
+// it appears in, not a JSON Pointer.
+func TestDocument_BuildV3Model_SchemaAnchorRefs(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths: {}
+components:
+  schemas:
+    A:
+      $anchor: foo
+      type: string
+    B:
+      type: object
+      properties:
+        local: {$ref: '#foo'}
+        encoded: {$ref: '#f%6Fo'}
+    R:
+      $id: https://example.com/r
+      type: object
+      $defs:
+        X: {$anchor: bar, type: integer}
+      properties:
+        scoped: {$ref: '#bar'}
+        absolute: {$ref: 'https://example.com/r#bar'}
+        encoded: {$ref: '#b%61r'}
+    U:
+      type: object
+      properties:
+        outside: {$ref: 'https://example.com/r#bar'}
+        encodedOutside: {$ref: 'https://example.com/r#b%61r'}
+    Tuple:
+      type: array
+      prefixItems:
+        - {$anchor: first, type: boolean}
+        - {$anchor: second, type: number}
+    T:
+      type: object
+      properties:
+        first: {$ref: '#first'}
+        second: {$ref: '#second'}
+`
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	assert.Empty(t, m.Index.GetReferenceIndexErrors())
+
+	schemas := m.Model.Components.Schemas
+	for _, tc := range []struct{ schema, property, kind string }{
+		{"B", "local", "string"},
+		{"B", "encoded", "string"},
+		{"R", "scoped", "integer"},
+		{"R", "absolute", "integer"},
+		{"R", "encoded", "integer"},
+		{"U", "outside", "integer"},
+		{"U", "encodedOutside", "integer"},
+		{"T", "first", "boolean"},
+		{"T", "second", "number"},
+	} {
+		t.Run(tc.schema+"."+tc.property, func(t *testing.T) {
+			prop := schemas.GetOrZero(tc.schema).Schema().Properties.GetOrZero(tc.property)
+			require.NotNil(t, prop)
+			s := prop.Schema()
+			require.NotNil(t, s, prop.GetBuildError())
+			assert.Equal(t, []string{tc.kind}, s.Type)
+		})
+	}
+
+	mapped := m.Index.GetMappedReferences()
+	assert.Contains(t, mapped, "#/components/schemas/Tuple/prefixItems/0")
+	assert.Contains(t, mapped, "#/components/schemas/Tuple/prefixItems/1")
+}
+
+// a default payload is an instance, not a schema, so its $anchor does not take the name from the
+// schema declared after it.
+func TestDocument_BuildV3Model_SchemaAnchorAfterDefaultPayload(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths: {}
+components:
+  schemas:
+    Choice:
+      type: object
+      default: {$anchor: selected, type: integer}
+    Selected:
+      $anchor: selected
+      type: string
+    Uses:
+      type: object
+      properties:
+        pick: {$ref: '#selected'}
+`
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	assert.Empty(t, m.Index.GetReferenceIndexErrors())
+
+	prop := m.Model.Components.Schemas.GetOrZero("Uses").Schema().Properties.GetOrZero("pick")
+	require.NotNil(t, prop)
+	s := prop.Schema()
+	require.NotNil(t, s, prop.GetBuildError())
+	assert.Equal(t, []string{"string"}, s.Type)
+}
+
+// an $id under an extension starts a resource, so it sets the base URI for the refs inside it.
+func TestDocument_BuildV3Model_SchemaIdInExtension(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: ids, version: "1"}
+paths: {}
+x-vendor:
+  Resource:
+    $id: 'https://example.com/vendor'
+    type: object
+    $defs:
+      S: {type: string}
+    properties:
+      s: {$ref: '#/$defs/S'}
+`
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	assert.Empty(t, m.Index.GetReferenceIndexErrors())
+}
+
+// an $id in a default payload is data, so neither it nor an $anchor beside it takes the URI from
+// the schema that declares it later, at the document root or inside an $id resource.
+func TestDocument_BuildV3Model_SchemaIdInDefaultPayload(t *testing.T) {
+	const head = "openapi: 3.1.0\ninfo: {title: ids, version: \"1\"}\npaths: {}\n"
+	specs := map[string]string{
+		"default of a component": `components:
+  schemas:
+    Holder:
+      type: object
+      default: {$id: 'https://example.org/widget', $anchor: widget, type: integer}
+    Widget: {$id: 'https://example.org/widget', $anchor: widget, type: string}
+`,
+		"default inside the resource": `components:
+  schemas:
+    Widget:
+      $id: 'https://example.org/widget'
+      default: {$id: 'https://example.org/widget', $anchor: widget, type: integer}
+      $anchor: widget
+      type: string
+`,
+	}
+	const uses = `    Uses:
+      type: object
+      properties:
+        byId: {$ref: 'https://example.org/widget'}
+        byAnchor: {$ref: 'https://example.org/widget#widget'}
+`
+	for name, spec := range specs {
+		t.Run(name, func(t *testing.T) {
+			doc, err := NewDocument([]byte(head + spec + uses))
+			require.NoError(t, err)
+			m, err := doc.BuildV3Model()
+			require.NoError(t, err)
+			assert.Empty(t, m.Index.GetReferenceIndexErrors())
+
+			for _, property := range []string{"byId", "byAnchor"} {
+				prop := m.Model.Components.Schemas.GetOrZero("Uses").Schema().Properties.GetOrZero(property)
+				require.NotNil(t, prop, property)
+				s := prop.Schema()
+				require.NotNil(t, s, prop.GetBuildError())
+				assert.Equal(t, []string{"string"}, s.Type, property)
+			}
+		})
+	}
+}
+
+// a plain-name fragment names an $anchor, so with no such anchor the ref is missing, even where the
+// $id resource has a keyword of that name.
+func TestDocument_BuildV3Model_SchemaAnchorUndeclared(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths: {}
+components:
+  schemas:
+    Catalog:
+      $id: 'https://example.org/catalog'
+      type: object
+      not: {type: integer}
+    Uses:
+      type: object
+      properties:
+        item: {$ref: 'https://example.org/catalog#not'}
+`
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	_, err = doc.BuildV3Model()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "component `https://example.org/catalog#not` does not exist in the specification")
+}
+
+// a required ref to an $anchor is followed by the circular check, just as a pointer ref is, so
+// a loop of required properties through one is infinite.
+func TestDocument_BuildV3Model_SchemaAnchorRequiredCycle(t *testing.T) {
+	const head = "openapi: 3.1.0\ninfo: {title: anchors, version: \"1\"}\npaths: {}\ncomponents:\n  schemas:\n"
+	specs := map[string]string{
+		"two schemas": `    A: {type: object, required: [b], properties: {b: {$ref: '#bee'}}}
+    B: {$anchor: bee, type: object, required: [a], properties: {a: {$ref: '#/components/schemas/A'}}}
+`,
+		"self": `    N: {$anchor: node, type: object, required: [next], properties: {next: {$ref: '#node'}}}
+`,
+	}
+	for name, spec := range specs {
+		t.Run(name, func(t *testing.T) {
+			doc, err := NewDocument([]byte(head + spec))
+			require.NoError(t, err)
+			_, err = doc.BuildV3Model()
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "infinite circular reference detected")
+		})
+	}
+}
+
+// a schema inside an $id resource resolves "#foo" against that resource, also when a JSON pointer
+// from outside the resource reaches it.
+func TestDocument_BuildV3Model_SchemaAnchorInResourceReachedByPointer(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths: {}
+components:
+  schemas:
+    R:
+      $id: 'https://example.com/r'
+      $defs:
+        A: {type: object, properties: {w: {$ref: '#bar'}}}
+        X: {$anchor: bar, type: string, title: Bar}
+    Uses: {type: object, properties: {a: {$ref: '#/components/schemas/R/$defs/A'}}}
+`
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	a := m.Model.Components.Schemas.GetOrZero("Uses").Schema().Properties.GetOrZero("a")
+	require.NotNil(t, a)
+	as := a.Schema()
+	require.NotNil(t, as, a.GetBuildError())
+	w := as.Properties.GetOrZero("w")
+	require.NotNil(t, w)
+	ws := w.Schema()
+	require.NotNil(t, ws, w.GetBuildError())
+	assert.Equal(t, "Bar", ws.Title)
+}
+
+// "#info" names the $anchor info, not the document's info object.
+func TestDocument_BuildV3Model_SchemaAnchorNamedLikeRootKey(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths: {}
+components:
+  schemas:
+    Info: {$anchor: info, type: string, title: Anchored}
+    A: {type: object, properties: {p: {$ref: '#info'}}}
+`
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	p := m.Model.Components.Schemas.GetOrZero("A").Schema().Properties.GetOrZero("p")
+	require.NotNil(t, p)
+	ps := p.Schema()
+	require.NotNil(t, ps, p.GetBuildError())
+	assert.Equal(t, "Anchored", ps.Title)
+}
+
+// "other.yaml#foo" names the $anchor foo of other.yaml's root resource: the file, or its root $id.
+func TestDocument_BuildV3Model_SchemaAnchorInFile(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"other.yaml":    "$anchor: foo\ntype: string\ntitle: Foo\n",
+		"withid.yaml":   "$id: 'https://example.com/withid'\n$defs:\n  W: {$anchor: wid, type: string, title: Wid}\n",
+		"nested.yaml":   "$defs:\n  R: {$id: 'https://example.com/inner', $defs: {Q: {$anchor: deep, type: string}}}\n",
+		"chain.yaml":    "$defs:\n  C: {type: object, properties: {x: {$ref: 'sub/leaf.yaml#leaf'}}}\n",
+		"sub/leaf.yaml": "$anchor: leaf\ntype: string\ntitle: Leaf\n",
+	}
+	require.NoError(t, os.MkdirAll(filepath.Join(dir, "sub"), 0o755))
+	for name, content := range files {
+		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644))
+	}
+	build := func(t *testing.T, ref string) (*base.Schema, error) {
+		t.Helper()
+		spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths: {}
+components:
+  schemas:
+    A: {type: object, properties: {p: {$ref: '` + ref + `'}}}
+`
+		doc, err := NewDocumentWithConfiguration([]byte(spec), &datamodel.DocumentConfiguration{
+			BasePath:            dir,
+			AllowFileReferences: true,
+		})
+		require.NoError(t, err)
+		m, err := doc.BuildV3Model()
+		if err != nil {
+			return nil, err
+		}
+		p := m.Model.Components.Schemas.GetOrZero("A").Schema().Properties.GetOrZero("p")
+		require.NotNil(t, p)
+		ps := p.Schema()
+		require.NotNil(t, ps, p.GetBuildError())
+		return ps, nil
+	}
+
+	for ref, title := range map[string]string{"other.yaml#foo": "Foo", "withid.yaml#wid": "Wid"} {
+		t.Run(ref, func(t *testing.T) {
+			s, err := build(t, ref)
+			require.NoError(t, err)
+			assert.Equal(t, title, s.Title)
+		})
+	}
+
+	t.Run("from another file", func(t *testing.T) {
+		s, err := build(t, "chain.yaml#/$defs/C")
+		require.NoError(t, err)
+		x := s.Properties.GetOrZero("x")
+		require.NotNil(t, x)
+		xs := x.Schema()
+		require.NotNil(t, xs, x.GetBuildError())
+		assert.Equal(t, "Leaf", xs.Title)
+	})
+
+	// an anchor inside a nested $id resource belongs to that resource, not to the file.
+	for _, ref := range []string{"nested.yaml#deep", "withid.yaml#missing"} {
+		t.Run(ref, func(t *testing.T) {
+			_, err := build(t, ref)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "component `"+ref+"` does not exist in the specification")
+		})
+	}
+}
+
+// a Link Object's parameter values and request body, and an extension on an operation's Responses
+// Object, are data, so an $anchor there does not shadow the schema that declares it.
+func TestDocument_BuildV3Model_SchemaAnchorInLinkAndResponsesExtension(t *testing.T) {
+	const link = `
+          links:
+            L:
+              operationId: getP
+`
+	for name, c := range map[string]struct{ paths, links string }{
+		"link parameter value": {paths: link + `              parameters:
+                p: {$anchor: thing, type: integer}
+`},
+		"link request body": {paths: link + `              requestBody: {$anchor: thing, type: integer}
+`},
+		"responses extension": {paths: `
+        x-shadow:
+          content:
+            application/json:
+              schema: {$anchor: thing, type: integer}
+`},
+		"component link parameter value": {links: `  links:
+    L:
+      operationId: getP
+      parameters:
+        p: {$anchor: thing, type: integer}
+`},
+	} {
+		t.Run(name, func(t *testing.T) {
+			spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths:
+  /p:
+    get:
+      operationId: getP
+      responses:
+        "200":
+          description: ok` + c.paths + `
+components:
+` + c.links + `  schemas:
+    Thing: {$anchor: thing, type: string}
+    Uses:
+      type: object
+      properties:
+        thing: {$ref: '#thing'}
+`
+			doc, err := NewDocument([]byte(spec))
+			require.NoError(t, err)
+			m, err := doc.BuildV3Model()
+			require.NoError(t, err)
+			assert.Empty(t, m.Index.GetReferenceIndexErrors())
+
+			prop := m.Model.Components.Schemas.GetOrZero("Uses").Schema().Properties.GetOrZero("thing")
+			require.NotNil(t, prop)
+			s := prop.Schema()
+			require.NotNil(t, s, prop.GetBuildError())
+			assert.Equal(t, []string{"string"}, s.Type)
+		})
+	}
+}
+
+// a key holding "~" or "/" is escaped in the definition path, and a ref to an anchor beneath it
+// still resolves.
+func TestDocument_BuildV3Model_SchemaAnchorUnderTildeKey(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths: {}
+components:
+  schemas:
+    A:
+      type: object
+      properties:
+        a~b: {$anchor: tilde, type: string}
+        c/d~1e: {$anchor: slash, type: integer}
+    Uses:
+      type: object
+      properties:
+        t: {$ref: '#tilde'}
+        s: {$ref: '#slash'}
+`
+	doc, err := NewDocument([]byte(spec))
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	assert.Empty(t, m.Index.GetReferenceIndexErrors())
+
+	for ref, want := range map[string]struct{ path, prop, kind string }{
+		"#tilde": {path: "#/components/schemas/A/properties/a~0b", prop: "t", kind: "string"},
+		"#slash": {path: "#/components/schemas/A/properties/c~1d~01e", prop: "s", kind: "integer"},
+	} {
+		resolved := m.Index.ResolveRefViaSchemaId(ref)
+		require.NotNil(t, resolved, ref)
+		assert.Equal(t, want.path, resolved.Definition, ref)
+
+		prop := m.Model.Components.Schemas.GetOrZero("Uses").Schema().Properties.GetOrZero(want.prop)
+		require.NotNil(t, prop, ref)
+		s := prop.Schema()
+		require.NotNil(t, s, prop.GetBuildError())
+		assert.Equal(t, []string{want.kind}, s.Type, ref)
+	}
+	props := m.Model.Components.Schemas.GetOrZero("A").Schema().Properties
+	assert.Equal(t, []string{"string"}, props.GetOrZero("a~b").Schema().Type)
+	assert.Equal(t, []string{"integer"}, props.GetOrZero("c/d~1e").Schema().Type)
+}
+
+// an $anchor inside an $id resource is classified by its path from the resource's root, so a
+// resource under an extension or a default keeps its anchors, while data inside the resource still
+// declares none.
+func TestDocument_BuildV3Model_SchemaAnchorInsideIdResource(t *testing.T) {
+	const head = "openapi: 3.1.0\ninfo: {title: anchors, version: \"1\"}\npaths: {}\n"
+	build := func(t *testing.T, spec string) *DocumentModel[v3high.Document] {
+		doc, err := NewDocument([]byte(head + spec))
+		require.NoError(t, err)
+		m, err := doc.BuildV3Model()
+		require.NoError(t, err)
+		assert.Empty(t, m.Index.GetReferenceIndexErrors())
+		return m
+	}
+	kind := func(t *testing.T, m *DocumentModel[v3high.Document], property string) []string {
+		prop := m.Model.Components.Schemas.GetOrZero("Uses").Schema().Properties.GetOrZero(property)
+		require.NotNil(t, prop, property)
+		s := prop.Schema()
+		require.NotNil(t, s, prop.GetBuildError())
+		return s.Type
+	}
+
+	t.Run("resource under an extension", func(t *testing.T) {
+		m := build(t, `x-vendor:
+  Thing: {$id: 'https://example.com/thing', type: object, $defs: {S: {$anchor: s, type: string}}}
+components:
+  schemas:
+    Uses:
+      type: object
+      properties:
+        byId: {$ref: 'https://example.com/thing'}
+        byPointer: {$ref: 'https://example.com/thing#/$defs/S'}
+        byAnchor: {$ref: 'https://example.com/thing#s'}
+`)
+		assert.Equal(t, []string{"object"}, kind(t, m, "byId"))
+		assert.Equal(t, []string{"string"}, kind(t, m, "byPointer"))
+		assert.Equal(t, []string{"string"}, kind(t, m, "byAnchor"))
+	})
+
+	t.Run("default inside a resource under an extension", func(t *testing.T) {
+		m := build(t, `x-vendor:
+  Thing:
+    $id: 'https://example.com/thing'
+    default: {$anchor: s, type: integer}
+    $defs:
+      S: {$anchor: s, type: string}
+components:
+  schemas:
+    Uses:
+      type: object
+      properties:
+        byAnchor: {$ref: 'https://example.com/thing#s'}
+`)
+		assert.Equal(t, []string{"string"}, kind(t, m, "byAnchor"))
+	})
+
+	t.Run("resource in a default payload", func(t *testing.T) {
+		m := build(t, `components:
+  schemas:
+    Holder:
+      type: object
+      default: {$id: 'https://example.com/payload', $anchor: thing, type: integer}
+    Thing: {$anchor: thing, type: string}
+    Uses:
+      type: object
+      properties:
+        thing: {$ref: '#thing'}
+`)
+		assert.Equal(t, []string{"string"}, kind(t, m, "thing"))
+	})
+}
+
+func TestDocument_BuildV3Model_SchemaAnchorPolymorphicScopedByResource(t *testing.T) {
+	const head = "openapi: 3.1.0\ninfo: {title: anchors, version: \"1\"}\npaths: {}\n"
+
+	t.Run("each resource resolves its own anchor", func(t *testing.T) {
+		doc, err := NewDocument([]byte(head + `components:
+  schemas:
+    R1:
+      $id: https://example.com/r1
+      $defs: {X: {$anchor: item, type: integer}}
+      oneOf: [{$ref: '#item'}]
+    R2:
+      $id: https://example.com/r2
+      $defs: {X: {$anchor: item, type: string}}
+      oneOf: [{$ref: '#item'}]
+`))
+		require.NoError(t, err)
+		m, err := doc.BuildV3Model()
+		require.NoError(t, err)
+		for name, kind := range map[string]string{"R1": "integer", "R2": "string"} {
+			oneOf := m.Model.Components.Schemas.GetOrZero(name).Schema().OneOf
+			require.Len(t, oneOf, 1, name)
+			s := oneOf[0].Schema()
+			require.NotNil(t, s, name)
+			assert.Equal(t, []string{kind}, s.Type, name)
+		}
+	})
+
+	t.Run("missing anchor in the first resource is an error", func(t *testing.T) {
+		doc, err := NewDocument([]byte(head + `components:
+  schemas:
+    R1:
+      $id: https://example.com/r1
+      oneOf: [{$ref: '#item'}]
+    R2:
+      $id: https://example.com/r2
+      $defs: {X: {$anchor: item, type: string}}
+      oneOf: [{$ref: '#item'}]
+`))
+		require.NoError(t, err)
+		_, err = doc.BuildV3Model()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "#item")
+	})
+}
+
+// with a BaseURL and no spec file path, a "#name" ref in the root document still finds the $anchor
+// declared there, rather than being looked up under the BaseURL.
+func TestDocument_BuildV3Model_SchemaAnchorWithBaseURL(t *testing.T) {
+	spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths: {}
+components:
+  schemas:
+    Own:
+      type: object
+      properties:
+        anchored: {$ref: '#own'}
+        pointer: {$ref: '#/components/schemas/O'}
+    O: {$anchor: own, type: boolean}
+`
+	baseURL, err := url.Parse("https://example.com/specs/")
+	require.NoError(t, err)
+	doc, err := NewDocumentWithConfiguration([]byte(spec), &datamodel.DocumentConfiguration{BaseURL: baseURL})
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	own := m.Model.Components.Schemas.GetOrZero("Own").Schema()
+	require.NotNil(t, own)
+	for _, name := range []string{"anchored", "pointer"} {
+		prop := own.Properties.GetOrZero(name)
+		require.NotNil(t, prop, name)
+		s := prop.Schema()
+		require.NotNil(t, s, prop.GetBuildError())
+		assert.Equal(t, []string{"boolean"}, s.Type, name)
+	}
+}
+
+// a file referenced as a whole and by one of its $anchors is indexed while the anchor is looked
+// up, so the anchor is found whichever finishes first.
+func TestDocument_BuildV3Model_SchemaAnchorInFileReferencedWhole(t *testing.T) {
+	dir := t.TempDir()
+	cat := `type: object
+properties:
+  n: {$ref: '#name'}
+$defs:
+  N: {$anchor: name, type: string}
+`
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "cat.yaml"), []byte(cat), 0o644))
+	spec := `openapi: 3.1.0
+info: {title: anchors, version: "1"}
+paths: {}
+components:
+  schemas:
+    Cat: {$ref: 'cat.yaml'}
+    CatName: {$ref: 'cat.yaml#name'}
+`
+	for i := 0; i < 20; i++ {
+		doc, err := NewDocumentWithConfiguration([]byte(spec), &datamodel.DocumentConfiguration{
+			BasePath:            dir,
+			AllowFileReferences: true,
+		})
+		require.NoError(t, err)
+		m, err := doc.BuildV3Model()
+		require.NoError(t, err)
+		name := m.Model.Components.Schemas.GetOrZero("CatName").Schema()
+		require.NotNil(t, name)
+		assert.Equal(t, []string{"string"}, name.Type)
+	}
 }

@@ -34,6 +34,8 @@ list:
 		{name: "empty fragment", node: &root, fragment: "", nilNode: true},
 		{name: "invalid prefix", node: &root, fragment: "components/schemas/Thing", nilNode: true},
 		{name: "root fragment", node: &root, fragment: "#/", nilNode: true},
+		{name: "plain-name fragment", node: &root, fragment: "#components", nilNode: true},
+		{name: "path without hash", node: &root, fragment: "/components/schemas/Thing/type", value: "string"},
 		{name: "skip empty segment", node: &root, fragment: "#/components//schemas/Thing/type", value: "string"},
 		{name: "array index", node: &root, fragment: "#/list/1", value: "one"},
 		{name: "missing map key", node: &root, fragment: "#/components/schemas/Missing", nilNode: true},

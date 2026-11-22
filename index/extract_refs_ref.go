@@ -66,6 +66,17 @@ func (index *SpecIndex) extractReferenceAt(
 	}
 
 	fullDefinitionPath, componentName := index.resolveReferenceTarget(value)
+	refKey := value
+	if isSchemaAnchorFragment(value) {
+		// "#foo" names an $anchor in the enclosing resource, so the same text can
+		// point at different schemas. key it by the resource.
+		base := index.specAbsolutePath
+		if scope != nil && scope.BaseUri != "" {
+			base = scope.BaseUri
+		}
+		fullDefinitionPath = base + value
+		refKey = fullDefinitionPath
+	}
 	_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(componentName)
 
 	siblingProps, siblingKeys := extractSiblingRefProperties(node)
@@ -95,7 +106,7 @@ func (index *SpecIndex) extractReferenceAt(
 	}
 
 	if poly {
-		index.polymorphicRefs[value] = ref
+		index.polymorphicRefs[refKey] = ref
 		switch pName {
 		case "anyOf":
 			index.polymorphicAnyOfRefs = append(index.polymorphicAnyOfRefs, ref)
@@ -107,7 +118,7 @@ func (index *SpecIndex) extractReferenceAt(
 		return nil
 	}
 
-	if index.allRefs[value] != nil {
+	if index.allRefs[refKey] != nil {
 		return nil
 	}
 
@@ -134,21 +145,27 @@ func (index *SpecIndex) extractReferenceAt(
 	return ref
 }
 
-func (index *SpecIndex) registerSchemaIDAt(node *yaml.Node, keyIndex int, seenPath []string, parentBaseUri string) {
-	if underOpenAPIExamplePath(seenPath) {
+// schemaIdInData reports whether an $id in the mapping at pointer is part of a literal value, such
+// as a schema default, so it neither starts a resource nor registers. parentDepth is the
+// resourceDepth of the scope around that mapping.
+func schemaIdInData(seenPath, pointer []string, parentDepth int) bool {
+	return underOpenAPIExamplePath(seenPath) || inSchemaData(pointer, parentDepth, false)
+}
+
+// registerSchemaIDAt records the $id at node.Content[keyIndex], where pointer is the JSON pointer
+// segments to node and seenPath is the walk's path to it.
+func (index *SpecIndex) registerSchemaIDAt(node *yaml.Node, keyIndex int, seenPath, pointer []string, parentBaseUri string, parentDepth int) {
+	if schemaIdInData(seenPath, pointer, parentDepth) {
 		return
 	}
-	if len(node.Content) <= keyIndex+1 || !utils.IsNodeStringValue(node.Content[keyIndex+1]) {
+	// in a sequence, such as required: [$id, name], "$id" is an entry, not a key.
+	if len(node.Content) <= keyIndex+1 || utils.IsNodeArray(node) || !utils.IsNodeStringValue(node.Content[keyIndex+1]) {
 		return
 	}
 
 	idValue := node.Content[keyIndex+1].Value
 	idNode := node.Content[keyIndex+1]
-
-	definitionPath := "#"
-	if len(seenPath) > 0 {
-		definitionPath = "#/" + strings.Join(seenPath, "/")
-	}
+	definitionPath := schemaPointer(pointer)
 
 	if err := ValidateSchemaId(idValue); err != nil {
 		index.errorLock.Lock()
@@ -244,6 +261,11 @@ func (index *SpecIndex) resolveReferenceTarget(value string) (string, string) {
 	} else if strings.HasPrefix(uri[0], "http") {
 		// No fragment, absolute HTTP URL — use as-is.
 		fullDefinitionPath = value
+	} else if file, fragment := SplitRefFragment(value); file != "" && isSchemaAnchorFragment(fragment) {
+		// a plain-name fragment in another file, such as "other.yaml#foo": the file resolves as a
+		// whole-file ref does.
+		fullDefinitionPath, _ = index.resolveReferenceTarget(file)
+		fullDefinitionPath += fragment
 	} else if !strings.Contains(uri[0], "#") {
 		// No fragment, not a bare anchor — whole-file reference or relative path.
 		if strings.HasPrefix(defRoot, "http") {

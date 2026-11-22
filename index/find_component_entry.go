@@ -48,6 +48,12 @@ func (index *SpecIndex) FindComponent(ctx context.Context, componentId string) *
 
 	fileExt := filepath.Ext(componentId)
 	if fileExt != "" {
+		// "other.yaml#foo" names an $anchor in other.yaml, not a file called "other.yaml#foo".
+		if file, fragment := SplitRefFragment(componentId); filepath.Ext(file) != "" {
+			if name, ok := schemaAnchorFragmentName(fragment); ok {
+				return index.findSchemaAnchorInFile(ctx, file, componentId, name)
+			}
+		}
 		return index.lookupRolodex(ctx, uri)
 	}
 

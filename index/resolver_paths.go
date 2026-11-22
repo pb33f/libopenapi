@@ -62,6 +62,9 @@ func (resolver *Resolver) buildDefPath(ref *Reference, l string) string {
 			fdexp := strings.Split(ref.FullDefinition, "#/")
 			def = fdexp[0] + "#/" + exp[1]
 		}
+	} else if isSchemaAnchorFragment(l) {
+		// Plain-name fragment (e.g. "#foo"): an $anchor in the parent's document, not a file path.
+		def = schemaAnchorDefinition(ref, l)
 	} else if strings.HasPrefix(l, "http") {
 		// No fragment, absolute HTTP URL — use as-is.
 		def = l
@@ -71,7 +74,7 @@ func (resolver *Resolver) buildDefPath(ref *Reference, l string) string {
 	} else {
 		// No fragment, local relative path — resolve against the parent's directory.
 		lookupRef := strings.Split(ref.FullDefinition, "#/")
-		def = resolver.resolveLocalRefPath(filepath.Dir(lookupRef[0]), l)
+		def = resolver.resolveLocalFileRef(filepath.Dir(lookupRef[0]), l)
 	}
 
 	return def
@@ -83,6 +86,15 @@ func (resolver *Resolver) resolveLocalRefPath(base, ref string) string {
 	}
 	abs, _ := filepath.Abs(utils.CheckPathOverlap(base, ref, string(filepath.Separator)))
 	return abs
+}
+
+// resolveLocalFileRef resolves ref, a relative file path such as "other.yaml" or "other.yaml#foo",
+// against base. A plain-name fragment names an $anchor in the file, so it is kept.
+func (resolver *Resolver) resolveLocalFileRef(base, ref string) string {
+	if file, fragment := SplitRefFragment(ref); isSchemaAnchorFragment(fragment) {
+		return resolver.resolveLocalRefPath(base, file) + fragment
+	}
+	return resolver.resolveLocalRefPath(base, ref)
 }
 
 func (resolver *Resolver) buildDefPathWithSchemaBase(ref *Reference, l string, schemaIDBase string) string {
@@ -112,6 +124,15 @@ func (resolver *Resolver) resolveSchemaIdBase(parentBase string, node *yaml.Node
 		return idValue
 	}
 	return resolved
+}
+
+// schemaIdBaseForNode returns the base URI recorded for ref's node by the index of the document
+// holding it, or by the resolver's own index.
+func (resolver *Resolver) schemaIdBaseForNode(ref *Reference) string {
+	if base := ref.Index.GetSchemaIdBaseForNode(ref.Node); base != "" {
+		return base
+	}
+	return resolver.specIndex.GetSchemaIdBaseForNode(ref.Node)
 }
 
 // ResolvePendingNodes applies deferred node content replacements that were collected during resolution.

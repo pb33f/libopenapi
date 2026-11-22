@@ -264,8 +264,11 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 							// is the root schema, i.e., the file given to libopenapi as an entry.
 							//
 
-							// check for a config BaseURL and use that if it exists.
-							if idx.GetConfig() != nil && idx.GetConfig().BaseURL != nil {
+							// check for a config BaseURL and use that if it exists. an $anchor in this
+							// document, such as "#foo", is registered under the document, which has
+							// no URL here, so it is looked up as it is.
+							localAnchor := explodedRefValue[0] == "" && index.IsSchemaAnchorFragment("#"+explodedRefValue[1])
+							if !localAnchor && idx.GetConfig() != nil && idx.GetConfig().BaseURL != nil {
 								u := *idx.GetConfig().BaseURL
 								p := ""
 								if u.Path != "" {
@@ -336,6 +339,13 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 func applyResolvedSchemaIdScope(ctx context.Context, ref *index.Reference, idx *index.SpecIndex) context.Context {
 	if ref == nil || ref.Node == nil {
 		return ctx
+	}
+	// a schema inside an $id resource, such as one reached by "#/components/schemas/R/$defs/A",
+	// resolves its refs against that resource, not against where the ref came from.
+	if base := idx.GetSchemaIdBaseForNode(ref.Node); base != "" {
+		scope := index.NewSchemaIdScope(base)
+		scope.PushId(base)
+		return index.WithSchemaIdScope(ctx, scope)
 	}
 	idValue := index.FindSchemaIdInNode(ref.Node)
 	if idValue == "" {

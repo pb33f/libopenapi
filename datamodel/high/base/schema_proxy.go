@@ -985,8 +985,10 @@ func (sp *SchemaProxy) referenceSourcePath(ctx *InlineRenderContext) string {
 	return ""
 }
 
+// isRootLocalReference reports whether the reference is a "#/..." pointer or a "#name" $anchor used
+// in the root document, so it still resolves in the rendered output.
 func (sp *SchemaProxy) isRootLocalReference(ctx *InlineRenderContext) bool {
-	if sp == nil || !strings.HasPrefix(sp.GetReference(), "#/") {
+	if sp == nil || !isLocalFragmentReference(sp.GetReference()) {
 		return false
 	}
 	source := sp.referenceSourceIndex(ctx)
@@ -997,6 +999,11 @@ func (sp *SchemaProxy) isRootLocalReference(ctx *InlineRenderContext) bool {
 		return source == ctx.RootIndex
 	}
 	return source.GetRolodex() != nil && source.GetRolodex().GetRootIndex() == source
+}
+
+// isLocalFragmentReference reports whether ref is a "#/..." pointer or a "#name" $anchor.
+func isLocalFragmentReference(ref string) bool {
+	return strings.HasPrefix(ref, "#/") || index.IsSchemaAnchorFragment(ref)
 }
 
 func (sp *SchemaProxy) referenceTargetIdentity(ctx *InlineRenderContext) string {
@@ -1173,7 +1180,8 @@ func (sp *SchemaProxy) marshalYAMLInlineInternal(ctx *InlineRenderContext) (inte
 	// Outside of bundling mode (direct MarshalYAMLInline calls), inline everything.
 	if ctx.PreserveLocalComponentRefs && sp.IsReference() {
 		ref := sp.GetReference()
-		if strings.HasPrefix(ref, "#/components/") {
+		// a "#name" $anchor in the root document is kept just as a component ref is.
+		if strings.HasPrefix(ref, "#/components/") || index.IsSchemaAnchorFragment(ref) {
 			// Check if this ref points to a schema in the same root document.
 			// If the low-level proxy has an index, compare it to the root index.
 			if sp.schema != nil && sp.schema.Value != nil {

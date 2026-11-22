@@ -296,6 +296,9 @@ func (resolver *Resolver) buildRelativeLookupDefinitions(ref *Reference, value, 
 				fullDef = fmt.Sprintf("%s#/%s", fileDef[0], exp[1])
 			}
 		}
+	} else if isSchemaAnchorFragment(value) {
+		// plain-name fragment (e.g. "#foo"): an $anchor in the parent's document.
+		fullDef = schemaAnchorDefinition(ref, value)
 	} else if strings.HasPrefix(value, "http") {
 		// No fragment, absolute HTTP URL — use as-is.
 		fullDef = value
@@ -309,7 +312,7 @@ func (resolver *Resolver) buildRelativeLookupDefinitions(ref *Reference, value, 
 		if strings.HasPrefix(fileDef[0], "http") {
 			fullDef = resolveRefWithSchemaBase(value, fileDef[0])
 		} else {
-			fullDef = resolver.resolveLocalRefPath(filepath.Dir(fileDef[0]), exp[0])
+			fullDef = resolver.resolveLocalFileRef(filepath.Dir(fileDef[0]), exp[0])
 		}
 	}
 

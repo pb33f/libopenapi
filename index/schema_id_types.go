@@ -34,6 +34,10 @@ func (e *SchemaIdEntry) GetKey() string {
 type SchemaIdScope struct {
 	BaseUri string   // Current base URI for relative $id and $ref resolution
 	Chain   []string // Stack of $id URIs from root to current location
+
+	// resourceDepth is the length of the JSON pointer to the mapping holding the innermost $id the
+	// extract-refs walk has entered, or 0 at the document root or outside any $id.
+	resourceDepth int
 }
 
 // NewSchemaIdScope initializes scope tracking for base URI resolution during schema tree traversal.
@@ -67,7 +71,8 @@ func (s *SchemaIdScope) Copy() *SchemaIdScope {
 	chainCopy := make([]string, len(s.Chain))
 	copy(chainCopy, s.Chain)
 	return &SchemaIdScope{
-		BaseUri: s.BaseUri,
-		Chain:   chainCopy,
+		BaseUri:       s.BaseUri,
+		Chain:         chainCopy,
+		resourceDepth: s.resourceDepth,
 	}
 }
