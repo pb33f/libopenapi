@@ -855,7 +855,8 @@ func TestGetSchemaIdBaseForNode(t *testing.T) {
 
 func TestResolveLocalFileRef(t *testing.T) {
 	resolver := &Resolver{}
-	base := filepath.Join(string(filepath.Separator), "specs")
+	// an absolute base on every platform, since the ref path is made absolute.
+	base := t.TempDir()
 	assert.Equal(t, filepath.Join(base, "sub", "leaf.yaml")+"#leaf", resolver.resolveLocalFileRef(base, "sub/leaf.yaml#leaf"))
 	assert.Equal(t, filepath.Join(base, "sub", "leaf.yaml"), resolver.resolveLocalFileRef(base, "sub/leaf.yaml"))
 }

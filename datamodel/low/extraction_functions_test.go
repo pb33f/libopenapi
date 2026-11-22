@@ -2116,6 +2116,32 @@ func TestApplyResolvedSchemaIdScope_UsesIdxBaseAndResolves(t *testing.T) {
 	}
 }
 
+// a schema whose $id the index did not record, such as one from another document, takes its base
+// from the index's document, with or without a scope already in the context.
+func TestApplyResolvedSchemaIdScope_NodeOutsideIndex(t *testing.T) {
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`$id: "schemas/pet.json"`), &node)
+	ref := &index.Reference{Node: node.Content[0]}
+
+	var other yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.1.0"), &other)
+	cfg := index.CreateClosedAPIIndexConfig()
+	cfg.SpecAbsolutePath = "https://example.com/openapi.yaml"
+	idx := index.NewSpecIndexWithConfig(&other, cfg)
+	require.Empty(t, idx.GetSchemaIdBaseForNode(ref.Node))
+
+	for name, ctx := range map[string]context.Context{
+		"empty scope": index.WithSchemaIdScope(context.Background(), index.NewSchemaIdScope("")),
+		"no scope":    context.Background(),
+	} {
+		t.Run(name, func(t *testing.T) {
+			updatedScope := index.GetSchemaIdScope(applyResolvedSchemaIdScope(ctx, ref, idx))
+			require.NotNil(t, updatedScope)
+			assert.Equal(t, "https://example.com/schemas/pet.json", updatedScope.BaseUri)
+		})
+	}
+}
+
 func TestApplyResolvedSchemaIdScope_InvalidIdFallsBack(t *testing.T) {
 	var node yaml.Node
 	_ = yaml.Unmarshal([]byte(`$id: "http://[::1"`), &node)
