@@ -196,7 +196,7 @@ func TestRequiredConservativeSchemaContexts(t *testing.T) {
 	}{
 		{"negated", "not: " + ref, true},
 		{"conditional predicate", "if: " + ref, true},
-		{"exclusive union", "oneOf: [" + ref + "]", true},
+		{"exclusive union of one branch", "oneOf: [" + ref + "]", false},
 		{"array items", "type: array, items: " + ref, false},
 		{"allOf reference", "allOf: [" + ref + "]", false},
 		{"property named not", "properties: {not: " + ref + "}", false},

@@ -264,7 +264,13 @@ func (w *usageWalker) schemaField(key string, value *yaml.Node, dir, sameInstanc
 	case v3.NotLabel, v3.IfLabel, v3.ContainsLabel:
 		w.walk(value, schemaObject, sharedSchema)
 	case v3.OneOfLabel:
-		w.each(value, schemaObject, sharedSchema)
+		// An exclusive union rejects an instance that matches two branches, so a branch that gains data can make
+		// a second one match. Branches that cannot match the same instance cannot interfere, as with anyOf.
+		if w.exclusiveBranches(value) {
+			w.each(value, schemaObject, sameInstance)
+		} else {
+			w.each(value, schemaObject, sharedSchema)
+		}
 	case v3.SchemaDialectLabel:
 		if !knownUsageDialect(value) {
 			w.unknown = true
@@ -273,6 +279,93 @@ func (w *usageWalker) schemaField(key string, value *yaml.Node, dir, sameInstanc
 		// Resource scopes and implicit discriminator targets need more than local pointer reachability.
 		w.unknown = true
 	}
+}
+
+// exclusiveBranches reports whether no instance can match two of the branches, so that exclusivity does not depend
+// on what a branch contains. That holds for a single branch and for branches that accept different types.
+func (w *usageWalker) exclusiveBranches(branches *yaml.Node) bool {
+	branches = utils.NodeAlias(branches)
+	if branches.Kind != yaml.SequenceNode {
+		return false
+	}
+	if len(branches.Content) == 1 {
+		return true
+	}
+	seen := make(map[string]bool)
+	for _, branch := range branches.Content {
+		types, ok := w.instanceTypes(branch)
+		if !ok {
+			return false
+		}
+		for _, t := range types {
+			if seen[t] {
+				return false
+			}
+			seen[t] = true
+		}
+	}
+	return true
+}
+
+// instanceTypes lists the JSON types a schema can accept, following local references. Any other keyword can only
+// narrow that list, so it is a safe upper bound. It reports false when the schema does not state its type.
+func (w *usageWalker) instanceTypes(node *yaml.Node) ([]string, bool) {
+	const maxReferenceDepth = 8
+	for range maxReferenceDepth {
+		node = utils.NodeAlias(node)
+		if node.Kind != yaml.MappingNode {
+			return nil, false
+		}
+		var declared *yaml.Node
+		var ref string
+		nullable := false
+		for key, value := range usageFields(node) {
+			switch key {
+			case v3.TypeLabel:
+				declared = utils.NodeAlias(value)
+			case v3.RefLabel:
+				ref = utils.NodeAlias(value).Value
+			case "nullable":
+				nullable = utils.NodeAlias(value).Value == "true"
+			}
+		}
+		if declared == nil {
+			if ref == "" {
+				return nil, false
+			}
+			if node = w.localTarget(ref); node == nil {
+				return nil, false
+			}
+			continue
+		}
+		var names []string
+		switch declared.Kind {
+		case yaml.ScalarNode:
+			names = []string{declared.Value}
+		case yaml.SequenceNode:
+			for _, item := range declared.Content {
+				if utils.NodeAlias(item).Kind != yaml.ScalarNode {
+					return nil, false
+				}
+				names = append(names, utils.NodeAlias(item).Value)
+			}
+		default:
+			return nil, false
+		}
+		if nullable {
+			names = append(names, "null")
+		}
+		var types []string
+		for _, name := range names {
+			types = append(types, name)
+			// Every integer is a number, so the two overlap.
+			if name == "number" {
+				types = append(types, "integer")
+			}
+		}
+		return types, len(types) > 0
+	}
+	return nil, false
 }
 
 // Other dialects may introduce applicators that the OpenAPI schema walk cannot follow.
