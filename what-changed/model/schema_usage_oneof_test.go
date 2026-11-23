@@ -33,7 +33,9 @@ func TestRequiredOneOfBranches(t *testing.T) {
 		{"integer and number", "oneOf: [{type: integer}, {type: number}, " + widget + "]", true},
 		{"branch without a type", "oneOf: [" + widget + ", {properties: {other: {type: string}}}]", true},
 		{"boolean branch", "oneOf: [" + widget + ", true]", true},
-		{"nullable branches", "oneOf: [{type: object, nullable: true, properties: {item: " + widget + "}}, {type: string, nullable: true}]", true},
+		{"type that is not a JSON type", "oneOf: [" + widget + ", {type: Object}]", true},
+		{"integer and number in one branch", "oneOf: [{type: [integer, number]}, " + widget + "]", false},
+		{"reference next to a type", "oneOf: [" + widget + ", {$ref: '#/components/schemas/Page', type: string}]", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			op := strings.Replace(usageResponseOnly, widget, "{"+tc.schema+"}", 1)
@@ -54,6 +56,45 @@ func TestRequiredOneOfBranchesKeepTheirDirection(t *testing.T) {
 	// A removed requirement is only safe for a request, so a union used by a response alone must stay breaking.
 	op = strings.Replace(usageResponseOnly, widget, "{"+union+"}", 1)
 	requireEntryBreaking(t, usageSpec(op, usageWidget("name, id")), usageSpec(op, usageWidget("name")), true)
+}
+
+func TestRequiredOneOfBranchesOpenAPI30(t *testing.T) {
+	const widget = "{$ref: '#/components/schemas/Widget'}"
+	const other = "\n    Other: {type: object, properties: {other: {type: string}}}"
+	for _, tc := range []struct {
+		name, schema string
+		breaking     bool
+	}{
+		// OpenAPI 3.0 ignores the siblings of $ref, so the second branch is an object like Widget.
+		{"reference next to a type", "oneOf: [" + widget + ", {$ref: '#/components/schemas/Other', type: string}]", true},
+		{"nullable object or string", "oneOf: [{type: object, nullable: true, properties: {item: " + widget + "}}, {type: string}]", false},
+		{"nullable branches", "oneOf: [{type: object, nullable: true, properties: {item: " + widget + "}}, {type: string, nullable: true}]", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			op := strings.Replace(usageResponseOnly, widget, "{"+tc.schema+"}", 1)
+			build := func(required string) string {
+				return strings.Replace(usageSpec(op, usageWidget(required)+other), "openapi: 3.1.0", "openapi: 3.0.3", 1)
+			}
+			requireEntryBreaking(t, build("name"), build("name, id"), tc.breaking)
+		})
+	}
+}
+
+func TestRequiredOneOfBranchesInARequest(t *testing.T) {
+	const widget = "{$ref: '#/components/schemas/Widget'}"
+	for _, tc := range []struct {
+		name, schema string
+		breaking     bool
+	}{
+		// A request may now leave out the property, and no instance can match the other branch as well.
+		{"branches that accept different types", "oneOf: [" + widget + ", {type: array}]", false},
+		{"two objects", "oneOf: [" + widget + ", {type: object, required: [other], properties: {other: {type: string}}}]", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			op := strings.Replace(usageRequestOnly, widget, "{"+tc.schema+"}", 1)
+			requireEntryBreaking(t, usageSpec(op, usageWidget("name, id")), usageSpec(op, usageWidget("name")), tc.breaking)
+		})
+	}
 }
 
 // widgetUsage returns the direction of Widget in a document whose only response schema is the given YAML. The second
@@ -87,7 +128,7 @@ components:
 	return usage[widget.Node], true
 }
 
-func TestRequiredOneOfBranchesThatCannotBeChecked(t *testing.T) {
+func TestSchemaUsageOneOfBranches(t *testing.T) {
 	const widget = "{$ref: '#/components/schemas/Widget'}"
 	for _, tc := range []struct {
 		name, schema string
@@ -98,6 +139,7 @@ func TestRequiredOneOfBranchesThatCannotBeChecked(t *testing.T) {
 		{"oneOf that is not a list", "{oneOf: {first: " + widget + "}}", sharedSchema, true},
 		{"type that is not a name", "{oneOf: [" + widget + ", {type: [string, {a: b}]}]}", sharedSchema, true},
 		{"type that is not a name or a list", "{oneOf: [" + widget + ", {type: {a: b}}]}", sharedSchema, true},
+		{"reference that cannot be resolved next to a type", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/Missing', type: string}]}", 0, false},
 		{"empty list of types", "{oneOf: [" + widget + ", {type: []}]}", sharedSchema, true},
 		{"reference cycle", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/Loop'}]}", sharedSchema, true},
 		{"reference to nothing", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/Missing'}]}", 0, false},

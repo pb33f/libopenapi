@@ -264,8 +264,10 @@ func (w *usageWalker) schemaField(key string, value *yaml.Node, dir, sameInstanc
 	case v3.NotLabel, v3.IfLabel, v3.ContainsLabel:
 		w.walk(value, schemaObject, sharedSchema)
 	case v3.OneOfLabel:
-		// An exclusive union rejects an instance that matches two branches, so a branch that gains data can make
-		// a second one match. Branches that cannot match the same instance cannot interfere, as with anyOf.
+		// A oneOf rejects an instance that matches more than one branch, so changing one branch can change what the
+		// union accepts in the opposite direction: widening a branch can make an instance match a second one, and
+		// narrowing it can leave an instance that matched two branches with only one. Branches that no instance can
+		// match at the same time cannot interfere with each other, so they keep the direction, as with anyOf.
 		if w.exclusiveBranches(value) {
 			w.each(value, schemaObject, sameInstance)
 		} else {
@@ -297,7 +299,7 @@ func (w *usageWalker) exclusiveBranches(branches *yaml.Node) bool {
 		if !ok {
 			return false
 		}
-		for _, t := range types {
+		for t := range types {
 			if seen[t] {
 				return false
 			}
@@ -307,9 +309,16 @@ func (w *usageWalker) exclusiveBranches(branches *yaml.Node) bool {
 	return true
 }
 
-// instanceTypes lists the JSON types a schema can accept, following local references. Any other keyword can only
-// narrow that list, so it is a safe upper bound. It reports false when the schema does not state its type.
-func (w *usageWalker) instanceTypes(node *yaml.Node) ([]string, bool) {
+// jsonTypes are the instance types of JSON Schema. A type name outside this list cannot be compared with another one.
+var jsonTypes = map[string]bool{
+	"null": true, "boolean": true, "object": true, "array": true, "number": true, "string": true, "integer": true,
+}
+
+// instanceTypes returns an upper bound of the JSON types a schema accepts. A reference is followed before anything
+// else, because OpenAPI 3.0 ignores the siblings of $ref, and in 3.1 they can only narrow the referenced schema.
+// It reports false when it cannot tell: a schema without a type, a type name that is not a JSON type, a boolean
+// schema, a reference that cannot be resolved, or a chain of references longer than maxReferenceDepth.
+func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
 	const maxReferenceDepth = 8
 	for range maxReferenceDepth {
 		node = utils.NodeAlias(node)
@@ -317,7 +326,7 @@ func (w *usageWalker) instanceTypes(node *yaml.Node) ([]string, bool) {
 			return nil, false
 		}
 		var declared *yaml.Node
-		var ref string
+		ref := ""
 		nullable := false
 		for key, value := range usageFields(node) {
 			switch key {
@@ -325,18 +334,18 @@ func (w *usageWalker) instanceTypes(node *yaml.Node) ([]string, bool) {
 				declared = utils.NodeAlias(value)
 			case v3.RefLabel:
 				ref = utils.NodeAlias(value).Value
-			case "nullable":
+			case v3.NullableLabel:
 				nullable = utils.NodeAlias(value).Value == "true"
 			}
 		}
-		if declared == nil {
-			if ref == "" {
-				return nil, false
-			}
+		if ref != "" {
 			if node = w.localTarget(ref); node == nil {
 				return nil, false
 			}
 			continue
+		}
+		if declared == nil {
+			return nil, false
 		}
 		var names []string
 		switch declared.Kind {
@@ -344,23 +353,22 @@ func (w *usageWalker) instanceTypes(node *yaml.Node) ([]string, bool) {
 			names = []string{declared.Value}
 		case yaml.SequenceNode:
 			for _, item := range declared.Content {
-				if utils.NodeAlias(item).Kind != yaml.ScalarNode {
-					return nil, false
-				}
 				names = append(names, utils.NodeAlias(item).Value)
 			}
-		default:
-			return nil, false
 		}
+		// OpenAPI 3.0 adds null with nullable. In 3.1 nullable means nothing, so null only widens the bound.
 		if nullable {
 			names = append(names, "null")
 		}
-		var types []string
+		types := make(map[string]bool)
 		for _, name := range names {
-			types = append(types, name)
+			if !jsonTypes[name] {
+				return nil, false
+			}
+			types[name] = true
 			// Every integer is a number, so the two overlap.
 			if name == "number" {
-				types = append(types, "integer")
+				types["integer"] = true
 			}
 		}
 		return types, len(types) > 0
