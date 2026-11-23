@@ -203,7 +203,7 @@ func TestRequiredConservativeSchemaContexts(t *testing.T) {
 		{"literal reference in example", "allOf: [" + ref + "], example: {$ref: '#/components/schemas/Widget'}", false},
 		{"dynamic reference", "allOf: [" + ref + ", {$dynamicRef: '#fallback'}]", true},
 		{"resource scoped pointer", "$id: 'https://example.com/model', allOf: [" + ref + "]", true},
-		{"discriminator", "allOf: [" + ref + "], discriminator: {propertyName: kind}", true},
+		{"discriminator", "allOf: [" + ref + "], discriminator: {propertyName: kind}", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			op := strings.Replace(usageResponseOnly, ref, "{"+tc.wrapper+"}", 1)

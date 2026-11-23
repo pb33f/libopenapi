@@ -106,6 +106,9 @@ type usageWalker struct {
 	visited [schemaObject + 1]schemaUsage
 	targets map[string]*yaml.Node
 	unknown bool
+	// implicit is the direction of every schema that has a discriminator. A discriminator can select
+	// any component schema by name, so those schemas are used in that direction as well.
+	implicit schemaDirection
 }
 
 func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
@@ -132,6 +135,7 @@ func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
 			w.each(value, pathItemObject, sharedSchema)
 		}
 	}
+	w.walkImplicitTargets(root)
 	if w.unknown {
 		return nil
 	}
@@ -265,13 +269,73 @@ func (w *usageWalker) schemaField(key string, value *yaml.Node, dir, sameInstanc
 		w.walk(value, schemaObject, sharedSchema)
 	case v3.OneOfLabel:
 		w.each(value, schemaObject, sharedSchema)
+	case v3.DiscriminatorLabel:
+		w.discriminator(value, sameInstance)
 	case v3.SchemaDialectLabel:
 		if !knownUsageDialect(value) {
 			w.unknown = true
 		}
-	case v3.DynamicRefLabel, "$recursiveRef", "$id", v3.DiscriminatorLabel:
-		// Resource scopes and implicit discriminator targets need more than local pointer reachability.
+	case v3.DynamicRefLabel, "$recursiveRef", "$id":
+		// Resource scopes need more than local pointer reachability.
 		w.unknown = true
+	}
+}
+
+// discriminator follows the schemas its mapping and default mapping name, and records that any component schema can
+// be selected by name.
+func (w *usageWalker) discriminator(node *yaml.Node, dir schemaDirection) {
+	w.implicit |= dir
+	for key, value := range usageFields(node) {
+		switch key {
+		case base.MappingLabel:
+			for _, target := range usageFields(value) {
+				w.discriminatorTarget(target, dir)
+			}
+		case base.DefaultMappingLabel:
+			w.discriminatorTarget(value, dir)
+		}
+	}
+}
+
+// discriminatorTarget follows one mapping value, which is a reference or a schema name. A value that is not a schema
+// of this document, such as a file or a URL, cannot be followed.
+func (w *usageWalker) discriminatorTarget(value *yaml.Node, dir schemaDirection) {
+	ref := utils.NodeAlias(value).Value
+	if !strings.HasPrefix(ref, "#/") {
+		ref = "#/components/schemas/" + ref
+	}
+	schema := w.localTarget(ref)
+	if schema == nil {
+		w.unknown = true
+		return
+	}
+	w.walk(schema, schemaObject, dir)
+}
+
+// walkImplicitTargets adds the direction of each discriminator to the component schemas that are already in use.
+// A schema that nothing refers to stays unused, which keeps the conservative result.
+func (w *usageWalker) walkImplicitTargets(root *yaml.Node) {
+	if w.implicit == 0 {
+		return
+	}
+	var components []*yaml.Node
+	for key, value := range usageFields(root) {
+		if key != v3.ComponentsLabel {
+			continue
+		}
+		for name, schemas := range usageFields(value) {
+			if name != v3.SchemasLabel {
+				continue
+			}
+			for _, schema := range usageFields(schemas) {
+				if schema = utils.NodeAlias(schema); w.visited[schemaObject][schema] != 0 {
+					components = append(components, schema)
+				}
+			}
+		}
+	}
+	for _, schema := range components {
+		w.walk(schema, schemaObject, w.implicit)
 	}
 }
 
