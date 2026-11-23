@@ -6,6 +6,7 @@ package model
 import (
 	"context"
 	"iter"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -107,7 +108,7 @@ type usageWalker struct {
 	targets map[string]*yaml.Node
 	unknown bool
 	// implicit is the direction of every schema that has a discriminator. A discriminator can select
-	// any component schema by name, so those schemas are used in that direction as well.
+	// any component schema by name, so every component schema is used in that direction as well.
 	implicit schemaDirection
 }
 
@@ -297,11 +298,18 @@ func (w *usageWalker) discriminator(node *yaml.Node, dir schemaDirection) {
 	}
 }
 
+// componentName is the pattern of a component name, so a mapping value that does not match it is a relative URI.
+var componentName = regexp.MustCompile(`^[a-zA-Z0-9.\-_]+$`)
+
 // discriminatorTarget follows one mapping value, which is a reference or a schema name. A value that is not a schema
 // of this document, such as a file or a URL, cannot be followed.
 func (w *usageWalker) discriminatorTarget(value *yaml.Node, dir schemaDirection) {
 	ref := utils.NodeAlias(value).Value
 	if !strings.HasPrefix(ref, "#/") {
+		if !componentName.MatchString(ref) {
+			w.unknown = true
+			return
+		}
 		ref = "#/components/schemas/" + ref
 	}
 	schema := w.localTarget(ref)
@@ -312,31 +320,27 @@ func (w *usageWalker) discriminatorTarget(value *yaml.Node, dir schemaDirection)
 	w.walk(schema, schemaObject, dir)
 }
 
-// walkImplicitTargets adds the direction of each discriminator to the component schemas that are already in use.
-// A schema that nothing refers to stays unused, which keeps the conservative result.
+// walkImplicitTargets gives every component schema the direction of each discriminator, because a discriminator can
+// select any of them by name, including one that nothing refers to. Walking a schema can reach another discriminator
+// and add a direction, so it repeats until the directions stop changing.
 func (w *usageWalker) walkImplicitTargets(root *yaml.Node) {
-	if w.implicit == 0 {
-		return
-	}
-	var components []*yaml.Node
-	for key, value := range usageFields(root) {
-		if key != v3.ComponentsLabel {
-			continue
-		}
-		for name, schemas := range usageFields(value) {
-			if name != v3.SchemasLabel {
-				continue
-			}
-			for _, schema := range usageFields(schemas) {
-				if schema = utils.NodeAlias(schema); w.visited[schemaObject][schema] != 0 {
-					components = append(components, schema)
-				}
-			}
+	schemas := usageField(usageField(root, v3.ComponentsLabel), v3.SchemasLabel)
+	for walked := schemaDirection(0); w.implicit != walked; {
+		walked = w.implicit
+		for _, schema := range usageFields(schemas) {
+			w.walk(schema, schemaObject, walked)
 		}
 	}
-	for _, schema := range components {
-		w.walk(schema, schemaObject, w.implicit)
+}
+
+// usageField returns the value of one field of a mapping, or nil when the mapping does not have it.
+func usageField(node *yaml.Node, name string) *yaml.Node {
+	for key, value := range usageFields(node) {
+		if key == name {
+			return value
+		}
 	}
+	return nil
 }
 
 // Other dialects may introduce applicators that the OpenAPI schema walk cannot follow.
