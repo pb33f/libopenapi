@@ -519,7 +519,9 @@ type conditionNode struct {
 	// Operand fields.
 	raw     string // runtime expression text when isExpr is true
 	isExpr  bool
-	literal any // pre-converted literal when isExpr is false
+	parsed  bool                  // expr holds the parse of raw; set when the condition is compiled
+	expr    expression.Expression // parsed raw, so syntax errors surface even in short-circuited branches
+	literal any                   // pre-converted literal when isExpr is false
 }
 
 type cachedSimpleCondition struct {
@@ -543,14 +545,18 @@ func compileSimpleCondition(condition string, caches *criterionCaches) (*compile
 			return cached.cond, cached.err
 		}
 	}
-	cond, err := parseSimpleCondition(condition)
+	cond, err := parseSimpleCondition(condition, caches)
 	if caches != nil {
 		caches.simple[condition] = cachedSimpleCondition{cond: cond, err: err}
 	}
 	return cond, err
 }
 
-func parseSimpleCondition(condition string) (*compiledCondition, error) {
+// parseSimpleCondition compiles condition. Every runtime expression operand is
+// parsed here, so a malformed expression is reported even when && or ||
+// short-circuit past it at evaluation time. Failures that need the context,
+// such as an unknown step, still surface only when the operand is evaluated.
+func parseSimpleCondition(condition string, caches *criterionCaches) (*compiledCondition, error) {
 	// Most conditions have a handful of tokens, so the scratch buffer keeps the
 	// token slice off the heap. The parser never retains it past this call.
 	var buf [16]boolToken
@@ -567,6 +573,19 @@ func parseSimpleCondition(condition string) (*compiledCondition, error) {
 	}
 	if p.peek().kind != tokEOF {
 		return nil, fmt.Errorf("unexpected token %q in simple condition %q", p.peek().raw, condition)
+	}
+	// Compile the runtime expressions only once the structure is known to be
+	// valid, so structural errors keep taking precedence over expression errors.
+	for i := range p.nodes {
+		n := &p.nodes[i]
+		if !n.isExpr {
+			continue
+		}
+		expr, err := parseRuntimeExpr(n.raw, caches)
+		if err != nil {
+			return nil, err
+		}
+		n.expr, n.parsed = expr, true
 	}
 	return &compiledCondition{root: root, input: condition}, nil
 }
@@ -638,9 +657,13 @@ func operandValue(n *conditionNode, exprCtx *expression.Context, caches *criteri
 	if !n.isExpr {
 		return n.literal, nil
 	}
-	expr, err := parseRuntimeExpr(n.raw, caches)
-	if err != nil {
-		return nil, err
+	expr := n.expr
+	if !n.parsed {
+		// Nodes built by the single-comparison fast path are not compiled.
+		var err error
+		if expr, err = parseRuntimeExpr(n.raw, caches); err != nil {
+			return nil, err
+		}
 	}
 	v, err := expression.Evaluate(expr, exprCtx)
 	if err != nil && exprCtx != nil && isOptionalRuntimeValue(expr.Type) {

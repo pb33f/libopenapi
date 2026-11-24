@@ -646,8 +646,13 @@ func TestEvaluateSingleComparison_MatchesCompiledPath(t *testing.T) {
 		if !handled {
 			continue
 		}
-		cond, perr := parseSimpleCondition(c)
-		require.NoError(t, perr, c)
+		cond, perr := parseSimpleCondition(c, nil)
+		if perr != nil {
+			// Compiling rejects a malformed expression up front; the fast path
+			// reports the same error when it evaluates that operand.
+			assert.Equal(t, perr, fastErr, c)
+			continue
+		}
 		wantRes, wantErr := cond.truth(cond.root, ctx, nil)
 		assert.Equal(t, wantRes, fastRes, c)
 		assert.Equal(t, wantErr, fastErr, c)
@@ -794,6 +799,80 @@ func TestEvaluateSingleComparison(t *testing.T) {
 		t.Run("declines "+input, func(t *testing.T) {
 			_, _, ok := evaluateSingleComparison(input, ctx)
 			assert.False(t, ok)
+		})
+	}
+}
+
+// A malformed runtime expression is a compile error, so short-circuiting cannot
+// hide it. Failures that need the context, such as an unknown step, stay lazy
+// (see TestEvaluateCriterion_ShortCircuit).
+func TestEvaluateCriterion_MalformedExpressionInSkippedBranch(t *testing.T) {
+	ctx := &expression.Context{StatusCode: 204, Method: "GET"}
+	for _, condition := range []string{
+		"$statusCode == 204 || $statusCod == 1",
+		"$statusCode == 200 && $statusCod == 1",
+		"$statusCode == 204 || ($method == 'GET' && $bogus.thing == 1)",
+		"true || $typo",
+		"false && $typo",
+		"$typo == 1 || $statusCode == 204",
+		"$statusCode == 204 || $statusCode == 200 || $typo",
+	} {
+		t.Run(condition, func(t *testing.T) {
+			ok, err := EvaluateCriterion(&high.Criterion{Condition: condition}, ctx)
+			assert.False(t, ok)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "unknown expression")
+		})
+	}
+}
+
+func TestEvaluateCriterion_MalformedExpressionErrorIsCached(t *testing.T) {
+	caches := newCriterionCaches()
+	criterion := &high.Criterion{Condition: "$statusCode == 204 || $statusCod == 1"}
+	ctx := &expression.Context{StatusCode: 204}
+
+	_, first := evaluateCriterionImpl(criterion, ctx, caches)
+	_, second := evaluateCriterionImpl(criterion, ctx, caches)
+	require.Error(t, first)
+	assert.Equal(t, first, second)
+	assert.Len(t, caches.simple, 1)
+}
+
+// Compiling parses through the engine's parser, so the engine's expression
+// cache still sees every operand.
+func TestEvaluateCriterion_CompileUsesCachedExpressionParser(t *testing.T) {
+	caches := newCriterionCaches()
+	var parsed []string
+	caches.parseExpr = func(input string) (expression.Expression, error) {
+		parsed = append(parsed, input)
+		return expression.Parse(input)
+	}
+	criterion := &high.Criterion{Condition: "$statusCode == 204 || $method == 'GET'"}
+	ok, err := evaluateCriterionImpl(criterion, &expression.Context{StatusCode: 204, Method: "GET"}, caches)
+	require.NoError(t, err)
+	assert.True(t, ok)
+	assert.Equal(t, []string{"$statusCode", "$method"}, parsed, "both operands compile, including the skipped one")
+
+	// The compiled tree is reused, so evaluating again parses nothing.
+	_, err = evaluateCriterionImpl(criterion, &expression.Context{StatusCode: 500, Method: "GET"}, caches)
+	require.NoError(t, err)
+	assert.Len(t, parsed, 2)
+}
+
+// Context-dependent failures still surface lazily from the compiled path: left
+// and right comparison operands and bare operands, when they are evaluated.
+func TestEvaluateCriterion_CompiledOperandEvaluationErrors(t *testing.T) {
+	ctx := &expression.Context{StatusCode: 200, Steps: map[string]*expression.StepContext{}}
+	for _, condition := range []string{
+		"$steps.nope.outputs.x == 1 && $statusCode == 200",
+		"$statusCode == 200 && 1 == $steps.nope.outputs.x",
+		"$statusCode == 200 && $steps.nope.outputs.x",
+		"($steps.nope.outputs.x) && $statusCode == 200",
+	} {
+		t.Run(condition, func(t *testing.T) {
+			ok, err := EvaluateCriterion(&high.Criterion{Condition: condition}, ctx)
+			assert.False(t, ok)
+			assert.Error(t, err)
 		})
 	}
 }
