@@ -621,3 +621,179 @@ func TestEvaluateCriterion_PointerEndingInParen(t *testing.T) {
 	_, err := EvaluateCriterion(&high.Criterion{Condition: "($response.body#/g) == 2 )"}, ctx)
 	require.ErrorContains(t, err, `unexpected token ")"`)
 }
+
+// TestEvaluateSingleComparison_MatchesCompiledPath proves the allocation-free
+// fast path used by the uncached EvaluateCriterion agrees with the compiled path.
+func TestEvaluateSingleComparison_MatchesCompiledPath(t *testing.T) {
+	var body yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`{"status": "ok", "count": 3, "flag": true, "nothing": null}`), &body))
+	ctx := &expression.Context{StatusCode: 200, Method: "POST", ResponseBody: body.Content[0]}
+
+	conditions := []string{
+		"$statusCode == 200", "$statusCode==200", "  $statusCode  !=  404  ", "$statusCode >= 200",
+		"$statusCode <= 199", "$statusCode > 100", "$statusCode < 100", "$method == 'POST'",
+		`$method == "POST"`, "$method == POST", "$response.body#/status == 'ok'", "$response.body#/count > 0",
+		"$response.body#/missing > 0", "$response.body#/missing == 1", "$response.body#/nothing == 1",
+		"$response.body#/flag", "$response.body#/missing", "$response.body#/status", "$statusCode",
+		"true", "false", "'a b' == 'a b'", "'a>b' == 'a>b'", "1 < 2", "1.5 >= 1", "abc", "$bogus == 1",
+		"$statusCode ==", "== 200", "$statusCode == == 200", "$statusCode 200", "'unterminated == 1",
+		"$statusCode == 200 && $method == 'POST'", "$statusCode == 404 || $method == 'POST'",
+		"($statusCode == 200)", "($statusCode) == 200", "$statusCode == (200)", "$response.body#/f(x) == 1",
+		"$statusCode == 200 extra", "&& $statusCode == 200", "$statusCode == 200 &&", "!x == 1",
+	}
+	for _, c := range conditions {
+		fastRes, fastErr, handled := evaluateSingleComparison(c, ctx)
+		if !handled {
+			continue
+		}
+		cond, perr := parseSimpleCondition(c)
+		require.NoError(t, perr, c)
+		wantRes, wantErr := cond.truth(cond.root, ctx, nil)
+		assert.Equal(t, wantRes, fastRes, c)
+		assert.Equal(t, wantErr, fastErr, c)
+	}
+}
+
+func TestScanConditionOperand(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		start int
+		want  int
+	}{
+		{"single quoted", `'a b' == 1`, 0, 5},
+		{"double quoted", `"a b" == 1`, 0, 5},
+		{"quoted holds operator", `'a>b' == 1`, 0, 5},
+		{"unterminated single", `'abc == 1`, 0, -1},
+		{"unterminated double", `"abc`, 0, -1},
+		{"runtime expression stops at space", `$statusCode == 200`, 0, 11},
+		{"runtime expression keeps pointer operators", `$response.body#/a>b == 1`, 0, 19},
+		{"runtime expression to end", `$statusCode`, 0, 11},
+		{"bare literal stops at space", `200 == 200`, 0, 3},
+		{"bare literal stops at operator", `200==200`, 0, 3},
+		{"bare literal stops at paren", `abc(def`, 0, 3},
+		{"bare literal stops at close paren", `abc)`, 0, 3},
+		{"bare literal to end", `abc`, 0, 3},
+		{"starts mid string", `$a == 'x'`, 6, 9},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, scanConditionOperand(tc.input, tc.start))
+		})
+	}
+}
+
+func TestOperandTruth(t *testing.T) {
+	ok, err := operandTruth(true, "$flag")
+	require.NoError(t, err)
+	assert.True(t, ok)
+
+	ok, err = operandTruth(false, "$flag")
+	require.NoError(t, err)
+	assert.False(t, ok)
+
+	// A nil operand (missing or null runtime value) is falsy, not an error.
+	ok, err = operandTruth(nil, "$flag")
+	require.NoError(t, err)
+	assert.False(t, ok)
+
+	for _, v := range []any{"yes", int64(1), 1.5} {
+		ok, err = operandTruth(v, "$count")
+		assert.False(t, ok)
+		require.Error(t, err)
+	}
+}
+
+func TestEvaluateSingleComparison(t *testing.T) {
+	var body yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`{"status": "ok", "count": 3, "flag": true, "nothing": null}`), &body))
+	ctx := &expression.Context{StatusCode: 200, Method: "POST", ResponseBody: body.Content[0]}
+
+	handled := []struct {
+		name, input string
+		want        bool
+	}{
+		{"equal status", "$statusCode == 200", true},
+		{"not equal status", "$statusCode != 200", false},
+		{"literals without spaces", "1==1", true},
+		{"extra whitespace", "  $statusCode   >=   200  ", true},
+		{"less than", "$statusCode < 100", false},
+		{"less or equal", "$statusCode <= 200", true},
+		{"greater than", "$statusCode > 100", true},
+		{"single quoted string", "$method == 'POST'", true},
+		{"double quoted string", `$method == "POST"`, true},
+		{"body pointer", "$response.body#/status == 'ok'", true},
+		{"body numeric", "$response.body#/count > 2", true},
+		{"missing body value ordered", "$response.body#/missing > 0", false},
+		{"missing body value equality", "$response.body#/missing == 1", false},
+		{"null body value", "$response.body#/nothing != 1", true},
+		{"bare true operand", "$response.body#/flag", true},
+		{"bare missing operand is falsy", "$response.body#/missing", false},
+		{"literal comparison", "1 < 2", true},
+		{"literal true", "true", true},
+		{"literal false", "false", false},
+	}
+	for _, tc := range handled {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err, ok := evaluateSingleComparison(tc.input, ctx)
+			require.True(t, ok, "expected the fast path to handle %q", tc.input)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+
+	t.Run("operand error is reported", func(t *testing.T) {
+		got, err, ok := evaluateSingleComparison("$bogus == 1", ctx)
+		assert.True(t, ok)
+		assert.False(t, got)
+		assert.Error(t, err)
+	})
+
+	t.Run("right operand error is reported", func(t *testing.T) {
+		got, err, ok := evaluateSingleComparison("1 == $bogus", ctx)
+		assert.True(t, ok)
+		assert.False(t, got)
+		assert.Error(t, err)
+	})
+
+	t.Run("bare operand error is reported", func(t *testing.T) {
+		got, err, ok := evaluateSingleComparison("$bogus", ctx)
+		assert.True(t, ok)
+		assert.False(t, got)
+		assert.Error(t, err)
+	})
+
+	t.Run("non boolean bare operand", func(t *testing.T) {
+		got, err, ok := evaluateSingleComparison("$statusCode", ctx)
+		assert.True(t, ok)
+		assert.False(t, got)
+		assert.Error(t, err)
+	})
+
+	// These shapes belong to the compiled path, which also reports their errors.
+	declined := []string{
+		"",
+		"   ",
+		"== 200",
+		"&& $statusCode == 200",
+		"(",
+		")",
+		"'unterminated == 1",
+		"$statusCode == 200 && $method == 'POST'",
+		"$statusCode == 404 || $method == 'POST'",
+		"($statusCode == 200)",
+		"$statusCode == (200)",
+		"$statusCode ==",
+		"$statusCode == == 200",
+		"$statusCode == 'unterminated",
+		"$statusCode 200",
+		"$statusCode == 200 extra",
+		"$statusCode == 200 &&",
+	}
+	for _, input := range declined {
+		t.Run("declines "+input, func(t *testing.T) {
+			_, _, ok := evaluateSingleComparison(input, ctx)
+			assert.False(t, ok)
+		})
+	}
+}

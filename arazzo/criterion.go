@@ -103,7 +103,7 @@ func evaluateSimpleCondition(condition string, value any) (bool, error) {
 func evaluateSimpleConditionString(condition string, exprCtx *expression.Context, caches *criterionCaches) (bool, error) {
 	trimmed := strings.TrimSpace(condition)
 	// Bare boolean literals skip compilation and the cache lookup. Only the
-	// exact words are booleans, matching newOperandNode.
+	// exact words are booleans, matching initOperandNode.
 	switch trimmed {
 	case "":
 		return false, nil
@@ -112,9 +112,114 @@ func evaluateSimpleConditionString(condition string, exprCtx *expression.Context
 	case "false":
 		return false, nil
 	}
+	// The standalone EvaluateCriterion has no cache, so compiling would repeat on
+	// every call. A lone operand or single comparison is by far the common shape;
+	// evaluate it without building a token slice or heap nodes.
+	if caches == nil {
+		if ok, err, handled := evaluateSingleComparison(trimmed, exprCtx); handled {
+			return ok, err
+		}
+	}
 	// Compound simple conditions may combine literals, operators, and runtime
 	// expressions with &&, ||, and parentheses (Arazzo 1.0.1 Criterion Object).
 	return evaluateBooleanExpr(trimmed, exprCtx, caches)
+}
+
+// scanConditionOperand returns the end of the operand starting at input[start],
+// using the same boundaries as tokenizeSimpleCondition at paren depth zero.
+// It returns -1 if the operand is unterminated.
+func scanConditionOperand(input string, start int) int {
+	i := start
+	switch c := input[i]; {
+	case c == '\'' || c == '"':
+		i++
+		for i < len(input) && input[i] != c {
+			i++
+		}
+		if i >= len(input) {
+			return -1 // unterminated; let the compiled path report it
+		}
+		return i + 1
+	case c == '$':
+		return runtimeOperandEnd(input, i, 0)
+	}
+	for i < len(input) && !isBoolOpStart(input[i:]) && input[i] != '(' && input[i] != ')' && !isASCIISpace(input[i]) {
+		i++
+	}
+	return i
+}
+
+// evaluateSingleComparison handles a condition that is one operand or one
+// `operand op operand` comparison, with the same semantics as the compiled
+// path. handled is false for anything else (&&, ||, groups, syntax errors), and
+// the caller then compiles the condition.
+func evaluateSingleComparison(input string, exprCtx *expression.Context) (result bool, err error, handled bool) {
+	skip := func(i int) int {
+		for i < len(input) && isASCIISpace(input[i]) {
+			i++
+		}
+		return i
+	}
+	i := skip(0)
+	if i >= len(input) || isBoolOpStart(input[i:]) || input[i] == '(' || input[i] == ')' {
+		return false, nil, false
+	}
+	end := scanConditionOperand(input, i)
+	if end < 0 {
+		return false, nil, false
+	}
+	left := conditionNode{}
+	initOperandNode(&left, input[i:end])
+
+	i = skip(end)
+	if i >= len(input) {
+		// lone operand case
+		v, err := operandValue(&left, exprCtx, nil)
+		if err != nil {
+			return false, err, true
+		}
+		res, err := operandTruth(v, input)
+		return res, err, true
+	}
+
+	var op string
+	switch rest := input[i:]; {
+	case strings.HasPrefix(rest, "=="):
+		op = "=="
+	case strings.HasPrefix(rest, "!="):
+		op = "!="
+	case strings.HasPrefix(rest, ">="):
+		op = ">="
+	case strings.HasPrefix(rest, "<="):
+		op = "<="
+	case rest[0] == '>':
+		op = ">"
+	case rest[0] == '<':
+		op = "<"
+	default:
+		return false, nil, false // &&, ||, parentheses or stray text
+	}
+	i = skip(i + len(op))
+	if i >= len(input) || isBoolOpStart(input[i:]) || input[i] == '(' || input[i] == ')' {
+		return false, nil, false
+	}
+	end = scanConditionOperand(input, i)
+	if end < 0 || skip(end) != len(input) {
+		return false, nil, false
+	}
+	right := conditionNode{}
+	initOperandNode(&right, input[i:end])
+
+	lv, err := operandValue(&left, exprCtx, nil)
+	if err != nil {
+		return false, err, true
+	}
+	rv, err := operandValue(&right, exprCtx, nil)
+	if err != nil {
+		return false, err, true
+	}
+	res, err := compareSimpleValues(lv, rv, op)
+	return res, err, true
 }
 
 func evaluateSimpleOperand(operand string, exprCtx *expression.Context, caches *criterionCaches) (any, error) {
@@ -446,11 +551,16 @@ func compileSimpleCondition(condition string, caches *criterionCaches) (*compile
 }
 
 func parseSimpleCondition(condition string) (*compiledCondition, error) {
-	tokens, err := tokenizeSimpleCondition(condition)
+	// Most conditions have a handful of tokens, so the scratch buffer keeps the
+	// token slice off the heap. The parser never retains it past this call.
+	var buf [16]boolToken
+	tokens, err := tokenizeSimpleConditionInto(buf[:0], condition)
 	if err != nil {
 		return nil, err
 	}
-	p := &conditionParser{tokens: tokens, input: condition}
+	// Every node comes from one token (operand, operator or open paren), so the
+	// slab is never outgrown and the node pointers stay valid.
+	p := conditionParser{tokens: tokens, input: condition, nodes: make([]conditionNode, 0, len(tokens))}
 	root, err := p.parseOr()
 	if err != nil {
 		return nil, err
@@ -495,18 +605,23 @@ func (c *compiledCondition) truth(n *conditionNode, exprCtx *expression.Context,
 		if err != nil {
 			return false, err
 		}
-		// A missing runtime value (value maps it to nil) or an explicit null
-		// used as a bare operand is falsy, so `$statusCode == 204 || $response.body#/flag`
-		// still passes on an empty 204 response.
-		if v == nil {
-			return false, nil
-		}
-		b, ok := v.(bool)
-		if !ok {
-			return false, fmt.Errorf("simple condition %q did not evaluate to a boolean", c.input)
-		}
-		return b, nil
+		return operandTruth(v, c.input)
 	}
+}
+
+// operandTruth coerces a bare operand's value to a boolean.
+func operandTruth(v any, input string) (bool, error) {
+	// A missing runtime value (value maps it to nil) or an explicit null
+	// used as a bare operand is falsy, so `$statusCode == 204 || $response.body#/flag`
+	// still passes on an empty 204 response.
+	if v == nil {
+		return false, nil
+	}
+	b, ok := v.(bool)
+	if !ok {
+		return false, fmt.Errorf("simple condition %q did not evaluate to a boolean", input)
+	}
+	return b, nil
 }
 
 // value evaluates n in a comparison-operand position.
@@ -514,6 +629,12 @@ func (c *compiledCondition) value(n *conditionNode, exprCtx *expression.Context,
 	if n.kind != condOperand {
 		return c.truth(n, exprCtx, caches)
 	}
+	return operandValue(n, exprCtx, caches)
+}
+
+// operandValue evaluates an operand node. It is not recursive, so callers can
+// keep the node on the stack.
+func operandValue(n *conditionNode, exprCtx *expression.Context, caches *criterionCaches) (any, error) {
 	if !n.isExpr {
 		return n.literal, nil
 	}
@@ -529,6 +650,7 @@ func (c *compiledCondition) value(n *conditionNode, exprCtx *expression.Context,
 }
 
 type conditionParser struct {
+	nodes  []conditionNode // slab with capacity for every node the tokens can produce
 	tokens []boolToken
 	pos    int
 	input  string
@@ -549,6 +671,12 @@ func (p *conditionParser) next() boolToken {
 	return tok
 }
 
+// newNode places n in the slab and returns a pointer to it.
+func (p *conditionParser) newNode(n conditionNode) *conditionNode {
+	p.nodes = append(p.nodes, n)
+	return &p.nodes[len(p.nodes)-1]
+}
+
 func (p *conditionParser) parseOr() (*conditionNode, error) {
 	left, err := p.parseAnd()
 	if err != nil {
@@ -560,7 +688,7 @@ func (p *conditionParser) parseOr() (*conditionNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		left = &conditionNode{kind: condOr, left: left, right: right}
+		left = p.newNode(conditionNode{kind: condOr, left: left, right: right})
 	}
 	return left, nil
 }
@@ -576,7 +704,7 @@ func (p *conditionParser) parseAnd() (*conditionNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		left = &conditionNode{kind: condAnd, left: left, right: right}
+		left = p.newNode(conditionNode{kind: condAnd, left: left, right: right})
 	}
 	return left, nil
 }
@@ -592,7 +720,7 @@ func (p *conditionParser) parseComparison() (*conditionNode, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &conditionNode{kind: condCompare, op: op, left: left, right: right}, nil
+		return p.newNode(conditionNode{kind: condCompare, op: op, left: left, right: right}), nil
 	}
 	return left, nil
 }
@@ -610,22 +738,25 @@ func (p *conditionParser) parsePrimary() (*conditionNode, error) {
 		}
 		// Keep the group node: a parenthesised operand is coerced to a boolean
 		// before it is compared, e.g. `($flag) == true`.
-		return &conditionNode{kind: condGroup, left: inner}, nil
+		return p.newNode(conditionNode{kind: condGroup, left: inner}), nil
 	case tokOperand:
-		return newOperandNode(tok.raw), nil
+		n := p.newNode(conditionNode{})
+		initOperandNode(n, tok.raw)
+		return n, nil
 	default:
 		return nil, fmt.Errorf("unexpected token %q in simple condition %q", tok.raw, p.input)
 	}
 }
 
-func newOperandNode(raw string) *conditionNode {
+func initOperandNode(n *conditionNode, raw string) {
 	op := strings.TrimSpace(raw)
 	if strings.HasPrefix(op, "$") {
-		return &conditionNode{kind: condOperand, raw: op, isExpr: true}
+		*n = conditionNode{kind: condOperand, raw: op, isExpr: true}
+		return
 	}
 	// Literals never touch the expression context, so they convert once here.
 	literal, _ := evaluateSimpleOperand(op, nil, nil)
-	return &conditionNode{kind: condOperand, literal: literal}
+	*n = conditionNode{kind: condOperand, literal: literal}
 }
 
 func comparisonOp(kind boolTokenKind) (string, bool) {
@@ -648,7 +779,11 @@ func comparisonOp(kind boolTokenKind) (string, bool) {
 }
 
 func tokenizeSimpleCondition(input string) ([]boolToken, error) {
-	var tokens []boolToken
+	return tokenizeSimpleConditionInto(nil, input)
+}
+
+// tokenizeSimpleConditionInto appends the tokens of input to tokens.
+func tokenizeSimpleConditionInto(tokens []boolToken, input string) ([]boolToken, error) {
 	i := 0
 	depth := 0 // open parentheses so far; the parser reports any imbalance
 	for i < len(input) {
