@@ -222,35 +222,28 @@ func evaluateSingleComparison(input string, exprCtx *expression.Context) (result
 	return res, err, true
 }
 
-func evaluateSimpleOperand(operand string, exprCtx *expression.Context, caches *criterionCaches) (any, error) {
-	op := strings.TrimSpace(operand)
-	if op == "" {
-		return "", nil
-	}
-
-	if strings.HasPrefix(op, "$") {
-		return evaluateExprString(op, exprCtx, caches)
-	}
-
-	if (strings.HasPrefix(op, "\"") && strings.HasSuffix(op, "\"")) ||
-		(strings.HasPrefix(op, "'") && strings.HasSuffix(op, "'")) {
-		return op[1 : len(op)-1], nil
+// simpleLiteral converts an already-trimmed literal operand of a simple
+// condition: a quoted string, a boolean, a number, or otherwise bare text.
+// Runtime expressions are handled by the caller, never here.
+func simpleLiteral(op string) any {
+	if len(op) >= 2 && ((op[0] == '"' && op[len(op)-1] == '"') || (op[0] == '\'' && op[len(op)-1] == '\'')) {
+		return op[1 : len(op)-1]
 	}
 
 	switch op {
 	case "true":
-		return true, nil
+		return true
 	case "false":
-		return false, nil
+		return false
 	}
 	if i, err := strconv.ParseInt(op, 10, 64); err == nil {
-		return i, nil
+		return i
 	}
 	if f, err := strconv.ParseFloat(op, 64); err == nil {
-		return f, nil
+		return f
 	}
 
-	return op, nil
+	return op
 }
 
 func compareSimpleValues(left, right any, op string) (bool, error) {
@@ -778,8 +771,7 @@ func initOperandNode(n *conditionNode, raw string) {
 		return
 	}
 	// Literals never touch the expression context, so they convert once here.
-	literal, _ := evaluateSimpleOperand(op, nil, nil)
-	*n = conditionNode{kind: condOperand, literal: literal}
+	*n = conditionNode{kind: condOperand, literal: simpleLiteral(op)}
 }
 
 func comparisonOp(kind boolTokenKind) (string, bool) {

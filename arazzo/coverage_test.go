@@ -346,74 +346,47 @@ func TestSplitSimpleCondition_BareExpressionNoOperator(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// evaluateSimpleOperand
+// simpleLiteral
 // ---------------------------------------------------------------------------
 
-func TestEvaluateSimpleOperand_EmptyString(t *testing.T) {
-	val, err := evaluateSimpleOperand("", nil, nil)
-	require.NoError(t, err)
-	assert.Equal(t, "", val)
+func TestSimpleLiteral(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  any
+	}{
+		{"double quoted string", `"hello"`, "hello"},
+		{"single quoted string", `'world'`, "world"},
+		{"quoted empty string", `''`, ""},
+		{"quoted keeps inner whitespace", `' a '`, " a "},
+		{"lone quote is plain text", `"`, `"`},
+		{"mismatched quotes are plain text", `"a'`, `"a'`},
+		{"true", "true", true},
+		{"false", "false", false},
+		{"integer", "42", int64(42)},
+		{"negative integer", "-5", int64(-5)},
+		{"float", "3.14", 3.14},
+		{"plain string", "hello", "hello"},
+		{"empty", "", ""},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, simpleLiteral(tc.input))
+		})
+	}
 }
 
-func TestEvaluateSimpleOperand_ExpressionPrefix(t *testing.T) {
-	ctx := &expression.Context{StatusCode: 200}
-	val, err := evaluateSimpleOperand("$statusCode", ctx, nil)
-	require.NoError(t, err)
-	assert.Equal(t, 200, val)
-}
+// Operand text is trimmed once, when the node is built, before it is classified.
+func TestInitOperandNode_TrimsAndClassifies(t *testing.T) {
+	var n conditionNode
+	initOperandNode(&n, "  42  ")
+	assert.False(t, n.isExpr)
+	assert.Equal(t, int64(42), n.literal)
 
-func TestEvaluateSimpleOperand_DoubleQuotedString(t *testing.T) {
-	val, err := evaluateSimpleOperand("\"hello\"", nil, nil)
-	require.NoError(t, err)
-	assert.Equal(t, "hello", val)
-}
-
-func TestEvaluateSimpleOperand_SingleQuotedString(t *testing.T) {
-	val, err := evaluateSimpleOperand("'world'", nil, nil)
-	require.NoError(t, err)
-	assert.Equal(t, "world", val)
-}
-
-func TestEvaluateSimpleOperand_BooleanTrue(t *testing.T) {
-	val, err := evaluateSimpleOperand("true", nil, nil)
-	require.NoError(t, err)
-	assert.Equal(t, true, val)
-}
-
-func TestEvaluateSimpleOperand_BooleanFalse(t *testing.T) {
-	val, err := evaluateSimpleOperand("false", nil, nil)
-	require.NoError(t, err)
-	assert.Equal(t, false, val)
-}
-
-func TestEvaluateSimpleOperand_Integer(t *testing.T) {
-	val, err := evaluateSimpleOperand("42", nil, nil)
-	require.NoError(t, err)
-	assert.Equal(t, int64(42), val)
-}
-
-func TestEvaluateSimpleOperand_NegativeInteger(t *testing.T) {
-	val, err := evaluateSimpleOperand("-5", nil, nil)
-	require.NoError(t, err)
-	assert.Equal(t, int64(-5), val)
-}
-
-func TestEvaluateSimpleOperand_Float(t *testing.T) {
-	val, err := evaluateSimpleOperand("3.14", nil, nil)
-	require.NoError(t, err)
-	assert.Equal(t, 3.14, val)
-}
-
-func TestEvaluateSimpleOperand_PlainString(t *testing.T) {
-	val, err := evaluateSimpleOperand("hello", nil, nil)
-	require.NoError(t, err)
-	assert.Equal(t, "hello", val)
-}
-
-func TestEvaluateSimpleOperand_WhitespaceTrimmmed(t *testing.T) {
-	val, err := evaluateSimpleOperand("  42  ", nil, nil)
-	require.NoError(t, err)
-	assert.Equal(t, int64(42), val)
+	initOperandNode(&n, "  $statusCode ")
+	assert.True(t, n.isExpr)
+	assert.Equal(t, "$statusCode", n.raw)
+	assert.Nil(t, n.literal)
 }
 
 // ---------------------------------------------------------------------------
