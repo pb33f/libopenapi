@@ -918,12 +918,16 @@ func isBoolOpStart(s string) bool {
 }
 
 // isOptionalRuntimeValue reports whether an expression of type t reads a value
-// that legitimately varies per request or response: a header, query or path
-// parameter, or the body.
+// that legitimately varies per request, response or message: a header, query or
+// path parameter, or the body or payload.
 func isOptionalRuntimeValue(t expression.ExpressionType) bool {
 	switch t {
-	case expression.RequestHeader, expression.RequestQuery, expression.RequestPath, expression.RequestBody,
-		expression.ResponseHeader, expression.ResponseQuery, expression.ResponsePath, expression.ResponseBody:
+	case expression.RequestHeader, expression.RequestQuery, expression.RequestPath,
+		expression.RequestBody, expression.RequestPayload,
+		expression.ResponseHeader, expression.ResponseQuery, expression.ResponsePath,
+		expression.ResponseBody, expression.ResponsePayload,
+		expression.MessageHeader, expression.MessageQuery, expression.MessagePath,
+		expression.MessageBody, expression.MessagePayload:
 		return true
 	default:
 		return false

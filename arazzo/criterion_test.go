@@ -165,8 +165,8 @@ func TestEvaluateCriterion_AbsentRuntimeValuesAreNull(t *testing.T) {
 	}
 }
 
-// Only request and response values are optional. A pointer miss inside a step
-// output, an absent payload, or a nil context is still an error.
+// Only request, response and message values are optional. A pointer miss inside
+// a step output or a nil context is still an error.
 func TestEvaluateCriterion_NonExchangeMissingValuesError(t *testing.T) {
 	ctx := &expression.Context{
 		StatusCode: 200,
@@ -180,7 +180,6 @@ func TestEvaluateCriterion_NonExchangeMissingValuesError(t *testing.T) {
 		errText   string
 	}{
 		{"$steps.s.outputs.body#/missing == 1", ctx, `JSON pointer segment "missing" not found`},
-		{"$response.payload == 1", ctx, "no response payload available"},
 		{"$response.header.X == 1", nil, "nil context"},
 	}
 	for _, tc := range cases {
@@ -873,6 +872,33 @@ func TestEvaluateCriterion_CompiledOperandEvaluationErrors(t *testing.T) {
 			ok, err := EvaluateCriterion(&high.Criterion{Condition: condition}, ctx)
 			assert.False(t, ok)
 			assert.Error(t, err)
+		})
+	}
+}
+
+// Every request, response and message source is optional: when it is absent the
+// operand reads as null instead of failing the condition.
+func TestEvaluateCriterion_AbsentOptionalSourcesReadAsNull(t *testing.T) {
+	sources := []string{
+		"$request.header.h", "$request.query.q", "$request.path.p", "$request.body#/x", "$request.payload#/x",
+		"$response.header.h", "$response.query.q", "$response.path.p", "$response.body#/x", "$response.payload#/x",
+		"$message.header.h", "$message.query.q", "$message.path.p", "$message.body#/x", "$message.payload#/x",
+	}
+	ctx := &expression.Context{StatusCode: 200}
+	for _, src := range sources {
+		t.Run(src, func(t *testing.T) {
+			// Single comparison, compiled comparison and bare operand.
+			for condition, want := range map[string]bool{
+				src + " == 1":                            false,
+				src + " != 1":                            true,
+				src + " == 1 || $statusCode == 200":      true,
+				src + " && $statusCode == 200":           false,
+				"$statusCode == 200 && " + src + " == 1": false,
+			} {
+				ok, err := EvaluateCriterion(&high.Criterion{Condition: condition}, ctx)
+				require.NoError(t, err, condition)
+				assert.Equal(t, want, ok, condition)
+			}
 		})
 	}
 }
