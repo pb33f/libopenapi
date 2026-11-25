@@ -38,6 +38,116 @@ func TestUnchangedReferenceRetargetsAfterResourceMoves(t *testing.T) {
 	require.Equal(t, "use.yml", c.Context.ModifiedDocument)
 }
 
+func TestReferenceFollowsUnorderedOperand(t *testing.T) {
+	for _, keyword := range []string{"anyOf", "allOf", "oneOf"} {
+		t.Run(keyword, func(t *testing.T) {
+			const use = `{"properties":{"field":{"$ref":"a.json"}}}`
+			const other = `{"type":"boolean"}`
+			snapshot := func(first, second, a, b string) *Document {
+				return loadMembers(t, t.TempDir(), map[string][]byte{
+					"a.json":   []byte(fmt.Sprintf(`{"$id":%q}`, a)),
+					"b.json":   []byte(fmt.Sprintf(`{"$id":%q}`, b)),
+					"use.json": []byte(fmt.Sprintf(`{%q:[%s,%s]}`, keyword, first, second)),
+				})
+			}
+			left := snapshot(use, other, "urn:A", "urn:B")
+			for _, tc := range []struct {
+				right    *Document
+				retarget bool
+			}{
+				{snapshot(other, use, "urn:A", "urn:B"), false},
+				{snapshot(other, use, "urn:B", "urn:A"), true},
+			} {
+				diff, err := Compare(left, tc.right, nil)
+				require.NoError(t, err)
+				if !tc.retarget {
+					require.Nil(t, diff)
+					continue
+				}
+				require.NotNil(t, diff)
+				require.Len(t, diff.GetAllChanges(), 1)
+				change := diff.GetAllChanges()[0]
+				require.Equal(t, "$."+keyword+`[1].properties.field["$ref"]`, change.Path)
+				require.Equal(t, "use.json", change.SchemaResource)
+				require.Equal(t, "urn:A", change.Original)
+				require.Equal(t, "urn:B", change.New)
+				require.True(t, change.Breaking)
+			}
+		})
+	}
+}
+
+func TestEmbeddedResourceKeepsContainingContext(t *testing.T) {
+	for _, tc := range []struct {
+		name, schema, path string
+		breaking           bool
+	}{
+		{"negated", `{"not":{"$id":"urn:shared","minimum":%d}}`, "$.minimum", true},
+		{"negated descendant", `{"not":{"$id":"urn:shared","properties":{"v":{"minimum":%d}}}}`, "$.properties.v.minimum", true},
+		{"bounded contains", `{"maxContains":1,"contains":{"$id":"urn:shared","minimum":%d}}`, "$.minimum", true},
+		{"conditional", `{"if":{"$id":"urn:shared","minimum":%d},"then":false}`, "$.minimum", true},
+		{"positive", `{"properties":{"v":{"$id":"urn:shared","minimum":%d}}}`, "$.minimum", false},
+		{"double negative", `{"not":{"not":{"$id":"urn:shared","minimum":%d}}}`, "$.minimum", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a, b := loadTest(t, fmt.Sprintf(tc.schema, 4)), loadTest(t, fmt.Sprintf(tc.schema, 3))
+			require.Empty(t, a.References)
+			diff, err := Compare(a, b, nil)
+			require.NoError(t, err)
+			require.Len(t, diff.GetAllChanges(), 1)
+			ch := diff.GetAllChanges()[0]
+			require.Equal(t, "urn:shared", ch.SchemaResource)
+			require.Equal(t, tc.path, ch.Path)
+			require.Equal(t, tc.breaking, ch.Breaking)
+		})
+	}
+}
+
+func TestRemovedOperandDoesNotInheritSurvivingReference(t *testing.T) {
+	snapshot := func(branches, a, b string) *Document {
+		return loadMembers(t, t.TempDir(), map[string][]byte{
+			"a.yml": []byte("$id: " + a), "b.yml": []byte("$id: " + b),
+			"use.yml": []byte("anyOf:\n" + branches),
+		})
+	}
+	const removed = "  - {$ref: a.yml, title: removed}\n"
+	const kept = "  - {$ref: a.yml, title: kept}\n"
+	diff, err := Compare(snapshot(removed+kept, "urn:A", "urn:B"), snapshot(kept, "urn:B", "urn:A"), nil)
+	require.NoError(t, err)
+	require.Len(t, diff.GetAllChanges(), 2)
+	require.Equal(t, wc.ObjectRemoved, diff.GetAllChanges()[0].ChangeType)
+	retarget := diff.GetAllChanges()[1]
+	require.Equal(t, `$.anyOf[0]["$ref"]`, retarget.Path)
+	require.Equal(t, "urn:B", retarget.New)
+	require.True(t, retarget.Breaking)
+}
+
+func TestEmbeddedMembershipUsesContainingKeywordOverride(t *testing.T) {
+	empty := loadTest(t, "{}")
+	for _, keyword := range []string{"$defs", "properties"} {
+		for _, override := range []bool{false, true} {
+			rule := &wc.BreakingChangeRule{Added: &override, Removed: &override}
+			config := &wc.BreakingRulesConfig{Schema: &wc.SchemaRules{}}
+			if keyword == "$defs" {
+				config.Schema.Defs = rule
+			} else {
+				config.Schema.Properties = rule
+			}
+			member := loadTest(t, fmt.Sprintf(`{%q:{"v":{"$id":"urn:defined","type":"string"}}}`, keyword))
+			for _, pair := range [][2]*Document{{empty, member}, {member, empty}} {
+				diff, err := Compare(pair[0], pair[1], config)
+				require.NoError(t, err)
+				require.Len(t, diff.GetAllChanges(), 1)
+				ch := diff.GetAllChanges()[0]
+				require.Equal(t, "urn:defined", ch.SchemaResource)
+				require.Equal(t, "$", ch.Path)
+				require.Equal(t, "schema", ch.Property)
+				require.Equal(t, override, ch.Breaking, "%s %v", keyword, ch.ChangeType)
+			}
+		}
+	}
+}
+
 func TestReferenceAnchorRetarget(t *testing.T) {
 	snapshot := func(a, b string) *Document {
 		return loadMembers(t, t.TempDir(), map[string][]byte{

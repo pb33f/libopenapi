@@ -43,6 +43,7 @@ func Compare(left, right *Document, rules *wc.BreakingRulesConfig) (*wc.SchemaCh
 }
 
 type comparison struct {
+	operandMoves                 map[schemaOccurrence]string
 	annotationOnly               bool
 	originalUsage, modifiedUsage map[*yaml.Node]evaluationContext
 	appliedAdditions             map[*Resource]bool
@@ -110,7 +111,7 @@ func matchResources(left, right *Document) (map[*Resource]*Resource, map[*Resour
 func (c *comparison) resources() error {
 	pairs, used := matchResources(c.left, c.right)
 	c.pairs, c.matched = pairs, used
-	c.compareReferences()
+	c.originalUsage, c.modifiedUsage = c.left.referenceUsage(), c.right.referenceUsage()
 	for _, l := range c.left.Resources {
 		if c.inline[l] {
 			continue
@@ -120,12 +121,13 @@ func (c *comparison) resources() error {
 		}
 	}
 	for _, r := range c.right.Resources {
-		if !used[r] {
+		if !used[r] && !c.inline[r] {
 			if err := c.compareResource(nil, r); err != nil {
 				return err
 			}
 		}
 	}
+	c.compareReferences()
 	return nil
 }
 
@@ -134,7 +136,9 @@ func (c *comparison) compareResource(l, r *Resource) error {
 		c.membership(l, r, "$", "schema", nil, nil, l != nil || c.appliedAdditions[r])
 		return nil
 	}
-	return c.schema(l, r, l.Node, r.Node, "$", "type", 1)
+	// Embedded resources have an independent address and also participate
+	// in their containing applicator, even when neither input has references.
+	return c.schema(l, r, l.Node, r.Node, "$", "type", combinedPolarity(1, l.context|r.context))
 }
 
 func (c *comparison) schema(l, r *Resource, left, right *yaml.Node, path, keyword string, polarity int) error {
@@ -578,6 +582,7 @@ func (c *comparison) compareChildren(l, r *Resource, left, right *yaml.Node, pat
 			if n := old[k]; n != nil {
 				hash := low.HashYAMLNodeSlice([]*yaml.Node{n})
 				if matches := byHash[hash]; len(matches) > 0 {
+					c.recordOperandMove(n, newNodes[matches[0]])
 					delete(old, k)
 					delete(newNodes, matches[0])
 					byHash[hash] = matches[1:]
@@ -597,14 +602,19 @@ func (c *comparison) compareChildren(l, r *Resource, left, right *yaml.Node, pat
 				remainingRight = append(remainingRight, k)
 			}
 		}
-		for i := 0; i < min(len(remainingLeft), len(remainingRight)); i++ {
+		paired := min(len(remainingLeft), len(remainingRight))
+		for i := 0; i < paired; i++ {
 			lk, rk := remainingLeft[i], remainingRight[i]
 			a, b := old[lk], newNodes[rk]
+			c.recordOperandMove(a, b)
 			delete(old, lk)
 			delete(newNodes, rk)
 			if err := c.compareChild(l, r, a, b, childPath(path, rk), kw, polarity); err != nil {
 				return err
 			}
+		}
+		for _, k := range remainingLeft[paired:] {
+			c.recordOperandMove(old[k], nil)
 		}
 	}
 	for k, a := range old {
@@ -663,13 +673,10 @@ func (c *comparison) compareChild(l, r *Resource, a, b *yaml.Node, path, keyword
 		}
 	case lo == l && !c.matched[ro]:
 		// An inline schema acquired its first $id. Its constraints now belong to the new resource.
-		c.matched[ro] = true
+		c.markInline(ro)
 		return c.schema(l, ro, a, b, "$", keyword, polarity)
 	case ro == r && c.pairs[lo] == nil:
-		if c.inline == nil {
-			c.inline = make(map[*Resource]bool)
-		}
-		c.inline[lo] = true
+		c.markInline(lo)
 		return c.schema(lo, r, a, b, path, keyword, polarity)
 	default:
 		// A matched resource moved to or from an existing inline use.
@@ -677,6 +684,13 @@ func (c *comparison) compareChild(l, r *Resource, a, b *yaml.Node, path, keyword
 		c.finish(c.changes[len(c.changes)-1], l, r, path, keyword, 1, true)
 	}
 	return nil
+}
+
+func (c *comparison) markInline(r *Resource) {
+	if c.inline == nil {
+		c.inline = make(map[*Resource]bool)
+	}
+	c.inline[r] = true
 }
 
 // PropertyPath appends an object key to a JSONPath without changing its identity.
@@ -791,6 +805,13 @@ func (c *comparison) finish(ch *wc.Change, l, r *Resource, path, property string
 	}
 	if c.rules != nil {
 		ruleKey := property
+		if property == "schema" {
+			if l == nil && r != nil && r.keyword != "" {
+				ruleKey = r.keyword
+			} else if r == nil && l != nil && l.keyword != "" {
+				ruleKey = l.keyword
+			}
+		}
 		if property == "$schema" {
 			ruleKey = wc.PropSchemaDialect
 		}

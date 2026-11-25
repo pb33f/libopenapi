@@ -38,6 +38,8 @@ type Source struct {
 // Resource is a root schema or an embedded schema with its own base URI.
 type Resource struct {
 	base    *url.URL
+	keyword string
+	context evaluationContext
 	ID      string
 	Pointer string
 	Source  *Source
@@ -214,7 +216,7 @@ func (d *Document) addSource(data []byte, uri *url.URL, explicit bool) (*Resourc
 	} else {
 		d.Rolodex.AddIndex(idx)
 	}
-	if err = d.indexSchema(source, root, uri, "", nil, positiveContext); err != nil {
+	if err = d.indexSchema(source, root, uri, "", "", nil, positiveContext); err != nil {
 		return nil, err
 	}
 	if err := validateSource(root); err != nil {
@@ -258,7 +260,7 @@ func (d *Document) register(address string, node *yaml.Node, source *Source) err
 	return nil
 }
 
-func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, pointer string, r *Resource, evaluation evaluationContext) error {
+func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, pointer, keyword string, r *Resource, evaluation evaluationContext) error {
 	if node.Kind != yaml.MappingNode && !(node.Kind == yaml.ScalarNode && node.Tag == "!!bool") {
 		return fmt.Errorf("%s:%d: schema must be an object or boolean", source.Name, node.Line)
 	}
@@ -300,7 +302,7 @@ func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, p
 		if id != nil {
 			identity = d.resourceID(base)
 		}
-		r = &Resource{base: base, ID: identity, Pointer: pointer, Source: source, Node: node}
+		r = &Resource{base: base, ID: identity, Pointer: pointer, Source: source, Node: node, keyword: keyword, context: evaluation}
 		d.Resources = append(d.Resources, r)
 		if err := d.register(base.String(), node, source); err != nil {
 			return err
@@ -345,7 +347,7 @@ func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, p
 		if childKind(keyword) != singleSchema {
 			childPointer += "/" + escapePointer(key)
 		}
-		return d.indexSchema(source, child, base, childPointer, r, evaluation.child(node, keyword))
+		return d.indexSchema(source, child, base, childPointer, keyword, r, evaluation.child(node, keyword))
 	})
 }
 

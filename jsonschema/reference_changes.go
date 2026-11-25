@@ -88,8 +88,54 @@ func (d *Document) referenceUsage() map[*yaml.Node]evaluationContext {
 	return uses
 }
 
+type schemaOccurrence struct {
+	owner   *Resource
+	pointer string
+}
+
+// Use the comparator's own operand pairing for every reference below a
+// reordered allOf, anyOf, or oneOf branch. An empty destination marks a removal.
+func (c *comparison) recordOperandMove(a, b *yaml.Node) {
+	if len(c.left.References) == 0 || len(c.right.References) == 0 {
+		return
+	}
+	old := c.left.schemaPointers[a]
+	if old == "" {
+		return // A named resource already has its own stable namespace.
+	}
+	owner := c.left.schemas[a]
+	newPath := ""
+	if b != nil {
+		if c.pairs[owner] != c.right.schemas[b] {
+			return
+		}
+		newPath = c.right.schemaPointers[b]
+		if old == newPath {
+			return
+		}
+	}
+	if c.operandMoves == nil {
+		c.operandMoves = make(map[schemaOccurrence]string)
+	}
+	c.operandMoves[schemaOccurrence{owner, old}] = newPath
+}
+
+func (c *comparison) matchedPointer(owner *Resource, pointer string) (string, bool) {
+	if c.operandMoves != nil {
+		for prefix := pointer; prefix != ""; {
+			if to, ok := c.operandMoves[schemaOccurrence{owner, prefix}]; ok {
+				if to == "" {
+					return "", false
+				}
+				return to + pointer[len(prefix):], true
+			}
+			prefix = prefix[:strings.LastIndexByte(prefix, '/')]
+		}
+	}
+	return pointer, true
+}
+
 func (c *comparison) compareReferences() {
-	c.originalUsage, c.modifiedUsage = c.left.referenceUsage(), c.right.referenceUsage()
 	if len(c.left.References) == 0 || len(c.right.References) == 0 {
 		return
 	}
@@ -105,7 +151,11 @@ func (c *comparison) compareReferences() {
 	var byFile map[site]*Reference
 	for _, before := range c.left.References {
 		owner := c.left.schemas[before.From]
-		key := site{c.pairs[owner], c.left.schemaPointers[before.From], before.Keyword}
+		pointer, paired := c.matchedPointer(owner, c.left.schemaPointers[before.From])
+		if !paired {
+			continue
+		}
+		key := site{c.pairs[owner], pointer, before.Keyword}
 		after := current[key]
 		if after == nil && (len(c.pairs) != len(c.left.Resources) || len(c.pairs) != len(c.right.Resources)) {
 			// Adding or dropping an embedded $id can change the base at an
