@@ -53,7 +53,7 @@ func filePath(u *url.URL) string {
 func (d *Document) resolveReferences() error {
 	for i := 0; i < len(d.References); i++ {
 		ref := d.References[i]
-		target, err := d.resolve(ref.address)
+		target, err := d.resolve(ref.address, ref.Value)
 		if err != nil {
 			return fmt.Errorf("%s:%d: resolve %s %q: %w", d.schemas[ref.From].Source.Name, ref.From.Line, ref.Keyword, ref.Value, err)
 		}
@@ -68,7 +68,7 @@ func (d *Document) resolveReferences() error {
 	return nil
 }
 
-func (d *Document) resolve(address string) (*yaml.Node, error) {
+func (d *Document) resolve(address, authored string) (*yaml.Node, error) {
 	if target := d.lookup(address); target != nil {
 		return target, nil
 	}
@@ -80,18 +80,27 @@ func (d *Document) resolve(address string) (*yaml.Node, error) {
 	uri.Fragment, uri.RawFragment = "", ""
 	root := d.lookup(uri.String())
 	if root == nil {
-		data, err := d.read(uri)
-		if err != nil {
-			return nil, err
+		retrieval := d.collectionRetrieval(uri, authored)
+		root = d.lookup(retrieval.String())
+		if root == nil {
+			data, err := d.read(retrieval)
+			if err != nil {
+				return nil, err
+			}
+			resource, err := d.addSource(data, retrieval, true)
+			if err != nil {
+				return nil, err
+			}
+			root = resource.Node
 		}
-		resource, err := d.addSource(data, uri, true)
-		if err != nil {
-			return nil, err
+		if retrieval != uri {
+			if err := d.register(uri.String(), root, d.schemas[root].Source); err != nil {
+				return nil, err
+			}
 		}
 		if target := d.lookup(address); target != nil {
 			return target, nil
 		}
-		root = resource.Node
 	}
 	target := root
 	if fragment != "" {
@@ -124,6 +133,32 @@ func (d *Document) resolve(address string) (*yaml.Node, error) {
 		return nil, fmt.Errorf("no schema at %q in %s", fragment, d.sourceName(uri))
 	}
 	return target, nil
+}
+
+// Collection members are registered under their snapshot paths. An explicit base
+// supplies relative dependencies only after those registered locations miss.
+func (d *Document) collectionRetrieval(uri *url.URL, authored string) *url.URL {
+	if d.Root != nil || uri.Scheme != "file" || d.config.BaseURL == nil && d.config.BasePath == "" {
+		return uri
+	}
+	ref, err := url.Parse(authored)
+	if err != nil || ref.IsAbs() || strings.HasPrefix(ref.Path, "/") {
+		return uri
+	}
+	dir := filePath(d.base)
+	rel, err := filepath.Rel(dir, filePath(uri))
+	if err != nil || !filepath.IsLocal(rel) {
+		return uri
+	}
+	if d.config.BaseURL != nil {
+		parent := *d.config.BaseURL
+		parent.Path = strings.TrimSuffix(parent.Path, "/") + "/"
+		return parent.ResolveReference(&url.URL{Path: filepath.ToSlash(rel), RawQuery: uri.RawQuery})
+	}
+	if filepath.Clean(dir) == filepath.Clean(d.config.BasePath) {
+		return uri
+	}
+	return fileURL(filepath.Join(d.config.BasePath, rel))
 }
 
 // Read source bytes without attaching a second API-format index to this Rolodex.

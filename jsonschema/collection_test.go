@@ -6,9 +6,14 @@ package jsonschema
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
+	"testing/fstest"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/testify/require"
 )
 
@@ -26,6 +31,33 @@ func sharedMembers(uses, minimum int) map[string][]byte {
 		files[fmt.Sprintf("orders/%04d.json", i)] = []byte(fmt.Sprintf(`{"$id":"urn:order:%d","properties":{"value":{"$ref":"urn:money"}}}`, i))
 	}
 	return files
+}
+
+func TestCollectionExternalBaseAfterMemberLookup(t *testing.T) {
+	members := map[string][]byte{
+		"order.json": []byte(`{"properties":{"price":{"$ref":"money.yaml"},"currency":{"$ref":"types/currency.yaml#code"}}}`),
+		"money.yaml": []byte("type: integer"),
+	}
+	const currency = "$anchor: code\ntype: string"
+	for _, remote := range []bool{false, true} {
+		config := datamodel.NewDocumentConfiguration()
+		config.BasePath = t.TempDir()
+		config.LocalFS = fstest.MapFS{"types/currency.yaml": {Data: []byte(currency)}}
+		if remote {
+			config.BaseURL, _ = url.Parse("https://schemas.example.test/external/")
+			config.AllowRemoteReferences = true
+			config.RemoteURLHandler = func(location string) (*http.Response, error) {
+				require.Equal(t, "https://schemas.example.test/external/types/currency.yaml", location)
+				return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(currency))}, nil
+			}
+		}
+		doc, err := LoadCollection(members, t.TempDir(), config)
+		require.NoError(t, err)
+		require.Len(t, doc.References, 2)
+		require.Same(t, doc.Sources["money.yaml"].Node, doc.References[0].To)
+		require.Equal(t, "string", member(doc.References[1].To, "type").Value)
+		doc.Release()
+	}
 }
 
 func TestCollectionSharedOwnership(t *testing.T) {
