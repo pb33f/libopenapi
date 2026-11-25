@@ -24,6 +24,9 @@ const (
 	YAMLFileType = "yaml"
 )
 
+// ErrUnsupportedSpecType indicates a well-formed document with no API version marker.
+var ErrUnsupportedSpecType = errors.New("spec type not supported by libopenapi, sorry")
+
 // SpecInfo represents a 'ready-to-process' OpenAPI Document. The RootNode is the most important property
 // used by the library, this contains the top of the document tree that every single low model is based off.
 type SpecInfo struct {
@@ -382,7 +385,7 @@ func extractSpecInfoInternal(spec []byte, bypass bool, skipJSON bool) (*SpecInfo
 					return nil, err
 				}
 			}
-			specInfo.Error = errors.New("spec type not supported by libopenapi, sorry")
+			specInfo.Error = ErrUnsupportedSpecType
 			return specInfo, specInfo.Error
 		}
 	}
