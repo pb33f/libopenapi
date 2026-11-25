@@ -25,6 +25,9 @@ func Compare(left, right *Document, rules *wc.BreakingRulesConfig) (*wc.SchemaCh
 	if left == nil || right == nil {
 		return nil, fmt.Errorf("both JSON Schema inputs are required")
 	}
+	if (left.Root == nil) != (right.Root == nil) {
+		return nil, fmt.Errorf("a schema collection requires a collection on both sides")
+	}
 	c := comparison{left: left, right: right, rules: rules}
 	if err := c.resources(); err != nil {
 		return nil, err
