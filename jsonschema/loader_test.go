@@ -50,12 +50,18 @@ func TestMetaValidationChecksDistinctPropertySchemasAndPreservesLiterals(t *test
 	for _, kw := range []string{"properties", "$defs", "dependentSchemas"} {
 		_, err := Load([]byte(`{"`+kw+`":{"a":{"type":"string"},"b":{"type":"string"},"c":{"type":41}}}`), "bad.json", nil, true)
 		require.ErrorContains(t, err, "/"+kw+"/c/type")
+		_, err = Load([]byte(`{"`+kw+`":{"a":{"type":41},"b":{"type":41},"c":{"type":41}}}`), "bad.json", nil, true)
+		for _, name := range []string{"a", "b", "c"} {
+			require.ErrorContains(t, err, "/"+kw+"/"+name+"/type")
+		}
 	}
 	doc, err := Load([]byte(`{"const":{"properties":{"a":true,"b":true}},"properties":{"a":true,"b":true}}`), "good.json", nil, true)
 	require.NoError(t, err)
 	defer doc.Release()
-	meta, err := doc.metaValue(doc.Root.Node, false)
+	var skipped bool
+	meta, err := doc.metaValue(doc.Root.Node, false, &skipped)
 	require.NoError(t, err)
+	require.True(t, skipped)
 	value := meta.(map[string]any)
 	require.Len(t, value["properties"], 1)
 	require.Len(t, value["const"].(map[string]any)["properties"], 2)

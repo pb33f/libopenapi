@@ -23,16 +23,25 @@ func (d *Document) validateSource(root *yaml.Node) error {
 	if root.Kind == yaml.ScalarNode {
 		return nil // indexSchema has already checked that this is a boolean.
 	}
-	value, err := d.metaValue(root, false)
-	if err != nil {
-		return err
+	validate := func(skipped *bool) error {
+		value, err := d.metaValue(root, false, skipped)
+		if err != nil {
+			return err
+		}
+		return draftMetaSchema().Validate(value)
 	}
-	return draftMetaSchema().Validate(value)
+	var skipped bool
+	err := validate(&skipped)
+	if err != nil && skipped {
+		// Include the authored path of every invalid member in the diagnostic.
+		return validate(nil)
+	}
+	return err
 }
 
 // Use authored number strings. A float64 round trip can turn a fractional schema
 // limit into an integer or round a small, positive multipleOf to zero.
-func (d *Document) metaValue(node *yaml.Node, repeatedSchemas bool) (any, error) {
+func (d *Document) metaValue(node *yaml.Node, repeatedSchemas bool, skipped *bool) (any, error) {
 	switch node.Kind {
 	case yaml.MappingNode:
 		value := make(map[string]any, len(node.Content)/2)
@@ -42,12 +51,13 @@ func (d *Document) metaValue(node *yaml.Node, repeatedSchemas bool) (any, error)
 			name, child := node.Content[i].Value, node.Content[i+1]
 			// These meta-schema maps apply exactly the same schema to every
 			// value and impose no constraints on member names or cardinality.
-			if repeatedSchemas && previous != nil && sameNode(previous, child) {
+			if skipped != nil && repeatedSchemas && previous != nil && sameNode(previous, child) {
+				*skipped = true
 				continue
 			}
 			previous = child
 			repeated := schema && (name == "properties" || name == "$defs" || name == "dependentSchemas")
-			v, err := d.metaValue(child, repeated)
+			v, err := d.metaValue(child, repeated, skipped)
 			if err != nil {
 				return nil, err
 			}
@@ -57,7 +67,7 @@ func (d *Document) metaValue(node *yaml.Node, repeatedSchemas bool) (any, error)
 	case yaml.SequenceNode:
 		value := make([]any, len(node.Content))
 		for i, child := range node.Content {
-			v, err := d.metaValue(child, false)
+			v, err := d.metaValue(child, false, skipped)
 			if err != nil {
 				return nil, err
 			}
