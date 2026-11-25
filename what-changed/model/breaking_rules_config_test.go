@@ -4,11 +4,28 @@
 package model
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
 )
+
+func TestDraft2020SchemaRuleKeysRoundTrip(t *testing.T) {
+	for _, key := range []string{"$anchor", "$defs", "patternProperties", "dependentSchemas", "minContains", "maxContains"} {
+		t.Run(key, func(t *testing.T) {
+			input := []byte(fmt.Sprintf("schema:\n  %s:\n    modified: false\n", key))
+			require.Nil(t, ValidateBreakingRulesConfigYAML(input))
+			var config BreakingRulesConfig
+			require.NoError(t, yaml.Unmarshal(input, &config))
+			rule := config.GetRule(CompSchema, key)
+			require.NotNil(t, rule)
+			require.NotNil(t, rule.Modified)
+			require.False(t, *rule.Modified)
+		})
+	}
+}
 
 func TestValidateBreakingRulesConfigYAML_ValidConfig(t *testing.T) {
 	yaml := `
