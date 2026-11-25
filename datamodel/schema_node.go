@@ -18,12 +18,11 @@ import (
 func DecodeSchemaNode(data []byte) (*yaml.Node, error) {
 	var doc *yaml.Node
 	if json.Valid(data) {
-		normalized := normalizeJSONForYAMLParser(data)
-		var node yaml.Node
-		if err := jsonnode.Unmarshal(normalized, &node); err != nil {
-			return nil, err
+		var ok bool
+		doc, ok = jsonnode.ParseJSON(data)
+		if !ok {
+			return nil, fmt.Errorf("invalid JSON schema document")
 		}
-		doc = &node
 	} else {
 		decoder := yaml.NewDecoder(bytes.NewReader(data))
 		doc = new(yaml.Node)
