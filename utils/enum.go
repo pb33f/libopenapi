@@ -15,6 +15,22 @@ type enumValueIndex struct {
 	active map[*yaml.Node]bool
 }
 
+func newEnumValueIndex() enumValueIndex {
+	return enumValueIndex{values: make(map[string]int), nodes: make(map[*yaml.Node]int), active: make(map[*yaml.Node]bool)}
+}
+
+// JSONValueIDs assigns equal IDs to equivalent JSON values within nodes. Object
+// key order and equivalent JSON numbers do not affect equality. Zero marks a
+// non-JSON value or a number outside the limits described by CheckEnumForDuplicates.
+func JSONValueIDs(nodes []*yaml.Node) []int {
+	index := newEnumValueIndex()
+	ids := make([]int, len(nodes))
+	for i, node := range nodes {
+		ids[i] = index.valueID(node)
+	}
+	return ids
+}
+
 // Bound arbitrary-precision parsing and the size of retained numeric keys.
 const (
 	maxEnumNumberLength   = 1024
@@ -30,11 +46,7 @@ const (
 func CheckEnumForDuplicates(seq []*yaml.Node) []*yaml.Node {
 	var duplicates []*yaml.Node
 	seen := make(map[int]bool)
-	index := enumValueIndex{
-		values: make(map[string]int),
-		nodes:  make(map[*yaml.Node]int),
-		active: make(map[*yaml.Node]bool),
-	}
+	index := newEnumValueIndex()
 	for _, node := range seq {
 		id := index.valueID(node)
 		if id == 0 {
