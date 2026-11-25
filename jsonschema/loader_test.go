@@ -4,7 +4,7 @@
 package jsonschema
 
 import (
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/require"
 	"testing"
 )
 

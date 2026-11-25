@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/require"
 )
 
 func loadMembers(t testing.TB, dir string, files map[string][]byte) *Document {

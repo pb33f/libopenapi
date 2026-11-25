@@ -10,7 +10,7 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel"
 	wc "github.com/pb33f/libopenapi/what-changed/model"
-	"github.com/stretchr/testify/require"
+	"github.com/pb33f/testify/require"
 )
 
 func loadTest(t *testing.T, input string) *Document {
