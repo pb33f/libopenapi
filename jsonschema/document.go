@@ -59,8 +59,9 @@ func (r *Resource) Label() string {
 type Reference struct {
 	From, To *yaml.Node
 	Value    string
-	address  string
-	keyword  string
+	// Keyword identifies the authored $ref or $dynamicRef.
+	Keyword string
+	address string
 }
 
 // Document owns the resources and source locations for a comparison input.
@@ -157,7 +158,9 @@ func (d *Document) resourceID(uri *url.URL) string {
 			return name
 		}
 	}
-	return uri.String()
+	identity := *uri
+	identity.User = nil
+	return identity.String()
 }
 
 func (d *Document) sourceName(uri *url.URL) string {
@@ -242,7 +245,8 @@ func (d *Document) register(address string, node *yaml.Node, source *Source) err
 			return nil
 		}
 		old := d.schemas[prior]
-		return fmt.Errorf("duplicate schema address %q at %s:%d and %s:%d", address, old.Source.Name, prior.Line, source.Name, node.Line)
+		uri, _ := url.Parse(address)
+		return fmt.Errorf("duplicate schema address %q at %s:%d and %s:%d", d.sourceName(uri), old.Source.Name, prior.Line, source.Name, node.Line)
 	}
 	d.addresses[address] = node
 	return nil
@@ -324,7 +328,7 @@ func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, p
 			if value.Tag != "!!str" || err != nil {
 				return fmt.Errorf("%s:%d: invalid %s %q", source.Name, value.Line, keyword, value.Value)
 			}
-			d.References = append(d.References, Reference{From: node, Value: value.Value, address: target.String(), keyword: keyword})
+			d.References = append(d.References, Reference{From: node, Value: value.Value, address: target.String(), Keyword: keyword})
 		}
 	}
 	return children(node, func(keyword, key string, child *yaml.Node) error {

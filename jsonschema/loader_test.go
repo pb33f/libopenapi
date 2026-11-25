@@ -30,10 +30,22 @@ func TestLoadInputBoundaries(t *testing.T) {
 	d.Release()
 }
 
-func TestDynamicRefWithStaticTarget(t *testing.T) {
-	d, err := Load([]byte(`{"$defs":{"a":{"$anchor":"static"}},"$dynamicRef":"#static"}`), "a.json", nil, true)
+func TestRelativeIDOmitsRetrievalCredentials(t *testing.T) {
+	d, err := Load([]byte(`{"$id":"customer?version=2","$ref":"#"}`), "https://name:private@schemas.example.test/draft/root.json?token=secret", nil, true)
 	require.NoError(t, err)
 	defer d.Release()
-	require.Len(t, d.References, 1)
+	require.Equal(t, "https://schemas.example.test/draft/customer?version=2", d.Root.ID)
+	require.NotContains(t, d.Root.Source.Name, "private")
+	require.NotContains(t, d.Root.Source.Name, "secret")
+	require.Same(t, d.Root.Node, d.References[0].To)
+}
+
+func TestDynamicRefWithStaticTarget(t *testing.T) {
+	d, err := Load([]byte(`{"$defs":{"a":{"$anchor":"static"}},"$dynamicRef":"#static","$ref":"#static"}`), "a.json", nil, true)
+	require.NoError(t, err)
+	defer d.Release()
+	require.Len(t, d.References, 2)
+	require.ElementsMatch(t, []string{"$ref", "$dynamicRef"}, []string{d.References[0].Keyword, d.References[1].Keyword})
+	require.Same(t, d.References[0].To, d.References[1].To)
 	require.NotNil(t, d.References[0].To)
 }

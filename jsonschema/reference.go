@@ -6,7 +6,6 @@ package jsonschema
 import (
 	"errors"
 	"fmt"
-
 	"io"
 	"io/fs"
 	"net/http"
@@ -28,9 +27,9 @@ func (d *Document) resolveReferences() error {
 		ref := d.References[i]
 		target, err := d.resolve(ref.address)
 		if err != nil {
-			return fmt.Errorf("%s:%d: resolve %s %q: %w", d.schemas[ref.From].Source.Name, ref.From.Line, ref.keyword, ref.Value, err)
+			return fmt.Errorf("%s:%d: resolve %s %q: %w", d.schemas[ref.From].Source.Name, ref.From.Line, ref.Keyword, ref.Value, err)
 		}
-		if ref.keyword == "$dynamicRef" {
+		if ref.Keyword == "$dynamicRef" {
 			u, _ := url.Parse(ref.address)
 			if anchor := member(target, "$dynamicAnchor"); anchor != nil && u.Fragment == anchor.Value {
 				return fmt.Errorf("%s:%d: dynamic scope resolution for $dynamicRef %q is unsupported", d.schemas[ref.From].Source.Name, ref.From.Line, ref.Value)
@@ -94,7 +93,7 @@ func (d *Document) resolve(address string) (*yaml.Node, error) {
 		}
 	}
 	if d.schemas[target] == nil {
-		return nil, fmt.Errorf("no schema at %q", address)
+		return nil, fmt.Errorf("no schema at %q in %s", fragment, d.sourceName(uri))
 	}
 	return target, nil
 }
@@ -136,6 +135,10 @@ func (d *Document) read(uri *url.URL) ([]byte, error) {
 		}
 		res, err := get(uri.String())
 		if err != nil {
+			var requestErr *url.Error
+			if errors.As(err, &requestErr) {
+				return nil, fmt.Errorf("%s: %w", d.sourceName(uri), requestErr.Err)
+			}
 			return nil, err
 		}
 		defer res.Body.Close()
