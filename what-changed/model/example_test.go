@@ -9,6 +9,7 @@ import (
 
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -44,94 +45,42 @@ func TestCompareExamples_SummaryModified(t *testing.T) {
 	assert.Equal(t, "cure all", extChanges.Changes[0].New)
 }
 
-func TestCompareExamples_Map(t *testing.T) {
-	// Clear hash cache to ensure deterministic results in concurrent test environments
-	low.ClearHashCache()
-	left := `value:
-  cheesy: bread
-  pasta: sauce`
+func TestCompareExamples_ObjectValue(t *testing.T) {
+	for _, tc := range []struct {
+		name, left, right string
+	}{
+		{"two members modified", "{id_1: 11, id_2: 21}", "{id_1: 10, id_2: 20}"},
+		{"member added", "{}", "{id: 1}"},
+		{"member removed", "{id: 1}", "{}"},
+		{"sequence reordered inside object", "{items: [1, 2]}", "{items: [2, 1]}"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			left := buildTestExample(t, "value: "+tc.left)
+			right := buildTestExample(t, "value: "+tc.right)
+			changes := CompareExamples(left, right)
+			require.NotNil(t, changes)
+			require.Len(t, changes.GetAllChanges(), 1)
+			change := changes.Changes[0]
+			assert.Equal(t, v3.ValueLabel, change.Property)
+			assert.Equal(t, Modified, change.ChangeType)
+			assert.False(t, change.Breaking)
+			assert.Equal(t, tc.left+"\n", change.OriginalEncoded)
+			assert.Equal(t, tc.right+"\n", change.NewEncoded)
+		})
+	}
 
-	right := `value:
-  cheesy: cakes
-  pasta: spicy`
+	left := buildTestExample(t, "value: {a: 1, b: 2}")
+	reordered := buildTestExample(t, "value: {b: 2, a: 1}")
+	assert.Nil(t, CompareExamples(left, reordered))
 
-	var lNode, rNode yaml.Node
-	_ = yaml.Unmarshal([]byte(left), &lNode)
-	_ = yaml.Unmarshal([]byte(right), &rNode)
-
-	// create low level objects
-	var lDoc base.Example
-	var rDoc base.Example
-	_ = low.BuildModel(lNode.Content[0], &lDoc)
-	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
-	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
-
-	extChanges := CompareExamples(&lDoc, &rDoc)
-
-	assert.Equal(t, extChanges.TotalChanges(), 2)
-	assert.Len(t, extChanges.GetAllChanges(), 2)
-	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
-}
-
-func TestCompareExamples_MapAdded(t *testing.T) {
-	// Clear hash cache to ensure deterministic results in concurrent test environments
-	low.ClearHashCache()
-	left := `value:
-  cheesy: bread`
-
-	right := `value:
-  cheesy: bread
-  pasta: sauce`
-
-	var lNode, rNode yaml.Node
-	_ = yaml.Unmarshal([]byte(left), &lNode)
-	_ = yaml.Unmarshal([]byte(right), &rNode)
-
-	// create low level objects
-	var lDoc base.Example
-	var rDoc base.Example
-	_ = low.BuildModel(lNode.Content[0], &lDoc)
-	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
-	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
-
-	extChanges := CompareExamples(&lDoc, &rDoc)
-
-	assert.Equal(t, extChanges.TotalChanges(), 1)
-	assert.Len(t, extChanges.GetAllChanges(), 1)
-	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
-}
-
-func TestCompareExamples_MapRemoved(t *testing.T) {
-	// Clear hash cache to ensure deterministic results in concurrent test environments
-	low.ClearHashCache()
-	left := `value:
-  cheesy: bread`
-
-	right := `value:
-  cheesy: bread
-  pasta: sauce`
-
-	var lNode, rNode yaml.Node
-	_ = yaml.Unmarshal([]byte(left), &lNode)
-	_ = yaml.Unmarshal([]byte(right), &rNode)
-
-	// create low level objects
-	var lDoc base.Example
-	var rDoc base.Example
-	_ = low.BuildModel(lNode.Content[0], &lDoc)
-	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
-	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
-
-	extChanges := CompareExamples(&rDoc, &lDoc)
-
-	assert.Equal(t, extChanges.TotalChanges(), 1)
-	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+	absent := buildTestExample(t, "summary: example")
+	present := buildTestExample(t, "summary: example\nvalue: {}")
+	added := CompareExamples(absent, present).GetAllChanges()
+	require.Len(t, added, 1)
+	assert.Equal(t, PropertyAdded, added[0].ChangeType)
+	removed := CompareExamples(present, absent).GetAllChanges()
+	require.Len(t, removed, 1)
+	assert.Equal(t, PropertyRemoved, removed[0].ChangeType)
 }
 
 func TestCompareExamples_SummaryAdded(t *testing.T) {
