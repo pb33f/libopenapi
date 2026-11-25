@@ -44,6 +44,26 @@ func TestInvalidConstraintsFailBeforeComparison(t *testing.T) {
 	require.ErrorContains(t, err, "bad.json")
 }
 
+func TestSchemaNumberValidationKeepsYAMLPrecision(t *testing.T) {
+	for _, tc := range []struct {
+		schema string
+		valid  bool
+	}{
+		{"multipleOf: 1.0e-400", true},
+		{"minimum: 1.01e+400", true},
+		{"minLength: 0.9999999999999999999", false},
+		{"minLength: 1.0000000000000000001", false},
+	} {
+		d, err := Load([]byte(tc.schema), "value.yaml", nil, true)
+		if tc.valid {
+			require.NoError(t, err)
+			d.Release()
+		} else {
+			require.Error(t, err)
+		}
+	}
+}
+
 func TestNativeFilePathsResolveThroughFileURIs(t *testing.T) {
 	dir := t.TempDir()
 	name := filepath.Join(dir, "my root.json")

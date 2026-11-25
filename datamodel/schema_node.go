@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/internal/jsonnode"
@@ -72,6 +73,15 @@ func checkSchemaKeys(n *yaml.Node) error {
 			}
 		}
 	case yaml.ScalarNode:
+		// YAML's resolver tags a number outside float64 range as a plain string.
+		// Keep the JSON numeric type when the authored token is a JSON number.
+		if n.Tag == "!!str" && n.Style == 0 && n.Value != "" &&
+			(n.Value[0] == '-' || n.Value[0] >= '0' && n.Value[0] <= '9') && json.Valid([]byte(n.Value)) {
+			n.Tag = "!!int"
+			if strings.ContainsAny(n.Value, ".eE") {
+				n.Tag = "!!float"
+			}
+		}
 		switch n.Tag {
 		case "!!str", "!!bool", "!!int", "!!float", "!!null":
 		default:

@@ -4,13 +4,14 @@
 package jsonschema
 
 import (
-	"bytes"
 	"encoding/json"
+	"fmt"
+	"math/big"
+	"strings"
 	"sync"
 
 	"github.com/pb33f/go-yaml"
 	validator "github.com/pb33f/jsonschema/v6"
-	modeljson "github.com/pb33f/libopenapi/json"
 )
 
 // The validator ships the draft and its vocabularies. Compiling it needs no network.
@@ -18,20 +19,70 @@ var draftMetaSchema = sync.OnceValue(func() *validator.Schema {
 	return validator.NewCompiler().MustCompile(Dialect)
 })
 
-func validateSource(root *yaml.Node, data []byte) error {
+func validateSource(root *yaml.Node) error {
 	if root.Kind == yaml.ScalarNode {
 		return nil // indexSchema has already checked that this is a boolean.
 	}
-	var err error
-	if !json.Valid(data) {
-		data, err = modeljson.YAMLNodeToJSON(root, "")
-		if err != nil {
-			return err
-		}
-	}
-	value, err := validator.UnmarshalJSON(bytes.NewReader(data))
+	value, err := metaValue(root)
 	if err != nil {
 		return err
 	}
 	return draftMetaSchema().Validate(value)
+}
+
+// Use authored number strings. A float64 round trip can turn a fractional schema
+// limit into an integer or round a small, positive multipleOf to zero.
+func metaValue(node *yaml.Node) (any, error) {
+	switch node.Kind {
+	case yaml.MappingNode:
+		value := make(map[string]any, len(node.Content)/2)
+		for i := 0; i < len(node.Content); i += 2 {
+			v, err := metaValue(node.Content[i+1])
+			if err != nil {
+				return nil, err
+			}
+			value[node.Content[i].Value] = v
+		}
+		return value, nil
+	case yaml.SequenceNode:
+		value := make([]any, len(node.Content))
+		for i, child := range node.Content {
+			v, err := metaValue(child)
+			if err != nil {
+				return nil, err
+			}
+			value[i] = v
+		}
+		return value, nil
+	}
+	switch node.Tag {
+	case "!!null":
+		return nil, nil
+	case "!!bool":
+		return strings.EqualFold(node.Value, "true"), nil
+	case "!!int", "!!float":
+		n := node.Value
+		if !json.Valid([]byte(n)) {
+			if node.Tag == "!!int" {
+				if v, ok := new(big.Int).SetString(n, 0); ok {
+					return json.Number(v.String()), nil
+				}
+			}
+			n = strings.TrimPrefix(strings.ReplaceAll(n, "_", ""), "+")
+			if strings.HasPrefix(n, ".") {
+				n = "0" + n
+			} else if strings.HasPrefix(n, "-.") {
+				n = "-0" + n[1:]
+			}
+			n = strings.ReplaceAll(strings.ReplaceAll(n, ".e", ".0e"), ".E", ".0E")
+			if strings.HasSuffix(n, ".") {
+				n += "0"
+			}
+			if !json.Valid([]byte(n)) {
+				return nil, fmt.Errorf("line %d: invalid JSON number %q", node.Line, node.Value)
+			}
+		}
+		return json.Number(n), nil
+	}
+	return node.Value, nil
 }
