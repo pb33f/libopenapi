@@ -214,6 +214,9 @@ func (d *Document) addSource(data []byte, uri *url.URL, explicit bool) (*Resourc
 	if err = d.indexSchema(source, root, uri, "", nil); err != nil {
 		return nil, err
 	}
+	if err := validateSource(root, data); err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
 	if err = d.register(uri.String(), root, source); err != nil {
 		return nil, err
 	}

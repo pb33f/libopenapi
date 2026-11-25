@@ -35,6 +35,15 @@ func TestLoadInputBoundaries(t *testing.T) {
 	d.Release()
 }
 
+func TestInvalidConstraintsFailBeforeComparison(t *testing.T) {
+	for _, input := range []string{`{"type":42}`, `{"required":42}`, "minLength: -2", `{"properties":{"amount":{"multipleOf":0}}}`} {
+		_, err := Load([]byte(input), "bad.yaml", nil, true)
+		require.ErrorContains(t, err, "bad.yaml")
+	}
+	_, err := LoadCollection(map[string][]byte{"bad.json": []byte(`{"type":"invalid"}`)}, ".", nil)
+	require.ErrorContains(t, err, "bad.json")
+}
+
 func TestNativeFilePathsResolveThroughFileURIs(t *testing.T) {
 	dir := t.TempDir()
 	name := filepath.Join(dir, "my root.json")
