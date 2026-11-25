@@ -88,6 +88,16 @@ func TestLoadReferencesFromEachSnapshot(t *testing.T) {
 	require.Equal(t, "amount.yaml", ch.Context.ModifiedDocument)
 }
 
+func TestRelativeBaseWithVirtualSchemaFiles(t *testing.T) {
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = "snapshot"
+	config.LocalFS = fstest.MapFS{"id.yaml": {Data: []byte("type: string")}}
+	d, err := Load([]byte(`{"$ref":"id.yaml"}`), "customer.json", config, true)
+	require.NoError(t, err)
+	defer d.Release()
+	require.Same(t, d.Sources["id.yaml"].Node, d.References[0].To)
+}
+
 func TestEmbeddedResourceOccurrence(t *testing.T) {
 	left := loadTest(t, `{"properties":{"x":{"$id":"urn:field","type":"string"}}}`)
 	right := loadTest(t, `{"properties":{"y":{"$id":"urn:field","type":"string"}}}`)

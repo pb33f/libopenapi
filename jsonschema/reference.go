@@ -155,10 +155,11 @@ func (d *Document) collectionRetrieval(uri *url.URL, authored string) *url.URL {
 		parent.Path = strings.TrimSuffix(parent.Path, "/") + "/"
 		return parent.ResolveReference(&url.URL{Path: filepath.ToSlash(rel), RawQuery: uri.RawQuery})
 	}
-	if filepath.Clean(dir) == filepath.Clean(d.config.BasePath) {
+	explicit, err := filepath.Abs(d.config.BasePath)
+	if err != nil || filepath.Clean(dir) == explicit {
 		return uri
 	}
-	return fileURL(filepath.Join(d.config.BasePath, rel))
+	return fileURL(filepath.Join(explicit, rel))
 }
 
 // Read source bytes without attaching a second API-format index to this Rolodex.
@@ -180,7 +181,11 @@ func (d *Document) read(uri *url.URL) ([]byte, error) {
 		if dir == "" {
 			dir = filePath(d.base)
 		}
-		relative, err := filepath.Rel(dir, filename)
+		absoluteDir, err := filepath.Abs(dir)
+		if err != nil {
+			return nil, err
+		}
+		relative, err := filepath.Rel(absoluteDir, filename)
 		if err != nil {
 			return nil, err
 		}
