@@ -38,6 +38,8 @@ type WhatChanged struct {
 
 // ChangeContext holds a reference to the line and column positions of original and new change.
 type ChangeContext struct {
+	OriginalDocument string `json:"originalDocument,omitempty" yaml:"originalDocument,omitempty"`
+	ModifiedDocument string `json:"modifiedDocument,omitempty" yaml:"modifiedDocument,omitempty"`
 	DocumentLocation string `json:"document,omitempty" yaml:"document,omitempty"`
 	OriginalLine     *int   `json:"originalLine,omitempty" yaml:"originalLine,omitempty"`
 	OriginalColumn   *int   `json:"originalColumn,omitempty" yaml:"originalColumn,omitempty"`
@@ -72,6 +74,8 @@ func (c *ChangeContext) HasChanged() bool {
 
 // Change represents a change between two different elements inside an OpenAPI specification.
 type Change struct {
+	// SchemaResource identifies the defining resource for a standalone JSON Schema edit.
+	SchemaResource string `json:"schemaResource,omitempty" yaml:"schemaResource,omitempty"`
 	// Context represents the lines and column numbers of the original and new values
 	// It's worth noting that these values may frequently be different and are not used to calculate
 	// a change. If the positions change, but values do not, then no change is recorded.
@@ -162,6 +166,9 @@ func (c *Change) MarshalJSON() ([]byte, error) {
 	}
 	if c.Path != "" {
 		data["path"] = c.Path
+	}
+	if c.SchemaResource != "" {
+		data["schemaResource"] = c.SchemaResource
 	}
 	return json.Marshal(data)
 }
