@@ -2041,6 +2041,36 @@ components:
 	assert.Equal(t, "bool", changes.AnyOfChanges[0].Changes[0].Original)
 }
 
+func TestCompareSchemas_TypeArrayWithDescriptionChange(t *testing.T) {
+	const prefix = "x-string-type: &text string\n"
+	left := buildSchemaProxyFromYAML(t, prefix+"type: ['null', string, number]")
+	for _, tc := range []struct {
+		name, types string
+		typeChanged bool
+	}{
+		{"reordered", "[string, number, 'null']", false},
+		{"reordered with alias", "[*text, number, 'null']", false},
+		{"narrowed", "[string, number]", true},
+		{"replaced", "[string, boolean, 'null']", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			right := buildSchemaProxyFromYAML(t, prefix+"type: "+tc.types+"\ndescription: Filter operator")
+			changes := CompareSchemas(left, right)
+			require.NotNil(t, changes)
+			properties := make(map[string]bool)
+			for _, change := range changes.GetAllChanges() {
+				properties[change.Property] = change.Breaking
+			}
+			want := map[string]bool{v3.DescriptionLabel: false}
+			if tc.typeChanged {
+				want[v3.TypeLabel] = true
+			}
+			assert.Equal(t, want, properties)
+			assert.Equal(t, len(want), changes.TotalChanges())
+		})
+	}
+}
+
 // https://github.com/pb33f/openapi-changes/issues/105
 func TestCompareSchemas_AnyOfSimpleScalarUnionMatchesTypeArray(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
