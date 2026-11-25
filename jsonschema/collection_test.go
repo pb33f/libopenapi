@@ -90,6 +90,21 @@ func TestCollectionIdentityAndMoves(t *testing.T) {
 	}
 }
 
+func TestMatchResourcesPrefersIDThenOrigin(t *testing.T) {
+	left := loadMembers(t, "previous", map[string][]byte{
+		"a.yml": []byte("$id: urn:move"), "b.yml": []byte("$id: urn:rename"), "gone.yml": []byte("true"),
+	})
+	right := loadMembers(t, "current", map[string][]byte{
+		"new.yml": []byte("$id: urn:move"), "b.yml": []byte("$id: urn:renamed"), "fresh.yml": []byte("false"),
+	})
+	pairs := MatchResources(left, right)
+	require.Len(t, pairs, 2)
+	for old, current := range pairs {
+		want := map[string]string{"urn:move": "urn:move", "urn:rename": "urn:renamed"}
+		require.Equal(t, want[old.ID], current.ID)
+	}
+}
+
 func TestCollectionDuplicateIDAndRetrievalAlias(t *testing.T) {
 	_, err := LoadCollection(map[string][]byte{"a.json": []byte(`{"$id":"urn:money"}`), "b.json": []byte(`{"$id":"urn:money"}`)}, "root", nil)
 	require.ErrorContains(t, err, "duplicate")

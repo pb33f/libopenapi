@@ -42,6 +42,7 @@ func Compare(left, right *Document, rules *wc.BreakingRulesConfig) (*wc.SchemaCh
 }
 
 type comparison struct {
+	inline      map[*Resource]bool
 	pairs       map[*Resource]*Resource
 	matched     map[*Resource]bool
 	left, right *Document
@@ -49,22 +50,32 @@ type comparison struct {
 	changes     []*wc.Change
 }
 
-func (c *comparison) resources() error {
-	byID := make(map[string]*Resource, len(c.right.Resources))
+// MatchResources pairs the original and modified resources by resolved ID, then
+// by source path and embedded pointer. A comparison of two single schemas always
+// pairs their roots. Unmatched resources have no entry in the returned map.
+func MatchResources(left, right *Document) map[*Resource]*Resource {
+	pairs, _ := matchResources(left, right)
+	return pairs
+}
+
+func matchResources(left, right *Document) (map[*Resource]*Resource, map[*Resource]bool) {
+	if left == nil || right == nil {
+		return nil, nil
+	}
+	byID := make(map[string]*Resource, len(right.Resources))
 	type origin struct{ file, pointer string }
-	byOrigin := make(map[origin]*Resource, len(c.right.Resources))
+	byOrigin := make(map[origin]*Resource, len(right.Resources))
 	used := make(map[*Resource]bool)
 	pairs := make(map[*Resource]*Resource)
-	c.pairs, c.matched = pairs, used
-	for _, r := range c.right.Resources {
+	for _, r := range right.Resources {
 		byID[r.ID] = r
 		byOrigin[origin{r.Source.relative, r.Pointer}] = r
 	}
-	if c.left.Root != nil && c.right.Root != nil {
-		pairs[c.left.Root] = c.right.Root
-		used[c.right.Root] = true
+	if left.Root != nil && right.Root != nil {
+		pairs[left.Root] = right.Root
+		used[right.Root] = true
 	}
-	for _, l := range c.left.Resources {
+	for _, l := range left.Resources {
 		if pairs[l] == nil {
 			if r := byID[l.ID]; r != nil && !used[r] {
 				pairs[l] = r
@@ -72,12 +83,12 @@ func (c *comparison) resources() error {
 			}
 		}
 	}
-	for _, l := range c.left.Resources {
+	for _, l := range left.Resources {
 		r := pairs[l]
 		if r == nil {
 			file := l.Source.relative
-			if c.left.Root != nil && c.right.Root != nil && l.Source == c.left.Root.Source {
-				file = c.right.Root.Source.relative
+			if left.Root != nil && right.Root != nil && l.Source == left.Root.Source {
+				file = right.Root.Source.relative
 			}
 			r = byOrigin[origin{file, l.Pointer}]
 			if used[r] {
@@ -89,7 +100,16 @@ func (c *comparison) resources() error {
 			}
 		}
 	}
+	return pairs, used
+}
+
+func (c *comparison) resources() error {
+	pairs, used := matchResources(c.left, c.right)
+	c.pairs, c.matched = pairs, used
 	for _, l := range c.left.Resources {
+		if c.inline[l] {
+			continue
+		}
 		if err := c.compareResource(l, pairs[l]); err != nil {
 			return err
 		}
@@ -188,7 +208,53 @@ func (c *comparison) schema(l, r *Resource, left, right *yaml.Node, path string,
 		}
 		c.finish(c.changes[start], l, r, PropertyPath(path, keyword), keyword, polarity, breaking)
 	}
+	c.compareAnnotations(l, r, left, right, path)
 	return c.compareChildren(l, r, left, right, path, polarity)
+}
+
+// Keywords outside the supported vocabularies are annotations. Keep them out of
+// the API schema model, which also recognizes legacy OpenAPI-only keywords.
+func nativeConstraint(keyword string) bool {
+	switch keyword {
+	case "$schema", "$id", "$comment", "$dynamicRef", "$dynamicAnchor", "$vocabulary",
+		"type", "required", "enum", "const", "maxLength", "minLength", "pattern", "format",
+		"minItems", "maxItems", "uniqueItems", "minProperties", "maxProperties", "dependentRequired",
+		"title", "description", "default", "examples", "deprecated", "readOnly", "writeOnly", "contentMediaType", "contentEncoding":
+		return true
+	}
+	return false
+}
+
+func annotation(keyword string) bool {
+	return childKind(keyword) == 0 && !nativeConstraint(keyword) && !exactNumber(keyword) && keyword != "$ref" && keyword != "$anchor"
+}
+
+func (c *comparison) compareAnnotations(l, r *Resource, left, right *yaml.Node, path string) {
+	record := func(key string, a, b *yaml.Node) {
+		if a != nil && b != nil && low.HashYAMLNodeSlice([]*yaml.Node{a}) == low.HashYAMLNodeSlice([]*yaml.Node{b}) {
+			return
+		}
+		kind := wc.Modified
+		if b == nil {
+			kind = wc.PropertyRemoved
+		} else if a == nil {
+			kind = wc.PropertyAdded
+		}
+		wc.CreateChangeWithEncoding(&c.changes, kind, key, a, b, false, nil, nil)
+		c.finish(c.changes[len(c.changes)-1], l, r, PropertyPath(path, key), key, 1, false)
+	}
+	for i := 0; i < len(left.Content); i += 2 {
+		key := left.Content[i].Value
+		if annotation(key) {
+			record(key, left.Content[i+1], member(right, key))
+		}
+	}
+	for i := 0; i < len(right.Content); i += 2 {
+		key := right.Content[i].Value
+		if annotation(key) && member(left, key) == nil {
+			record(key, nil, right.Content[i+1])
+		}
+	}
 }
 
 func constraintProxy(n *yaml.Node, r *Resource) (*base.SchemaProxy, error) {
@@ -196,7 +262,7 @@ func constraintProxy(n *yaml.Node, r *Resource) (*base.SchemaProxy, error) {
 	view.Content = make([]*yaml.Node, 0, len(n.Content))
 	for i := 0; i < len(n.Content); i += 2 {
 		k := n.Content[i].Value
-		if childKind(k) == 0 && k != "$ref" && k != "$anchor" && !exactNumber(k) {
+		if nativeConstraint(k) {
 			view.Content = append(view.Content, n.Content[i:i+2]...)
 		}
 	}
@@ -292,14 +358,8 @@ func (c *comparison) compareChildren(l, r *Resource, left, right *yaml.Node, pat
 			a, b := old[lk], newNodes[rk]
 			delete(old, lk)
 			delete(newNodes, rk)
-			direction := polarity
-			if kw == "oneOf" {
-				direction = 0
-			}
-			if c.left.schemas[a] == l && c.right.schemas[b] == r {
-				if err := c.schema(l, r, a, b, childPath(path, rk), direction); err != nil {
-					return err
-				}
+			if err := c.compareChild(l, r, a, b, childPath(path, rk), kw, polarity); err != nil {
+				return err
 			}
 		}
 	}
@@ -314,24 +374,7 @@ func (c *comparison) compareChildren(l, r *Resource, left, right *yaml.Node, pat
 			c.membership(l, r, p, k.keyword, a, nil, true)
 			continue
 		}
-		direction := polarity
-		switch k.keyword {
-		case "not":
-			direction = -direction
-		case "oneOf", "if":
-			direction = 0
-		case "$defs":
-			direction = 1
-		}
-		leftOwner, rightOwner := c.left.schemas[a], c.right.schemas[b]
-		if leftOwner != l && rightOwner != r {
-			if c.pairs[leftOwner] != rightOwner && (c.pairs[leftOwner] != nil || c.matched[rightOwner]) {
-				wc.CreateChange(&c.changes, wc.Modified, k.keyword, member(a, "$id"), member(b, "$id"), true, nil, nil)
-				c.finish(c.changes[len(c.changes)-1], l, r, p, k.keyword, 1, true)
-			}
-			continue
-		}
-		if err := c.schema(l, r, a, b, p, direction); err != nil {
+		if err := c.compareChild(l, r, a, b, p, k.keyword, polarity); err != nil {
 			return err
 		}
 	}
@@ -341,6 +384,42 @@ func (c *comparison) compareChildren(l, r *Resource, left, right *yaml.Node, pat
 		}
 		breaking := k.keyword != "$defs" && k.keyword != "anyOf"
 		c.membership(l, r, childPath(path, k), k.keyword, nil, b, breaking)
+	}
+	return nil
+}
+
+func (c *comparison) compareChild(l, r *Resource, a, b *yaml.Node, path, keyword string, polarity int) error {
+	switch keyword {
+	case "not":
+		polarity = -polarity
+	case "oneOf", "if":
+		polarity = 0
+	case "$defs":
+		polarity = 1
+	}
+	lo, ro := c.left.schemas[a], c.right.schemas[b]
+	switch {
+	case lo == l && ro == r:
+		return c.schema(l, r, a, b, path, polarity)
+	case lo != l && ro != r:
+		if c.pairs[lo] != ro && (c.pairs[lo] != nil || c.matched[ro]) {
+			wc.CreateChange(&c.changes, wc.Modified, keyword, member(a, "$id"), member(b, "$id"), true, nil, nil)
+			c.finish(c.changes[len(c.changes)-1], l, r, path, keyword, 1, true)
+		}
+	case lo == l && !c.matched[ro]:
+		// An inline schema acquired its first $id. Its constraints now belong to the new resource.
+		c.matched[ro] = true
+		return c.schema(l, ro, a, b, "$", polarity)
+	case ro == r && c.pairs[lo] == nil:
+		if c.inline == nil {
+			c.inline = make(map[*Resource]bool)
+		}
+		c.inline[lo] = true
+		return c.schema(lo, r, a, b, path, polarity)
+	default:
+		// A matched resource moved to or from an existing inline use.
+		wc.CreateChangeWithEncoding(&c.changes, wc.Modified, keyword, a, b, true, nil, nil)
+		c.finish(c.changes[len(c.changes)-1], l, r, path, keyword, 1, true)
 	}
 	return nil
 }
@@ -434,7 +513,7 @@ func operationRule(rule *wc.BreakingChangeRule, kind int) *bool {
 
 func (c *comparison) finish(ch *wc.Change, l, r *Resource, path, property string, polarity int, breaking bool) {
 	switch property {
-	case "description", "title", "$comment", "default", "examples", "readOnly", "writeOnly", "deprecated":
+	case "description", "title", "$comment", "default", "examples", "readOnly", "writeOnly", "deprecated", "format", "contentMediaType", "contentEncoding":
 		breaking = false
 	case "$id", "$anchor", "$dynamicAnchor":
 	default:

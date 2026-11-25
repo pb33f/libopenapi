@@ -19,7 +19,7 @@ func TestLoadInputBoundaries(t *testing.T) {
 		{"null", true, "object or boolean"}, {"type: object\ntype: string", true, "already defined"},
 		{`{"openapi":"3.1.0","$schema":"https://json-schema.org/draft/2020-12/schema"}`, true, "conflicting"},
 		{`{"$defs":{"a":{"$id":"urn:money"},"b":{"$id":"urn:money"}}}`, true, "duplicate"},
-		{`{"$dynamicRef":"#scope"}`, true, "dynamic scope"}, {`{"$ref":"#/missing"}`, true, "no schema"},
+		{`{"$dynamicAnchor":"scope","$dynamicRef":"#scope"}`, true, "dynamic scope"}, {`{"$ref":"#/missing"}`, true, "no schema"},
 		{"true\n---\nfalse", true, "one schema"},
 	} {
 		_, err := Load([]byte(tc.input), "schema.yaml", nil, tc.explicit)
@@ -28,4 +28,12 @@ func TestLoadInputBoundaries(t *testing.T) {
 	d, err := Load([]byte(`{"$schema":"https://json-schema.org/draft/2020-12/schema","examples":[{"$ref":"missing","$id":"urn:x"},{"$id":"urn:x"}]}`), "schema.json", nil, false)
 	require.NoError(t, err)
 	d.Release()
+}
+
+func TestDynamicRefWithStaticTarget(t *testing.T) {
+	d, err := Load([]byte(`{"$defs":{"a":{"$anchor":"static"}},"$dynamicRef":"#static"}`), "a.json", nil, true)
+	require.NoError(t, err)
+	defer d.Release()
+	require.Len(t, d.References, 1)
+	require.NotNil(t, d.References[0].To)
 }

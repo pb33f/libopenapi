@@ -28,7 +28,13 @@ func (d *Document) resolveReferences() error {
 		ref := d.References[i]
 		target, err := d.resolve(ref.address)
 		if err != nil {
-			return fmt.Errorf("%s:%d: resolve $ref %q: %w", d.schemas[ref.From].Source.Name, ref.From.Line, ref.Value, err)
+			return fmt.Errorf("%s:%d: resolve %s %q: %w", d.schemas[ref.From].Source.Name, ref.From.Line, ref.keyword, ref.Value, err)
+		}
+		if ref.keyword == "$dynamicRef" {
+			u, _ := url.Parse(ref.address)
+			if anchor := member(target, "$dynamicAnchor"); anchor != nil && u.Fragment == anchor.Value {
+				return fmt.Errorf("%s:%d: dynamic scope resolution for $dynamicRef %q is unsupported", d.schemas[ref.From].Source.Name, ref.From.Line, ref.Value)
+			}
 		}
 		d.References[i].To = target
 	}

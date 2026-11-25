@@ -60,6 +60,7 @@ type Reference struct {
 	From, To *yaml.Node
 	Value    string
 	address  string
+	keyword  string
 }
 
 // Document owns the resources and source locations for a comparison input.
@@ -317,15 +318,14 @@ func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, p
 			}
 		}
 	}
-	if value := member(node, "$dynamicRef"); value != nil {
-		return fmt.Errorf("%s:%d: dynamic scope resolution for $dynamicRef %q is unsupported", source.Name, value.Line, value.Value)
-	}
-	if value := member(node, "$ref"); value != nil {
-		target, err := base.Parse(value.Value)
-		if value.Tag != "!!str" || err != nil {
-			return fmt.Errorf("%s:%d: invalid $ref %q", source.Name, value.Line, value.Value)
+	for _, keyword := range []string{"$ref", "$dynamicRef"} {
+		if value := member(node, keyword); value != nil {
+			target, err := base.Parse(value.Value)
+			if value.Tag != "!!str" || err != nil {
+				return fmt.Errorf("%s:%d: invalid %s %q", source.Name, value.Line, keyword, value.Value)
+			}
+			d.References = append(d.References, Reference{From: node, Value: value.Value, address: target.String(), keyword: keyword})
 		}
-		d.References = append(d.References, Reference{From: node, Value: value.Value, address: target.String()})
 	}
 	return children(node, func(keyword, key string, child *yaml.Node) error {
 		childPointer := pointer + "/" + escapePointer(keyword)

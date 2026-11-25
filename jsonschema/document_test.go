@@ -27,6 +27,8 @@ func TestAuthoredSchemaCompatibility(t *testing.T) {
 		breaking                bool
 	}{
 		{"required", `{"type":"object","properties":{"id":{"type":"string"}}}`, `{"type":"object","properties":{"id":{"type":"string"}},"required":["id"]}`, "$.required", true},
+		{"custom annotation", `{"source":"old"}`, `{"source":"new"}`, "$.source", false},
+		{"format annotation", `{"format":"date"}`, `{"format":"time"}`, "$.format", false},
 		{"optional constraint", "{}", `{"properties":{"x":{"type":"string"}}}`, "$.properties.x", true},
 		{"minContains", `{"contains":{"type":"integer"},"minContains":2}`, `{"contains":{"type":"integer"},"minContains":3}`, "$.minContains", true},
 		{"high precision", `{"minimum":1.2345678901234567890}`, `{"minimum":1.2345678901234567891}`, "$.minimum", true},
@@ -96,4 +98,19 @@ func TestEmbeddedResourceOccurrence(t *testing.T) {
 	node, ok := left.Root.Source.Index.GetNode(left.Root.Node.Line, left.Root.Node.Column)
 	require.True(t, ok)
 	require.Same(t, left.Root.Node, node)
+}
+
+func TestEmbeddedSchemaAcquiresAddress(t *testing.T) {
+	before := loadTest(t, `{"properties":{"x":{"type":"string"}}}`)
+	after := loadTest(t, `{"properties":{"x":{"type":"string","$id":"urn:field"}}}`)
+	diff, err := Compare(before, after, nil)
+	require.NoError(t, err)
+	require.Equal(t, 1, diff.TotalChanges())
+	require.Equal(t, "urn:field", diff.GetAllChanges()[0].SchemaResource)
+	require.Equal(t, `$["$id"]`, diff.GetAllChanges()[0].Path)
+	rev, err := Compare(after, before, nil)
+	require.NoError(t, err)
+	require.Equal(t, 1, rev.TotalChanges())
+	require.Equal(t, 1, rev.TotalBreakingChanges())
+	require.Equal(t, `$.properties.x["$id"]`, rev.GetAllChanges()[0].Path)
 }
