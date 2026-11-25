@@ -857,8 +857,9 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		if rSchema != nil && rSchema.Type.ValueNode != nil {
 			rnv = rSchema.Type.ValueNode
 		}
-		// Type
-		addCheck(lnv, rnv, v3.TypeLabel, PropType)
+		if !equalSchemaTypeArrays(lnv, rnv) {
+			addCheck(lnv, rnv, v3.TypeLabel, PropType)
+		}
 		lnv = nil
 		rnv = nil
 	}
@@ -1535,6 +1536,33 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 			}
 		}
 	}
+}
+
+// JSON Schema type arrays list the allowed types in any order.
+func equalSchemaTypeArrays(left, right *yaml.Node) bool {
+	left, right = utils.NodeAlias(left), utils.NodeAlias(right)
+	if left == nil || right == nil || left.Kind != yaml.SequenceNode || right.Kind != yaml.SequenceNode {
+		return false
+	}
+	if len(left.Content) != len(right.Content) {
+		return false
+	}
+	counts := make(map[string]int, len(left.Content))
+	for _, item := range left.Content {
+		item = utils.NodeAlias(item)
+		if item == nil || item.Kind != yaml.ScalarNode || item.Tag != "!!str" {
+			return false
+		}
+		counts[item.Value]++
+	}
+	for _, item := range right.Content {
+		item = utils.NodeAlias(item)
+		if item == nil || item.Kind != yaml.ScalarNode || item.Tag != "!!str" || counts[item.Value] == 0 {
+			return false
+		}
+		counts[item.Value]--
+	}
+	return true
 }
 
 func schemasUseEquivalentSimpleScalarUnion(l, r *base.SchemaProxy) bool {
