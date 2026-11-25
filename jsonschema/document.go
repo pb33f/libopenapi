@@ -62,19 +62,22 @@ type Reference struct {
 	// Keyword identifies the authored $ref or $dynamicRef.
 	Keyword string
 	address string
+	context evaluationContext
 }
 
 // Document owns the resources and source locations for a comparison input.
 type Document struct {
-	Root       *Resource
-	Resources  []*Resource
-	Sources    map[string]*Source
-	References []Reference
-	Rolodex    *index.Rolodex
-	addresses  map[string]*yaml.Node
-	schemas    map[*yaml.Node]*Resource
-	config     *datamodel.DocumentConfiguration
-	base       *url.URL
+	Root              *Resource
+	Resources         []*Resource
+	Sources           map[string]*Source
+	References        []Reference
+	Rolodex           *index.Rolodex
+	addresses         map[string]*yaml.Node
+	schemas           map[*yaml.Node]*Resource
+	schemaPointers    map[*yaml.Node]string
+	hasAdverseContext bool
+	config            *datamodel.DocumentConfiguration
+	base              *url.URL
 }
 
 // Load reads one root and all its referenced resources using the supplied source configuration.
@@ -101,7 +104,7 @@ func Load(data []byte, source string, config *datamodel.DocumentConfiguration, e
 }
 
 func newDocument(config *datamodel.DocumentConfiguration, base *url.URL) *Document {
-	return &Document{config: config, base: base, Sources: make(map[string]*Source), addresses: make(map[string]*yaml.Node), schemas: make(map[*yaml.Node]*Resource), Rolodex: index.NewRolodex(index.CreateClosedAPIIndexConfig())}
+	return &Document{config: config, base: base, Sources: make(map[string]*Source), addresses: make(map[string]*yaml.Node), schemas: make(map[*yaml.Node]*Resource), schemaPointers: make(map[*yaml.Node]string), Rolodex: index.NewRolodex(index.CreateClosedAPIIndexConfig())}
 }
 
 // IsSchema reports whether a node occupies a schema-bearing position in this input.
@@ -211,7 +214,7 @@ func (d *Document) addSource(data []byte, uri *url.URL, explicit bool) (*Resourc
 	} else {
 		d.Rolodex.AddIndex(idx)
 	}
-	if err = d.indexSchema(source, root, uri, "", nil); err != nil {
+	if err = d.indexSchema(source, root, uri, "", nil, positiveContext); err != nil {
 		return nil, err
 	}
 	if err := validateSource(root, data); err != nil {
@@ -255,7 +258,7 @@ func (d *Document) register(address string, node *yaml.Node, source *Source) err
 	return nil
 }
 
-func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, pointer string, r *Resource) error {
+func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, pointer string, r *Resource, evaluation evaluationContext) error {
 	if node.Kind != yaml.MappingNode && !(node.Kind == yaml.ScalarNode && node.Tag == "!!bool") {
 		return fmt.Errorf("%s:%d: schema must be an object or boolean", source.Name, node.Line)
 	}
@@ -292,6 +295,7 @@ func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, p
 		base = resolved
 	}
 	if r == nil || id != nil {
+		evaluation |= positiveContext
 		identity := source.relative
 		if id != nil {
 			identity = d.resourceID(base)
@@ -313,6 +317,8 @@ func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, p
 		}
 	}
 	d.schemas[node] = r
+	d.schemaPointers[node] = pointer[len(r.Pointer):]
+	d.hasAdverseContext = d.hasAdverseContext || evaluation != positiveContext
 	for _, key := range []string{"$anchor", "$dynamicAnchor"} {
 		if value := member(node, key); value != nil {
 			if value.Tag != "!!str" || !anchorName.MatchString(value.Value) {
@@ -331,7 +337,7 @@ func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, p
 			if value.Tag != "!!str" || err != nil {
 				return fmt.Errorf("%s:%d: invalid %s %q", source.Name, value.Line, keyword, value.Value)
 			}
-			d.References = append(d.References, Reference{From: node, Value: value.Value, address: target.String(), Keyword: keyword})
+			d.References = append(d.References, Reference{From: node, Value: value.Value, address: target.String(), Keyword: keyword, context: evaluation})
 		}
 	}
 	return children(node, func(keyword, key string, child *yaml.Node) error {
@@ -339,7 +345,7 @@ func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, p
 		if childKind(keyword) != singleSchema {
 			childPointer += "/" + escapePointer(key)
 		}
-		return d.indexSchema(source, child, base, childPointer, r)
+		return d.indexSchema(source, child, base, childPointer, r, evaluation.child(node, keyword))
 	})
 }
 

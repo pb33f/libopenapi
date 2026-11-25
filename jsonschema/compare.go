@@ -16,6 +16,7 @@ import (
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/utils"
 	wc "github.com/pb33f/libopenapi/what-changed/model"
 )
 
@@ -42,12 +43,15 @@ func Compare(left, right *Document, rules *wc.BreakingRulesConfig) (*wc.SchemaCh
 }
 
 type comparison struct {
-	inline      map[*Resource]bool
-	pairs       map[*Resource]*Resource
-	matched     map[*Resource]bool
-	left, right *Document
-	rules       *wc.BreakingRulesConfig
-	changes     []*wc.Change
+	annotationOnly               bool
+	originalUsage, modifiedUsage map[*yaml.Node]evaluationContext
+	appliedAdditions             map[*Resource]bool
+	inline                       map[*Resource]bool
+	pairs                        map[*Resource]*Resource
+	matched                      map[*Resource]bool
+	left, right                  *Document
+	rules                        *wc.BreakingRulesConfig
+	changes                      []*wc.Change
 }
 
 // MatchResources pairs the original and modified resources by resolved ID, then
@@ -106,6 +110,7 @@ func matchResources(left, right *Document) (map[*Resource]*Resource, map[*Resour
 func (c *comparison) resources() error {
 	pairs, used := matchResources(c.left, c.right)
 	c.pairs, c.matched = pairs, used
+	c.compareReferences()
 	for _, l := range c.left.Resources {
 		if c.inline[l] {
 			continue
@@ -126,24 +131,43 @@ func (c *comparison) resources() error {
 
 func (c *comparison) compareResource(l, r *Resource) error {
 	if l == nil || r == nil {
-		c.membership(l, r, "$", "schema", nil, nil, true)
+		c.membership(l, r, "$", "schema", nil, nil, l != nil || c.appliedAdditions[r])
 		return nil
 	}
-	return c.schema(l, r, l.Node, r.Node, "$", 1)
+	return c.schema(l, r, l.Node, r.Node, "$", "type", 1)
 }
 
-func (c *comparison) schema(l, r *Resource, left, right *yaml.Node, path string, polarity int) error {
+func (c *comparison) schema(l, r *Resource, left, right *yaml.Node, path, keyword string, polarity int) error {
 	if sameNode(left, right) {
 		return nil
 	}
+	usage := c.originalUsage[left] | c.modifiedUsage[right]
+	if keyword == "contentSchema" || c.annotationOnly {
+		previous := c.annotationOnly
+		c.annotationOnly = usage == 0
+		switch usage {
+		case positiveContext:
+			polarity = 1
+		case negativeContext:
+			polarity = -1
+		case mixedContext:
+			polarity = 0
+		}
+		defer func() { c.annotationOnly = previous }()
+	}
+	polarity = combinedPolarity(polarity, usage)
 	if left.Kind == yaml.ScalarNode || right.Kind == yaml.ScalarNode {
 		if left.Kind == right.Kind && strings.EqualFold(left.Value, right.Value) {
 			return nil
 		}
-		breaking := !strings.EqualFold(left.Value, "false") && !strings.EqualFold(right.Value, "true")
+		a, b := left, right
+		if polarity < 0 {
+			a, b = right, left
+		}
+		breaking := polarity == 0 || !strings.EqualFold(a.Value, "false") && !strings.EqualFold(b.Value, "true")
 		start := len(c.changes)
 		wc.CreateChangeWithEncoding(&c.changes, wc.Modified, "schema", left, right, breaking, nil, nil)
-		c.finish(c.changes[start], l, r, path, "type", polarity, breaking)
+		c.finish(c.changes[start], l, r, path, keyword, 1, breaking)
 		return nil
 	}
 	// The existing low model owns keyword semantics. Child schemas and references
@@ -157,28 +181,33 @@ func (c *comparison) schema(l, r *Resource, left, right *yaml.Node, path string,
 		return err
 	}
 	if diff := wc.CompareSchemas(lp, rp); diff != nil {
+		dependencies := make(map[*wc.Change]bool, len(diff.DependentRequiredChanges))
+		for _, change := range diff.DependentRequiredChanges {
+			dependencies[change] = true
+		}
 		for _, ch := range diff.GetAllChanges() {
 			property := ch.Property
 			if property == "schemaDialect" {
 				property = "$schema"
+				ch.Property = property
 			}
 			editPath := PropertyPath(path, property)
-			for _, dep := range diff.DependentRequiredChanges {
-				if ch == dep {
-					editPath = PropertyPath(PropertyPath(path, "dependentRequired"), property)
-					if a, ok := ch.OriginalObject.([]string); ok {
-						value, _ := json.Marshal(a)
-						ch.OriginalEncoded = string(value)
-					}
-					if b, ok := ch.NewObject.([]string); ok {
-						value, _ := json.Marshal(b)
-						ch.NewEncoded = string(value)
-					}
-					property = "dependentRequired"
-					break
+			a, b := member(left, property), member(right, property)
+			if dependencies[ch] {
+				property = "dependentRequired"
+				editPath = PropertyPath(PropertyPath(path, property), ch.Property)
+				a, b = member(member(left, property), ch.Property), member(member(right, property), ch.Property)
+				ch.OriginalEncoded, ch.NewEncoded = encodedLiteral(a), encodedLiteral(b)
+				if a != nil && b != nil && equivalentConstraint(property, a, b) {
+					continue
 				}
 			}
-			c.finish(ch, l, r, editPath, property, polarity, compatibility(ch, property))
+			breaking := compatibility(ch, property)
+			direction := polarity
+			if impact, ok := validationChange(property, a, b, polarity); ok {
+				direction, breaking = 1, impact
+			}
+			c.finish(ch, l, r, editPath, property, direction, breaking)
 			c.changes = append(c.changes, ch)
 		}
 	}
@@ -206,7 +235,32 @@ func (c *comparison) schema(l, r *Resource, left, right *yaml.Node, path string,
 		if exactNumber(keyword) {
 			breaking = compatibility(c.changes[start], keyword)
 		}
-		c.finish(c.changes[start], l, r, PropertyPath(path, keyword), keyword, polarity, breaking)
+		direction := polarity
+		if impact, ok := validationChange(keyword, a, b, polarity); ok {
+			direction, breaking = 1, impact
+		}
+		c.finish(c.changes[start], l, r, PropertyPath(path, keyword), keyword, direction, breaking)
+	}
+	for _, keyword := range literalKeywords {
+		a, b := member(left, keyword), member(right, keyword)
+		if a == b {
+			continue
+		}
+		if keyword == "enum" {
+			c.compareEnum(l, r, path, a, b, polarity)
+			continue
+		}
+		if sameLiteral(a, b) {
+			continue
+		}
+		if keyword == "type" && a != nil && b != nil && equivalentConstraint(keyword, a, b) {
+			continue
+		}
+		breaking, _ := validationChange(keyword, a, b, polarity)
+		if keyword == "$vocabulary" {
+			breaking = true
+		}
+		c.recordValue(l, r, path, keyword, a, b, breaking)
 	}
 	c.compareAnnotations(l, r, left, right, path)
 	return c.compareChildren(l, r, left, right, path, polarity)
@@ -262,7 +316,7 @@ func constraintProxy(n *yaml.Node, r *Resource) (*base.SchemaProxy, error) {
 	view.Content = make([]*yaml.Node, 0, len(n.Content))
 	for i := 0; i < len(n.Content); i += 2 {
 		k := n.Content[i].Value
-		if nativeConstraint(k) {
+		if nativeConstraint(k) && !slices.Contains(literalKeywords[:], k) {
 			view.Content = append(view.Content, n.Content[i:i+2]...)
 		}
 	}
@@ -301,6 +355,196 @@ func sameNode(a, b *yaml.Node) bool {
 		if !sameNode(a.Content[i], b.Content[i]) {
 			return false
 		}
+	}
+	return true
+}
+
+var literalKeywords = [...]string{"type", "enum", "const", "examples", "default", "$vocabulary"}
+
+// encodedLiteral retains typed values in report records and their hashes.
+func encodedLiteral(n *yaml.Node) string {
+	if n == nil {
+		return ""
+	}
+	switch n.Kind {
+	case yaml.MappingNode:
+		fields := make([]string, 0, len(n.Content)/2)
+		for i := 0; i < len(n.Content); i += 2 {
+			key, _ := json.Marshal(n.Content[i].Value)
+			fields = append(fields, string(key)+":"+encodedLiteral(n.Content[i+1]))
+		}
+		slices.Sort(fields)
+		return "{" + strings.Join(fields, ",") + "}"
+	case yaml.SequenceNode:
+		values := make([]string, 0, len(n.Content))
+		for _, child := range n.Content {
+			values = append(values, encodedLiteral(child))
+		}
+		return "[" + strings.Join(values, ",") + "]"
+	}
+	switch n.ShortTag() {
+	case "!!int", "!!float":
+		return n.Value
+	case "!!null":
+		return "null"
+	case "!!bool":
+		return strings.ToLower(n.Value)
+	}
+	quoted, _ := json.Marshal(n.Value)
+	return string(quoted)
+}
+
+func (c *comparison) recordValue(l, r *Resource, path, keyword string, a, b *yaml.Node, breaking bool) {
+	kind := wc.Modified
+	if a == nil {
+		kind = wc.PropertyAdded
+	} else if b == nil {
+		kind = wc.PropertyRemoved
+	}
+	wc.CreateChange(&c.changes, kind, keyword, a, b, breaking, nil, nil)
+	ch := c.changes[len(c.changes)-1]
+	ch.OriginalEncoded, ch.NewEncoded = encodedLiteral(a), encodedLiteral(b)
+	c.finish(ch, l, r, PropertyPath(path, keyword), keyword, 1, breaking)
+}
+
+func (c *comparison) compareEnum(l, r *Resource, path string, a, b *yaml.Node, polarity int) {
+	var values []*yaml.Node
+	if a != nil {
+		values = append(values, a.Content...)
+	}
+	boundary := len(values)
+	if b != nil {
+		values = append(values, b.Content...)
+	}
+	if len(values) == 0 {
+		if (a == nil) != (b == nil) {
+			c.recordValue(l, r, path, "enum", a, b, polarity == 0 || (polarity > 0) == (a == nil))
+		}
+		return
+	}
+	ids := literalIDs(values)
+	old, current := make(map[int]bool, boundary), make(map[int]bool, len(values)-boundary)
+	for i, id := range ids {
+		if i < boundary {
+			old[id] = true
+		} else {
+			current[id] = true
+		}
+	}
+	for i, id := range ids {
+		if i < boundary && !current[id] {
+			// Removing an entire enum relaxes its constraint; removing one choice narrows it.
+			c.recordValue(l, r, path, "enum", values[i], nil, polarity == 0 || (polarity > 0) == (b != nil))
+			current[id] = true
+		}
+		if i >= boundary && !old[id] {
+			c.recordValue(l, r, path, "enum", nil, values[i], polarity == 0 || (polarity > 0) == (a == nil))
+			old[id] = true
+		}
+	}
+}
+
+func sameLiteral(a, b *yaml.Node) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	ids := literalIDs([]*yaml.Node{a, b})
+	return ids[0] == ids[1]
+}
+
+func literalIDs(nodes []*yaml.Node) []int {
+	ids := utils.JSONValueIDs(nodes)
+	var fallback map[string]int
+	for i, id := range ids {
+		if id != 0 {
+			continue
+		}
+		// The shared interner bounds arbitrary-precision arithmetic. Keep distinct
+		// out-of-range literals distinguishable without expanding their exponents.
+		if fallback == nil {
+			fallback = make(map[string]int)
+		}
+		wire := encodedLiteral(nodes[i])
+		if fallback[wire] == 0 {
+			fallback[wire] = -len(fallback) - 1
+		}
+		ids[i] = fallback[wire]
+	}
+	return ids
+}
+
+func typeAllows(n *yaml.Node, typ string) bool {
+	if n == nil {
+		return true
+	}
+	if n.Kind == yaml.SequenceNode {
+		return slices.ContainsFunc(n.Content, func(item *yaml.Node) bool { return typeAllows(item, typ) })
+	}
+	return n.Value == typ || n.Value == "number" && typ == "integer"
+}
+
+func equivalentConstraint(keyword string, a, b *yaml.Node) bool {
+	forward, _ := validationChange(keyword, a, b, 1)
+	reverse, _ := validationChange(keyword, b, a, 1)
+	return !forward && !reverse
+}
+
+// validationChange checks whether b rejects values accepted by a. Reversing the
+// operands gives the dual check inside not. Other keywords use their native rule.
+func validationChange(keyword string, a, b *yaml.Node, polarity int) (breaking, handled bool) {
+	if polarity < 0 {
+		a, b = b, a
+	}
+	switch keyword {
+	case "type":
+		for _, typ := range []string{"integer", "number", "object", "array", "string", "null", "boolean"} {
+			if typeAllows(a, typ) && !typeAllows(b, typ) {
+				return true, true
+			}
+		}
+	case "const", "pattern":
+		breaking = b != nil
+	case "uniqueItems":
+		unique := func(n *yaml.Node) bool { return n != nil && strings.EqualFold(n.Value, "true") }
+		breaking = unique(b) && !unique(a)
+	case "dependentRequired":
+		if b != nil {
+			for _, req := range b.Content {
+				if a == nil || !slices.ContainsFunc(a.Content, func(item *yaml.Node) bool { return item.Value == req.Value }) {
+					return true, true
+				}
+			}
+		}
+	case "multipleOf":
+		if a == nil || b == nil {
+			return polarity == 0 || b != nil, true
+		}
+		x, ok1 := new(big.Rat).SetString(a.Value)
+		y, ok2 := new(big.Rat).SetString(b.Value)
+		breaking = !ok1 || !ok2 || y.Sign() == 0 || !x.Quo(x, y).IsInt()
+	default:
+		return false, false
+	}
+	return polarity == 0 || breaking, true
+}
+
+func childMembership(keyword string, whole, added bool, polarity int) bool {
+	if keyword == "contentSchema" {
+		return false
+	}
+	if keyword == "$defs" {
+		return !added
+	}
+	if polarity == 0 {
+		return true
+	}
+	switch keyword {
+	case "anyOf":
+		// Adding the first disjunction restricts the schema. Adding an
+		// alternative to an existing disjunction widens it.
+		return (whole == added) == (polarity > 0)
+	case "allOf", "dependentSchemas":
+		return added == (polarity > 0)
 	}
 	return true
 }
@@ -371,18 +615,29 @@ func (c *comparison) compareChildren(l, r *Resource, left, right *yaml.Node, pat
 			if owner := c.left.schemas[a]; owner != l && c.pairs[owner] == nil {
 				continue
 			}
-			c.membership(l, r, p, k.keyword, a, nil, true)
+			breaking := childMembership(k.keyword, member(right, k.keyword) == nil, false, polarity)
+			c.membership(l, r, p, k.keyword, a, nil, breaking)
 			continue
 		}
-		if err := c.compareChild(l, r, a, b, p, k.keyword, polarity); err != nil {
+		direction := polarity
+		if k.keyword == "contains" && (member(left, "maxContains") != nil || member(right, "maxContains") != nil) {
+			direction = 0
+		}
+		if err := c.compareChild(l, r, a, b, p, k.keyword, direction); err != nil {
 			return err
 		}
 	}
 	for k, b := range newNodes {
+		breaking := childMembership(k.keyword, member(left, k.keyword) == nil, true, polarity)
 		if owner := c.right.schemas[b]; owner != r && !c.matched[owner] {
+			if breaking && !c.annotationOnly {
+				if c.appliedAdditions == nil {
+					c.appliedAdditions = make(map[*Resource]bool)
+				}
+				c.appliedAdditions[owner] = true
+			}
 			continue
 		}
-		breaking := k.keyword != "$defs" && k.keyword != "anyOf"
 		c.membership(l, r, childPath(path, k), k.keyword, nil, b, breaking)
 	}
 	return nil
@@ -400,7 +655,7 @@ func (c *comparison) compareChild(l, r *Resource, a, b *yaml.Node, path, keyword
 	lo, ro := c.left.schemas[a], c.right.schemas[b]
 	switch {
 	case lo == l && ro == r:
-		return c.schema(l, r, a, b, path, polarity)
+		return c.schema(l, r, a, b, path, keyword, polarity)
 	case lo != l && ro != r:
 		if c.pairs[lo] != ro && (c.pairs[lo] != nil || c.matched[ro]) {
 			wc.CreateChange(&c.changes, wc.Modified, keyword, member(a, "$id"), member(b, "$id"), true, nil, nil)
@@ -409,13 +664,13 @@ func (c *comparison) compareChild(l, r *Resource, a, b *yaml.Node, path, keyword
 	case lo == l && !c.matched[ro]:
 		// An inline schema acquired its first $id. Its constraints now belong to the new resource.
 		c.matched[ro] = true
-		return c.schema(l, ro, a, b, "$", polarity)
+		return c.schema(l, ro, a, b, "$", keyword, polarity)
 	case ro == r && c.pairs[lo] == nil:
 		if c.inline == nil {
 			c.inline = make(map[*Resource]bool)
 		}
 		c.inline[lo] = true
-		return c.schema(lo, r, a, b, path, polarity)
+		return c.schema(lo, r, a, b, path, keyword, polarity)
 	default:
 		// A matched resource moved to or from an existing inline use.
 		wc.CreateChangeWithEncoding(&c.changes, wc.Modified, keyword, a, b, true, nil, nil)
@@ -453,7 +708,6 @@ func childPath(path string, k childKey) string {
 func (c *comparison) membership(l, r *Resource, path, kw string, a, b *yaml.Node, breaking bool) {
 	if l == nil && b == nil {
 		b = r.Node
-		breaking = false
 	}
 	if r == nil && a == nil {
 		a = l.Node
@@ -532,16 +786,16 @@ func (c *comparison) finish(ch *wc.Change, l, r *Resource, path, property string
 			breaking = true
 		}
 	}
+	if c.annotationOnly || property == "contentSchema" {
+		breaking = false
+	}
 	if c.rules != nil {
-		if rule := c.rules.GetRule(wc.CompSchema, property); rule != nil {
-			override := rule.Modified
-			switch ch.ChangeType {
-			case wc.PropertyAdded, wc.ObjectAdded:
-				override = rule.Added
-			case wc.PropertyRemoved, wc.ObjectRemoved:
-				override = rule.Removed
-			}
-			if override != nil {
+		ruleKey := property
+		if property == "$schema" {
+			ruleKey = wc.PropSchemaDialect
+		}
+		if rule := c.rules.GetRule(wc.CompSchema, ruleKey); rule != nil {
+			if override := operationRule(rule, ch.ChangeType); override != nil {
 				breaking = *override
 			}
 		}
