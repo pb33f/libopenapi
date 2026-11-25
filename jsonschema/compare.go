@@ -803,15 +803,15 @@ func (c *comparison) finish(ch *wc.Change, l, r *Resource, path, property string
 	ch.Breaking, ch.Path, ch.Type = breaking, path, "schema"
 	if l != nil {
 		ch.SchemaResource = l.ID
+		ch.Context.OriginalDocument = l.Source.Name
 		if ch.Context.OriginalLine != nil {
-			ch.Context.OriginalDocument = l.Source.Name
 			ch.Context.DocumentLocation = l.Source.Name
 		}
 	}
 	if r != nil {
 		ch.SchemaResource = r.ID
+		ch.Context.ModifiedDocument = r.Source.Name
 		if ch.Context.NewLine != nil {
-			ch.Context.ModifiedDocument = r.Source.Name
 			ch.Context.DocumentLocation = r.Source.Name
 		}
 	}

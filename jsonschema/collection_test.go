@@ -51,6 +51,39 @@ func TestCollectionSharedOwnership(t *testing.T) {
 	require.Zero(t, reverse.TotalBreakingChanges())
 }
 
+func TestCollectionSourceFilesAndAuthoredCoordinates(t *testing.T) {
+	old := loadMembers(t, "before", map[string][]byte{"a/money.yaml": []byte("$id: urn:money\ntype: string\n")})
+	newer := loadMembers(t, "after", map[string][]byte{"b/money.yaml": []byte("$id: urn:money\ntype: string\nmaxLength: 12\n")})
+	empty := loadMembers(t, "empty", nil)
+	for _, tt := range []struct {
+		name                  string
+		left, right           *Document
+		original, modified    string
+		authored              string
+		originalLine, newLine *int
+	}{
+		{"added constraint in moved file", old, newer, "a/money.yaml", "b/money.yaml", "b/money.yaml", nil, new(3)},
+		{"removed constraint in moved file", newer, old, "b/money.yaml", "a/money.yaml", "b/money.yaml", new(3), nil},
+		{"added file", empty, newer, "", "b/money.yaml", "b/money.yaml", nil, new(1)},
+		{"removed file", newer, empty, "b/money.yaml", "", "b/money.yaml", new(1), nil},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			diff, err := Compare(tt.left, tt.right, nil)
+			require.NoError(t, err)
+			require.NotNil(t, diff)
+			require.Len(t, diff.GetAllChanges(), 1)
+			ctx := diff.GetAllChanges()[0].Context
+			require.Equal(t, tt.original, ctx.OriginalDocument)
+			require.Equal(t, tt.modified, ctx.ModifiedDocument)
+			require.Equal(t, tt.authored, ctx.DocumentLocation)
+			require.Equal(t, tt.originalLine, ctx.OriginalLine)
+			require.Equal(t, tt.newLine, ctx.NewLine)
+			require.Equal(t, tt.originalLine == nil, ctx.OriginalColumn == nil)
+			require.Equal(t, tt.newLine == nil, ctx.NewColumn == nil)
+		})
+	}
+}
+
 func TestCollectionIdentityAndMoves(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
