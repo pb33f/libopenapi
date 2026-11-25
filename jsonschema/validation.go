@@ -19,11 +19,11 @@ var draftMetaSchema = sync.OnceValue(func() *validator.Schema {
 	return validator.NewCompiler().MustCompile(Dialect)
 })
 
-func validateSource(root *yaml.Node) error {
+func (d *Document) validateSource(root *yaml.Node) error {
 	if root.Kind == yaml.ScalarNode {
 		return nil // indexSchema has already checked that this is a boolean.
 	}
-	value, err := metaValue(root)
+	value, err := d.metaValue(root, false)
 	if err != nil {
 		return err
 	}
@@ -32,22 +32,32 @@ func validateSource(root *yaml.Node) error {
 
 // Use authored number strings. A float64 round trip can turn a fractional schema
 // limit into an integer or round a small, positive multipleOf to zero.
-func metaValue(node *yaml.Node) (any, error) {
+func (d *Document) metaValue(node *yaml.Node, repeatedSchemas bool) (any, error) {
 	switch node.Kind {
 	case yaml.MappingNode:
 		value := make(map[string]any, len(node.Content)/2)
+		_, schema := d.schemas[node]
+		var previous *yaml.Node
 		for i := 0; i < len(node.Content); i += 2 {
-			v, err := metaValue(node.Content[i+1])
+			name, child := node.Content[i].Value, node.Content[i+1]
+			// These meta-schema maps apply exactly the same schema to every
+			// value and impose no constraints on member names or cardinality.
+			if repeatedSchemas && previous != nil && sameNode(previous, child) {
+				continue
+			}
+			previous = child
+			repeated := schema && (name == "properties" || name == "$defs" || name == "dependentSchemas")
+			v, err := d.metaValue(child, repeated)
 			if err != nil {
 				return nil, err
 			}
-			value[node.Content[i].Value] = v
+			value[name] = v
 		}
 		return value, nil
 	case yaml.SequenceNode:
 		value := make([]any, len(node.Content))
 		for i, child := range node.Content {
-			v, err := metaValue(child)
+			v, err := d.metaValue(child, false)
 			if err != nil {
 				return nil, err
 			}

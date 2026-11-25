@@ -4,9 +4,11 @@
 package jsonschema
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -42,6 +44,43 @@ func TestInvalidConstraintsFailBeforeComparison(t *testing.T) {
 	}
 	_, err := LoadCollection(map[string][]byte{"bad.json": []byte(`{"type":"invalid"}`)}, ".", nil)
 	require.ErrorContains(t, err, "bad.json")
+}
+
+func TestMetaValidationChecksDistinctPropertySchemasAndPreservesLiterals(t *testing.T) {
+	for _, kw := range []string{"properties", "$defs", "dependentSchemas"} {
+		_, err := Load([]byte(`{"`+kw+`":{"a":{"type":"string"},"b":{"type":"string"},"c":{"type":41}}}`), "bad.json", nil, true)
+		require.ErrorContains(t, err, "/"+kw+"/c/type")
+	}
+	doc, err := Load([]byte(`{"const":{"properties":{"a":true,"b":true}},"properties":{"a":true,"b":true}}`), "good.json", nil, true)
+	require.NoError(t, err)
+	defer doc.Release()
+	meta, err := doc.metaValue(doc.Root.Node, false)
+	require.NoError(t, err)
+	value := meta.(map[string]any)
+	require.Len(t, value["properties"], 1)
+	require.Len(t, value["const"].(map[string]any)["properties"], 2)
+	require.Len(t, member(doc.Root.Node, "properties").Content, 4)
+}
+
+func BenchmarkLoadRepeatedPropertySchemas(b *testing.B) {
+	var input strings.Builder
+	input.WriteString(`{"$schema":"` + Dialect + `","properties":{`)
+	for i := range 8000 {
+		if i > 0 {
+			input.WriteByte(',')
+		}
+		fmt.Fprintf(&input, `"field%d":{"type":"string","maxLength":32}`, i)
+	}
+	input.WriteString("}}")
+	data := []byte(input.String())
+	b.ReportAllocs()
+	for b.Loop() {
+		d, err := Load(data, "wide.json", nil, false)
+		if err != nil {
+			b.Fatal(err)
+		}
+		d.Release()
+	}
 }
 
 func TestSchemaNumberValidationKeepsYAMLPrecision(t *testing.T) {
