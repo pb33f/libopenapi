@@ -145,12 +145,12 @@ func retrievalURI(source string, config *datamodel.DocumentConfiguration) (*url.
 		source = filepath.Join(config.BasePath, source)
 	}
 	file, err := filepath.Abs(source)
-	return &url.URL{Scheme: "file", Path: filepath.ToSlash(file)}, err
+	return fileURL(file), err
 }
 
 func (d *Document) resourceID(uri *url.URL) string {
-	if uri.Scheme == "file" && d.base.Scheme == "file" {
-		if relative, err := filepath.Rel(d.base.Path, uri.Path); err == nil {
+	if uri.Scheme == "file" && d.base.Scheme == "file" && uri.Host == d.base.Host {
+		if relative, err := filepath.Rel(filePath(d.base), filePath(uri)); err == nil {
 			name := filepath.ToSlash(relative)
 			if uri.RawQuery != "" {
 				name += "?" + uri.RawQuery

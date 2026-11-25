@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +22,33 @@ import (
 )
 
 var anchorName = regexp.MustCompile(`^[A-Za-z_][-A-Za-z0-9._]*$`)
+
+// File URLs have a leading slash before a Windows drive; native file paths do not.
+func fileURL(filename string) *url.URL {
+	p := filepath.ToSlash(filename)
+	u := &url.URL{Scheme: "file", Path: p}
+	if runtime.GOOS == "windows" {
+		if strings.HasPrefix(p, "//") {
+			host, rest, _ := strings.Cut(p[2:], "/")
+			u.Host, u.Path = host, "/"+rest
+		} else if filepath.VolumeName(filename) != "" {
+			u.Path = "/" + p
+		}
+	}
+	return u
+}
+
+func filePath(u *url.URL) string {
+	p := u.Path
+	if runtime.GOOS == "windows" {
+		if u.Host != "" && u.Host != "localhost" {
+			p = "//" + u.Host + p
+		} else if len(p) >= 3 && p[0] == '/' && p[2] == ':' {
+			p = p[1:]
+		}
+	}
+	return filepath.FromSlash(p)
+}
 
 func (d *Document) resolveReferences() error {
 	for i := 0; i < len(d.References); i++ {
@@ -103,19 +131,19 @@ func (d *Document) resolve(address string) (*yaml.Node, error) {
 func (d *Document) read(uri *url.URL) ([]byte, error) {
 	switch uri.Scheme {
 	case "file":
-		if uri.Host != "" && uri.Host != "localhost" {
+		if uri.Host != "" && uri.Host != "localhost" && (runtime.GOOS != "windows" || d.base.Host != uri.Host) {
 			return nil, fmt.Errorf("unsupported file URI host %q", uri.Host)
 		}
 		if !d.config.AllowFileReferences && d.config.BasePath == "" {
 			return nil, fmt.Errorf("file references are disabled")
 		}
-		filename := filepath.FromSlash(uri.Path)
+		filename := filePath(uri)
 		if d.config.LocalFS == nil {
 			return os.ReadFile(filename)
 		}
 		dir := d.config.BasePath
 		if dir == "" {
-			dir = filepath.FromSlash(d.base.Path)
+			dir = filePath(d.base)
 		}
 		relative, err := filepath.Rel(dir, filename)
 		if err != nil {

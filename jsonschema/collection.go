@@ -26,7 +26,8 @@ func LoadCollection(members map[string][]byte, directory string, config *datamod
 	if config == nil {
 		config = datamodel.NewDocumentConfiguration()
 	}
-	base := &url.URL{Scheme: "file", Path: strings.TrimSuffix(filepath.ToSlash(absolute), "/") + "/"}
+	base := fileURL(absolute)
+	base.Path = strings.TrimSuffix(base.Path, "/") + "/"
 	d := newDocument(config, base)
 	for _, name := range slices.Sorted(maps.Keys(members)) {
 		if !fs.ValidPath(name) || name == "." || strings.ContainsRune(name, '\\') {

@@ -4,8 +4,13 @@
 package jsonschema
 
 import (
-	"github.com/pb33f/testify/require"
+	"net/url"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/testify/require"
 )
 
 func TestLoadInputBoundaries(t *testing.T) {
@@ -28,6 +33,23 @@ func TestLoadInputBoundaries(t *testing.T) {
 	d, err := Load([]byte(`{"$schema":"https://json-schema.org/draft/2020-12/schema","examples":[{"$ref":"missing","$id":"urn:x"},{"$id":"urn:x"}]}`), "schema.json", nil, false)
 	require.NoError(t, err)
 	d.Release()
+}
+
+func TestNativeFilePathsResolveThroughFileURIs(t *testing.T) {
+	dir := t.TempDir()
+	name := filepath.Join(dir, "my root.json")
+	want := filepath.Join(dir, "amount.json")
+	require.NoError(t, os.WriteFile(want, []byte("true"), 0o600))
+	root := fileURL(name)
+	require.Equal(t, name, filePath(root))
+	require.Equal(t, want, filePath(root.ResolveReference(&url.URL{Path: "amount.json"})))
+	config := datamodel.NewDocumentConfiguration()
+	config.AllowFileReferences = true
+	doc, err := Load([]byte(`{"$ref":"amount.json"}`), name, config, true)
+	require.NoError(t, err)
+	defer doc.Release()
+	require.Len(t, doc.Sources, 2)
+	require.Same(t, doc.Sources["amount.json"].Node, doc.References[0].To)
 }
 
 func TestRelativeIDOmitsRetrievalCredentials(t *testing.T) {
