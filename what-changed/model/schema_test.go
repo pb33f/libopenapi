@@ -2043,18 +2043,22 @@ components:
 
 func TestCompareSchemas_TypeArrayWithDescriptionChange(t *testing.T) {
 	const prefix = "x-string-type: &text string\n"
-	left := buildSchemaProxyFromYAML(t, prefix+"type: ['null', string, number]")
+	const original = "['null', string, number]"
 	for _, tc := range []struct {
-		name, types string
-		typeChanged bool
+		name, left, right string
+		typeChanged       bool
 	}{
-		{"reordered", "[string, number, 'null']", false},
-		{"reordered with alias", "[*text, number, 'null']", false},
-		{"narrowed", "[string, number]", true},
-		{"replaced", "[string, boolean, 'null']", true},
+		{"reordered", original, "[string, number, 'null']", false},
+		{"reordered with alias", original, "[*text, number, 'null']", false},
+		{"narrowed", original, "[string, number]", true},
+		{"replaced", original, "[string, boolean, 'null']", true},
+		// Bare YAML null is distinct from the JSON Schema type name 'null'.
+		{"correct unquoted null", "[null, string, number]", original, true},
+		{"introduce unquoted null", original, "[null, string, number]", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			right := buildSchemaProxyFromYAML(t, prefix+"type: "+tc.types+"\ndescription: Filter operator")
+			left := buildSchemaProxyFromYAML(t, prefix+"type: "+tc.left)
+			right := buildSchemaProxyFromYAML(t, prefix+"type: "+tc.right+"\ndescription: Filter operator")
 			changes := CompareSchemas(left, right)
 			require.NotNil(t, changes)
 			properties := make(map[string]bool)
