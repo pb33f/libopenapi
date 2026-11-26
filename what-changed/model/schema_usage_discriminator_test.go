@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/pb33f/go-yaml"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
@@ -342,6 +343,38 @@ components:
 		idx := index.NewSpecIndexWithConfig(&root, index.CreateClosedAPIIndexConfig())
 		assert.Equal(t, tc.known, buildSchemaUsage(idx) != nil, tc.ref)
 	}
+}
+
+func TestSchemaUsageDiscriminatorStopsOnceUnknown(t *testing.T) {
+	// The first mapping value makes the usage unknown, so the usage is dropped and nothing else is resolved: not the
+	// other mapping values, the default mapping, the children of Pet, or the schemas Cat and Dog build on.
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`components:
+  schemas:
+    Pet:
+      type: object
+      discriminator:
+        propertyName: kind
+        mapping: {remote: 'https://example.com/cat.yaml', cat: Cat, dog: '#/components/schemas/Dog'}
+        defaultMapping: Cat
+    Remote: {allOf: [{$ref: 'other.yaml#/Pet'}]}
+    Cat: {allOf: [{$ref: '#/components/schemas/Pet'}]}
+    Dog: {allOf: [{$ref: '#/components/schemas/Pet'}]}`), &root))
+	idx := index.NewSpecIndexWithConfig(&root, index.CreateClosedAPIIndexConfig())
+	schemas := usageField(usageField(root.Content[0], v3.ComponentsLabel), v3.SchemasLabel)
+	pet := usageField(schemas, "Pet")
+
+	w := usageWalker{index: idx, targets: make(map[string]*yaml.Node), schemas: schemas}
+	w.discriminator(pet, usageField(pet, v3.DiscriminatorLabel), responseSchema)
+	assert.True(t, w.unknown)
+	assert.Empty(t, w.targets)
+	assert.Nil(t, w.children)
+
+	// Remote makes the usage unknown while looking for the children, so the references of Cat and Dog are not resolved.
+	w = usageWalker{index: idx, targets: make(map[string]*yaml.Node), schemas: schemas}
+	w.allOfChildren(pet)
+	assert.True(t, w.unknown)
+	assert.Empty(t, w.targets)
 }
 
 // usageChild is Widget with the keyword that makes it build on another schema, or without one when builds is empty.

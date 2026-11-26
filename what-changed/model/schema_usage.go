@@ -301,6 +301,9 @@ func (w *usageWalker) discriminator(holder, node *yaml.Node, dir schemaDirection
 			w.discriminatorTarget(value, dir)
 		}
 	}
+	if w.unknown {
+		return
+	}
 	for key := range usageFields(holder) {
 		if key == v3.OneOfLabel || key == v3.AnyOfLabel {
 			return
@@ -317,6 +320,10 @@ var componentName = regexp.MustCompile(`^[a-zA-Z0-9.\-_]+$`)
 // discriminatorTarget follows one mapping value, which is a reference or a schema name. A value that is not a schema
 // of this document, such as a file or a URL, cannot be followed.
 func (w *usageWalker) discriminatorTarget(value *yaml.Node, dir schemaDirection) {
+	// The usage is dropped once it is unknown, so the other targets do not need to be resolved.
+	if w.unknown {
+		return
+	}
 	ref := utils.NodeAlias(value).Value
 	if !strings.HasPrefix(ref, "#/") {
 		if !componentName.MatchString(ref) {
@@ -355,7 +362,7 @@ func (w *usageWalker) allOfChildren(parent *yaml.Node) []*yaml.Node {
 // makes the usage unknown.
 func (w *usageWalker) ancestors(node *yaml.Node, seen map[*yaml.Node]bool) {
 	node = utils.NodeAlias(node)
-	if node == nil || seen[node] {
+	if w.unknown || node == nil || seen[node] {
 		return
 	}
 	seen[node] = true
