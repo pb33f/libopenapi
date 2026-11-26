@@ -6,6 +6,7 @@ package model
 import (
 	"context"
 	"iter"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -106,6 +107,8 @@ type usageWalker struct {
 	visited [schemaObject + 1]schemaUsage
 	targets map[string]*yaml.Node
 	unknown bool
+	// nullable adds null to the types of a schema. Only OpenAPI 3.0 defines it, so it is kept when the version is unknown.
+	nullable bool
 }
 
 func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
@@ -116,7 +119,8 @@ func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
 	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
 		root = root.Content[0]
 	}
-	w := usageWalker{index: idx, targets: make(map[string]*yaml.Node)}
+	version, known := idx.ResolveDocumentVersion()
+	w := usageWalker{index: idx, targets: make(map[string]*yaml.Node), nullable: !known || version < 3.1}
 	for i := range w.visited {
 		w.visited[i] = make(schemaUsage)
 	}
@@ -336,7 +340,10 @@ func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
 			case v3.RefLabel:
 				ref = utils.NodeAlias(value).Value
 			case v3.NullableLabel:
-				nullable = utils.NodeAlias(value).Value == "true"
+				// Read it as the schema model does: a YAML boolean, in any spelling that YAML accepts.
+				if utils.IsNodeBoolValue(value) {
+					nullable, _ = strconv.ParseBool(utils.NodeAlias(value).Value)
+				}
 			}
 		}
 		if ref != "" {
@@ -357,8 +364,8 @@ func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
 				names = append(names, utils.NodeAlias(item).Value)
 			}
 		}
-		// OpenAPI 3.0 adds null with nullable. In 3.1 nullable means nothing, so null only widens the bound.
-		if nullable {
+		// OpenAPI 3.0 adds null with nullable. In 3.1 nullable means nothing.
+		if nullable && w.nullable {
 			names = append(names, "null")
 		}
 		types := make(map[string]bool)
