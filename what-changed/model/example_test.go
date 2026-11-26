@@ -45,42 +45,57 @@ func TestCompareExamples_SummaryModified(t *testing.T) {
 	assert.Equal(t, "cure all", extChanges.Changes[0].New)
 }
 
-func TestCompareExamples_ObjectValue(t *testing.T) {
-	for _, tc := range []struct {
-		name, left, right string
-	}{
-		{"two members modified", "{id_1: 11, id_2: 21}", "{id_1: 10, id_2: 20}"},
-		{"member added", "{}", "{id: 1}"},
-		{"member removed", "{id: 1}", "{}"},
-		{"sequence reordered inside object", "{items: [1, 2]}", "{items: [2, 1]}"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			left := buildTestExample(t, "value: "+tc.left)
-			right := buildTestExample(t, "value: "+tc.right)
-			changes := CompareExamples(left, right)
-			require.NotNil(t, changes)
-			require.Len(t, changes.GetAllChanges(), 1)
-			change := changes.Changes[0]
-			assert.Equal(t, v3.ValueLabel, change.Property)
-			assert.Equal(t, Modified, change.ChangeType)
-			assert.False(t, change.Breaking)
-			assert.Equal(t, tc.left+"\n", change.OriginalEncoded)
-			assert.Equal(t, tc.right+"\n", change.NewEncoded)
+func TestCompareExamples_StructuredValue(t *testing.T) {
+	for _, field := range []string{v3.ValueLabel, base.DataValueLabel} {
+		for _, tc := range []struct {
+			name, left, right string
+		}{
+			{"two members modified", "{id_1: 11, id_2: 21}", "{id_1: 10, id_2: 20}"},
+			{"member added", "{}", "{id: 1}"},
+			{"member removed", "{id: 1}", "{}"},
+			{"sequence reordered inside object", "{items: [1, 2]}", "{items: [2, 1]}"},
+			{"sequence item modified", "[1, 2]", "[1, 3]"},
+			{"sequence reordered", "[1, 2]", "[2, 1]"},
+			{"sequence item added", "[1, 2]", "[1, 2, 3]"},
+			{"object replaced by sequence", "{a: 1}", "[1]"},
+			{"sequence replaced by object", "[1]", "{a: 1}"},
+		} {
+			t.Run(field+" "+tc.name, func(t *testing.T) {
+				left := buildTestExample(t, field+": "+tc.left)
+				right := buildTestExample(t, field+": "+tc.right)
+				changes := CompareExamples(left, right)
+				require.NotNil(t, changes)
+				require.Len(t, changes.GetAllChanges(), 1)
+				change := changes.Changes[0]
+				assert.Equal(t, field, change.Property)
+				assert.Equal(t, Modified, change.ChangeType)
+				assert.False(t, change.Breaking)
+				assert.Equal(t, tc.left+"\n", change.OriginalEncoded)
+				assert.Equal(t, tc.right+"\n", change.NewEncoded)
+			})
+		}
+
+		t.Run(field+" members reordered", func(t *testing.T) {
+			left := buildTestExample(t, field+": {a: 1, b: 2}")
+			reordered := buildTestExample(t, field+": {b: 2, a: 1}")
+			assert.Nil(t, CompareExamples(left, reordered))
+		})
+
+		t.Run(field+" added and removed", func(t *testing.T) {
+			absent := buildTestExample(t, "summary: example")
+			present := buildTestExample(t, "summary: example\n"+field+": {}")
+			added := CompareExamples(absent, present).GetAllChanges()
+			require.Len(t, added, 1)
+			assert.Equal(t, field, added[0].Property)
+			assert.Equal(t, PropertyAdded, added[0].ChangeType)
+			assert.Equal(t, "{}\n", added[0].NewEncoded)
+			removed := CompareExamples(present, absent).GetAllChanges()
+			require.Len(t, removed, 1)
+			assert.Equal(t, field, removed[0].Property)
+			assert.Equal(t, PropertyRemoved, removed[0].ChangeType)
+			assert.Equal(t, "{}\n", removed[0].OriginalEncoded)
 		})
 	}
-
-	left := buildTestExample(t, "value: {a: 1, b: 2}")
-	reordered := buildTestExample(t, "value: {b: 2, a: 1}")
-	assert.Nil(t, CompareExamples(left, reordered))
-
-	absent := buildTestExample(t, "summary: example")
-	present := buildTestExample(t, "summary: example\nvalue: {}")
-	added := CompareExamples(absent, present).GetAllChanges()
-	require.Len(t, added, 1)
-	assert.Equal(t, PropertyAdded, added[0].ChangeType)
-	removed := CompareExamples(present, absent).GetAllChanges()
-	require.Len(t, removed, 1)
-	assert.Equal(t, PropertyRemoved, removed[0].ChangeType)
 }
 
 func TestCompareExamples_SummaryAdded(t *testing.T) {

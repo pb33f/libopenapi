@@ -2052,9 +2052,18 @@ func TestCompareSchemas_TypeArrayWithDescriptionChange(t *testing.T) {
 		{"reordered with alias", original, "[*text, number, 'null']", false},
 		{"narrowed", original, "[string, number]", true},
 		{"replaced", original, "[string, boolean, 'null']", true},
-		// Bare YAML null is distinct from the JSON Schema type name 'null'.
-		{"correct unquoted null", "[null, string, number]", original, true},
-		{"introduce unquoted null", original, "[null, string, number]", true},
+		// A bare YAML null is the type name 'null', the same way Schema.Hash reads it.
+		{"correct unquoted null", "[null, string, number]", original, false},
+		{"introduce unquoted null", original, "[null, string, number]", false},
+		{"reordered unquoted null", "[null, string, number]", "[string, number, null]", false},
+		{"reordered tilde null", "[~, string, number]", "[string, number, ~]", false},
+		// A single type means the same as a type array holding only that type.
+		{"single type to array", "string", "[string]", false},
+		{"array to single type", "[string]", "string", false},
+		{"array narrowed to single type", original, "string", true},
+		{"single type replaced", "string", "number", true},
+		{"duplicate member swapped", "[string, string, 'null']", "[string, 'null', 'null']", true},
+		{"member without a type name", "['', string]", "[string, '']", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			left := buildSchemaProxyFromYAML(t, prefix+"type: "+tc.left)
