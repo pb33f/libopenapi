@@ -20,6 +20,16 @@ func TestJSONValueIDs(t *testing.T) {
 	require.Zero(t, ids[6])
 }
 
+func TestParseBoundedRat(t *testing.T) {
+	value, ok := ParseBoundedRat("1.50")
+	require.True(t, ok)
+	require.Equal(t, "3/2", value.RatString())
+	for _, literal := range []string{"1e401", "1e-401", strings.Repeat("9", 1025), "one"} {
+		_, ok = ParseBoundedRat(literal)
+		require.False(t, ok, literal)
+	}
+}
+
 func TestCheckEnumForDuplicates_OversizedNumbers(t *testing.T) {
 	for _, tc := range []struct {
 		name  string

@@ -53,7 +53,7 @@ func checkSchemaKeys(n *yaml.Node) error {
 		for i := 0; i < len(n.Content); i += 2 {
 			key := n.Content[i]
 			if key.Kind != yaml.ScalarNode || key.Tag != "!!str" {
-				return fmt.Errorf("line %d: JSON object keys must be strings", key.Line)
+				return fmt.Errorf("line %d: JSON object keys must be strings (quote the key in YAML)", key.Line)
 			}
 			if line, ok := seen[key.Value]; ok {
 				return fmt.Errorf("line %d: mapping key %q already defined at line %d", key.Line, key.Value, line)

@@ -105,9 +105,12 @@ func TestRejectAmbiguousOrInvalidSchemaResources(t *testing.T) {
 		{"ambiguous anchor", `{"$defs":{"a":{"$anchor":"town"},"b":{"$anchor":"town"}}}`, "duplicate schema address"},
 		{"invalid pointer URI", `{"$ref":"bad%XY"}`, "invalid $ref"},
 		{"single schema", `{"not":17}`, "schema must be an object or boolean"},
-		{"schema map", `{"properties":true}`, "properties requires an object"},
-		{"non-string map key", "properties: {17: {}}", "JSON object keys must be strings"},
-		{"schema list", `{"allOf":{}}`, "allOf requires an array"},
+		{"schema map", `{"properties":true}`, "invalid.json: line 1: properties requires an object"},
+		{"non-string map key", "properties: {17: {}}", "invalid.json: line 1: JSON object keys must be strings (quote the key in YAML)"},
+		{"schema list", "{\n\"not\":{\n\"allOf\":{}}}", "invalid.json: line 3: allOf requires an array"},
+		{"API marker", `{"openapi":"3.1.0"}`, "invalid.json: conflicting openapi version marker"},
+		{"earlier draft definitions", `{"definitions":{}}`, "invalid.json:1: definitions belongs to an earlier draft; Draft 2020-12 uses $defs"},
+		{"earlier draft keyword below a property", "{\"properties\":{\"list\":{\n\"additionalItems\":false}}}", "invalid.json:2: additionalItems belongs to an earlier draft; Draft 2020-12 uses items after prefixItems"},
 		{"schema list operand", `{"allOf":[false,17]}`, "schema must be an object or boolean"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

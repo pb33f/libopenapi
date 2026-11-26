@@ -22,7 +22,7 @@ func TestDecodeSchemaNodeReadsOneDocument(t *testing.T) {
 		{"malformed JSON string", "{\"title\":\"\xff\"}", "invalid JSON schema document"},
 		{"duplicate escaped JSON key", "{\n \"properties\": {\n  \"name\": true,\n  \"na\\u006de\": false}}", `line 4: mapping key "name" already defined at line 3`},
 		{"duplicate inside YAML example", "examples:\n  - name: first\n    name: second\n", `line 3: mapping key "name" already defined at line 2`},
-		{"numeric YAML key", "properties:\n  42: false\n", "line 2: JSON object keys must be strings"},
+		{"numeric YAML key", "properties:\n  42: false\n", "line 2: JSON object keys must be strings (quote the key in YAML)"},
 		{"complex YAML key", "properties:\n  ? [a,b]\n  : false\n", "line 2: JSON object keys must be strings"},
 		{"YAML timestamp", "const: 2026-11-25\n", "line 1: unsupported JSON scalar !!timestamp"},
 		{"YAML alias", "$defs: &shape {}\nproperties:\n  x: *shape\n", "line 3: expected JSON-compatible YAML"},

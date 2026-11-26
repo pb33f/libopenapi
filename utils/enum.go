@@ -110,10 +110,7 @@ func (index *enumValueIndex) valueKey(node *yaml.Node) (string, bool) {
 			}
 			return "n" + value.String(), true
 		case "!!float":
-			if !enumFloatWithinLimits(node.Value) {
-				return "", false
-			}
-			value, ok := new(big.Rat).SetString(node.Value)
+			value, ok := ParseBoundedRat(node.Value)
 			if !ok {
 				return "", false
 			}
@@ -154,6 +151,15 @@ func (index *enumValueIndex) valueKey(node *yaml.Node) (string, bool) {
 		return "{" + strings.Join(parts, ",") + "}", true
 	}
 	return "", false
+}
+
+// ParseBoundedRat parses a number exactly. It declines a literal outside the
+// limits described by CheckEnumForDuplicates, which bound the cost of expansion.
+func ParseBoundedRat(value string) (*big.Rat, bool) {
+	if !enumFloatWithinLimits(value) {
+		return nil, false
+	}
+	return new(big.Rat).SetString(value)
 }
 
 func enumFloatWithinLimits(value string) bool {

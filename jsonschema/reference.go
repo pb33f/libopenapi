@@ -148,7 +148,11 @@ func (d *Document) resolve(address, authored string) (*yaml.Node, error) {
 		}
 	}
 	if d.schemas[target] == nil {
-		return nil, fmt.Errorf("no schema at %q in %s", fragment, d.sourceName(uri))
+		hint := ""
+		if strings.HasPrefix(fragment, "/definitions/") {
+			hint = " (Draft 2020-12 names this keyword $defs)"
+		}
+		return nil, fmt.Errorf("no schema at %q in %s%s", fragment, d.sourceName(uri), hint)
 	}
 	return target, nil
 }

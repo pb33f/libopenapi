@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"slices"
 	"strconv"
 	"strings"
@@ -22,6 +21,12 @@ import (
 
 // Compare uses the schema comparator on authored constraints. Each referenced
 // resource is compared once, independent of the number of references to it.
+//
+// rules holds explicit overrides only. Each rule it contains replaces the
+// verdict for that keyword in both directions, so merged defaults such as
+// GenerateDefaultBreakingRules would mark a widening edit as breaking. Pass nil
+// for the direction-aware defaults. A root replaced by a boolean, or the
+// reverse, has no keyword and no override.
 func Compare(left, right *Document, rules *wc.BreakingRulesConfig) (*wc.SchemaChanges, error) {
 	if left == nil || right == nil {
 		return nil, fmt.Errorf("both JSON Schema inputs are required")
@@ -124,7 +129,7 @@ func (c *comparison) resources() error {
 		// An embedded resource participates in its containing applicator,
 		// even when neither side references its address.
 		polarity := combinedPolarity(1, l.context|r.context)
-		if err := c.schema(l, r, l.Node, r.Node, "$", "type", polarity); err != nil {
+		if err := c.schema(l, r, l.Node, r.Node, "$", "schema", polarity); err != nil {
 			return err
 		}
 	}
@@ -225,16 +230,11 @@ func (c *comparison) schema(l, r *Resource, left, right *yaml.Node, path, keywor
 		start := len(c.changes)
 		breaking := keyword == "$ref" || a != nil
 		if exactNumber(keyword) && a != nil && b != nil {
-			x, ok := new(big.Rat).SetString(a.Value)
-			y, ok2 := new(big.Rat).SetString(b.Value)
-			if ok && ok2 && x.Cmp(y) == 0 {
+			if order, ok := numericOrder(a.Value, b.Value); ok && order == 0 {
 				continue
 			}
 		}
 		wc.CreateChange(&c.changes, kind, keyword, a, b, breaking, nil, nil)
-		if exactNumber(keyword) {
-			breaking = compatibility(c.changes[start], keyword)
-		}
 		direction := polarity
 		if impact, ok := validationChange(keyword, a, b, polarity); ok {
 			direction, breaking = 1, impact
@@ -520,16 +520,38 @@ func validationChange(keyword string, a, b *yaml.Node, polarity int) (breaking, 
 		if a == nil || b == nil {
 			return polarity == 0 || b != nil, true
 		}
-		x, ok1 := new(big.Rat).SetString(a.Value)
-		y, ok2 := new(big.Rat).SetString(b.Value)
+		x, ok1 := utils.ParseBoundedRat(a.Value)
+		y, ok2 := utils.ParseBoundedRat(b.Value)
 		breaking = !ok1 || !ok2 || y.Sign() == 0 || !x.Quo(x, y).IsInt()
+	case "minimum", "exclusiveMinimum", "minLength", "minItems", "minProperties", "minContains", "maximum", "exclusiveMaximum", "maxLength", "maxItems", "maxProperties", "maxContains":
+		if a == nil || b == nil {
+			breaking = b != nil
+			break
+		}
+		// An unknown order is breaking under any polarity.
+		order, ok := numericOrder(a.Value, b.Value)
+		if strings.HasPrefix(keyword, "max") || keyword == "exclusiveMaximum" {
+			order = -order
+		}
+		breaking = !ok || order > 0
 	default:
 		return false, false
 	}
 	return polarity == 0 || breaking, true
 }
 
-func childMembership(keyword string, whole, added bool, polarity int) bool {
+// numericOrder compares two authored numbers exactly and returns the sign of
+// b-a. It reports false for a literal beyond the exact-arithmetic limits.
+func numericOrder(a, b string) (int, bool) {
+	x, ok1 := utils.ParseBoundedRat(a)
+	y, ok2 := utils.ParseBoundedRat(b)
+	if !ok1 || !ok2 {
+		return 0, false
+	}
+	return y.Cmp(x), true
+}
+
+func (c *comparison) childMembership(keyword string, whole, added bool, polarity int) bool {
 	if keyword == "contentSchema" {
 		return false
 	}
@@ -544,8 +566,12 @@ func childMembership(keyword string, whole, added bool, polarity int) bool {
 		// Adding the first disjunction restricts the schema. Adding an
 		// alternative to an existing disjunction widens it.
 		return (whole == added) == (polarity > 0)
-	case "allOf", "dependentSchemas":
+	case "not", "propertyNames":
 		return added == (polarity > 0)
+	case "allOf", "dependentSchemas", "additionalProperties", "unevaluatedProperties", "unevaluatedItems", "items", "contains", "if", "then", "else":
+		// These also mark locations as evaluated. Changing one can make a
+		// surviving unevaluated keyword reject what it accepted before.
+		return c.right.unevaluated || added == (polarity > 0)
 	}
 	return true
 }
@@ -629,7 +655,7 @@ func (c *comparison) compareChildren(l, r *Resource, left, right *yaml.Node, pat
 			if owner := c.left.schemas[a]; owner != l && c.pairs[owner] == nil {
 				continue
 			}
-			breaking := childMembership(k.keyword, member(right, k.keyword) == nil, false, polarity)
+			breaking := c.childMembership(k.keyword, member(right, k.keyword) == nil, false, polarity)
 			c.membership(l, r, p, k.keyword, a, nil, breaking)
 			continue
 		}
@@ -642,7 +668,7 @@ func (c *comparison) compareChildren(l, r *Resource, left, right *yaml.Node, pat
 		}
 	}
 	for k, b := range newNodes {
-		breaking := childMembership(k.keyword, member(left, k.keyword) == nil, true, polarity)
+		breaking := c.childMembership(k.keyword, member(left, k.keyword) == nil, true, polarity)
 		if owner := c.right.schemas[b]; owner != r && !c.matched[owner] {
 			if breaking && !c.annotationOnly {
 				if c.appliedAdditions == nil {
@@ -745,22 +771,6 @@ func compatibility(ch *wc.Change, property string) bool {
 		return ch.ChangeType != wc.PropertyRemoved
 	case "$id", "$dynamicAnchor":
 		return ch.ChangeType != wc.PropertyAdded
-	case "minimum", "exclusiveMinimum", "minLength", "minItems", "minProperties", "minContains", "maximum", "exclusiveMaximum", "maxLength", "maxItems", "maxProperties", "maxContains":
-		if ch.ChangeType == wc.PropertyRemoved {
-			return false
-		}
-		if ch.ChangeType == wc.PropertyAdded {
-			return true
-		}
-		a, ok := new(big.Rat).SetString(ch.Original)
-		b, ok2 := new(big.Rat).SetString(ch.New)
-		if ok && ok2 {
-			sign := b.Cmp(a)
-			if strings.HasPrefix(property, "max") || property == "exclusiveMaximum" {
-				return sign < 0
-			}
-			return sign > 0
-		}
 	}
 	if rule := standaloneDefaults.GetRule(wc.CompSchema, property); rule != nil {
 		if value := operationRule(rule, ch.ChangeType); value != nil {
@@ -785,17 +795,14 @@ func operationRule(rule *wc.BreakingChangeRule, kind int) *bool {
 
 func (c *comparison) finish(ch *wc.Change, l, r *Resource, path, property string, polarity int, breaking bool) {
 	switch property {
-	case "description", "title", "$comment", "default", "examples", "readOnly", "writeOnly", "deprecated", "format", "contentMediaType", "contentEncoding":
+	case "$schema", "description", "title", "$comment", "default", "examples", "readOnly", "writeOnly", "deprecated", "format", "contentMediaType", "contentEncoding":
+		// Annotations never reject data. Neither does declaring the one supported dialect.
 		breaking = false
 	case "$id", "$anchor", "$dynamicAnchor":
 	default:
 		if polarity < 0 {
-			switch property {
-			case "required", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "minLength", "maxLength", "minContains", "maxContains", "minItems", "maxItems", "minProperties", "maxProperties":
-				breaking = !breaking
-			default:
-				breaking = true
-			}
+			// Only required inverts here. Bounds settle their direction in validationChange.
+			breaking = property != "required" || !breaking
 		} else if polarity == 0 {
 			breaking = true
 		}

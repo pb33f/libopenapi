@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 // Package jsonschema loads and compares authored Draft 2020-12 schema resources.
+//
+// Draft 2020-12 is the only supported dialect. A $dynamicRef that needs dynamic
+// scope resolution is an error. YAML input must be JSON-compatible, so anchors,
+// aliases and non-string keys are errors too.
 package jsonschema
 
 import (
@@ -24,15 +28,16 @@ import (
 const Dialect = "https://json-schema.org/draft/2020-12/schema"
 
 // ErrNotSchema identifies an input without a supported standalone schema declaration.
-var ErrNotSchema = errors.New("expected a Draft 2020-12 JSON Schema declaration (use --schema for an unmarked schema)")
+var ErrNotSchema = errors.New("expected a Draft 2020-12 JSON Schema declaration")
 
 // Source holds the physical document once, even when several resources share it.
 type Source struct {
-	relative string
-	Name     string
-	Data     []byte
-	Node     *yaml.Node
-	Index    *index.SpecIndex
+	relative   string
+	undeclared bool // the root has no $schema, so explicit mode chose the dialect
+	Name       string
+	Data       []byte
+	Node       *yaml.Node
+	Index      *index.SpecIndex
 }
 
 // Resource is a root schema or an embedded schema with its own base URI.
@@ -78,6 +83,7 @@ type Document struct {
 	schemas           map[*yaml.Node]*Resource
 	schemaPointers    map[*yaml.Node]string
 	hasAdverseContext bool
+	unevaluated       bool // a schema uses unevaluatedProperties or unevaluatedItems
 	config            *datamodel.DocumentConfiguration
 	base              *url.URL
 }
@@ -188,23 +194,24 @@ func (d *Document) sourceName(uri *url.URL) string {
 }
 
 func (d *Document) addSource(data []byte, uri *url.URL, explicit bool) (*Resource, error) {
+	name := d.sourceName(uri)
 	doc, err := datamodel.DecodeSchemaNode(data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", name, err)
 	}
 	root := doc.Content[0]
-	if !explicit && member(root, "$schema") == nil {
+	undeclared := member(root, "$schema") == nil
+	if undeclared && !explicit {
 		return nil, ErrNotSchema
 	}
 	for _, marker := range []string{"openapi", "swagger", "asyncapi"} {
 		if member(root, marker) != nil {
-			return nil, fmt.Errorf("conflicting %s version marker in JSON Schema", marker)
+			return nil, fmt.Errorf("%s: conflicting %s version marker in JSON Schema", name, marker)
 		}
 	}
 	if strings.EqualFold(path.Ext(uri.Path), ".json") && !json.Valid(data) {
-		return nil, fmt.Errorf("invalid JSON in %s", d.sourceName(uri))
+		return nil, fmt.Errorf("invalid JSON in %s", name)
 	}
-	name := d.sourceName(uri)
 	cfg := index.CreateClosedAPIIndexConfig()
 	cfg.SpecAbsolutePath, cfg.Rolodex = name, d.Rolodex
 	idx := index.NewSchemaIndex(doc, cfg)
@@ -214,7 +221,7 @@ func (d *Document) addSource(data []byte, uri *url.URL, explicit bool) (*Resourc
 			relative = filepath.ToSlash(rel)
 		}
 	}
-	source := &Source{Name: name, relative: relative, Data: data, Node: root, Index: idx}
+	source := &Source{Name: name, relative: relative, undeclared: undeclared, Data: data, Node: root, Index: idx}
 	d.Sources[name] = source
 	if len(d.Resources) == 0 {
 		d.Rolodex.SetRootNode(doc)
@@ -273,6 +280,16 @@ func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, p
 	if dialect := member(node, "$schema"); dialect != nil && strings.TrimSuffix(dialect.Value, "#") != Dialect {
 		return fmt.Errorf("%s:%d: unsupported JSON Schema dialect %q", source.Name, dialect.Line, dialect.Value)
 	}
+	if source.undeclared {
+		// Explicit mode chose the dialect. A keyword from an earlier draft
+		// would compare as an annotation and hide its edits.
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			key := node.Content[i]
+			if current := supersededKeywords[key.Value]; current != "" {
+				return fmt.Errorf("%s:%d: %s belongs to an earlier draft; Draft 2020-12 uses %s", source.Name, key.Line, key.Value, current)
+			}
+		}
+	}
 	if vocab := member(node, "$vocabulary"); vocab != nil {
 		if vocab.Kind != yaml.MappingNode {
 			return fmt.Errorf("%s:%d: $vocabulary must be an object", source.Name, vocab.Line)
@@ -320,7 +337,7 @@ func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, p
 				err = d.Rolodex.RegisterGlobalSchemaId(entry)
 			}
 			if err != nil {
-				return err
+				return fmt.Errorf("%s:%d: %w", source.Name, id.Line, err)
 			}
 			delete(d.addresses, base.String())
 		}
@@ -349,13 +366,31 @@ func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, p
 			d.References = append(d.References, Reference{From: node, Value: value.Value, address: target.String(), Keyword: keyword, context: evaluation})
 		}
 	}
-	return children(node, func(keyword, key string, child *yaml.Node) error {
+	nested := false
+	err := children(node, func(keyword, key string, child *yaml.Node) error {
+		d.unevaluated = d.unevaluated || keyword == "unevaluatedProperties" || keyword == "unevaluatedItems"
 		childPointer := pointer + "/" + escapePointer(keyword)
 		if childKind(keyword) != singleSchema {
 			childPointer += "/" + escapePointer(key)
 		}
-		return d.indexSchema(source, child, base, childPointer, keyword, r, evaluation.child(node, keyword))
+		err := d.indexSchema(source, child, base, childPointer, keyword, r, evaluation.child(node, keyword))
+		nested = nested || err != nil
+		return err
 	})
+	if err != nil && !nested {
+		// A malformed applicator is reported by line. Name the file it belongs to.
+		return fmt.Errorf("%s: %w", source.Name, err)
+	}
+	return err
+}
+
+// supersededKeywords maps keywords from earlier drafts to their Draft 2020-12 form.
+var supersededKeywords = map[string]string{
+	"definitions":      "$defs",
+	"dependencies":     "dependentRequired or dependentSchemas",
+	"additionalItems":  "items after prefixItems",
+	"$recursiveRef":    "$dynamicRef",
+	"$recursiveAnchor": "$dynamicAnchor",
 }
 
 func escapePointer(key string) string {

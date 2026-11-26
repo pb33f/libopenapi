@@ -23,7 +23,7 @@ func TestLoadInputBoundaries(t *testing.T) {
 		want     string
 	}{
 		{`{"$vocabulary":{"urn:unsupported":true}}`, true, "unsupported required vocabulary"},
-		{"{}", false, "--schema"}, {`{"$schema":"https://example.org/app"}`, false, "unsupported"},
+		{"{}", false, "expected a Draft 2020-12 JSON Schema declaration"}, {`{"$schema":"https://example.org/app"}`, false, "unsupported"},
 		{"null", true, "object or boolean"}, {"type: object\ntype: string", true, "already defined"},
 		{`{"openapi":"3.1.0","$schema":"https://json-schema.org/draft/2020-12/schema"}`, true, "conflicting"},
 		{`{"$defs":{"a":{"$id":"urn:money"},"b":{"$id":"urn:money"}}}`, true, "duplicate"},
@@ -44,7 +44,11 @@ func TestInvalidConstraintsFailBeforeComparison(t *testing.T) {
 		require.ErrorContains(t, err, "bad.yaml")
 	}
 	_, err := LoadCollection(map[string][]byte{"bad.json": []byte(`{"type":"invalid"}`)}, ".", nil)
-	require.ErrorContains(t, err, "bad.json")
+	var member *MemberError
+	require.ErrorAs(t, err, &member)
+	require.Equal(t, "bad.json", member.Name)
+	require.ErrorIs(t, err, member.Err)
+	require.True(t, strings.HasPrefix(err.Error(), "bad.json: "), err.Error())
 }
 
 func TestMetaValidationChecksDistinctPropertySchemasAndPreservesLiterals(t *testing.T) {

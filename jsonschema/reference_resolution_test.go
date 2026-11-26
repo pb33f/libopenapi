@@ -44,6 +44,7 @@ func TestReferencePointersAndSourceDiagnostics(t *testing.T) {
 	for _, tc := range []struct{ ref, want string }{
 		{"#/prefixItems/01", "no schema at"}, {"#/prefixItems/3", "no schema at"},
 		{"#/prefixItems/-1", "no schema at"}, {"#/prefixItems/not-index", "no schema at"},
+		{"#/definitions/price", "(Draft 2020-12 names this keyword $defs)"},
 		{"#absent", "unknown schema anchor"}, {"file://unrelated/share/a.json", "unsupported file URI host"},
 		{"child.json", "file references are disabled"}, {"https://schemas.example.test/dep.json", "remote references are disabled"},
 		{"urn:unknown", "no registered schema for"},
@@ -235,4 +236,27 @@ func TestCollectionRetrievalAliasCannotHideAnEmbeddedID(t *testing.T) {
 	require.ErrorContains(t, err, "duplicate schema address")
 	require.ErrorContains(t, err, "currency.json")
 	require.Nil(t, doc)
+}
+
+func TestDependencyDiagnosticsNameTheirOwnFile(t *testing.T) {
+	cfg := datamodel.NewDocumentConfiguration()
+	cfg.AllowFileReferences, cfg.BasePath = true, "."
+	cfg.LocalFS = fstest.MapFS{
+		"shape.json":  {Data: []byte("{\n\n\n\"properties\":[]}")},
+		"keys.yaml":   {Data: []byte("properties:\n  200: {}\n")},
+		"legacy.json": {Data: []byte("{\n\"definitions\":{}}")},
+	}
+	for file, want := range map[string]string{
+		"shape.json":  `order.json:1: resolve $ref "shape.json": shape.json: line 4: properties requires an object`,
+		"keys.yaml":   `order.json:1: resolve $ref "keys.yaml": keys.yaml: line 2: JSON object keys must be strings`,
+		"legacy.json": `order.json:1: resolve $ref "legacy.json": legacy.json:2: definitions belongs to an earlier draft`,
+	} {
+		doc, err := jsonschema.Load([]byte(`{"$ref":"`+file+`"}`), "order.json", cfg, true)
+		require.ErrorContains(t, err, want)
+		require.Nil(t, doc)
+	}
+	// A declared dialect keeps keywords from earlier drafts as annotations.
+	doc, err := jsonschema.Load([]byte(`{"$schema":"`+jsonschema.Dialect+`","definitions":{"price":{"type":"number"}},"dependencies":{}}`), "declared.json", nil, false)
+	require.NoError(t, err)
+	doc.Release()
 }

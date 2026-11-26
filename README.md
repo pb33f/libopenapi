@@ -106,6 +106,18 @@ and the directory for that snapshot. It registers each member before resolving
 references. Each change carries its resource ID, local JSONPath, and source
 locations. Releases and breaking-rule overrides work the same for either input.
 
+The third argument to `Compare` holds explicit overrides only. A rule replaces
+the verdict for its keyword in both directions, so pass `nil` for the
+direction-aware defaults and never the merged default rules.
+
+Draft 2020-12 is the only supported dialect. These inputs return an error:
+
+- a `$schema` that names another dialect
+- a `$dynamicRef` that needs dynamic scope resolution
+- a schema without `$schema` that uses a keyword from an earlier draft, such as
+  `definitions` or `dependencies`
+- YAML anchors, aliases, and keys that are not strings
+
 ### Generating TypeScript models
 
 `generator/typescript` renders the component schemas of an OpenAPI document as
