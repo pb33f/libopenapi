@@ -169,10 +169,15 @@ func (d *Document) resourceID(uri *url.URL) string {
 	return identity.String()
 }
 
-func (d *Document) sourceName(uri *url.URL) string {
+func withoutRetrievalCredentials(uri *url.URL) url.URL {
 	safe := *uri
 	safe.User = nil
 	safe.RawQuery = ""
+	return safe
+}
+
+func (d *Document) sourceName(uri *url.URL) string {
+	safe := withoutRetrievalCredentials(uri)
 	name := d.resourceID(&safe)
 	if uri.RawQuery != "" || uri.User != nil {
 		// Signed retrieval URLs must not leak credentials or collide in report source maps.
@@ -388,7 +393,11 @@ func children(node *yaml.Node, visit func(keyword, key string, child *yaml.Node)
 				return fmt.Errorf("line %d: %s requires an object", value.Line, keyword)
 			}
 			for j := 0; j < len(value.Content); j += 2 {
-				if err := visit(keyword, value.Content[j].Value, value.Content[j+1]); err != nil {
+				key := value.Content[j]
+				if key.Kind != yaml.ScalarNode || key.Tag != "!!str" {
+					return fmt.Errorf("line %d: schema keys must be strings", key.Line)
+				}
+				if err := visit(keyword, key.Value, value.Content[j+1]); err != nil {
 					return err
 				}
 			}

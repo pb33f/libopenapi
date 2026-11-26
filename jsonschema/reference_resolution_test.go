@@ -150,6 +150,41 @@ func TestRemoteResponsesAndTransportErrors(t *testing.T) {
 	require.Same(t, doc.Sources[server.URL+"/currency.json"].Node, doc.References[0].To)
 }
 
+func TestReferenceDiagnosticsPreserveLocationAndRedactCredentials(t *testing.T) {
+	const root = "https://schemas.example.test/order.yaml"
+	cause := errors.New("upstream unavailable")
+	for _, tc := range []struct{ keyword, ref, label string }{
+		{"$ref", "https://reader:private@types.example.test/money.json?signature=secret#currency", "https://types.example.test/money.json#currency"},
+		{"$ref", "types/money.json?signature=secret#currency", "types/money.json#currency"},
+		{"$ref", "../types/money.json#currency", "../types/money.json#currency"},
+		{"$dynamicRef", "https://reader:private@types.example.test/money.json?signature=secret#currency", "https://types.example.test/money.json#currency"},
+	} {
+		t.Run(tc.keyword+tc.label, func(t *testing.T) {
+			cfg := datamodel.NewDocumentConfiguration()
+			cfg.AllowRemoteReferences = true
+			cfg.RemoteURLHandler = func(location string) (*http.Response, error) {
+				if tc.keyword == "$dynamicRef" {
+					return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"$dynamicAnchor":"currency"}`))}, nil
+				}
+				return nil, &url.Error{Op: "Get", URL: location, Err: cause}
+			}
+			data := fmt.Sprintf("properties:\n  amount:\n    title: Amount\n    %s: %q\n", tc.keyword, tc.ref)
+			_, err := jsonschema.Load([]byte(data), root, cfg, true)
+			require.ErrorContains(t, err, root+":4:")
+			require.ErrorContains(t, err, fmt.Sprintf("%s %q", tc.keyword, tc.label))
+			require.NotContains(t, err.Error(), "reader")
+			require.NotContains(t, err.Error(), "private")
+			require.NotContains(t, err.Error(), "signature")
+			require.NotContains(t, err.Error(), "secret")
+			if tc.keyword == "$ref" {
+				require.ErrorIs(t, err, cause)
+			} else {
+				require.ErrorContains(t, err, "dynamic scope")
+			}
+		})
+	}
+}
+
 func TestCollectionResolvesExplicitAndOutsideAddresses(t *testing.T) {
 	dir := t.TempDir()
 	cfg := datamodel.NewDocumentConfiguration()

@@ -57,17 +57,28 @@ func nativeFilePath(u *url.URL, separator byte) string {
 	return p
 }
 
+// diagnosticTarget preserves the authored spelling of ordinary references.
+// indexSchema has already parsed the reference before resolution starts.
+func (ref Reference) diagnosticTarget() string {
+	uri, _ := url.Parse(ref.Value)
+	if uri.User == nil && uri.RawQuery == "" {
+		return ref.Value
+	}
+	safe := withoutRetrievalCredentials(uri)
+	return safe.String()
+}
+
 func (d *Document) resolveReferences() error {
 	for i := 0; i < len(d.References); i++ {
 		ref := d.References[i]
 		target, err := d.resolve(ref.address, ref.Value)
 		if err != nil {
-			return fmt.Errorf("%s:%d: resolve %s %q: %w", d.schemas[ref.From].Source.Name, ref.From.Line, ref.Keyword, ref.Value, err)
+			return fmt.Errorf("%s:%d: resolve %s %q: %w", d.schemas[ref.From].Source.Name, member(ref.From, ref.Keyword).Line, ref.Keyword, ref.diagnosticTarget(), err)
 		}
 		if ref.Keyword == "$dynamicRef" {
 			u, _ := url.Parse(ref.address)
 			if anchor := member(target, "$dynamicAnchor"); anchor != nil && u.Fragment == anchor.Value {
-				return fmt.Errorf("%s:%d: dynamic scope resolution for $dynamicRef %q is unsupported", d.schemas[ref.From].Source.Name, ref.From.Line, ref.Value)
+				return fmt.Errorf("%s:%d: dynamic scope resolution for $dynamicRef %q is unsupported", d.schemas[ref.From].Source.Name, member(ref.From, ref.Keyword).Line, ref.diagnosticTarget())
 			}
 		}
 		d.References[i].To = target
