@@ -6,6 +6,7 @@ package model
 import (
 	"context"
 	"iter"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -322,14 +323,15 @@ var jsonTypes = map[string]bool{
 // instanceTypes returns an upper bound of the JSON types a schema accepts. A reference is followed before anything
 // else, because OpenAPI 3.0 ignores the siblings of $ref, and in 3.1 they can only narrow the referenced schema.
 // It reports false when it cannot tell: a schema without a type, a type name that is not a JSON type, a boolean
-// schema, a reference that cannot be resolved, or a chain of references longer than maxReferenceDepth.
+// schema, a reference that cannot be resolved, or a cycle of references.
 func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
-	const maxReferenceDepth = 8
-	for range maxReferenceDepth {
+	followed := make([]*yaml.Node, 0, 8)
+	for {
 		node = utils.NodeAlias(node)
-		if node.Kind != yaml.MappingNode {
+		if node.Kind != yaml.MappingNode || slices.Contains(followed, node) {
 			return nil, false
 		}
+		followed = append(followed, node)
 		var declared *yaml.Node
 		ref := ""
 		nullable := false
@@ -385,7 +387,6 @@ func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
 		}
 		return types, true
 	}
-	return nil, false
 }
 
 // Other dialects may introduce applicators that the OpenAPI schema walk cannot follow.

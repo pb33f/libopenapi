@@ -18,7 +18,15 @@ func TestRequiredOneOfBranches(t *testing.T) {
 	const widget = "{$ref: '#/components/schemas/Widget'}"
 	const extra = `
     List: {type: array, items: {$ref: '#/components/schemas/Widget'}}
-    Page: {type: object, properties: {item: {$ref: '#/components/schemas/Widget'}}}`
+    Page: {type: object, properties: {item: {$ref: '#/components/schemas/Widget'}}}
+    Alias1: {$ref: '#/components/schemas/Alias2'}
+    Alias2: {$ref: '#/components/schemas/Alias3'}
+    Alias3: {$ref: '#/components/schemas/Alias4'}
+    Alias4: {$ref: '#/components/schemas/Alias5'}
+    Alias5: {$ref: '#/components/schemas/Alias6'}
+    Alias6: {$ref: '#/components/schemas/Alias7'}
+    Alias7: {$ref: '#/components/schemas/Alias8'}
+    Alias8: {type: string}`
 	for _, tc := range []struct {
 		name, schema string
 		breaking     bool
@@ -40,6 +48,8 @@ func TestRequiredOneOfBranches(t *testing.T) {
 		{"type that is a YAML null", "oneOf: [" + widget + ", {type: null}]", true},
 		// In OpenAPI 3.1 nullable has no effect, so the object branch does not accept null.
 		{"nullable in OpenAPI 3.1", "oneOf: [{type: object, nullable: true, properties: {item: " + widget + "}}, {type: 'null'}]", false},
+		// The length of a chain of references does not change the types its end accepts.
+		{"chain of eight references", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Alias1'}]", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			op := strings.Replace(usageResponseOnly, widget, "{"+tc.schema+"}", 1)
@@ -126,7 +136,9 @@ paths:
 components:
   schemas:
     Widget: {type: object}
-    Loop: {$ref: '#/components/schemas/Loop'}`
+    Loop: {$ref: '#/components/schemas/Loop'}
+    LoopA: {$ref: '#/components/schemas/LoopB'}
+    LoopB: {$ref: '#/components/schemas/LoopA'}`
 	var root yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
 	idx := index.NewSpecIndexWithConfig(&root, index.CreateClosedAPIIndexConfig())
@@ -153,6 +165,7 @@ func TestSchemaUsageOneOfBranches(t *testing.T) {
 		{"reference that cannot be resolved next to a type", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/Missing', type: string}]}", 0, false},
 		{"empty list of types", "{oneOf: [" + widget + ", {type: []}]}", sharedSchema, true},
 		{"reference cycle", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/Loop'}]}", sharedSchema, true},
+		{"reference cycle through two schemas", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/LoopA'}]}", sharedSchema, true},
 		{"empty list of types that is nullable", "{oneOf: [" + widget + ", {type: [], nullable: true}]}", sharedSchema, true},
 		{"reference to nothing", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/Missing'}]}", 0, false},
 	} {
