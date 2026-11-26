@@ -4,6 +4,7 @@
 package jsonschema
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -107,6 +108,26 @@ func TestSchemaNumberValidationKeepsYAMLPrecision(t *testing.T) {
 			require.Error(t, err)
 		}
 	}
+}
+
+func TestYAMLNumbersInSchemaAnnotations(t *testing.T) {
+	input := []byte("examples: [null, +0x20, 1_024, .25, -.75, 2., 1.e+2]")
+	doc, err := Load(input, "numbers.yaml", nil, true)
+	require.NoError(t, err)
+	defer doc.Release()
+
+	projected, err := doc.metaValue(doc.Root.Node, false, nil)
+	require.NoError(t, err)
+	require.Equal(t, []any{
+		nil, json.Number("32"), json.Number("1024"), json.Number("0.25"),
+		json.Number("-0.75"), json.Number("2.0"), json.Number("1.0e+2"),
+	}, projected.(map[string]any)["examples"])
+	require.Equal(t, input, doc.Root.Source.Data)
+}
+
+func TestNonFiniteYAMLNumberReportsAuthoredLine(t *testing.T) {
+	_, err := Load([]byte("examples:\n  - 12\n  - .inf\n"), "measurements.yaml", nil, true)
+	require.ErrorContains(t, err, `measurements.yaml: line 3: invalid JSON number ".inf"`)
 }
 
 func TestNativeFilePathsResolveThroughFileURIs(t *testing.T) {

@@ -27,6 +27,7 @@ func TestChange_MarshalJSON(t *testing.T) {
 	rebuilt := rinseAndRepeat(&change)
 	assert.Equal(t, "modified", rebuilt["changeText"])
 	assert.Equal(t, float64(1), rebuilt["change"])
+	assert.NotContains(t, rebuilt, "schemaResource")
 
 	change = Change{
 		ChangeType: ObjectAdded,
@@ -88,6 +89,22 @@ func TestChange_MarshalJSON(t *testing.T) {
 	}
 	rebuilt = rinseAndRepeat(&change)
 	assert.Equal(t, "difficult", rebuilt["path"])
+
+	change = Change{
+		SchemaResource: "urn:example:money",
+		Path:           "$.properties.currency.minLength",
+		Context: &ChangeContext{
+			OriginalDocument: "money.json",
+			ModifiedDocument: "shared/money.json",
+		},
+	}
+	rebuilt = rinseAndRepeat(&change)
+	assert.Equal(t, "urn:example:money", rebuilt["schemaResource"])
+	assert.Equal(t, "$.properties.currency.minLength", rebuilt["path"])
+	assert.Equal(t, map[string]any{
+		"originalDocument": "money.json",
+		"modifiedDocument": "shared/money.json",
+	}, rebuilt["context"])
 
 	// Test OriginalEncoded field
 	change = Change{
