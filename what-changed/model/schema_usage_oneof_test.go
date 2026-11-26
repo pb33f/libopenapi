@@ -36,6 +36,8 @@ func TestRequiredOneOfBranches(t *testing.T) {
 		{"type that is not a JSON type", "oneOf: [" + widget + ", {type: Object}]", true},
 		{"integer and number in one branch", "oneOf: [{type: [integer, number]}, " + widget + "]", false},
 		{"reference next to a type", "oneOf: [" + widget + ", {$ref: '#/components/schemas/Page', type: string}]", true},
+		// An unquoted null is not a type name: the schema model leaves the type unset, so the branch accepts anything.
+		{"type that is a YAML null", "oneOf: [" + widget + ", {type: null}]", true},
 		// In OpenAPI 3.1 nullable has no effect, so the object branch does not accept null.
 		{"nullable in OpenAPI 3.1", "oneOf: [{type: object, nullable: true, properties: {item: " + widget + "}}, {type: 'null'}]", false},
 	} {
@@ -76,6 +78,8 @@ func TestRequiredOneOfBranchesOpenAPI30(t *testing.T) {
 		{"nullable branches spelled TRUE", "oneOf: [{type: object, nullable: true, properties: {item: " + widget + "}}, {type: string, nullable: TRUE}]", true},
 		// A quoted 'true' is a string, which the schema model does not read as nullable.
 		{"nullable that is a string", "oneOf: [{type: object, nullable: true, properties: {item: " + widget + "}}, {type: string, nullable: 'true'}]", false},
+		// An empty list of types cannot be compared, and nullable does not change that.
+		{"nullable empty list of types", "oneOf: [" + widget + ", {type: [], nullable: true}]", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			op := strings.Replace(usageResponseOnly, widget, "{"+tc.schema+"}", 1)
@@ -149,6 +153,7 @@ func TestSchemaUsageOneOfBranches(t *testing.T) {
 		{"reference that cannot be resolved next to a type", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/Missing', type: string}]}", 0, false},
 		{"empty list of types", "{oneOf: [" + widget + ", {type: []}]}", sharedSchema, true},
 		{"reference cycle", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/Loop'}]}", sharedSchema, true},
+		{"empty list of types that is nullable", "{oneOf: [" + widget + ", {type: [], nullable: true}]}", sharedSchema, true},
 		{"reference to nothing", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/Missing'}]}", 0, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

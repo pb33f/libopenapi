@@ -356,13 +356,17 @@ func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
 			return nil, false
 		}
 		var names []string
-		switch declared.Kind {
-		case yaml.ScalarNode:
+		switch {
+		// The schema model only reads a single type from a YAML string, so `type: null` declares no type at all.
+		case utils.IsNodeStringValue(declared):
 			names = []string{declared.Value}
-		case yaml.SequenceNode:
+		case declared.Kind == yaml.SequenceNode:
 			for _, item := range declared.Content {
 				names = append(names, utils.NodeAlias(item).Value)
 			}
+		}
+		if len(names) == 0 {
+			return nil, false
 		}
 		// OpenAPI 3.0 adds null with nullable. In 3.1 nullable means nothing.
 		if nullable && w.nullable {
@@ -379,7 +383,7 @@ func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
 				types["integer"] = true
 			}
 		}
-		return types, len(types) > 0
+		return types, true
 	}
 	return nil, false
 }
