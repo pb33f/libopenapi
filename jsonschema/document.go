@@ -309,10 +309,11 @@ func (d *Document) indexSchema(source *Source, node *yaml.Node, base *url.URL, p
 		}
 		if id != nil {
 			entry := &index.SchemaIdEntry{Id: id.Value, ResolvedUri: base.String(), SchemaNode: node, Index: source.Index, DefinitionPath: "#" + pointer, Line: id.Line, Column: id.Column}
-			if err := source.Index.RegisterSchemaId(entry); err != nil {
-				return err
+			err := source.Index.RegisterSchemaId(entry)
+			if err == nil {
+				err = d.Rolodex.RegisterGlobalSchemaId(entry)
 			}
-			if err := d.Rolodex.RegisterGlobalSchemaId(entry); err != nil {
+			if err != nil {
 				return err
 			}
 			delete(d.addresses, base.String())
@@ -386,9 +387,6 @@ func children(node *yaml.Node, visit func(keyword, key string, child *yaml.Node)
 				return fmt.Errorf("line %d: %s requires an object", value.Line, keyword)
 			}
 			for j := 0; j < len(value.Content); j += 2 {
-				if value.Content[j].Tag != "!!str" {
-					return fmt.Errorf("line %d: schema keys must be strings", value.Content[j].Line)
-				}
 				if err := visit(keyword, value.Content[j].Value, value.Content[j+1]); err != nil {
 					return err
 				}

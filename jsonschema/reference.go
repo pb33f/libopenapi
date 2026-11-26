@@ -25,29 +25,36 @@ var anchorName = regexp.MustCompile(`^[A-Za-z_][-A-Za-z0-9._]*$`)
 
 // File URLs have a leading slash before a Windows drive; native file paths do not.
 func fileURL(filename string) *url.URL {
-	p := filepath.ToSlash(filename)
-	u := &url.URL{Scheme: "file", Path: p}
-	if runtime.GOOS == "windows" {
-		if strings.HasPrefix(p, "//") {
-			host, rest, _ := strings.Cut(p[2:], "/")
-			u.Host, u.Path = host, "/"+rest
-		} else if filepath.VolumeName(filename) != "" {
-			u.Path = "/" + p
-		}
+	return volumeFileURL(filepath.ToSlash(filename), filepath.ToSlash(filepath.VolumeName(filename)))
+}
+
+// volumeFileURL converts a slash-normalized native path and volume into a file URI.
+func volumeFileURL(filename, volume string) *url.URL {
+	u := &url.URL{Scheme: "file", Path: filename}
+	if strings.HasPrefix(volume, "//") {
+		host, rest, _ := strings.Cut(filename[2:], "/")
+		u.Host, u.Path = host, "/"+rest
+	} else if volume != "" {
+		u.Path = "/" + filename
 	}
 	return u
 }
 
 func filePath(u *url.URL) string {
+	return nativeFilePath(u, filepath.Separator)
+}
+
+func nativeFilePath(u *url.URL, separator byte) string {
 	p := u.Path
-	if runtime.GOOS == "windows" {
+	if separator == '\\' {
 		if u.Host != "" && u.Host != "localhost" {
 			p = "//" + u.Host + p
 		} else if len(p) >= 3 && p[0] == '/' && p[2] == ':' {
 			p = p[1:]
 		}
+		return strings.ReplaceAll(p, "/", "\\")
 	}
-	return filepath.FromSlash(p)
+	return p
 }
 
 func (d *Document) resolveReferences() error {
