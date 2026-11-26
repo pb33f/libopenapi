@@ -326,7 +326,8 @@ func (w *usageWalker) discriminatorTarget(value *yaml.Node, dir schemaDirection)
 		ref = "#/components/schemas/" + ref
 	}
 	schema := w.localTarget(ref)
-	if schema == nil {
+	// A pointer can lead to a value that cannot be a schema, such as a string. A boolean schema has nothing to walk.
+	if schema == nil || (utils.NodeAlias(schema).Kind != yaml.MappingNode && !utils.IsNodeBoolValue(schema)) {
 		w.unknown = true
 		return
 	}

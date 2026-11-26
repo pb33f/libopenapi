@@ -117,6 +117,43 @@ components:
 	}
 }
 
+func TestRequiredDiscriminatorTargetThatIsNotASchema(t *testing.T) {
+	// Dog is only reachable through the discriminator that a response uses. A pointer to a value that cannot be a
+	// schema cannot be followed, so the usage is unknown. A boolean schema can be a target.
+	const spec = `openapi: VERSION
+info: {title: Direction, version: 1.0.0}
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Pet'}
+components:
+  schemas:
+    Pet:
+      type: object
+      discriminator: DISCRIMINATOR
+    Dog: {type: object, required: [kind], properties: {kind: {type: string}, name: {type: string}}}
+    Anything: true`
+	for _, tc := range []struct {
+		name, version, discriminator string
+		breaking                     bool
+	}{
+		{"mapping to a string", "3.1.0", "{propertyName: kind, mapping: {dog: Dog, title: '#/info/title'}}", true},
+		{"default mapping to a string", "3.2.0", "{propertyName: kind, mapping: {dog: Dog}, defaultMapping: '#/info/title'}", true},
+		{"mapping to a boolean schema", "3.1.0", "{propertyName: kind, mapping: {dog: Dog, any: Anything}}", false},
+		{"default mapping to a boolean schema", "3.2.0", "{propertyName: kind, mapping: {dog: Dog}, defaultMapping: '#/components/schemas/Anything'}", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			old := strings.NewReplacer("VERSION", tc.version, "DISCRIMINATOR", tc.discriminator).Replace(spec)
+			requireEntryBreaking(t, old, strings.Replace(old, "required: [kind]", "required: [kind, name]", 1), tc.breaking)
+		})
+	}
+}
+
 func TestRequiredDiscriminatorMappingToAnInlineSchema(t *testing.T) {
 	// The request discriminator maps to the inline response schema, so a request can use it too.
 	const spec = `openapi: 3.1.0
