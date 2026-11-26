@@ -116,29 +116,29 @@ func (c *comparison) resources() error {
 		if c.inline[l] {
 			continue
 		}
-		if err := c.compareResource(l, pairs[l]); err != nil {
+		r := pairs[l]
+		if r == nil {
+			c.resourceMembership(l, nil)
+			continue
+		}
+		// An embedded resource participates in its containing applicator,
+		// even when neither side references its address.
+		polarity := combinedPolarity(1, l.context|r.context)
+		if err := c.schema(l, r, l.Node, r.Node, "$", "type", polarity); err != nil {
 			return err
 		}
 	}
 	for _, r := range c.right.Resources {
 		if !used[r] && !c.inline[r] {
-			if err := c.compareResource(nil, r); err != nil {
-				return err
-			}
+			c.resourceMembership(nil, r)
 		}
 	}
 	c.compareReferences()
 	return nil
 }
 
-func (c *comparison) compareResource(l, r *Resource) error {
-	if l == nil || r == nil {
-		c.membership(l, r, "$", "schema", nil, nil, l != nil || c.appliedAdditions[r])
-		return nil
-	}
-	// Embedded resources have an independent address and also participate
-	// in their containing applicator, even when neither input has references.
-	return c.schema(l, r, l.Node, r.Node, "$", "type", combinedPolarity(1, l.context|r.context))
+func (c *comparison) resourceMembership(l, r *Resource) {
+	c.membership(l, r, "$", "schema", nil, nil, l != nil || c.appliedAdditions[r])
 }
 
 func (c *comparison) schema(l, r *Resource, left, right *yaml.Node, path, keyword string, polarity int) error {
@@ -191,10 +191,6 @@ func (c *comparison) schema(l, r *Resource, left, right *yaml.Node, path, keywor
 		}
 		for _, ch := range diff.GetAllChanges() {
 			property := ch.Property
-			if property == "schemaDialect" {
-				property = "$schema"
-				ch.Property = property
-			}
 			editPath := PropertyPath(path, property)
 			a, b := member(left, property), member(right, property)
 			if dependencies[ch] {
@@ -325,11 +321,12 @@ func constraintProxy(n *yaml.Node, r *Resource) (*base.SchemaProxy, error) {
 		}
 	}
 	var proxy base.SchemaProxy
-	if err := proxy.Build(context.Background(), nil, &view, r.Source.Index); err != nil {
-		return nil, err
+	err := proxy.Build(context.Background(), nil, &view, r.Source.Index)
+	if err == nil && proxy.Schema() == nil {
+		err = proxy.GetBuildError()
 	}
-	if proxy.Schema() == nil {
-		return nil, fmt.Errorf("%s:%d: %w", r.Source.Name, n.Line, proxy.GetBuildError())
+	if err != nil {
+		return nil, fmt.Errorf("%s:%d: %w", r.Source.Name, n.Line, err)
 	}
 	return &proxy, nil
 }
@@ -787,12 +784,8 @@ func (c *comparison) finish(ch *wc.Change, l, r *Resource, path, property string
 	default:
 		if polarity < 0 {
 			switch property {
-			case "type", "required", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "minLength", "maxLength", "minContains", "maxContains", "minItems", "maxItems", "minProperties", "maxProperties":
-				if property == "type" && ch.Property != "schema" {
-					breaking = true
-				} else {
-					breaking = !breaking
-				}
+			case "required", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "minLength", "maxLength", "minContains", "maxContains", "minItems", "maxItems", "minProperties", "maxProperties":
+				breaking = !breaking
 			default:
 				breaking = true
 			}
