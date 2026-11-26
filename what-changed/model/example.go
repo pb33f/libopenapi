@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/utils"
 )
 
 // ExampleChanges represent changes to an Example object, part of an OpenAPI specification.
@@ -78,24 +77,20 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 			v3.DescriptionLabel, &changes, l, r),
 	)
 
-	// Value
-	if utils.IsNodeMap(l.Value.ValueNode) && utils.IsNodeMap(r.Value.ValueNode) {
-		CheckForModificationWithEncoding(l.Value.ValueNode, r.Value.ValueNode, v3.ValueLabel,
-			&changes, BreakingModified(CompExample, PropValue), l.Value.Value, r.Value.Value)
-	} else {
-		props = append(props, NewPropertyCheck(CompExample, PropValue,
+	// Value and DataValue hold any YAML shape, so they are checked with encoding.
+	CheckPropertiesWithEncoding([]*PropertyCheck{
+		NewPropertyCheck(CompExample, PropValue,
 			l.Value.ValueNode, r.Value.ValueNode,
-			v3.ValueLabel, &changes, l, r))
-	}
+			v3.ValueLabel, &changes, l, r),
+		NewPropertyCheck(CompExample, PropDataValue,
+			l.DataValue.ValueNode, r.DataValue.ValueNode,
+			base.DataValueLabel, &changes, l, r),
+	})
+
 	// ExternalValue
 	props = append(props, NewPropertyCheck(CompExample, PropExternalValue,
 		l.ExternalValue.ValueNode, r.ExternalValue.ValueNode,
 		v3.ExternalValue, &changes, l, r))
-
-	// DataValue (OpenAPI 3.2+)
-	props = append(props, NewPropertyCheck(CompExample, PropDataValue,
-		l.DataValue.ValueNode, r.DataValue.ValueNode,
-		base.DataValueLabel, &changes, l, r))
 
 	// SerializedValue (OpenAPI 3.2+)
 	props = append(props, NewPropertyCheck(CompExample, PropSerializedValue,

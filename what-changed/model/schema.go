@@ -857,7 +857,7 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 		if rSchema != nil && rSchema.Type.ValueNode != nil {
 			rnv = rSchema.Type.ValueNode
 		}
-		if !equalSchemaTypeArrays(lnv, rnv) {
+		if !equalSchemaTypes(lnv, rnv) {
 			addCheck(lnv, rnv, v3.TypeLabel, PropType)
 		}
 		lnv = nil
@@ -1538,31 +1538,38 @@ func (c *schemaComparison) checkSchemaPropertyChanges(
 	}
 }
 
-// JSON Schema type arrays list the allowed types in any order.
-func equalSchemaTypeArrays(left, right *yaml.Node) bool {
+// equalSchemaTypes reports whether two type nodes allow the same types, the way Schema.Hash reads them:
+// order is ignored, a bare YAML null is the type name 'null', and a single type equals a one entry array.
+func equalSchemaTypes(left, right *yaml.Node) bool {
 	left, right = utils.NodeAlias(left), utils.NodeAlias(right)
-	if left == nil || right == nil || left.Kind != yaml.SequenceNode || right.Kind != yaml.SequenceNode {
+	if left == nil || right == nil || (left.Kind != yaml.SequenceNode && right.Kind != yaml.SequenceNode) {
 		return false
 	}
-	if len(left.Content) != len(right.Content) {
+	lt, lok := schemaTypeNames(left)
+	rt, rok := schemaTypeNames(right)
+	if !lok || !rok || len(lt) != len(rt) {
 		return false
 	}
-	counts := make(map[string]int, len(left.Content))
-	for _, item := range left.Content {
-		item = utils.NodeAlias(item)
-		if item == nil || item.Kind != yaml.ScalarNode || item.Tag != "!!str" {
-			return false
-		}
-		counts[item.Value]++
+	slices.Sort(lt)
+	slices.Sort(rt)
+	return slices.Equal(lt, rt)
+}
+
+// schemaTypeNames returns the type names held by a type node, which is a single type or an array of them.
+func schemaTypeNames(node *yaml.Node) ([]string, bool) {
+	items := []*yaml.Node{node}
+	if node.Kind == yaml.SequenceNode {
+		items = node.Content
 	}
-	for _, item := range right.Content {
-		item = utils.NodeAlias(item)
-		if item == nil || item.Kind != yaml.ScalarNode || item.Tag != "!!str" || counts[item.Value] == 0 {
-			return false
+	names := make([]string, 0, len(items))
+	for _, item := range items {
+		name, ok := extractScalarTypeName(utils.NodeAlias(item))
+		if !ok {
+			return nil, false
 		}
-		counts[item.Value]--
+		names = append(names, name)
 	}
-	return true
+	return names, true
 }
 
 func schemasUseEquivalentSimpleScalarUnion(l, r *base.SchemaProxy) bool {
