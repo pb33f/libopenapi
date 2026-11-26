@@ -138,7 +138,8 @@ func retrievalURI(source string, config *datamodel.DocumentConfiguration) (*url.
 		base := *config.BaseURL
 		base.Path = strings.TrimSuffix(base.Path, "/") + "/"
 		filename := filepath.Base(source)
-		if err == nil && original.IsAbs() {
+		// A drive path or a Unix filename with a colon can parse as a URI scheme.
+		if err == nil && original.IsAbs() && original.Opaque == "" && !filepath.IsAbs(source) {
 			filename = path.Base(original.Path)
 		}
 		return base.ResolveReference(&url.URL{Path: filename}), nil

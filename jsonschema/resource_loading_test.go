@@ -72,13 +72,22 @@ func TestSchemaLabelWithoutBasename(t *testing.T) {
 func TestConfiguredRetrievalBaseAndFilename(t *testing.T) {
 	base, err := url.Parse("https://schemas.example.test/releases")
 	require.NoError(t, err)
-	for _, source := range []string{"local/overridden.json", "https://old.example.test/files/overridden.json?signature=old"} {
+	type sourceFile struct{ source, filename string }
+	files := []sourceFile{
+		{"local/overridden.json", "overridden.json"},
+		{filepath.Join(t.TempDir(), "overridden.json"), "overridden.json"},
+		{"https://old.example.test/files/overridden.json?signature=old", "overridden.json"},
+	}
+	if runtime.GOOS != "windows" {
+		files = append(files, sourceFile{"catalog:v2.json", "catalog:v2.json"})
+	}
+	for _, file := range files {
 		cfg := datamodel.NewDocumentConfiguration()
-		cfg.SpecFilePath, cfg.BaseURL = source, base
+		cfg.SpecFilePath, cfg.BaseURL = file.source, base
 		doc, err := jsonschema.Load([]byte(`{"type":"string"}`), "order.yml", cfg, true)
 		require.NoError(t, err)
-		require.Equal(t, "overridden.json", doc.Root.ID)
-		require.Equal(t, "https://schemas.example.test/releases/overridden.json", doc.Root.Source.Name)
+		require.Equal(t, file.filename, doc.Root.ID)
+		require.Equal(t, "https://schemas.example.test/releases/"+file.filename, doc.Root.Source.Name)
 		require.Equal(t, doc.Root.Source.Name, doc.Root.Source.Index.GetSpecAbsolutePath())
 		doc.Release()
 	}
