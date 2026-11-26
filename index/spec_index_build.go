@@ -47,6 +47,18 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 	return NewSpecIndexWithConfigAndContext(context.Background(), rootNode, config)
 }
 
+// NewSchemaIndex retains a standalone schema source. Its loader registers only
+// schema-bearing positions, since arbitrary instance data can also contain $ref.
+func NewSchemaIndex(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
+	idx := NewSpecIndexWithConfig(nil, config)
+	idx.root = rootNode
+	if rootNode != nil && (rootNode.Kind != yaml.DocumentNode || len(rootNode.Content) > 0) {
+		idx.nodeMapCompleted = make(chan struct{})
+		idx.MapNodes(rootNode)
+	}
+	return idx
+}
+
 // NewSpecIndex creates a new SpecIndex with default configuration from the given root YAML node.
 func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index := new(SpecIndex)

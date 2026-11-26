@@ -80,6 +80,44 @@ See all the documentation at https://pb33f.io/libopenapi/
 - [About libopenapi](https://pb33f.io/libopenapi/about/)
 - [Migrating: breaking API changes by version](MIGRATING.md)
 
+### Comparing standalone JSON Schemas
+
+Use the `jsonschema` package to compare Draft 2020-12 schemas. Pass the source
+name so relative references resolve against the correct file. Pass `true` to
+`Load` to select this dialect for an unmarked schema or a boolean root.
+
+```go
+before, err := jsonschema.Load(original, "before/customer.json", nil, true)
+if err != nil {
+    return err
+}
+defer before.Release()
+after, err := jsonschema.Load(modified, "after/customer.json", nil, true)
+if err != nil {
+    return err
+}
+defer after.Release()
+changes, err := jsonschema.Compare(before, after, nil)
+```
+
+`Compare` returns a nil report for equal schemas. For a collection, use
+`jsonschema.LoadCollection` with a map of relative filenames to source bytes
+and the directory for that snapshot. It registers each member before resolving
+references. Each change carries its resource ID, local JSONPath, and source
+locations. Releases and breaking-rule overrides work the same for either input.
+
+The third argument to `Compare` holds explicit overrides only. A rule replaces
+the verdict for its keyword in both directions, so pass `nil` for the
+direction-aware defaults and never the merged default rules.
+
+Draft 2020-12 is the only supported dialect. These inputs return an error:
+
+- a `$schema` that names another dialect
+- a `$dynamicRef` that needs dynamic scope resolution
+- a schema without `$schema` that uses a keyword from an earlier draft, such as
+  `definitions` or `dependencies`
+- YAML anchors, aliases, and keys that are not strings
+
 ### Generating TypeScript models
 
 `generator/typescript` renders the component schemas of an OpenAPI document as

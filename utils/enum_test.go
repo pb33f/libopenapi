@@ -8,6 +8,28 @@ import (
 	"github.com/pb33f/testify/require"
 )
 
+func TestJSONValueIDs(t *testing.T) {
+	var doc yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(`[1,"1",1.0,{"a":1,"b":2},{"b":2,"a":1},null]`), &doc))
+	values := doc.Content[0].Content
+	ids := JSONValueIDs(append(values, nil))
+	require.Equal(t, ids[0], ids[2])
+	require.NotEqual(t, ids[0], ids[1])
+	require.Equal(t, ids[3], ids[4])
+	require.NotZero(t, ids[5])
+	require.Zero(t, ids[6])
+}
+
+func TestParseBoundedRat(t *testing.T) {
+	value, ok := ParseBoundedRat("1.50")
+	require.True(t, ok)
+	require.Equal(t, "3/2", value.RatString())
+	for _, literal := range []string{"1e401", "1e-401", strings.Repeat("9", 1025), "one"} {
+		_, ok = ParseBoundedRat(literal)
+		require.False(t, ok, literal)
+	}
+}
+
 func TestCheckEnumForDuplicates_OversizedNumbers(t *testing.T) {
 	for _, tc := range []struct {
 		name  string

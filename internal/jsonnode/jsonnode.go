@@ -14,8 +14,10 @@
 package jsonnode
 
 import (
+	"bytes"
 	"regexp"
 	"strconv"
+	"unicode/utf16"
 	"unicode/utf8"
 
 	"github.com/pb33f/go-yaml"
@@ -37,10 +39,11 @@ const (
 var yamlStyleFloat = regexp.MustCompile(`^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$`)
 
 type parser struct {
-	data []byte
-	pos  int
-	line int // 1-based line of data[pos]
-	col  int // 1-based column of data[pos], counted in characters as yaml counts them
+	jsonSyntax bool // accept JSON forms that YAML reads differently
+	data       []byte
+	pos        int
+	line       int // 1-based line of data[pos]
+	col        int // 1-based column of data[pos], counted in characters as yaml counts them
 
 	depth   int
 	nodes   []yaml.Node  // slab the tree's nodes are allocated from
@@ -63,8 +66,18 @@ func Unmarshal(data []byte, out *yaml.Node) error {
 // Parse returns the yaml document node yaml.Unmarshal produces for the JSON document in data, and true.
 // It returns false when data is not a JSON object whose yaml parse it reproduces exactly.
 func Parse(data []byte) (*yaml.Node, bool) {
-	p := parser{data: data, line: 1, col: 1}
-	if !p.skipSpace(false) || p.pos >= len(data) || data[p.pos] != '{' {
+	return parse(data, false)
+}
+
+// ParseJSON builds a tree directly from authored JSON, including boolean roots,
+// surrogate pairs, and JSON whitespace. Coordinates refer to the original bytes.
+func ParseJSON(data []byte) (*yaml.Node, bool) {
+	return parse(data, true)
+}
+
+func parse(data []byte, jsonSyntax bool) (*yaml.Node, bool) {
+	p := parser{data: data, line: 1, col: 1, jsonSyntax: jsonSyntax}
+	if !p.skipSpace(false) || p.pos >= len(data) || (!jsonSyntax && data[p.pos] != '{') {
 		return nil, false
 	}
 	p.strs = make(map[string]string, 256)
@@ -117,7 +130,7 @@ func (p *parser) skipSpace(inCollection bool) bool {
 			p.pos++
 			p.col++
 		case '\t':
-			if !inCollection {
+			if !inCollection && !p.jsonSyntax {
 				return false
 			}
 			p.pos++
@@ -128,10 +141,14 @@ func (p *parser) skipSpace(inCollection bool) bool {
 			p.col = 1
 		case '\r':
 			// yaml reads CR LF as one line break; a lone CR is declined.
-			if p.pos+1 >= len(p.data) || p.data[p.pos+1] != '\n' {
+			crlf := p.pos+1 < len(p.data) && p.data[p.pos+1] == '\n'
+			if !crlf && !p.jsonSyntax {
 				return false
 			}
-			p.pos += 2
+			p.pos++
+			if crlf {
+				p.pos++
+			}
 			p.line++
 			p.col = 1
 		default:
@@ -166,7 +183,7 @@ func (p *parser) parseValue() (*yaml.Node, bool) {
 
 func (p *parser) parseCollection(kind yaml.Kind, tag string, closer byte) (*yaml.Node, bool) {
 	p.depth++
-	if p.depth > maxDepth {
+	if p.depth > maxDepth && (!p.jsonSyntax || p.depth > 10000) {
 		return nil, false
 	}
 	node := p.newNode(kind, yaml.FlowStyle, tag)
@@ -193,7 +210,7 @@ func (p *parser) parseCollection(kind yaml.Kind, tag string, closer byte) (*yaml
 				return nil, false
 			}
 			// yaml only pairs a key with a colon on the same line.
-			if p.pos >= len(p.data) || p.data[p.pos] != ':' || p.line != keyLine {
+			if p.pos >= len(p.data) || p.data[p.pos] != ':' || (!p.jsonSyntax && p.line != keyLine) {
 				return nil, false
 			}
 			p.pos++
@@ -272,7 +289,16 @@ func (p *parser) parseNumber() (*yaml.Node, bool) {
 		i = skipDigits(p.data, i)
 	}
 	value := p.intern(p.data[start:i])
-	node := p.newNode(yaml.ScalarNode, 0, numberTag(value))
+	var tag string
+	if p.jsonSyntax {
+		tag = "!!int"
+		if bytes.IndexAny(p.data[start:i], ".eE") >= 0 {
+			tag = "!!float"
+		}
+	} else {
+		tag = numberTag(value)
+	}
+	node := p.newNode(yaml.ScalarNode, 0, tag)
 	node.Value = value
 	p.col += i - start
 	p.pos = i
@@ -337,7 +363,7 @@ func (p *parser) parseString() (*yaml.Node, bool) {
 			if !p.decodeEscape() {
 				return nil, false
 			}
-		case c >= 0x20 && c < 0x7F:
+		case c >= 0x20 && (c < 0x7F || p.jsonSyntax && c == 0x7F):
 			if escaped {
 				p.buf = append(p.buf, c)
 			}
@@ -348,7 +374,7 @@ func (p *parser) parseString() (*yaml.Node, bool) {
 			return nil, false
 		default:
 			r, size := utf8.DecodeRune(p.data[p.pos:])
-			if !plainRune(r, size) {
+			if !plainRune(r, size) && (!p.jsonSyntax || size == 1) {
 				return nil, false
 			}
 			if escaped {
@@ -413,9 +439,22 @@ func (p *parser) decodeEscape() bool {
 			}
 			code = code<<4 | d
 		}
-		// yaml rejects an escaped surrogate; the caller's yaml parse reports it.
-		if code >= 0xD800 && code <= 0xDFFF {
-			return false
+		if utf16.IsSurrogate(code) {
+			if !p.jsonSyntax {
+				return false
+			}
+			second := p.pos + 6
+			decoded := utf8.RuneError
+			if second+6 <= len(p.data) && p.data[second] == '\\' && p.data[second+1] == 'u' {
+				if low, err := strconv.ParseUint(string(p.data[second+2:second+6]), 16, 16); err == nil {
+					decoded = utf16.DecodeRune(code, rune(low))
+				}
+			}
+			if decoded != utf8.RuneError {
+				p.pos += 6
+				p.col += 6
+			}
+			code = decoded
 		}
 		p.buf = utf8.AppendRune(p.buf, code)
 		p.pos += 6

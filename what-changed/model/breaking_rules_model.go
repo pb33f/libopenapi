@@ -150,6 +150,12 @@ type HeaderRules struct {
 
 // SchemaRules defines breaking rules for the Schema object properties.
 type SchemaRules struct {
+	Anchor                *BreakingChangeRule `json:"$anchor,omitempty" yaml:"$anchor,omitempty"`
+	Defs                  *BreakingChangeRule `json:"$defs,omitempty" yaml:"$defs,omitempty"`
+	PatternProperties     *BreakingChangeRule `json:"patternProperties,omitempty" yaml:"patternProperties,omitempty"`
+	DependentSchemas      *BreakingChangeRule `json:"dependentSchemas,omitempty" yaml:"dependentSchemas,omitempty"`
+	MinContains           *BreakingChangeRule `json:"minContains,omitempty" yaml:"minContains,omitempty"`
+	MaxContains           *BreakingChangeRule `json:"maxContains,omitempty" yaml:"maxContains,omitempty"`
 	Ref                   *BreakingChangeRule `json:"$ref,omitempty" yaml:"$ref,omitempty"`
 	Type                  *BreakingChangeRule `json:"type,omitempty" yaml:"type,omitempty"`
 	Title                 *BreakingChangeRule `json:"title,omitempty" yaml:"title,omitempty"`

@@ -17,6 +17,7 @@ This repo is a library, not an app. The root package exposes the public entry po
 | `datamodel/` | Spec parsing/version detection, schemas, and `DocumentConfiguration` |
 | `bundler/` | Inline and composed bundling, ref rewrite/composition, origin tracking |
 | `what-changed/` | Unified diff engine for OAS2 and OAS3+, plus breaking-change rule config/report helpers |
+| `jsonschema/` | Native Draft 2020-12 documents and collections, resource matching, and authored changes from the shared schema comparator |
 | `overlay/` | OpenAPI Overlay application engine |
 | `arazzo/` | Arazzo parsing, resolution, validation, and workflow execution engine |
 | `renderer/` | Schema/mock sample generation |

@@ -11,6 +11,7 @@ import (
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 const (
@@ -545,6 +546,19 @@ func TestNormalizeJSONForYAMLParser_NoAllocation(t *testing.T) {
 
 // TestExtractSpecInfo_JSON_EscapedSlashes tests issue #479
 // JSON files containing \/ (escaped forward slash) should parse correctly
+func TestDecodeSchemaNodePreservesJSONColumns(t *testing.T) {
+	for _, value := range []string{`"a\/b"`, `"\uD83D\uDE00"`, `"🙂"`, `"\uD800"`, `"line\nend"`} {
+		input := `{"description":` + value + `,"minimum":2}`
+		doc, err := DecodeSchemaNode([]byte(input))
+		require.NoError(t, err)
+		require.Equal(t, len([]rune(input))-1, doc.Content[0].Content[3].Column)
+	}
+	for _, input := range []string{"\ttrue", "{\"minimum\"\n:\t1e900}", "{\r\"maximum\":5}"} {
+		_, err := DecodeSchemaNode([]byte(input))
+		require.NoError(t, err)
+	}
+}
+
 func TestExtractSpecInfo_JSON_EscapedSlashes(t *testing.T) {
 	// Exact test case from issue #479
 	jsonWithEscapedSlash := `{"openapi":"3.0.0","info":{"title":"Escaped Slash Test","description":"This spec contains escaped forward slashes (\\/) that cause parsing issues","version":"1.0.0"},"paths":{"\/test":{"get":{"summary":"Test endpoint with escaped slashes","description":"The path \/test\/ contains escaped forward slashes","responses":{"200":{"description":"OK","content":{"application\/json":{"schema":{"type":"object","properties":{"url":{"type":"string","example":"https:\/\/example.com\/api\/test"},"path":{"type":"string","example":"\/users\/{id}\/profile"}}}}}}}}}}}`

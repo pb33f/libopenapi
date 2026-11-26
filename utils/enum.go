@@ -15,6 +15,22 @@ type enumValueIndex struct {
 	active map[*yaml.Node]bool
 }
 
+func newEnumValueIndex() enumValueIndex {
+	return enumValueIndex{values: make(map[string]int), nodes: make(map[*yaml.Node]int), active: make(map[*yaml.Node]bool)}
+}
+
+// JSONValueIDs assigns equal IDs to equivalent JSON values within nodes. Object
+// key order and equivalent JSON numbers do not affect equality. Zero marks a
+// non-JSON value or a number outside the limits described by CheckEnumForDuplicates.
+func JSONValueIDs(nodes []*yaml.Node) []int {
+	index := newEnumValueIndex()
+	ids := make([]int, len(nodes))
+	for i, node := range nodes {
+		ids[i] = index.valueID(node)
+	}
+	return ids
+}
+
 // Bound arbitrary-precision parsing and the size of retained numeric keys.
 const (
 	maxEnumNumberLength   = 1024
@@ -30,11 +46,7 @@ const (
 func CheckEnumForDuplicates(seq []*yaml.Node) []*yaml.Node {
 	var duplicates []*yaml.Node
 	seen := make(map[int]bool)
-	index := enumValueIndex{
-		values: make(map[string]int),
-		nodes:  make(map[*yaml.Node]int),
-		active: make(map[*yaml.Node]bool),
-	}
+	index := newEnumValueIndex()
 	for _, node := range seq {
 		id := index.valueID(node)
 		if id == 0 {
@@ -98,10 +110,7 @@ func (index *enumValueIndex) valueKey(node *yaml.Node) (string, bool) {
 			}
 			return "n" + value.String(), true
 		case "!!float":
-			if !enumFloatWithinLimits(node.Value) {
-				return "", false
-			}
-			value, ok := new(big.Rat).SetString(node.Value)
+			value, ok := ParseBoundedRat(node.Value)
 			if !ok {
 				return "", false
 			}
@@ -142,6 +151,15 @@ func (index *enumValueIndex) valueKey(node *yaml.Node) (string, bool) {
 		return "{" + strings.Join(parts, ",") + "}", true
 	}
 	return "", false
+}
+
+// ParseBoundedRat parses a number exactly. It declines a literal outside the
+// limits described by CheckEnumForDuplicates, which bound the cost of expansion.
+func ParseBoundedRat(value string) (*big.Rat, bool) {
+	if !enumFloatWithinLimits(value) {
+		return nil, false
+	}
+	return new(big.Rat).SetString(value)
 }
 
 func enumFloatWithinLimits(value string) bool {
