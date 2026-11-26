@@ -107,9 +107,11 @@ type usageWalker struct {
 	visited [schemaObject + 1]schemaUsage
 	targets map[string]*yaml.Node
 	unknown bool
-	// implicit is the direction of every schema that has a discriminator. A discriminator can select
-	// any component schema by name, so every component schema is used in that direction as well.
-	implicit schemaDirection
+	// schemas are the component schemas, which a discriminator can select by name.
+	schemas *yaml.Node
+	// children lists, for each schema, the component schemas that build on it with allOf, directly or through other
+	// schemas. It is built for the first discriminator that needs it.
+	children map[*yaml.Node][]*yaml.Node
 }
 
 func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
@@ -120,7 +122,11 @@ func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
 	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
 		root = root.Content[0]
 	}
-	w := usageWalker{index: idx, targets: make(map[string]*yaml.Node)}
+	w := usageWalker{
+		index:   idx,
+		targets: make(map[string]*yaml.Node),
+		schemas: usageField(usageField(root, v3.ComponentsLabel), v3.SchemasLabel),
+	}
 	for i := range w.visited {
 		w.visited[i] = make(schemaUsage)
 	}
@@ -136,7 +142,6 @@ func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
 			w.each(value, pathItemObject, sharedSchema)
 		}
 	}
-	w.walkImplicitTargets(root)
 	if w.unknown {
 		return nil
 	}
@@ -232,7 +237,7 @@ func (w *usageWalker) walk(node *yaml.Node, object usageObject, dir schemaDirect
 				w.walk(value, payloadObject, dir)
 			}
 		case schemaObject:
-			w.schemaField(key, value, dir, sameInstance)
+			w.schemaField(node, key, value, dir, sameInstance)
 		}
 	}
 }
@@ -254,7 +259,7 @@ func (w *usageWalker) operationField(key string, value *yaml.Node, inherited sch
 	}
 }
 
-func (w *usageWalker) schemaField(key string, value *yaml.Node, dir, sameInstance schemaDirection) {
+func (w *usageWalker) schemaField(node *yaml.Node, key string, value *yaml.Node, dir, sameInstance schemaDirection) {
 	switch key {
 	case v3.AllOfLabel, v3.AnyOfLabel, v3.DependentSchemasLabel:
 		w.each(value, schemaObject, sameInstance)
@@ -271,7 +276,7 @@ func (w *usageWalker) schemaField(key string, value *yaml.Node, dir, sameInstanc
 	case v3.OneOfLabel:
 		w.each(value, schemaObject, sharedSchema)
 	case v3.DiscriminatorLabel:
-		w.discriminator(value, sameInstance)
+		w.discriminator(node, value, sameInstance)
 	case v3.SchemaDialectLabel:
 		if !knownUsageDialect(value) {
 			w.unknown = true
@@ -282,10 +287,10 @@ func (w *usageWalker) schemaField(key string, value *yaml.Node, dir, sameInstanc
 	}
 }
 
-// discriminator follows the schemas its mapping and default mapping name, and records that any component schema can
-// be selected by name.
-func (w *usageWalker) discriminator(node *yaml.Node, dir schemaDirection) {
-	w.implicit |= dir
+// discriminator follows the schemas its mapping and default mapping name. Next to a oneOf or an anyOf it can only
+// select one of the listed schemas, which the walk follows already. Otherwise it is on a parent schema, and can
+// select any component schema that builds on the parent with allOf by name.
+func (w *usageWalker) discriminator(holder, node *yaml.Node, dir schemaDirection) {
 	for key, value := range usageFields(node) {
 		switch key {
 		case base.MappingLabel:
@@ -295,6 +300,14 @@ func (w *usageWalker) discriminator(node *yaml.Node, dir schemaDirection) {
 		case base.DefaultMappingLabel:
 			w.discriminatorTarget(value, dir)
 		}
+	}
+	for key := range usageFields(holder) {
+		if key == v3.OneOfLabel || key == v3.AnyOfLabel {
+			return
+		}
+	}
+	for _, child := range w.allOfChildren(holder) {
+		w.walk(child, schemaObject, dir)
 	}
 }
 
@@ -320,15 +333,44 @@ func (w *usageWalker) discriminatorTarget(value *yaml.Node, dir schemaDirection)
 	w.walk(schema, schemaObject, dir)
 }
 
-// walkImplicitTargets gives every component schema the direction of each discriminator, because a discriminator can
-// select any of them by name, including one that nothing refers to. Walking a schema can reach another discriminator
-// and add a direction, so it repeats until the directions stop changing.
-func (w *usageWalker) walkImplicitTargets(root *yaml.Node) {
-	schemas := usageField(usageField(root, v3.ComponentsLabel), v3.SchemasLabel)
-	for walked := schemaDirection(0); w.implicit != walked; {
-		walked = w.implicit
-		for _, schema := range usageFields(schemas) {
-			w.walk(schema, schemaObject, walked)
+// allOfChildren returns the component schemas that build on parent with allOf, directly or through other schemas.
+func (w *usageWalker) allOfChildren(parent *yaml.Node) []*yaml.Node {
+	if w.children == nil {
+		w.children = make(map[*yaml.Node][]*yaml.Node)
+		for _, schema := range usageFields(w.schemas) {
+			schema = utils.NodeAlias(schema)
+			ancestors := make(map[*yaml.Node]bool)
+			w.ancestors(schema, ancestors)
+			for ancestor := range ancestors {
+				w.children[ancestor] = append(w.children[ancestor], schema)
+			}
+		}
+	}
+	return w.children[parent]
+}
+
+// ancestors collects node and the schemas it builds on with allOf. A schema with a $ref builds on the schema it refers
+// to as well, so the references are followed too. A reference that cannot be followed could lead to a parent, so it
+// makes the usage unknown.
+func (w *usageWalker) ancestors(node *yaml.Node, seen map[*yaml.Node]bool) {
+	node = utils.NodeAlias(node)
+	if node == nil || seen[node] {
+		return
+	}
+	seen[node] = true
+	for key, value := range usageFields(node) {
+		switch key {
+		case v3.RefLabel:
+			target := w.localTarget(utils.NodeAlias(value).Value)
+			if target == nil {
+				w.unknown = true
+				return
+			}
+			w.ancestors(target, seen)
+		case v3.AllOfLabel:
+			for _, item := range utils.NodeAlias(value).Content {
+				w.ancestors(item, seen)
+			}
 		}
 	}
 }

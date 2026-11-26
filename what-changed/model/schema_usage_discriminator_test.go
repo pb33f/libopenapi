@@ -6,6 +6,11 @@ package model
 import (
 	"strings"
 	"testing"
+
+	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/testify/assert"
+	"github.com/pb33f/testify/require"
 )
 
 func TestRequiredDiscriminator(t *testing.T) {
@@ -21,7 +26,7 @@ func TestRequiredDiscriminator(t *testing.T) {
 	const widgetRequestWithDiscriminator = `      requestBody:
         content:
           application/json:
-            schema: {type: object, discriminator: DISCRIMINATOR}
+            schema: SCHEMA
       responses:
         '200':
           description: ok
@@ -48,16 +53,24 @@ func TestRequiredDiscriminator(t *testing.T) {
 		{"unrelated response only discriminator", usageResponseOnly, localMapping, false},
 		{"unrelated discriminator without a mapping", usageResponseOnly, "{}", false},
 		{"widget also used by a request", usageShared, localMapping, true},
-		// Only the response discriminator can select Widget, by name, so only that response uses it.
-		{"widget only reachable through the discriminator", usageUnused, localMapping, false},
+		// Pet only lists Cat and Dog, so its discriminator cannot select Widget, which nothing else uses.
+		{"widget that the union does not list", usageUnused, localMapping, true},
 		{"mapping outside the document", usageResponseOnly, "{cat: 'https://example.com/cat.yaml#/Cat'}", true},
 		{"mapping to a file", usageResponseOnly, "{cat: 'cat.yaml'}", true},
 		{"mapping to a schema that does not exist", usageResponseOnly, "{ghost: Ghost}", true},
 		// A mapping value that is not a schema name is a relative URI of another document.
 		{"mapping to a relative path", usageResponseOnly, "{dog: 'Dog/properties/kind'}", true},
 		{
-			"request discriminator selecting widget by name",
-			strings.Replace(widgetRequestWithDiscriminator, "DISCRIMINATOR", "{propertyName: kind}", 1), localMapping, true,
+			"request discriminator next to a oneOf that does not list widget",
+			strings.Replace(widgetRequestWithDiscriminator, "SCHEMA", "{oneOf: [{$ref: '#/components/schemas/Cat'}, {$ref: '#/components/schemas/Dog'}], discriminator: {propertyName: kind}}", 1), localMapping, false,
+		},
+		{
+			"request discriminator next to an anyOf that does not list widget",
+			strings.Replace(widgetRequestWithDiscriminator, "SCHEMA", "{anyOf: [{$ref: '#/components/schemas/Cat'}, {$ref: '#/components/schemas/Dog'}], discriminator: {propertyName: kind}}", 1), localMapping, false,
+		},
+		{
+			"request discriminator on a parent that widget does not build on",
+			strings.Replace(widgetRequestWithDiscriminator, "SCHEMA", "{type: object, discriminator: {propertyName: kind}}", 1), localMapping, false,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -129,9 +142,11 @@ paths:
 }
 
 func TestRequiredDiscriminatorWithoutAKnownDirection(t *testing.T) {
-	// Widget is only used by the /widgets response. Each case adds a discriminator that can select Widget by name
-	// from a request, or from a place whose direction is not known, so the required entry must stay breaking.
-	const pet = "{type: object, properties: {kind: {type: string}}, discriminator: {propertyName: kind}}"
+	// Widget is only used by the /widgets response, and builds on Pet with allOf. Each case uses Pet, which holds a
+	// discriminator, from a request or from a place whose direction is not known, so Pet can select Widget by name
+	// from there and the required entry must stay breaking.
+	const pet = "{$ref: '#/components/schemas/Pet'}"
+	const petSchema = "\n    Pet: {type: object, properties: {kind: {type: string}}, discriminator: {propertyName: kind}}"
 	pets := func(schema string) string {
 		return `
   /pets:
@@ -169,22 +184,135 @@ webhooks:
       responses:
         '204': {description: ok}`
 	for _, tc := range []struct{ name, paths, schemas, webhooks string }{
-		{"under not", pets("{not: " + pet + "}"), "", ""},
-		{"under if", pets("{if: " + pet + ", then: {type: object}}"), "", ""},
-		{"holder with unevaluated properties", pets("{type: object, unevaluatedProperties: false, properties: {kind: {type: string}}, discriminator: {propertyName: kind}}"), "", ""},
-		{"in a callback", callback, "", ""},
-		{"in a webhook", "", "", webhook},
-		// Walking a schema that nothing refers to finds a second discriminator, which adds a direction.
-		{"in a schema that nothing refers to", pets(pet), "\n    Odd: {not: " + pet + "}", ""},
+		{"under not", pets("{not: " + pet + "}"), petSchema, ""},
+		{"under if", pets("{if: " + pet + ", then: {type: object}}"), petSchema, ""},
+		{"holder with unevaluated properties", pets(pet), "\n    Pet: {type: object, unevaluatedProperties: false, properties: {kind: {type: string}}, discriminator: {propertyName: kind}}", ""},
+		{"in a callback", callback, petSchema, ""},
+		{"in a webhook", "", petSchema, webhook},
+		// Walking a child of the response parent Base finds Pet under not.
+		{"in a child of another parent", pets("{$ref: '#/components/schemas/Base'}"), petSchema + `
+    Base: {type: object, properties: {kind: {type: string}}, discriminator: {propertyName: kind}}
+    Kid: {allOf: [{$ref: '#/components/schemas/Base'}], properties: {odd: {not: ` + pet + `}}}`, ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			build := func(required string) string {
-				spec := usageSpec(usageResponseOnly, usageWidget(required)+tc.schemas)
+				spec := usageSpec(usageResponseOnly, usageChild(required, "allOf: ["+pet+"]")+tc.schemas)
 				return strings.Replace(spec, "\ncomponents:", tc.paths+"\ncomponents:", 1) + tc.webhooks
 			}
 			requireEntryBreaking(t, build("name"), build("name, id"), true)
 		})
 	}
+}
+
+func TestRequiredDiscriminatorParent(t *testing.T) {
+	// A request sends Base, which holds a discriminator, and the /widgets response uses Widget. Base can select any
+	// component schema that builds on it with allOf by name, so a request can send that schema as well.
+	const bases = `
+  /bases:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Base'}
+      responses:
+        '204': {description: ok}`
+	const base = `
+    Base: {type: object, properties: {kind: {type: string}}, discriminator: {propertyName: kind}}`
+	for _, tc := range []struct {
+		name, builds, schemas string
+		breaking              bool
+	}{
+		{"widget builds on base", "allOf: [{$ref: '#/components/schemas/Base'}]", "", true},
+		{"widget builds on base through another child", "allOf: [{$ref: '#/components/schemas/Mid'}]", "\n    Mid: {allOf: [{$ref: '#/components/schemas/Base'}]}", true},
+		{"widget builds on base through a reference", "allOf: [{$ref: '#/components/schemas/Alias'}]", "\n    Alias: {$ref: '#/components/schemas/Base'}", true},
+		{"widget builds on base in a nested allOf", "allOf: [{allOf: [{$ref: '#/components/schemas/Base'}]}]", "", true},
+		{"widget does not build on base", "", "", false},
+		{"schema that builds on itself", "", "\n    Loop: {allOf: [{$ref: '#/components/schemas/Loop'}, {$ref: '#/components/schemas/Base'}]}", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			build := func(required string) string {
+				spec := usageSpec(usageResponseOnly, usageChild(required, tc.builds)+base+tc.schemas)
+				return strings.Replace(spec, "\ncomponents:", bases+"\ncomponents:", 1)
+			}
+			requireEntryBreaking(t, build("name"), build("name, id"), tc.breaking)
+		})
+	}
+}
+
+func TestRequiredDiscriminatorNextToAUnionSelectsNoChild(t *testing.T) {
+	// A request sends Base, and Widget builds on it with allOf. Next to a oneOf or an anyOf, the discriminator can
+	// only select the listed Cat, so Widget stays only used by the /widgets response.
+	const bases = `
+  /bases:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Base'}
+      responses:
+        '204': {description: ok}`
+	for _, union := range []string{"oneOf", "anyOf"} {
+		t.Run(union, func(t *testing.T) {
+			schemas := `
+    Base: {` + union + `: [{$ref: '#/components/schemas/Cat'}], discriminator: {propertyName: kind}}
+    Cat: {type: object, properties: {kind: {type: string}}}`
+			build := func(required string) string {
+				spec := usageSpec(usageResponseOnly, usageChild(required, "allOf: [{$ref: '#/components/schemas/Base'}]")+schemas)
+				return strings.Replace(spec, "\ncomponents:", bases+"\ncomponents:", 1)
+			}
+			requireEntryBreaking(t, build("name"), build("name, id"), false)
+		})
+	}
+}
+
+func TestRequiredDiscriminatorChildOfAResponseParent(t *testing.T) {
+	// Nothing refers to Widget, but it builds on Pet, which only a response uses, so only that response can select it.
+	const pets = `
+  /pets:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Pet'}`
+	const pet = `
+    Pet: {type: object, properties: {kind: {type: string}}, discriminator: {propertyName: kind}}`
+	build := func(required string) string {
+		spec := usageSpec(usageUnused, usageChild(required, "allOf: [{$ref: '#/components/schemas/Pet'}]")+pet)
+		return strings.Replace(spec, "\ncomponents:", pets+"\ncomponents:", 1)
+	}
+	requireEntryBreaking(t, build("name"), build("name, id"), false)
+}
+
+func TestSchemaUsageDiscriminatorParentWithUnresolvedReferences(t *testing.T) {
+	// The schema behind a reference that cannot be followed could build on Base, so Base could select Remote.
+	for _, tc := range []struct {
+		ref   string
+		known bool
+	}{
+		{"#/components/schemas/Base", true},
+		{"other.yaml#/Base", false},
+		{"#/components/schemas/Missing", false},
+	} {
+		var root yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(`paths:
+  /bases: {post: {requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Base'}}}}}}
+components:
+  schemas:
+    Base: {type: object, discriminator: {propertyName: kind}}
+    Remote: {allOf: [{$ref: '`+tc.ref+`'}]}`), &root))
+		idx := index.NewSpecIndexWithConfig(&root, index.CreateClosedAPIIndexConfig())
+		assert.Equal(t, tc.known, buildSchemaUsage(idx) != nil, tc.ref)
+	}
+}
+
+// usageChild is Widget with the keyword that makes it build on another schema, or without one when builds is empty.
+func usageChild(required, builds string) string {
+	if builds == "" {
+		return usageWidget(required)
+	}
+	return strings.Replace(usageWidget(required), "    Widget:\n", "    Widget:\n      "+builds+"\n", 1)
 }
 
 func TestRequiredDiscriminatorSelectsASchemaThatNothingRefersTo(t *testing.T) {
@@ -216,8 +344,8 @@ components:
 }
 
 func TestRequiredDiscriminatorRemovalFromARequest(t *testing.T) {
-	// Widget is only used by a request, but a response discriminator can select it by name, so removing a required
-	// entry, which is only safe for a request, must stay breaking.
+	// Widget is only used by a request, but it builds on Pet, so the response discriminator on Pet can select it by
+	// name. Removing a required entry, which is only safe for a request, must stay breaking.
 	const pets = `
   /pets:
     get:
@@ -226,9 +354,12 @@ func TestRequiredDiscriminatorRemovalFromARequest(t *testing.T) {
           description: ok
           content:
             application/json:
-              schema: {type: object, properties: {kind: {type: string}}, discriminator: {propertyName: kind}}`
+              schema: {$ref: '#/components/schemas/Pet'}`
+	const pet = `
+    Pet: {type: object, properties: {kind: {type: string}}, discriminator: {propertyName: kind}}`
 	build := func(required string) string {
-		return strings.Replace(usageSpec(usageRequestOnly, usageWidget(required)), "\ncomponents:", pets+"\ncomponents:", 1)
+		spec := usageSpec(usageRequestOnly, usageChild(required, "allOf: [{$ref: '#/components/schemas/Pet'}]")+pet)
+		return strings.Replace(spec, "\ncomponents:", pets+"\ncomponents:", 1)
 	}
 	requireEntryBreaking(t, build("name, id"), build("name"), true)
 }
