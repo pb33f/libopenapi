@@ -333,16 +333,16 @@ func constraintProxy(n *yaml.Node, r *Resource) (*base.SchemaProxy, error) {
 
 type childKey struct{ keyword, key string }
 
-func childNodes(n *yaml.Node) map[childKey]*yaml.Node {
+func childNodes(n *yaml.Node) (map[childKey]*yaml.Node, error) {
 	var nodes map[childKey]*yaml.Node
-	_ = children(n, func(kw, k string, child *yaml.Node) error {
+	err := children(n, func(kw, k string, child *yaml.Node) error {
 		if nodes == nil {
 			nodes = make(map[childKey]*yaml.Node)
 		}
 		nodes[childKey{kw, k}] = child
 		return nil
 	})
-	return nodes
+	return nodes, err
 }
 
 func sameNode(a, b *yaml.Node) bool {
@@ -559,7 +559,14 @@ func exactNumber(k string) bool {
 }
 
 func (c *comparison) compareChildren(l, r *Resource, left, right *yaml.Node, path string, polarity int) error {
-	old, newNodes := childNodes(left), childNodes(right)
+	old, err := childNodes(left)
+	if err != nil {
+		return fmt.Errorf("original %s at %s: %w", l.Source.Name, path, err)
+	}
+	newNodes, err := childNodes(right)
+	if err != nil {
+		return fmt.Errorf("modified %s at %s: %w", r.Source.Name, path, err)
+	}
 	// allOf, anyOf, and oneOf have unordered operands. Match identical branches
 	// before comparing the remaining positions. prefixItems is an ordered tuple.
 	for _, kw := range []string{"allOf", "anyOf", "oneOf"} {

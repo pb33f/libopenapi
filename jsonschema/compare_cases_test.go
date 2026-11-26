@@ -235,3 +235,56 @@ func TestInvalidInMemoryDependencyStopsComparison(t *testing.T) {
 		})
 	}
 }
+
+func TestCompareRejectsMalformedSchemaChildrenAfterLoad(t *testing.T) {
+	for _, tc := range []struct {
+		name, schema, path, diagnostic string
+		edit                           func(*yaml.Node)
+	}{
+		{
+			name: "property name",
+			schema: `{
+  "properties": {
+    "1": { "type": "integer" }
+  }
+}`,
+			path:       "$",
+			diagnostic: "line 3: schema keys must be strings",
+			edit: func(root *yaml.Node) {
+				member(root, "properties").Content[0].Tag = "!!int"
+			},
+		},
+		{
+			name: "array applicator below a property",
+			schema: `{
+  "title":"Original",
+  "properties":{
+    "status":{
+      "anyOf":[true, false]
+    }
+  }
+}`,
+			path:       "$.properties.status",
+			diagnostic: "line 5: anyOf requires an array",
+			edit: func(root *yaml.Node) {
+				member(root, "title").Value = "Edited"
+				choices := member(member(member(root, "properties"), "status"), "anyOf")
+				choices.Kind, choices.Tag, choices.Content = yaml.MappingNode, "!!map", nil
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			good, bad := loadTest(t, tc.schema), loadTest(t, tc.schema)
+			tc.edit(bad.Root.Node)
+			for _, pair := range []struct {
+				left, right *Document
+				side        string
+			}{{bad, good, "original"}, {good, bad, "modified"}} {
+				diff, err := Compare(pair.left, pair.right, nil)
+				require.ErrorContains(t, err, pair.side+" customer.yaml at "+tc.path)
+				require.ErrorContains(t, err, tc.diagnostic)
+				require.Nil(t, diff)
+			}
+		})
+	}
+}
