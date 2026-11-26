@@ -38,9 +38,6 @@ func DecodeSchemaNode(data []byte) (*yaml.Node, error) {
 			return nil, fmt.Errorf("expected one schema document")
 		}
 	}
-	if len(doc.Content) != 1 {
-		return nil, fmt.Errorf("missing schema root")
-	}
 	if err := checkSchemaKeys(doc); err != nil {
 		return nil, err
 	}

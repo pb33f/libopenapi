@@ -52,7 +52,7 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 func NewSchemaIndex(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
 	idx := NewSpecIndexWithConfig(nil, config)
 	idx.root = rootNode
-	if rootNode != nil && len(rootNode.Content) > 0 {
+	if rootNode != nil && (rootNode.Kind != yaml.DocumentNode || len(rootNode.Content) > 0) {
 		idx.nodeMapCompleted = make(chan struct{})
 		idx.MapNodes(rootNode)
 	}
