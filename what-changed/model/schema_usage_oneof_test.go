@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/libopenapi/datamodel"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/testify/assert"
 	"github.com/pb33f/testify/require"
@@ -26,7 +28,10 @@ func TestRequiredOneOfBranches(t *testing.T) {
     Alias5: {$ref: '#/components/schemas/Alias6'}
     Alias6: {$ref: '#/components/schemas/Alias7'}
     Alias7: {$ref: '#/components/schemas/Alias8'}
-    Alias8: {type: string}`
+    Alias8: {type: string}
+    StringOrObject: {type: [string, object]}
+    Narrowed: {$ref: '#/components/schemas/StringOrObject', type: string}
+    Untyped: {minLength: 1}`
 	for _, tc := range []struct {
 		name, schema string
 		breaking     bool
@@ -43,7 +48,15 @@ func TestRequiredOneOfBranches(t *testing.T) {
 		{"boolean branch", "oneOf: [" + widget + ", true]", true},
 		{"type that is not a JSON type", "oneOf: [" + widget + ", {type: Object}]", true},
 		{"integer and number in one branch", "oneOf: [{type: [integer, number]}, " + widget + "]", false},
+		// The type next to the reference and the type behind it have nothing in common, which is more likely a mistake
+		// than a schema that accepts nothing.
 		{"reference next to a type", "oneOf: [" + widget + ", {$ref: '#/components/schemas/Page', type: string}]", true},
+		// In OpenAPI 3.1 the siblings of $ref apply as well, so a type next to a reference narrows it.
+		{"reference next to a narrower type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/StringOrObject', type: string}]", false},
+		{"reference narrowed to the type of another branch", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/StringOrObject', type: object}]", true},
+		{"reference without a type next to a type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Untyped', type: string}]", false},
+		{"type next to a reference along the chain", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Narrowed'}]", false},
+		{"reference next to a type that is not a JSON type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Alias8', type: Object}]", true},
 		// An unquoted null is not a type name: the schema model leaves the type unset, so the branch accepts anything.
 		{"type that is a YAML null", "oneOf: [" + widget + ", {type: null}]", true},
 		// In OpenAPI 3.1 nullable has no effect, so the object branch does not accept null.
@@ -74,13 +87,14 @@ func TestRequiredOneOfBranchesKeepTheirDirection(t *testing.T) {
 
 func TestRequiredOneOfBranchesOpenAPI30(t *testing.T) {
 	const widget = "{$ref: '#/components/schemas/Widget'}"
-	const other = "\n    Other: {type: object, properties: {other: {type: string}}}"
+	const other = "\n    Other: {type: object, properties: {other: {type: string}}}\n    Untyped: {minLength: 1}"
 	for _, tc := range []struct {
 		name, schema string
 		breaking     bool
 	}{
 		// OpenAPI 3.0 ignores the siblings of $ref, so the second branch is an object like Widget.
 		{"reference next to a type", "oneOf: [" + widget + ", {$ref: '#/components/schemas/Other', type: string}]", true},
+		{"reference without a type next to a type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Untyped', type: string}]", true},
 		{"nullable object or string", "oneOf: [{type: object, nullable: true, properties: {item: " + widget + "}}, {type: string}]", false},
 		{"nullable branches", "oneOf: [{type: object, nullable: true, properties: {item: " + widget + "}}, {type: string, nullable: true}]", true},
 		// YAML resolves True and TRUE to the same boolean as true, and the schema model reads them as nullable.
@@ -99,6 +113,31 @@ func TestRequiredOneOfBranchesOpenAPI30(t *testing.T) {
 			requireEntryBreaking(t, build("name"), build("name, id"), tc.breaking)
 		})
 	}
+}
+
+// Without TransformSiblingRefs the schema model reads only the reference, so a type next to it narrows nothing.
+func TestRequiredOneOfBranchesWithoutSiblingTransform(t *testing.T) {
+	const widget = "{$ref: '#/components/schemas/Widget'}"
+	union := "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/StringOrObject', type: string}]"
+	op := strings.Replace(usageResponseOnly, widget, "{"+union+"}", 1)
+	build := func(required string) *v3.Document {
+		info, err := datamodel.ExtractSpecInfo([]byte(usageSpec(op, usageWidget(required)+"\n    StringOrObject: {type: [string, object]}")))
+		require.NoError(t, err)
+		config := datamodel.NewDocumentConfiguration()
+		config.TransformSiblingRefs = false
+		doc, err := v3.CreateDocumentFromConfig(info, config)
+		require.NoError(t, err)
+		return doc
+	}
+	changes := CompareDocuments(build("name"), build("name, id"))
+	require.NotNil(t, changes)
+	for _, ch := range changes.GetAllChanges() {
+		if ch.Property == v3.RequiredLabel {
+			assert.True(t, ch.Breaking)
+			return
+		}
+	}
+	t.Fatal("missing required change")
 }
 
 func TestRequiredOneOfBranchesInARequest(t *testing.T) {
@@ -138,7 +177,8 @@ components:
     Widget: {type: object}
     Loop: {$ref: '#/components/schemas/Loop'}
     LoopA: {$ref: '#/components/schemas/LoopB'}
-    LoopB: {$ref: '#/components/schemas/LoopA'}`
+    LoopB: {$ref: '#/components/schemas/LoopA'}
+    Untyped: {minLength: 1}`
 	var root yaml.Node
 	require.NoError(t, yaml.Unmarshal([]byte(spec), &root))
 	idx := index.NewSpecIndexWithConfig(&root, index.CreateClosedAPIIndexConfig())
@@ -167,6 +207,8 @@ func TestSchemaUsageOneOfBranches(t *testing.T) {
 		{"reference cycle", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/Loop'}]}", sharedSchema, true},
 		{"reference cycle through two schemas", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/LoopA'}]}", sharedSchema, true},
 		{"empty list of types that is nullable", "{oneOf: [" + widget + ", {type: [], nullable: true}]}", sharedSchema, true},
+		// Without a known version, the siblings of $ref may be ignored, so only the reference counts.
+		{"reference without a type next to a type in an unknown version", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/Untyped', type: string}]}", sharedSchema, true},
 		{"reference to nothing", "{oneOf: [" + widget + ", {$ref: '#/components/schemas/Missing'}]}", 0, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

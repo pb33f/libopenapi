@@ -110,6 +110,9 @@ type usageWalker struct {
 	unknown bool
 	// nullable adds null to the types of a schema. Only OpenAPI 3.0 defines it, so it is kept when the version is unknown.
 	nullable bool
+	// siblings applies the keywords next to $ref as well. OpenAPI 3.1 does, and the schema model only reads them that
+	// way with TransformSiblingRefs, so without both only the referenced schema counts.
+	siblings bool
 }
 
 func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
@@ -121,7 +124,12 @@ func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
 		root = root.Content[0]
 	}
 	version, known := idx.ResolveDocumentVersion()
-	w := usageWalker{index: idx, targets: make(map[string]*yaml.Node), nullable: !known || version < 3.1}
+	w := usageWalker{
+		index:    idx,
+		targets:  make(map[string]*yaml.Node),
+		nullable: !known || version < 3.1,
+		siblings: known && version >= 3.1 && idx.GetConfig() != nil && idx.GetConfig().TransformSiblingRefs,
+	}
 	for i := range w.visited {
 		w.visited[i] = make(schemaUsage)
 	}
@@ -320,11 +328,13 @@ var jsonTypes = map[string]bool{
 	"null": true, "boolean": true, "object": true, "array": true, "number": true, "string": true, "integer": true,
 }
 
-// instanceTypes returns an upper bound of the JSON types a schema accepts. A reference is followed before anything
-// else, because OpenAPI 3.0 ignores the siblings of $ref, and in 3.1 they can only narrow the referenced schema.
-// It reports false when it cannot tell: a schema without a type, a type name that is not a JSON type, a boolean
-// schema, a reference that cannot be resolved, or a cycle of references.
+// instanceTypes returns an upper bound of the JSON types a schema accepts. OpenAPI 3.0 ignores the siblings of $ref, so
+// only the referenced schema counts there. In 3.1 they apply as well, so a type next to a reference narrows the bound.
+// It reports false when it cannot tell: no type along the references, a type that cannot be read, a boolean schema, a
+// reference that cannot be resolved, a cycle of references, or types along the references that have nothing in common,
+// which is more likely a mistake than a schema that accepts nothing.
 func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
+	var bound map[string]bool
 	followed := make([]*yaml.Node, 0, 8)
 	for {
 		node = utils.NodeAlias(node)
@@ -348,45 +358,66 @@ func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
 				}
 			}
 		}
-		if ref != "" {
-			if node = w.localTarget(ref); node == nil {
+		if declared != nil && (ref == "" || w.siblings) {
+			types, ok := w.declaredTypes(declared, nullable)
+			if !ok {
 				return nil, false
 			}
-			continue
+			bound = intersectTypes(bound, types)
 		}
-		if declared == nil {
+		if ref == "" {
+			return bound, len(bound) > 0
+		}
+		if node = w.localTarget(ref); node == nil {
 			return nil, false
 		}
-		var names []string
-		switch {
-		// The schema model only reads a single type from a YAML string, so `type: null` declares no type at all.
-		case utils.IsNodeStringValue(declared):
-			names = []string{declared.Value}
-		case declared.Kind == yaml.SequenceNode:
-			for _, item := range declared.Content {
-				names = append(names, utils.NodeAlias(item).Value)
-			}
-		}
-		if len(names) == 0 {
-			return nil, false
-		}
-		// OpenAPI 3.0 adds null with nullable. In 3.1 nullable means nothing.
-		if nullable && w.nullable {
-			names = append(names, "null")
-		}
-		types := make(map[string]bool)
-		for _, name := range names {
-			if !jsonTypes[name] {
-				return nil, false
-			}
-			types[name] = true
-			// Every integer is a number, so the two overlap.
-			if name == "number" {
-				types["integer"] = true
-			}
-		}
-		return types, true
 	}
+}
+
+// declaredTypes returns the JSON types of a type declaration, or false when it cannot be read.
+func (w *usageWalker) declaredTypes(declared *yaml.Node, nullable bool) (map[string]bool, bool) {
+	var names []string
+	switch {
+	// The schema model only reads a single type from a YAML string, so `type: null` declares no type at all.
+	case utils.IsNodeStringValue(declared):
+		names = []string{declared.Value}
+	case declared.Kind == yaml.SequenceNode:
+		for _, item := range declared.Content {
+			names = append(names, utils.NodeAlias(item).Value)
+		}
+	}
+	if len(names) == 0 {
+		return nil, false
+	}
+	// OpenAPI 3.0 adds null with nullable. In 3.1 nullable means nothing.
+	if nullable && w.nullable {
+		names = append(names, "null")
+	}
+	types := make(map[string]bool)
+	for _, name := range names {
+		if !jsonTypes[name] {
+			return nil, false
+		}
+		types[name] = true
+		// Every integer is a number, so the two overlap.
+		if name == "number" {
+			types["integer"] = true
+		}
+	}
+	return types, true
+}
+
+// intersectTypes narrows bound to the types it shares with types. A nil bound does not restrict anything yet.
+func intersectTypes(bound, types map[string]bool) map[string]bool {
+	if bound == nil {
+		return types
+	}
+	for t := range bound {
+		if !types[t] {
+			delete(bound, t)
+		}
+	}
+	return bound
 }
 
 // Other dialects may introduce applicators that the OpenAPI schema walk cannot follow.
