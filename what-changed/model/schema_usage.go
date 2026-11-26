@@ -268,7 +268,8 @@ func (w *usageWalker) schemaField(key string, value *yaml.Node, dir, sameInstanc
 		// union accepts in the opposite direction: widening a branch can make an instance match a second one, and
 		// narrowing it can leave an instance that matched two branches with only one. Branches that no instance can
 		// match at the same time cannot interfere with each other, so they keep the direction, as with anyOf.
-		if w.exclusiveBranches(value) {
+		// A shared direction is the same either way, so the branches are only checked when it is not.
+		if sameInstance != sharedSchema && w.exclusiveBranches(value) {
 			w.each(value, schemaObject, sameInstance)
 		} else {
 			w.each(value, schemaObject, sharedSchema)
