@@ -506,6 +506,26 @@ const: tasty`
 	assert.Equal(t, "tasty", schConst)
 }
 
+func TestSchema_Build_TypeListWithAlias(t *testing.T) {
+	build := func(spec string) *Schema {
+		var rootNode yaml.Node
+		assert.NoError(t, yaml.Unmarshal([]byte(spec), &rootNode))
+		sch := Schema{}
+		assert.NoError(t, low.BuildModel(rootNode.Content[0].Content[3], &sch))
+		assert.NoError(t, sch.Build(context.Background(), rootNode.Content[0].Content[3], nil))
+		return &sch
+	}
+	// An alias in a list of types reads the value it points to, not the name of its anchor.
+	aliased := build("name: &object string\nschema: {type: [*object, 'null']}")
+	plain := build("name: string\nschema: {type: [string, 'null']}")
+	assert.True(t, aliased.Type.Value.IsB())
+	if assert.Len(t, aliased.Type.Value.B, 2) {
+		assert.Equal(t, "string", aliased.Type.Value.B[0].Value)
+		assert.Equal(t, "null", aliased.Type.Value.B[1].Value)
+	}
+	assert.Equal(t, plain.Hash(), aliased.Hash())
+}
+
 func TestSchema_Build_PropsLookup(t *testing.T) {
 	yml := `components:
   schemas:
