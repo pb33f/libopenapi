@@ -6,6 +6,8 @@ package model
 import (
 	"context"
 	"iter"
+	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -106,6 +108,25 @@ type usageWalker struct {
 	visited [schemaObject + 1]schemaUsage
 	targets map[string]*yaml.Node
 	unknown bool
+	// schemas are the component schemas, which a discriminator can select by name.
+	schemas *yaml.Node
+	// refSiblings reads the keywords next to $ref, as the schema model does with TransformSiblingRefs. Without it, the
+	// model reads a schema with a $ref as the referenced schema alone.
+	refSiblings bool
+	// booleanSchemas is set from OpenAPI 3.1, where a schema can be a boolean.
+	booleanSchemas bool
+	// dropped counts the keywords being walked that the model drops next to a $ref.
+	dropped int
+	// throughDropped is set once the walk reaches a schema through keywords the model drops next to a $ref, or through
+	// a $ref the model does not resolve, and discriminated once it follows a discriminator.
+	throughDropped, discriminated bool
+	// children lists, for each schema, the schemas that build on it directly: with allOf, or with a $ref to it. It is
+	// built for the first discriminator that needs it, and positions and names are built at the same time.
+	children map[*yaml.Node][]*yaml.Node
+	// positions holds the place of each component schema, so the children are returned in the order they are declared.
+	positions map[*yaml.Node]int
+	// names holds the names of each component schema, by which a discriminator on a parent can select it.
+	names map[*yaml.Node][]string
 }
 
 func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
@@ -116,7 +137,14 @@ func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
 	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
 		root = root.Content[0]
 	}
-	w := usageWalker{index: idx, targets: make(map[string]*yaml.Node)}
+	version, versionKnown := idx.ResolveDocumentVersion()
+	w := usageWalker{
+		index:          idx,
+		targets:        make(map[string]*yaml.Node),
+		schemas:        usageField(usageField(root, v3.ComponentsLabel), v3.SchemasLabel),
+		refSiblings:    idx.GetConfig() != nil && idx.GetConfig().TransformSiblingRefs,
+		booleanSchemas: versionKnown && version >= 3.1,
+	}
 	for i := range w.visited {
 		w.visited[i] = make(schemaUsage)
 	}
@@ -132,7 +160,9 @@ func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
 			w.each(value, pathItemObject, sharedSchema)
 		}
 	}
-	if w.unknown {
+	// The walk follows the keywords the model drops next to a $ref, as it did before. That did not matter in a document
+	// with a discriminator, whose usage was unknown, so it stays unknown when both happen.
+	if w.unknown || (w.discriminated && w.throughDropped) {
 		return nil
 	}
 	return w.visited[schemaObject]
@@ -176,9 +206,18 @@ func (w *usageWalker) each(node *yaml.Node, object usageObject, dir schemaDirect
 }
 
 func (w *usageWalker) walk(node *yaml.Node, object usageObject, dir schemaDirection) {
+	w.walkReached(node, object, dir, false)
+}
+
+// walkReached walks node, which referenced tells is reached through a reference rather than written in place.
+func (w *usageWalker) walkReached(node *yaml.Node, object usageObject, dir schemaDirection, referenced bool) {
+	aliased := node != nil && node.Kind == yaml.AliasNode
 	node = utils.NodeAlias(node)
 	if w.unknown || node == nil || node.Kind != yaml.MappingNode {
 		return
+	}
+	if object == schemaObject && w.dropped > 0 {
+		w.throughDropped = true
 	}
 	visited := w.visited[object]
 	if prior, seen := visited[node]; seen && prior&dir == dir {
@@ -200,15 +239,26 @@ func (w *usageWalker) walk(node *yaml.Node, object usageObject, dir schemaDirect
 			}
 		}
 	}
+	// The schema model drops the keywords next to a $ref without TransformSiblingRefs, when it reaches the schema through
+	// a $ref, and for an alias in a list. Next to the $ref of anything other than a schema, such as a response or a path
+	// item, it always drops them. The walk still follows them, as before, and records that it did.
+	dropped := (object != schemaObject || !w.refSiblings || referenced || aliased) && usageField(node, v3.RefLabel) != nil
 	for key, value := range usageFields(node) {
 		if key == v3.RefLabel {
 			ref := utils.NodeAlias(value).Value
+			// The model does not resolve a $ref whose value is an alias, so the walk reaches what the model does not.
+			if value.Kind == yaml.AliasNode {
+				w.throughDropped = true
+			}
 			if target := w.localTarget(ref); target != nil {
-				w.walk(target, object, sameInstance)
+				w.walkReached(target, object, sameInstance, true)
 				continue
 			}
 			w.unknown = true
 			return
+		}
+		if dropped {
+			w.dropped++
 		}
 		switch object {
 		case pathItemObject, operationObject:
@@ -227,7 +277,10 @@ func (w *usageWalker) walk(node *yaml.Node, object usageObject, dir schemaDirect
 				w.walk(value, payloadObject, dir)
 			}
 		case schemaObject:
-			w.schemaField(key, value, dir, sameInstance)
+			w.schemaField(node, key, value, dir, sameInstance)
+		}
+		if dropped {
+			w.dropped--
 		}
 	}
 }
@@ -249,7 +302,7 @@ func (w *usageWalker) operationField(key string, value *yaml.Node, inherited sch
 	}
 }
 
-func (w *usageWalker) schemaField(key string, value *yaml.Node, dir, sameInstance schemaDirection) {
+func (w *usageWalker) schemaField(node *yaml.Node, key string, value *yaml.Node, dir, sameInstance schemaDirection) {
 	switch key {
 	case v3.AllOfLabel, v3.AnyOfLabel, v3.DependentSchemasLabel:
 		w.each(value, schemaObject, sameInstance)
@@ -265,14 +318,200 @@ func (w *usageWalker) schemaField(key string, value *yaml.Node, dir, sameInstanc
 		w.walk(value, schemaObject, sharedSchema)
 	case v3.OneOfLabel:
 		w.each(value, schemaObject, sharedSchema)
+	case v3.DiscriminatorLabel:
+		w.discriminator(node, value, sameInstance)
 	case v3.SchemaDialectLabel:
 		if !knownUsageDialect(value) {
 			w.unknown = true
 		}
-	case v3.DynamicRefLabel, "$recursiveRef", "$id", v3.DiscriminatorLabel:
-		// Resource scopes and implicit discriminator targets need more than local pointer reachability.
+	case v3.DynamicRefLabel, "$recursiveRef", "$id":
+		// Resource scopes need more than local pointer reachability.
 		w.unknown = true
 	}
+}
+
+// discriminator follows the schemas its mapping and default mapping name. Next to a oneOf or an anyOf it can only
+// select one of the listed schemas, which the walk follows already. Otherwise it is on a parent schema, and can
+// select any component schema that builds on the parent with allOf by name, unless the mapping sends that name to
+// another schema. The schemas it selects are walked as written, as the model reads a component schema.
+func (w *usageWalker) discriminator(holder, node *yaml.Node, dir schemaDirection) {
+	w.discriminated = true
+	var mapped map[string]bool
+	for key, value := range usageFields(node) {
+		switch key {
+		case base.MappingLabel:
+			for name, target := range usageFields(value) {
+				if mapped == nil {
+					mapped = make(map[string]bool)
+				}
+				mapped[name] = true
+				w.discriminatorTarget(target, dir)
+			}
+		case base.DefaultMappingLabel:
+			w.discriminatorTarget(value, dir)
+		}
+	}
+	if w.unknown {
+		return
+	}
+	for key := range usageFields(holder) {
+		if key == v3.OneOfLabel || key == v3.AnyOfLabel {
+			return
+		}
+	}
+	for _, child := range w.allOfChildren(holder) {
+		if child == holder || w.selectedByName(child, mapped) {
+			w.walk(child, schemaObject, dir)
+		}
+	}
+}
+
+// selectedByName reports whether a discriminator can select a component schema by one of its names, which it cannot
+// once its mapping sends that name to a schema. When that schema is this one, the mapping follows it already.
+func (w *usageWalker) selectedByName(schema *yaml.Node, mapped map[string]bool) bool {
+	for _, name := range w.names[schema] {
+		if !mapped[name] {
+			return true
+		}
+	}
+	return false
+}
+
+// componentName is the pattern of a component name, so a mapping value that does not match it is a relative URI.
+var componentName = regexp.MustCompile(`^[a-zA-Z0-9.\-_]+$`)
+
+// discriminatorTarget follows one mapping value, which is a reference or a schema name. A value that is not a schema
+// of this document, such as a file or a URL, cannot be followed.
+func (w *usageWalker) discriminatorTarget(value *yaml.Node, dir schemaDirection) {
+	// The usage is dropped once it is unknown, so the other targets do not need to be resolved.
+	if w.unknown {
+		return
+	}
+	ref := utils.NodeAlias(value).Value
+	if !strings.HasPrefix(ref, "#/") {
+		if !componentName.MatchString(ref) {
+			w.unknown = true
+			return
+		}
+		ref = "#/components/schemas/" + ref
+	}
+	schema := w.localTarget(ref)
+	// A pointer can lead to a value that cannot be a schema, such as a string. A boolean schema, from OpenAPI 3.1, has
+	// nothing to walk.
+	if schema == nil || (utils.NodeAlias(schema).Kind != yaml.MappingNode && !(w.booleanSchemas && utils.IsNodeBoolValue(schema))) {
+		w.unknown = true
+		return
+	}
+	w.walk(schema, schemaObject, dir)
+}
+
+// allOfChildren returns the component schemas that build on parent with allOf, directly or through other schemas, in
+// the order they are declared. A parent that is a component schema is returned as well.
+func (w *usageWalker) allOfChildren(parent *yaml.Node) []*yaml.Node {
+	if w.children == nil {
+		w.children = make(map[*yaml.Node][]*yaml.Node)
+		w.positions = make(map[*yaml.Node]int)
+		w.names = make(map[*yaml.Node][]string)
+		linked := make(map[*yaml.Node]bool)
+		for name, schema := range usageFields(w.schemas) {
+			schema = utils.NodeAlias(schema)
+			if _, seen := w.positions[schema]; !seen {
+				w.positions[schema] = len(w.positions)
+			}
+			w.names[schema] = append(w.names[schema], name)
+			w.link(schema, linked)
+		}
+	}
+	// Each direct link is stored once, so the schemas that build on parent through others are found by following them.
+	// Only the component schemas among them are returned, so the cost depends on the children, not on all schemas.
+	reached := map[*yaml.Node]bool{parent: true}
+	pending := []*yaml.Node{parent}
+	var children []*yaml.Node
+	if _, component := w.positions[parent]; component {
+		children = append(children, parent)
+	}
+	for len(pending) > 0 {
+		node := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		for _, child := range w.children[node] {
+			if !reached[child] {
+				reached[child] = true
+				pending = append(pending, child)
+				if _, component := w.positions[child]; component {
+					children = append(children, child)
+				}
+			}
+		}
+	}
+	slices.SortFunc(children, func(a, b *yaml.Node) int {
+		return w.positions[a] - w.positions[b]
+	})
+	return children
+}
+
+// link records node as a child of the schemas it builds on with allOf, and links those schemas in turn. A schema with a
+// $ref builds on the schema it refers to as well, so the references are followed too, and an allOf next to a $ref only
+// counts when the model reads it. A reference that cannot be followed could lead to a parent, so it makes the usage
+// unknown. So does a reference to a schema with an allOf next to its own $ref when the model reads that allOf: it
+// does where the schema is written, but not when it reaches the schema through a $ref.
+func (w *usageWalker) link(node *yaml.Node, linked map[*yaml.Node]bool) {
+	// The sibling transform skips an alias in a list, so whether the model reads an allOf next to the $ref of an aliased
+	// schema depends on where the alias is.
+	if w.aliasNextToRef(node, v3.AllOfLabel) {
+		w.unknown = true
+		return
+	}
+	node = utils.NodeAlias(node)
+	if w.unknown || node == nil || linked[node] {
+		return
+	}
+	linked[node] = true
+	for key, value := range usageFields(node) {
+		switch {
+		case key == v3.RefLabel:
+			if value.Kind == yaml.AliasNode {
+				w.throughDropped = true
+			}
+			target := w.localTarget(utils.NodeAlias(value).Value)
+			if target == nil || (w.refSiblings && nextToRef(target, v3.AllOfLabel)) {
+				w.unknown = true
+				return
+			}
+			w.linkParent(node, target, linked)
+		case key == v3.AllOfLabel && (w.refSiblings || usageField(node, v3.RefLabel) == nil):
+			for _, item := range utils.NodeAlias(value).Content {
+				w.linkParent(node, item, linked)
+			}
+		}
+	}
+}
+
+// linkParent records child as a child of parent and links parent in turn.
+func (w *usageWalker) linkParent(child, parent *yaml.Node, linked map[*yaml.Node]bool) {
+	target := utils.NodeAlias(parent)
+	w.children[target] = append(w.children[target], child)
+	w.link(parent, linked)
+}
+
+// nextToRef reports whether a schema has keyword next to its $ref.
+func nextToRef(node *yaml.Node, keyword string) bool {
+	return usageField(node, v3.RefLabel) != nil && usageField(node, keyword) != nil
+}
+
+// aliasNextToRef reports whether node is an alias of a schema with keyword next to its $ref, which the model reads
+// with TransformSiblingRefs in some places but not in others.
+func (w *usageWalker) aliasNextToRef(node *yaml.Node, keyword string) bool {
+	return w.refSiblings && node != nil && node.Kind == yaml.AliasNode && nextToRef(node.Alias, keyword)
+}
+
+// usageField returns the value of one field of a mapping, or nil when the mapping does not have it.
+func usageField(node *yaml.Node, name string) *yaml.Node {
+	for key, value := range usageFields(node) {
+		if key == name {
+			return value
+		}
+	}
+	return nil
 }
 
 // Other dialects may introduce applicators that the OpenAPI schema walk cannot follow.
