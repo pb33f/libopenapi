@@ -32,6 +32,7 @@ func TestRequiredOneOfBranches(t *testing.T) {
     Alias8: {type: string}
     StringOrObject: {type: [string, object]}
     Narrowed: {$ref: '#/components/schemas/StringOrObject', type: string}
+    Mismatched: {$ref: '#/components/schemas/Alias8', type: object}
     Untyped: {minLength: 1}
     Anything: {}
     Everything: true
@@ -61,7 +62,10 @@ func TestRequiredOneOfBranches(t *testing.T) {
 		{"reference next to a narrower type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/StringOrObject', type: string}]", false},
 		{"reference narrowed to the type of another branch", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/StringOrObject', type: object}]", true},
 		{"reference without a type next to a type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Untyped', type: string}]", false},
-		{"type next to a reference along the chain", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Narrowed'}]", false},
+		// The schema model reads a schema it reaches through a $ref as the target of its own $ref, without the type next
+		// to it, so only the type next to the $ref of the branch itself counts.
+		{"type next to a reference along the chain", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Narrowed'}]", true},
+		{"type next to a reference along the chain that has nothing in common with it", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Mismatched'}]", false},
 		{"reference next to a type that is not a JSON type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Alias8', type: Object}]", true},
 		// The boolean schema true accepts every instance like {}, so the type next to either reference is what counts.
 		{"reference to an empty schema next to a type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Anything', type: string}]", false},
@@ -85,6 +89,18 @@ func TestRequiredOneOfBranches(t *testing.T) {
 			requireEntryBreaking(t, usageSpec(op, schemas("name")), usageSpec(op, schemas("name, id")), tc.breaking)
 		})
 	}
+}
+
+func TestRequiredOneOfBranchThatIsAnAlias(t *testing.T) {
+	// The schema model does not apply TransformSiblingRefs to an alias in a list, so it reads an aliased branch as the
+	// target of its $ref, without the type next to it. The branch then accepts objects, like the other one.
+	const widget = "{$ref: '#/components/schemas/Widget'}"
+	op := strings.Replace(usageResponseOnly, widget, "{oneOf: [{type: object, properties: {item: "+widget+"}}, *narrowed]}", 1)
+	build := func(required string) string {
+		spec := usageSpec(op, usageWidget(required)+"\n    StringOrObject: {type: [string, object]}")
+		return strings.Replace(spec, "\npaths:", "\nx-narrowed: &narrowed {$ref: '#/components/schemas/StringOrObject', type: string}\npaths:", 1)
+	}
+	requireEntryBreaking(t, build("name"), build("name, id"), true)
 }
 
 // Rendering a document and reading it back must not change whether the branches are exclusive.
@@ -193,6 +209,36 @@ func TestRequiredOneOfBranchesInARequest(t *testing.T) {
 
 // widgetUsage returns the direction of Widget in a document whose only response schema is the given YAML. The second
 // result is false when the usage of the document is unknown.
+func TestSchemaUsageOneOfBranchesWithAReferenceThatIsAnAlias(t *testing.T) {
+	// The model does not resolve a $ref whose value is an alias, so it cannot tell what such a branch accepts.
+	const widget = "{$ref: '#/components/schemas/Widget'}"
+	for _, tc := range []struct {
+		name, schema string
+		direction    schemaDirection
+	}{
+		{"branch that is such a reference", "{oneOf: [" + widget + ", {$ref: *text}]}", sharedSchema},
+		{"no such reference", "{oneOf: [" + widget + ", {type: string}]}", responseSchema},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var root yaml.Node
+			require.NoError(t, yaml.Unmarshal([]byte(`openapi: 3.1.0
+x-refs: {text: &text '#/components/schemas/Text'}
+paths:
+  /widgets: {get: {responses: {'200': {description: ok, content: {application/json: {schema: `+tc.schema+`}}}}}}
+components:
+  schemas:
+    Widget: {type: object}
+    Text: {type: string}`), &root))
+			idx := index.NewSpecIndexWithConfig(&root, index.CreateClosedAPIIndexConfig())
+			usage := buildSchemaUsage(idx)
+			require.NotNil(t, usage)
+			widget := idx.FindComponentInRoot(context.Background(), "#/components/schemas/Widget")
+			require.NotNil(t, widget)
+			assert.Equal(t, tc.direction, usage[widget.Node])
+		})
+	}
+}
+
 func widgetUsage(t *testing.T, schema string) (schemaDirection, bool) {
 	t.Helper()
 	spec := `openapi: 3.1.0

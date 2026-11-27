@@ -330,12 +330,15 @@ var jsonTypes = map[string]bool{
 
 // instanceTypes returns an upper bound of the JSON types a schema accepts. OpenAPI 3.0 ignores the siblings of $ref, so
 // only the referenced schema counts there. In 3.1 they apply as well, so a type next to a reference narrows the bound.
+// That only holds for the schema itself, written in place: the schema model reads a schema it reaches through a $ref
+// as the target of its own $ref, without the type next to it, and does the same with an alias in a list.
 // It reports false when it cannot tell: no type along the references, a type that cannot be read, a reference that
 // cannot be resolved, a cycle of references, or types along the references that have nothing in common, which is more
 // likely a mistake than a schema that accepts nothing. The same goes for the boolean schema false.
 func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
 	var bound map[string]bool
 	followed := make([]*yaml.Node, 0, 8)
+	aliased := node != nil && node.Kind == yaml.AliasNode
 	for {
 		node = utils.NodeAlias(node)
 		// The boolean schema true accepts every instance, like {}, so it narrows nothing.
@@ -356,6 +359,10 @@ func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
 			case v3.TypeLabel:
 				declared = utils.NodeAlias(value)
 			case v3.RefLabel:
+				// The model does not resolve a $ref whose value is an alias.
+				if value.Kind == yaml.AliasNode {
+					return nil, false
+				}
 				ref = utils.NodeAlias(value).Value
 			case v3.NullableLabel:
 				// Read it as the schema model does: a YAML boolean, in any spelling that YAML accepts.
@@ -364,7 +371,7 @@ func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
 				}
 			}
 		}
-		if declared != nil && (ref == "" || w.siblings) {
+		if declared != nil && (ref == "" || (w.siblings && len(followed) == 1 && !aliased)) {
 			types, ok := w.declaredTypes(declared, nullable)
 			if !ok {
 				return nil, false
