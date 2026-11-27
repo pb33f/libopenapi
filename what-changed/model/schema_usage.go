@@ -393,8 +393,15 @@ func (w *usageWalker) allOfChildren(parent *yaml.Node) []*yaml.Node {
 // link records node as a child of the schemas it builds on with allOf, and links those schemas in turn. A schema with a
 // $ref builds on the schema it refers to as well, so the references are followed too, and an allOf next to a $ref only
 // counts when the model reads it. A reference that cannot be followed could lead to a parent, so it makes the usage
-// unknown.
+// unknown. So does a reference to a schema with an allOf next to its own $ref when the model reads that allOf: it
+// does where the schema is written, but not when it reaches the schema through a $ref.
 func (w *usageWalker) link(node *yaml.Node, linked map[*yaml.Node]bool) {
+	// The sibling transform skips an alias in a list, so whether the model reads an allOf next to the $ref of an aliased
+	// schema depends on where the alias is.
+	if w.aliasNextToRef(node, v3.AllOfLabel) {
+		w.unknown = true
+		return
+	}
 	node = utils.NodeAlias(node)
 	if w.unknown || node == nil || linked[node] {
 		return
@@ -404,7 +411,7 @@ func (w *usageWalker) link(node *yaml.Node, linked map[*yaml.Node]bool) {
 		switch {
 		case key == v3.RefLabel:
 			target := w.localTarget(utils.NodeAlias(value).Value)
-			if target == nil {
+			if target == nil || (w.refSiblings && nextToRef(target, v3.AllOfLabel)) {
 				w.unknown = true
 				return
 			}
@@ -419,9 +426,20 @@ func (w *usageWalker) link(node *yaml.Node, linked map[*yaml.Node]bool) {
 
 // linkParent records child as a child of parent and links parent in turn.
 func (w *usageWalker) linkParent(child, parent *yaml.Node, linked map[*yaml.Node]bool) {
-	parent = utils.NodeAlias(parent)
-	w.children[parent] = append(w.children[parent], child)
+	target := utils.NodeAlias(parent)
+	w.children[target] = append(w.children[target], child)
 	w.link(parent, linked)
+}
+
+// nextToRef reports whether a schema has keyword next to its $ref.
+func nextToRef(node *yaml.Node, keyword string) bool {
+	return usageField(node, v3.RefLabel) != nil && usageField(node, keyword) != nil
+}
+
+// aliasNextToRef reports whether node is an alias of a schema with keyword next to its $ref, which the model reads
+// with TransformSiblingRefs in some places but not in others.
+func (w *usageWalker) aliasNextToRef(node *yaml.Node, keyword string) bool {
+	return w.refSiblings && node != nil && node.Kind == yaml.AliasNode && nextToRef(node.Alias, keyword)
 }
 
 // usageField returns the value of one field of a mapping, or nil when the mapping does not have it.

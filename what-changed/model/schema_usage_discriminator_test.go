@@ -366,6 +366,67 @@ func TestRequiredDiscriminatorChildNextToAReference(t *testing.T) {
 	}
 }
 
+func TestRequiredDiscriminatorKeywordsNextToAReference(t *testing.T) {
+	// Nothing else refers to Widget, so requiring a property of it is only not breaking when the response can select
+	// it. The schema model reads the keywords next to a $ref only with TransformSiblingRefs, and only where the schema
+	// is written: when it reaches a schema through a $ref, or an alias in a list, it follows the $ref of that schema and
+	// drops the rest. When that depends on how the schema is reached, the usage is unknown.
+	const pets = `
+  /pets:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Pet'}`
+	const pet = "\n    Pet: {type: object, properties: {kind: {type: string}}, discriminator: {propertyName: kind}}"
+	const other = "\n    Other: {type: object}"
+	for _, tc := range []struct {
+		name, operation, schemas, paths string
+		// breaking and known are the results with the transform on and then off.
+		breaking, known [2]bool
+	}{
+		{"allOf next to a reference, reached through a reference from a child", usageUnused,
+			pet + other + "\n    Child: {allOf: [{$ref: '#/components/schemas/Mid'}, {$ref: '#/components/schemas/Widget'}]}" +
+				"\n    Mid: {$ref: '#/components/schemas/Other', allOf: [{$ref: '#/components/schemas/Pet'}]}",
+			pets, [2]bool{true, true}, [2]bool{false, true}},
+		{"allOf next to a reference in an alias", usageUnused,
+			pet + other + "\n    Mid: &mid {$ref: '#/components/schemas/Other', allOf: [{$ref: '#/components/schemas/Pet'}]}" +
+				"\n    Child: {allOf: [*mid, {$ref: '#/components/schemas/Widget'}]}",
+			pets, [2]bool{true, true}, [2]bool{false, true}},
+	} {
+		for i, transform := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s, TransformSiblingRefs %v", tc.name, transform), func(t *testing.T) {
+				build := func(required string) *v3.Document {
+					spec := usageSpec(tc.operation, usageWidget(required)+tc.schemas)
+					if tc.paths != "" {
+						spec = strings.Replace(spec, "\ncomponents:", tc.paths+"\ncomponents:", 1)
+					}
+					info, err := datamodel.ExtractSpecInfo([]byte(spec))
+					require.NoError(t, err)
+					config := datamodel.NewDocumentConfiguration()
+					config.TransformSiblingRefs = transform
+					doc, err := v3.CreateDocumentFromConfig(info, config)
+					require.NoError(t, err)
+					return doc
+				}
+				left := build("name")
+				assert.Equal(t, tc.known[i], buildSchemaUsage(left.Index) != nil)
+				changes := CompareDocuments(left, build("name, id"))
+				require.NotNil(t, changes)
+				for _, ch := range changes.GetAllChanges() {
+					if ch.Property == v3.RequiredLabel {
+						assert.Equal(t, tc.breaking[i], ch.Breaking)
+						return
+					}
+				}
+				t.Fatal("missing required change")
+			})
+		}
+	}
+}
+
 func TestSchemaUsageDiscriminatorParentWithUnresolvedReferences(t *testing.T) {
 	// The schema behind a reference that cannot be followed could build on Base, so Base could select Remote.
 	for _, tc := range []struct {
