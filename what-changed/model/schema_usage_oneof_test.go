@@ -10,6 +10,7 @@ import (
 
 	"github.com/pb33f/go-yaml"
 	"github.com/pb33f/libopenapi/datamodel"
+	highv3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/testify/assert"
@@ -31,7 +32,9 @@ func TestRequiredOneOfBranches(t *testing.T) {
     Alias8: {type: string}
     StringOrObject: {type: [string, object]}
     Narrowed: {$ref: '#/components/schemas/StringOrObject', type: string}
-    Untyped: {minLength: 1}`
+    Untyped: {minLength: 1}
+    Named: {type: &object string}
+    AliasedType: {type: [*object]}`
 	for _, tc := range []struct {
 		name, schema string
 		breaking     bool
@@ -57,6 +60,8 @@ func TestRequiredOneOfBranches(t *testing.T) {
 		{"reference without a type next to a type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Untyped', type: string}]", false},
 		{"type next to a reference along the chain", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Narrowed'}]", false},
 		{"reference next to a type that is not a JSON type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Alias8', type: Object}]", true},
+		// An alias in a list of types reads the value it points to, not the name of its anchor.
+		{"alias in a list of types", "oneOf: [" + widget + ", {$ref: '#/components/schemas/AliasedType'}]", false},
 		// An unquoted null is not a type name: the schema model leaves the type unset, so the branch accepts anything.
 		{"type that is a YAML null", "oneOf: [" + widget + ", {type: null}]", true},
 		// In OpenAPI 3.1 nullable has no effect, so the object branch does not accept null.
@@ -70,6 +75,26 @@ func TestRequiredOneOfBranches(t *testing.T) {
 				return usageWidget(required) + extra
 			}
 			requireEntryBreaking(t, usageSpec(op, schemas("name")), usageSpec(op, schemas("name, id")), tc.breaking)
+		})
+	}
+}
+
+// Rendering a document and reading it back must not change whether the branches are exclusive.
+func TestRequiredOneOfBranchesAfterRendering(t *testing.T) {
+	const widget = "{$ref: '#/components/schemas/Widget'}"
+	for _, tc := range []struct{ name, schema, extra string }{
+		{"alias in a list of types", "oneOf: [" + widget + ", {$ref: '#/components/schemas/Other'}]", "\n    x-type: &object string\n    Other: {type: [*object]}"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			op := strings.Replace(usageResponseOnly, widget, "{"+tc.schema+"}", 1)
+			left, right := usageSpec(op, usageWidget("name")+tc.extra), usageSpec(op, usageWidget("name, id")+tc.extra)
+			requireEntryBreaking(t, left, right, false)
+			render := func(spec string) string {
+				rendered, err := highv3.NewDocument(buildUsageDocument(t, spec)).Render()
+				require.NoError(t, err)
+				return string(rendered)
+			}
+			requireEntryBreaking(t, render(left), render(right), false)
 		})
 	}
 }

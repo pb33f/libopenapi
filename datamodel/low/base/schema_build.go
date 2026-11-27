@@ -138,9 +138,11 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 		if utils.IsNodeArray(typeValue) {
 			refs := make([]low.ValueReference[string], 0, len(typeValue.Content))
 			for r := range typeValue.Content {
+				// An alias keeps the anchor name as its value, so read the node it points to.
+				item := utils.NodeAlias(typeValue.Content[r])
 				refs = append(refs, low.ValueReference[string]{
-					Value:     typeValue.Content[r].Value,
-					ValueNode: typeValue.Content[r],
+					Value:     item.Value,
+					ValueNode: item,
 				})
 			}
 			s.Type = low.NodeReference[SchemaDynamicValue[string, []low.ValueReference[string]]]{
