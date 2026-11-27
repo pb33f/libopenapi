@@ -113,6 +113,8 @@ type usageWalker struct {
 	// refSiblings reads the keywords next to $ref, as the schema model does with TransformSiblingRefs. Without it, the
 	// model reads a schema with a $ref as the referenced schema alone.
 	refSiblings bool
+	// booleanSchemas is set from OpenAPI 3.1, where a schema can be a boolean.
+	booleanSchemas bool
 	// dropped counts the keywords being walked that the model drops next to a $ref.
 	dropped int
 	// throughDropped is set once the walk reaches a schema through keywords the model drops next to a $ref, or through
@@ -133,11 +135,13 @@ func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
 	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
 		root = root.Content[0]
 	}
+	version, versionKnown := idx.ResolveDocumentVersion()
 	w := usageWalker{
-		index:       idx,
-		targets:     make(map[string]*yaml.Node),
-		schemas:     usageField(usageField(root, v3.ComponentsLabel), v3.SchemasLabel),
-		refSiblings: idx.GetConfig() != nil && idx.GetConfig().TransformSiblingRefs,
+		index:          idx,
+		targets:        make(map[string]*yaml.Node),
+		schemas:        usageField(usageField(root, v3.ComponentsLabel), v3.SchemasLabel),
+		refSiblings:    idx.GetConfig() != nil && idx.GetConfig().TransformSiblingRefs,
+		booleanSchemas: versionKnown && version >= 3.1,
 	}
 	for i := range w.visited {
 		w.visited[i] = make(schemaUsage)
@@ -372,8 +376,9 @@ func (w *usageWalker) discriminatorTarget(value *yaml.Node, dir schemaDirection)
 		ref = "#/components/schemas/" + ref
 	}
 	schema := w.localTarget(ref)
-	// A pointer can lead to a value that cannot be a schema, such as a string. A boolean schema has nothing to walk.
-	if schema == nil || (utils.NodeAlias(schema).Kind != yaml.MappingNode && !utils.IsNodeBoolValue(schema)) {
+	// A pointer can lead to a value that cannot be a schema, such as a string. A boolean schema, from OpenAPI 3.1, has
+	// nothing to walk.
+	if schema == nil || (utils.NodeAlias(schema).Kind != yaml.MappingNode && !(w.booleanSchemas && utils.IsNodeBoolValue(schema))) {
 		w.unknown = true
 		return
 	}

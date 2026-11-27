@@ -122,12 +122,13 @@ components:
 
 func TestRequiredDiscriminatorTargetThatIsNotASchema(t *testing.T) {
 	// Dog is only reachable through the discriminator that a response uses. A pointer to a value that cannot be a
-	// schema cannot be followed, so the usage is unknown. A boolean schema can be a target.
+	// schema cannot be followed, so the usage is unknown. From OpenAPI 3.1, a boolean schema can be a target.
 	const spec = `openapi: VERSION
 info: {title: Direction, version: 1.0.0}
 paths:
   /pets:
     get:
+      deprecated: false
       responses:
         '200':
           description: ok
@@ -149,6 +150,10 @@ components:
 		{"default mapping to a string", "3.2.0", "{propertyName: kind, mapping: {dog: Dog}, defaultMapping: '#/info/title'}", true},
 		{"mapping to a boolean schema", "3.1.0", "{propertyName: kind, mapping: {dog: Dog, any: Anything}}", false},
 		{"default mapping to a boolean schema", "3.2.0", "{propertyName: kind, mapping: {dog: Dog}, defaultMapping: '#/components/schemas/Anything'}", false},
+		// Before OpenAPI 3.1, a schema cannot be a boolean.
+		{"mapping in OpenAPI 3.0", "3.0.4", "{propertyName: kind, mapping: {dog: Dog}}", false},
+		{"mapping to a boolean in OpenAPI 3.0", "3.0.4", "{propertyName: kind, mapping: {dog: Dog, any: Anything}}", true},
+		{"mapping to a boolean field in OpenAPI 3.0", "3.0.4", "{propertyName: kind, mapping: {dog: Dog, off: '#/paths/~1pets/get/deprecated'}}", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			old := strings.NewReplacer("VERSION", tc.version, "DISCRIMINATOR", tc.discriminator).Replace(spec)
