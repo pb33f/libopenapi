@@ -80,8 +80,11 @@ func (resolver *Resolver) extractRelativesWithState(
 	var found []*Reference
 
 	if node != nil && len(node.Content) > 0 {
+		// extractRelativeReference may replace node.Content with the resolved target while this loop
+		// is still running (a $ref with sibling keys), so walk and index one snapshot of the content.
+		content := node.Content
 		skip := false
-		for i, n := range node.Content {
+		for i, n := range content {
 			if skip {
 				skip = false
 				continue
@@ -91,14 +94,14 @@ func (resolver *Resolver) extractRelativesWithState(
 				childState := state
 				childPath := walkPath
 				if node.Kind == yaml.MappingNode && i%2 == 1 {
-					childPath = append(walkPath, node.Content[i-1].Value)
+					childPath = append(walkPath, content[i-1].Value)
 				} else if node.Kind == yaml.SequenceNode {
 					childPath = append(walkPath, "[]")
 				}
 				found = append(found, resolver.extractNestedRelatives(ref, node, n, childState, childPath)...)
 			}
 
-			if i%2 == 0 && n.Value == "$ref" && len(node.Content) > i%2+1 {
+			if i%2 == 0 && n.Value == "$ref" && len(content) > i%2+1 {
 				if relative, handled, skipNext := resolver.extractRelativeReference(ref, node, parent, n, i, state); handled {
 					if relative != nil {
 						found = append(found, relative)
