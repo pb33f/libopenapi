@@ -330,6 +330,77 @@ func TestRequiredDiscriminatorChildOfAResponseParent(t *testing.T) {
 	requireEntryBreaking(t, build("name"), build("name, id"), false)
 }
 
+func TestRequiredDiscriminatorMappingOverridesAChildName(t *testing.T) {
+	// Nothing refers to Widget, and Widget and Cat build on Pet, which only a response uses. When the mapping sends the
+	// value Widget to Cat, the discriminator cannot select Widget by name, so Widget stays unused unless another mapping
+	// value or another name of Widget selects it.
+	const pets = `
+  /pets:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Pet'}`
+	for _, tc := range []struct {
+		name, mapping string
+		gizmo         bool
+		breaking      bool
+	}{
+		{"name sent to another schema", "{Widget: '#/components/schemas/Cat'}", false, true},
+		{"name sent to another schema and another value naming widget", "{Widget: '#/components/schemas/Cat', legacy: Widget}", false, false},
+		{"name sent to widget", "{Widget: Widget}", false, false},
+		{"other name sent to another schema", "{Gadget: Cat}", false, false},
+		// Gizmo is an alias of Widget, so Widget is listed under two names.
+		{"one of two names sent to another schema", "{Widget: Cat}", true, false},
+		{"other of two names sent to another schema", "{Gizmo: Cat}", true, false},
+		{"both names sent to another schema", "{Widget: Cat, Gizmo: Cat}", true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			schemas := `
+    Pet: {type: object, properties: {kind: {type: string}}, discriminator: {propertyName: kind, mapping: ` + tc.mapping + `}}
+    Cat: {allOf: [{$ref: '#/components/schemas/Pet'}]}`
+			build := func(required string) string {
+				widget := usageChild(required, "allOf: [{$ref: '#/components/schemas/Pet'}]")
+				if tc.gizmo {
+					widget = strings.Replace(widget, "    Widget:\n", "    Widget: &widget\n", 1) + "\n    Gizmo: *widget"
+				}
+				spec := usageSpec(usageUnused, widget+schemas)
+				return strings.Replace(spec, "\ncomponents:", pets+"\ncomponents:", 1)
+			}
+			requireEntryBreaking(t, build("name"), build("name, id"), tc.breaking)
+		})
+	}
+}
+
+func TestRequiredDiscriminatorMappingOverridesTheParentName(t *testing.T) {
+	// Only a response uses Pet, which holds the discriminator, but a field declared by one of its subschemas can bypass
+	// its unevaluatedProperties rule, so the walk gives Pet itself both directions. The mapping sending the value Pet to
+	// Dog does not change that, because the discriminator is on Pet.
+	const spec = `openapi: 3.1.0
+info: {title: Direction, version: 1.0.0}
+paths:
+  /pets:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Pet'}
+components:
+  schemas:
+    Pet:
+      type: object
+      unevaluatedProperties: false
+      required: [kind]
+      properties: {kind: {type: string}, name: {type: string}}
+      discriminator: {propertyName: kind, mapping: {Pet: Dog}}
+    Dog: {type: object}`
+	requireEntryBreaking(t, spec, strings.Replace(spec, "required: [kind]", "required: [kind, name]", 1), true)
+}
+
 func TestRequiredDiscriminatorChildNextToAReference(t *testing.T) {
 	// Nothing refers to Widget, and Alias refers to it next to an allOf with Pet, which only a response uses. With
 	// TransformSiblingRefs the schema model reads Alias as both, so only that response can select it. Without it, the

@@ -121,10 +121,12 @@ type usageWalker struct {
 	// a $ref the model does not resolve, and discriminated once it follows a discriminator.
 	throughDropped, discriminated bool
 	// children lists, for each schema, the schemas that build on it directly: with allOf, or with a $ref to it. It is
-	// built for the first discriminator that needs it, and positions is built at the same time.
+	// built for the first discriminator that needs it, and positions and names are built at the same time.
 	children map[*yaml.Node][]*yaml.Node
 	// positions holds the place of each component schema, so the children are returned in the order they are declared.
 	positions map[*yaml.Node]int
+	// names holds the names of each component schema, by which a discriminator on a parent can select it.
+	names map[*yaml.Node][]string
 }
 
 func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
@@ -330,14 +332,19 @@ func (w *usageWalker) schemaField(node *yaml.Node, key string, value *yaml.Node,
 
 // discriminator follows the schemas its mapping and default mapping name. Next to a oneOf or an anyOf it can only
 // select one of the listed schemas, which the walk follows already. Otherwise it is on a parent schema, and can
-// select any component schema that builds on the parent with allOf by name. The schemas it selects are walked as
-// written, as the model reads a component schema.
+// select any component schema that builds on the parent with allOf by name, unless the mapping sends that name to
+// another schema. The schemas it selects are walked as written, as the model reads a component schema.
 func (w *usageWalker) discriminator(holder, node *yaml.Node, dir schemaDirection) {
 	w.discriminated = true
+	var mapped map[string]bool
 	for key, value := range usageFields(node) {
 		switch key {
 		case base.MappingLabel:
-			for _, target := range usageFields(value) {
+			for name, target := range usageFields(value) {
+				if mapped == nil {
+					mapped = make(map[string]bool)
+				}
+				mapped[name] = true
 				w.discriminatorTarget(target, dir)
 			}
 		case base.DefaultMappingLabel:
@@ -353,8 +360,21 @@ func (w *usageWalker) discriminator(holder, node *yaml.Node, dir schemaDirection
 		}
 	}
 	for _, child := range w.allOfChildren(holder) {
-		w.walk(child, schemaObject, dir)
+		if child == holder || w.selectedByName(child, mapped) {
+			w.walk(child, schemaObject, dir)
+		}
 	}
+}
+
+// selectedByName reports whether a discriminator can select a component schema by one of its names, which it cannot
+// once its mapping sends that name to a schema. When that schema is this one, the mapping follows it already.
+func (w *usageWalker) selectedByName(schema *yaml.Node, mapped map[string]bool) bool {
+	for _, name := range w.names[schema] {
+		if !mapped[name] {
+			return true
+		}
+	}
+	return false
 }
 
 // componentName is the pattern of a component name, so a mapping value that does not match it is a relative URI.
@@ -391,12 +411,14 @@ func (w *usageWalker) allOfChildren(parent *yaml.Node) []*yaml.Node {
 	if w.children == nil {
 		w.children = make(map[*yaml.Node][]*yaml.Node)
 		w.positions = make(map[*yaml.Node]int)
+		w.names = make(map[*yaml.Node][]string)
 		linked := make(map[*yaml.Node]bool)
-		for _, schema := range usageFields(w.schemas) {
+		for name, schema := range usageFields(w.schemas) {
 			schema = utils.NodeAlias(schema)
 			if _, seen := w.positions[schema]; !seen {
 				w.positions[schema] = len(w.positions)
 			}
+			w.names[schema] = append(w.names[schema], name)
 			w.link(schema, linked)
 		}
 	}
