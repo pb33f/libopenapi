@@ -33,6 +33,9 @@ func TestRequiredOneOfBranches(t *testing.T) {
     StringOrObject: {type: [string, object]}
     Narrowed: {$ref: '#/components/schemas/StringOrObject', type: string}
     Untyped: {minLength: 1}
+    Anything: {}
+    Everything: true
+    Nothing: false
     Named: {type: &object string}
     AliasedType: {type: [*object]}`
 	for _, tc := range []struct {
@@ -60,6 +63,11 @@ func TestRequiredOneOfBranches(t *testing.T) {
 		{"reference without a type next to a type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Untyped', type: string}]", false},
 		{"type next to a reference along the chain", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Narrowed'}]", false},
 		{"reference next to a type that is not a JSON type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Alias8', type: Object}]", true},
+		// The boolean schema true accepts every instance like {}, so the type next to either reference is what counts.
+		{"reference to an empty schema next to a type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Anything', type: string}]", false},
+		{"reference to true next to a type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Everything', type: string}]", false},
+		// The boolean schema false accepts nothing, which is more likely a mistake than a branch that no instance matches.
+		{"reference to false next to a type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Nothing', type: string}]", true},
 		// An alias in a list of types reads the value it points to, not the name of its anchor.
 		{"alias in a list of types", "oneOf: [" + widget + ", {$ref: '#/components/schemas/AliasedType'}]", false},
 		// An unquoted null is not a type name: the schema model leaves the type unset, so the branch accepts anything.
@@ -84,6 +92,7 @@ func TestRequiredOneOfBranchesAfterRendering(t *testing.T) {
 	const widget = "{$ref: '#/components/schemas/Widget'}"
 	for _, tc := range []struct{ name, schema, extra string }{
 		{"alias in a list of types", "oneOf: [" + widget + ", {$ref: '#/components/schemas/Other'}]", "\n    x-type: &object string\n    Other: {type: [*object]}"},
+		{"reference to true next to a type", "oneOf: [{type: object, properties: {item: " + widget + "}}, {$ref: '#/components/schemas/Other', type: string}]", "\n    Other: true"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			op := strings.Replace(usageResponseOnly, widget, "{"+tc.schema+"}", 1)

@@ -330,14 +330,20 @@ var jsonTypes = map[string]bool{
 
 // instanceTypes returns an upper bound of the JSON types a schema accepts. OpenAPI 3.0 ignores the siblings of $ref, so
 // only the referenced schema counts there. In 3.1 they apply as well, so a type next to a reference narrows the bound.
-// It reports false when it cannot tell: no type along the references, a type that cannot be read, a boolean schema, a
-// reference that cannot be resolved, a cycle of references, or types along the references that have nothing in common,
-// which is more likely a mistake than a schema that accepts nothing.
+// It reports false when it cannot tell: no type along the references, a type that cannot be read, a reference that
+// cannot be resolved, a cycle of references, or types along the references that have nothing in common, which is more
+// likely a mistake than a schema that accepts nothing. The same goes for the boolean schema false.
 func (w *usageWalker) instanceTypes(node *yaml.Node) (map[string]bool, bool) {
 	var bound map[string]bool
 	followed := make([]*yaml.Node, 0, 8)
 	for {
 		node = utils.NodeAlias(node)
+		// The boolean schema true accepts every instance, like {}, so it narrows nothing.
+		if utils.IsNodeBoolValue(node) {
+			if accepts, _ := strconv.ParseBool(node.Value); accepts {
+				return bound, len(bound) > 0
+			}
+		}
 		if node.Kind != yaml.MappingNode || slices.Contains(followed, node) {
 			return nil, false
 		}
