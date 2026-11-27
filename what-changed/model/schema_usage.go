@@ -113,6 +113,13 @@ type usageWalker struct {
 	// siblings applies the keywords next to $ref as well. OpenAPI 3.1 does, and the schema model only reads them that
 	// way with TransformSiblingRefs, so without both only the referenced schema counts.
 	siblings bool
+	// dropped counts the keywords being walked that the model drops next to a $ref.
+	dropped int
+	// throughDropped is set once the walk reaches a schema through keywords the model drops next to a $ref, or through
+	// a $ref the model does not resolve, and madeExclusive once it keeps the direction of the branches of a oneOf.
+	throughDropped, madeExclusive bool
+	// sharedUnions shares the branches of every oneOf, as before.
+	sharedUnions bool
 }
 
 func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
@@ -124,26 +131,37 @@ func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
 		root = root.Content[0]
 	}
 	version, known := idx.ResolveDocumentVersion()
-	w := usageWalker{
-		index:    idx,
-		targets:  make(map[string]*yaml.Node),
-		nullable: !known || version < 3.1,
-		siblings: known && version >= 3.1 && idx.GetConfig() != nil && idx.GetConfig().TransformSiblingRefs,
-	}
-	for i := range w.visited {
-		w.visited[i] = make(schemaUsage)
-	}
-	for key, value := range usageFields(root) {
-		switch key {
-		case v3.JSONSchemaDialectLabel:
-			if !knownUsageDialect(value) {
-				return nil
-			}
-		case v3.PathsLabel:
-			w.openAPIEntries(value, pathItemObject, 0)
-		case v3.WebhooksLabel:
-			w.each(value, pathItemObject, sharedSchema)
+	walk := func(sharedUnions bool) *usageWalker {
+		w := &usageWalker{
+			index:        idx,
+			targets:      make(map[string]*yaml.Node),
+			nullable:     !known || version < 3.1,
+			siblings:     known && version >= 3.1 && idx.GetConfig() != nil && idx.GetConfig().TransformSiblingRefs,
+			sharedUnions: sharedUnions,
 		}
+		for i := range w.visited {
+			w.visited[i] = make(schemaUsage)
+		}
+		for key, value := range usageFields(root) {
+			switch key {
+			case v3.JSONSchemaDialectLabel:
+				if !knownUsageDialect(value) {
+					w.unknown = true
+					return w
+				}
+			case v3.PathsLabel:
+				w.openAPIEntries(value, pathItemObject, 0)
+			case v3.WebhooksLabel:
+				w.each(value, pathItemObject, sharedSchema)
+			}
+		}
+		return w
+	}
+	w := walk(false)
+	// The walk follows the keywords the model drops next to a $ref, as it did before. That did not matter while every
+	// oneOf was shared, so the document is walked again that way when both happen.
+	if !w.unknown && w.madeExclusive && w.throughDropped {
+		w = walk(true)
 	}
 	if w.unknown {
 		return nil
@@ -189,9 +207,18 @@ func (w *usageWalker) each(node *yaml.Node, object usageObject, dir schemaDirect
 }
 
 func (w *usageWalker) walk(node *yaml.Node, object usageObject, dir schemaDirection) {
+	w.walkReached(node, object, dir, false)
+}
+
+// walkReached walks node, which referenced tells is reached through a reference rather than written in place.
+func (w *usageWalker) walkReached(node *yaml.Node, object usageObject, dir schemaDirection, referenced bool) {
+	aliased := node != nil && node.Kind == yaml.AliasNode
 	node = utils.NodeAlias(node)
 	if w.unknown || node == nil || node.Kind != yaml.MappingNode {
 		return
+	}
+	if object == schemaObject && w.dropped > 0 {
+		w.throughDropped = true
 	}
 	visited := w.visited[object]
 	if prior, seen := visited[node]; seen && prior&dir == dir {
@@ -213,15 +240,27 @@ func (w *usageWalker) walk(node *yaml.Node, object usageObject, dir schemaDirect
 			}
 		}
 	}
+	// The schema model drops the keywords next to a $ref without TransformSiblingRefs, when it reaches the schema through
+	// a $ref, and for an alias in a list. Next to the $ref of anything other than a schema, such as a response or a path
+	// item, it always drops them. The walk still follows them, as before, and records that it did. In OpenAPI 3.0 the
+	// model still reads them where the schema is written, so treating them as dropped there only shares more unions.
+	dropped := (object != schemaObject || !w.siblings || referenced || aliased) && usageField(node, v3.RefLabel) != nil
 	for key, value := range usageFields(node) {
 		if key == v3.RefLabel {
 			ref := utils.NodeAlias(value).Value
+			// The model does not resolve a $ref whose value is an alias, so the walk reaches what the model does not.
+			if value.Kind == yaml.AliasNode {
+				w.throughDropped = true
+			}
 			if target := w.localTarget(ref); target != nil {
-				w.walk(target, object, sameInstance)
+				w.walkReached(target, object, sameInstance, true)
 				continue
 			}
 			w.unknown = true
 			return
+		}
+		if dropped {
+			w.dropped++
 		}
 		switch object {
 		case pathItemObject, operationObject:
@@ -241,6 +280,9 @@ func (w *usageWalker) walk(node *yaml.Node, object usageObject, dir schemaDirect
 			}
 		case schemaObject:
 			w.schemaField(key, value, dir, sameInstance)
+		}
+		if dropped {
+			w.dropped--
 		}
 	}
 }
@@ -282,7 +324,8 @@ func (w *usageWalker) schemaField(key string, value *yaml.Node, dir, sameInstanc
 		// narrowing it can leave an instance that matched two branches with only one. Branches that no instance can
 		// match at the same time cannot interfere with each other, so they keep the direction, as with anyOf.
 		// A shared direction is the same either way, so the branches are only checked when it is not.
-		if sameInstance != sharedSchema && w.exclusiveBranches(value) {
+		if !w.sharedUnions && sameInstance != sharedSchema && w.exclusiveBranches(value) {
+			w.madeExclusive = true
 			w.each(value, schemaObject, sameInstance)
 		} else {
 			w.each(value, schemaObject, sharedSchema)
@@ -431,6 +474,16 @@ func intersectTypes(bound, types map[string]bool) map[string]bool {
 		}
 	}
 	return bound
+}
+
+// usageField returns the value of one field of a mapping, or nil when the mapping does not have it.
+func usageField(node *yaml.Node, name string) *yaml.Node {
+	for key, value := range usageFields(node) {
+		if key == name {
+			return value
+		}
+	}
+	return nil
 }
 
 // Other dialects may introduce applicators that the OpenAPI schema walk cannot follow.

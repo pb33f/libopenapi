@@ -5,6 +5,7 @@ package model
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -190,6 +191,154 @@ func TestRequiredOneOfBranchesWithoutSiblingTransform(t *testing.T) {
 	t.Fatal("missing required change")
 }
 
+func TestRequiredOneOfBranchesInKeywordsTheModelDrops(t *testing.T) {
+	// The union only reaches Widget through the keywords next to a $ref. The schema model reads them only with
+	// TransformSiblingRefs, and only where the schema is written: when it reaches a schema through a $ref, or an alias
+	// in a list, it follows the $ref of that schema and drops the rest. There the branches stay shared, as before.
+	const widget = "{$ref: '#/components/schemas/Widget'}"
+	const union = "oneOf: [{type: object, properties: {item: " + widget + "}}, {type: string}]"
+	const other = "\n    Other: {type: object}"
+	holder := strings.Replace(usageResponseOnly, "Widget", "Holder", 1)
+	for _, tc := range []struct {
+		name, operation, schemas string
+		// breaking is the result with the transform on and then off.
+		breaking [2]bool
+	}{
+		{"oneOf written next to a reference",
+			strings.Replace(usageResponseOnly, widget, "{$ref: '#/components/schemas/Other', "+union+"}", 1),
+			other, [2]bool{false, true}},
+		{"oneOf next to a reference, reached through a reference", holder,
+			other + "\n    Holder: {$ref: '#/components/schemas/Other', " + union + "}", [2]bool{true, true}},
+		{"oneOf in the properties next to a reference, reached through a reference", holder,
+			other + "\n    Holder: {$ref: '#/components/schemas/Other', properties: {p: {" + union + "}}}", [2]bool{true, true}},
+		{"oneOf next to a reference in an alias",
+			"      x-holder: &holder {$ref: '#/components/schemas/Other', " + union + "}\n" +
+				strings.Replace(usageResponseOnly, widget, "{anyOf: [*holder]}", 1),
+			other, [2]bool{true, true}},
+		// The keywords the model drops inside an exclusive branch are shared as well.
+		{"keywords next to a reference in an exclusive branch, reached through a reference",
+			strings.Replace(usageResponseOnly, widget, "{oneOf: [{type: object, properties: {item: {$ref: '#/components/schemas/Holder'}}}, {type: string}]}", 1),
+			other + "\n    Holder: {$ref: '#/components/schemas/Other', properties: {w: " + widget + "}}", [2]bool{true, true}},
+		{"keywords next to a reference written in an exclusive branch",
+			strings.Replace(usageResponseOnly, widget, "{oneOf: [{$ref: '#/components/schemas/Other', type: object, properties: {item: "+widget+"}}, {type: string}]}", 1),
+			other, [2]bool{false, true}},
+	} {
+		for i, transform := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s, TransformSiblingRefs %v", tc.name, transform), func(t *testing.T) {
+				build := func(required string) *v3.Document {
+					info, err := datamodel.ExtractSpecInfo([]byte(usageSpec(tc.operation, usageWidget(required)+tc.schemas)))
+					require.NoError(t, err)
+					config := datamodel.NewDocumentConfiguration()
+					config.TransformSiblingRefs = transform
+					doc, err := v3.CreateDocumentFromConfig(info, config)
+					require.NoError(t, err)
+					return doc
+				}
+				changes := CompareDocuments(build("name"), build("name, id"))
+				require.NotNil(t, changes)
+				for _, ch := range changes.GetAllChanges() {
+					if ch.Property == v3.RequiredLabel {
+						assert.Equal(t, tc.breaking[i], ch.Breaking)
+						return
+					}
+				}
+				t.Fatal("missing required change")
+			})
+		}
+	}
+}
+
+func TestRequiredOneOfBranchesElsewhereWithKeywordsTheModelDrops(t *testing.T) {
+	// Widget is only reached through the properties next to the $ref of Holder, which the model drops. One response
+	// refers to Holder directly and another through an exclusive union, in either order. Before this PR every oneOf was
+	// shared, so following keywords the model drops did not matter there. When both happen, every oneOf is shared again.
+	const union = "{oneOf: [{type: object, properties: {item: {$ref: '#/components/schemas/Holder'}}}, {type: string}]}"
+	const others = `
+  /others:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: %s`
+	holder := strings.Replace(usageResponseOnly, "Widget", "Holder", 1)
+	const dropped = "\n    Other: {type: object}\n    Holder: {$ref: '#/components/schemas/Other', properties: {w: {$ref: '#/components/schemas/Widget'}}}"
+	for _, tc := range []struct {
+		name, first, second, schemas string
+		breaking                     bool
+	}{
+		{"reference before the union", holder, fmt.Sprintf(others, union), dropped, true},
+		{"union before the reference", strings.Replace(holder, "{$ref: '#/components/schemas/Holder'}", union, 1), fmt.Sprintf(others, "{$ref: '#/components/schemas/Holder'}"), dropped, true},
+		{"no keywords next to a reference", holder, fmt.Sprintf(others, union), "\n    Holder: {type: object, properties: {w: {$ref: '#/components/schemas/Widget'}}}", false},
+	} {
+		for _, transform := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s, TransformSiblingRefs %v", tc.name, transform), func(t *testing.T) {
+				build := func(required string) *v3.Document {
+					spec := usageSpec(tc.first, usageWidget(required)+tc.schemas)
+					spec = strings.Replace(spec, "\ncomponents:", tc.second+"\ncomponents:", 1)
+					info, err := datamodel.ExtractSpecInfo([]byte(spec))
+					require.NoError(t, err)
+					config := datamodel.NewDocumentConfiguration()
+					config.TransformSiblingRefs = transform
+					doc, err := v3.CreateDocumentFromConfig(info, config)
+					require.NoError(t, err)
+					return doc
+				}
+				changes := CompareDocuments(build("name"), build("name, id"))
+				require.NotNil(t, changes)
+				for _, ch := range changes.GetAllChanges() {
+					if ch.Property == v3.RequiredLabel {
+						assert.Equal(t, tc.breaking, ch.Breaking)
+						return
+					}
+				}
+				t.Fatal("missing required change")
+			})
+		}
+	}
+}
+
+func TestRequiredOneOfBranchesNextToTheReferenceOfAResponseOrPathItem(t *testing.T) {
+	// The model reads a response or path item with a $ref as the one it refers to, and drops the rest. The union next
+	// to that $ref is the only one that reaches Widget, so its branches stay shared, as before.
+	const union = "{oneOf: [{type: object, properties: {item: {$ref: '#/components/schemas/Widget'}}}, {type: string}]}"
+	const content = "content: {application/json: {schema: " + union + "}}"
+	for _, tc := range []struct {
+		name, path string
+		breaking   bool
+	}{
+		{"response", "    get:\n      responses:\n        '200': {$ref: '#/components/responses/Empty', " + content + "}", true},
+		{"path item", "    $ref: '#/components/pathItems/Empty'\n    get:\n      responses:\n        '200': {description: ok, " + content + "}", true},
+		{"no reference", "    get:\n      responses:\n        '200': {description: ok, " + content + "}", false},
+	} {
+		for _, transform := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s, TransformSiblingRefs %v", tc.name, transform), func(t *testing.T) {
+				build := func(required string) *v3.Document {
+					spec := "openapi: 3.1.0\ninfo: {title: Direction, version: 1.0.0}\npaths:\n  /widgets:\n" + tc.path +
+						"\ncomponents:\n  responses:\n    Empty: {description: ok}\n  pathItems:\n    Empty: {}\n  schemas:\n" + usageWidget(required)
+					info, err := datamodel.ExtractSpecInfo([]byte(spec))
+					require.NoError(t, err)
+					config := datamodel.NewDocumentConfiguration()
+					config.TransformSiblingRefs = transform
+					doc, err := v3.CreateDocumentFromConfig(info, config)
+					require.NoError(t, err)
+					return doc
+				}
+				changes := CompareDocuments(build("name"), build("name, id"))
+				require.NotNil(t, changes)
+				for _, ch := range changes.GetAllChanges() {
+					if ch.Property == v3.RequiredLabel {
+						assert.Equal(t, tc.breaking, ch.Breaking)
+						return
+					}
+				}
+				t.Fatal("missing required change")
+			})
+		}
+	}
+}
+
 func TestRequiredOneOfBranchesInARequest(t *testing.T) {
 	const widget = "{$ref: '#/components/schemas/Widget'}"
 	for _, tc := range []struct {
@@ -210,25 +359,29 @@ func TestRequiredOneOfBranchesInARequest(t *testing.T) {
 // widgetUsage returns the direction of Widget in a document whose only response schema is the given YAML. The second
 // result is false when the usage of the document is unknown.
 func TestSchemaUsageOneOfBranchesWithAReferenceThatIsAnAlias(t *testing.T) {
-	// The model does not resolve a $ref whose value is an alias, so it cannot tell what such a branch accepts.
+	// The model does not resolve a $ref whose value is an alias, so it cannot tell what such a branch accepts, and
+	// the walk following such a $ref elsewhere reaches what the model does not. Both keep the union shared, as before.
 	const widget = "{$ref: '#/components/schemas/Widget'}"
+	const others = "\n  /others: {get: {responses: {'200': {description: ok, content: {application/json: {schema: {$ref: *other}}}}}}}"
 	for _, tc := range []struct {
-		name, schema string
-		direction    schemaDirection
+		name, schema, paths string
+		direction           schemaDirection
 	}{
-		{"branch that is such a reference", "{oneOf: [" + widget + ", {$ref: *text}]}", sharedSchema},
-		{"no such reference", "{oneOf: [" + widget + ", {type: string}]}", responseSchema},
+		{"branch that is such a reference", "{oneOf: [" + widget + ", {$ref: *text}]}", "", sharedSchema},
+		{"such a reference elsewhere", "{oneOf: [" + widget + ", {type: string}]}", others, sharedSchema},
+		{"no such reference", "{oneOf: [" + widget + ", {type: string}]}", "", responseSchema},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var root yaml.Node
 			require.NoError(t, yaml.Unmarshal([]byte(`openapi: 3.1.0
-x-refs: {text: &text '#/components/schemas/Text'}
+x-refs: {text: &text '#/components/schemas/Text', other: &other '#/components/schemas/Other'}
 paths:
-  /widgets: {get: {responses: {'200': {description: ok, content: {application/json: {schema: `+tc.schema+`}}}}}}
+  /widgets: {get: {responses: {'200': {description: ok, content: {application/json: {schema: `+tc.schema+`}}}}}}`+tc.paths+`
 components:
   schemas:
     Widget: {type: object}
-    Text: {type: string}`), &root))
+    Text: {type: string}
+    Other: {type: object}`), &root))
 			idx := index.NewSpecIndexWithConfig(&root, index.CreateClosedAPIIndexConfig())
 			usage := buildSchemaUsage(idx)
 			require.NotNil(t, usage)
