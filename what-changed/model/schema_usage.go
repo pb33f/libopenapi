@@ -113,6 +113,11 @@ type usageWalker struct {
 	// refSiblings reads the keywords next to $ref, as the schema model does with TransformSiblingRefs. Without it, the
 	// model reads a schema with a $ref as the referenced schema alone.
 	refSiblings bool
+	// dropped counts the keywords being walked that the model drops next to a $ref.
+	dropped int
+	// throughDropped is set once the walk reaches a schema through keywords the model drops next to a $ref, or through
+	// a $ref the model does not resolve, and discriminated once it follows a discriminator.
+	throughDropped, discriminated bool
 	// children lists, for each schema, the schemas that build on it directly: with allOf, or with a $ref to it. It is
 	// built for the first discriminator that needs it, and positions is built at the same time.
 	children map[*yaml.Node][]*yaml.Node
@@ -149,7 +154,9 @@ func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
 			w.each(value, pathItemObject, sharedSchema)
 		}
 	}
-	if w.unknown {
+	// The walk follows the keywords the model drops next to a $ref, as it did before. That did not matter in a document
+	// with a discriminator, whose usage was unknown, so it stays unknown when both happen.
+	if w.unknown || (w.discriminated && w.throughDropped) {
 		return nil
 	}
 	return w.visited[schemaObject]
@@ -193,9 +200,18 @@ func (w *usageWalker) each(node *yaml.Node, object usageObject, dir schemaDirect
 }
 
 func (w *usageWalker) walk(node *yaml.Node, object usageObject, dir schemaDirection) {
+	w.walkReached(node, object, dir, false)
+}
+
+// walkReached walks node, which referenced tells is reached through a reference rather than written in place.
+func (w *usageWalker) walkReached(node *yaml.Node, object usageObject, dir schemaDirection, referenced bool) {
+	aliased := node != nil && node.Kind == yaml.AliasNode
 	node = utils.NodeAlias(node)
 	if w.unknown || node == nil || node.Kind != yaml.MappingNode {
 		return
+	}
+	if object == schemaObject && w.dropped > 0 {
+		w.throughDropped = true
 	}
 	visited := w.visited[object]
 	if prior, seen := visited[node]; seen && prior&dir == dir {
@@ -217,15 +233,26 @@ func (w *usageWalker) walk(node *yaml.Node, object usageObject, dir schemaDirect
 			}
 		}
 	}
+	// The schema model drops the keywords next to a $ref without TransformSiblingRefs, when it reaches the schema through
+	// a $ref, and for an alias in a list. Next to the $ref of anything other than a schema, such as a response or a path
+	// item, it always drops them. The walk still follows them, as before, and records that it did.
+	dropped := (object != schemaObject || !w.refSiblings || referenced || aliased) && usageField(node, v3.RefLabel) != nil
 	for key, value := range usageFields(node) {
 		if key == v3.RefLabel {
 			ref := utils.NodeAlias(value).Value
+			// The model does not resolve a $ref whose value is an alias, so the walk reaches what the model does not.
+			if value.Kind == yaml.AliasNode {
+				w.throughDropped = true
+			}
 			if target := w.localTarget(ref); target != nil {
-				w.walk(target, object, sameInstance)
+				w.walkReached(target, object, sameInstance, true)
 				continue
 			}
 			w.unknown = true
 			return
+		}
+		if dropped {
+			w.dropped++
 		}
 		switch object {
 		case pathItemObject, operationObject:
@@ -245,6 +272,9 @@ func (w *usageWalker) walk(node *yaml.Node, object usageObject, dir schemaDirect
 			}
 		case schemaObject:
 			w.schemaField(node, key, value, dir, sameInstance)
+		}
+		if dropped {
+			w.dropped--
 		}
 	}
 }
@@ -296,8 +326,10 @@ func (w *usageWalker) schemaField(node *yaml.Node, key string, value *yaml.Node,
 
 // discriminator follows the schemas its mapping and default mapping name. Next to a oneOf or an anyOf it can only
 // select one of the listed schemas, which the walk follows already. Otherwise it is on a parent schema, and can
-// select any component schema that builds on the parent with allOf by name.
+// select any component schema that builds on the parent with allOf by name. The schemas it selects are walked as
+// written, as the model reads a component schema.
 func (w *usageWalker) discriminator(holder, node *yaml.Node, dir schemaDirection) {
+	w.discriminated = true
 	for key, value := range usageFields(node) {
 		switch key {
 		case base.MappingLabel:
@@ -410,6 +442,9 @@ func (w *usageWalker) link(node *yaml.Node, linked map[*yaml.Node]bool) {
 	for key, value := range usageFields(node) {
 		switch {
 		case key == v3.RefLabel:
+			if value.Kind == yaml.AliasNode {
+				w.throughDropped = true
+			}
 			target := w.localTarget(utils.NodeAlias(value).Value)
 			if target == nil || (w.refSiblings && nextToRef(target, v3.AllOfLabel)) {
 				w.unknown = true

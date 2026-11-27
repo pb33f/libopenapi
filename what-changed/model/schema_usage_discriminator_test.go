@@ -370,7 +370,7 @@ func TestRequiredDiscriminatorKeywordsNextToAReference(t *testing.T) {
 	// Nothing else refers to Widget, so requiring a property of it is only not breaking when the response can select
 	// it. The schema model reads the keywords next to a $ref only with TransformSiblingRefs, and only where the schema
 	// is written: when it reaches a schema through a $ref, or an alias in a list, it follows the $ref of that schema and
-	// drops the rest. When that depends on how the schema is reached, the usage is unknown.
+	// drops the rest. A discriminator anywhere in the keywords it drops makes the usage unknown, as before this PR.
 	const pets = `
   /pets:
     get:
@@ -382,19 +382,73 @@ func TestRequiredDiscriminatorKeywordsNextToAReference(t *testing.T) {
               schema: {$ref: '#/components/schemas/Pet'}`
 	const pet = "\n    Pet: {type: object, properties: {kind: {type: string}}, discriminator: {propertyName: kind}}"
 	const other = "\n    Other: {type: object}"
+	holder := strings.Replace(usageResponseOnly, "Widget", "Holder", 1)
 	for _, tc := range []struct {
 		name, operation, schemas, paths string
 		// breaking and known are the results with the transform on and then off.
 		breaking, known [2]bool
 	}{
+		{"discriminator written next to a reference",
+			strings.Replace(usageResponseOnly, "{$ref: '#/components/schemas/Widget'}", "{$ref: '#/components/schemas/Other', discriminator: {propertyName: kind, mapping: {w: Widget}}}", 1),
+			other, "", [2]bool{false, true}, [2]bool{true, false}},
+		{"discriminator next to a reference, reached through a reference", holder,
+			other + "\n    Holder: {$ref: '#/components/schemas/Other', discriminator: {propertyName: kind, mapping: {w: Widget}}}",
+			"", [2]bool{true, true}, [2]bool{false, false}},
+		{"discriminator in the properties next to a reference, reached through a reference", holder,
+			other + "\n    Holder: {$ref: '#/components/schemas/Other', properties: {p: {discriminator: {propertyName: kind, mapping: {w: Widget}}}}}",
+			"", [2]bool{true, true}, [2]bool{false, false}},
+		{"discriminator in an allOf written next to a reference",
+			strings.Replace(usageResponseOnly, "{$ref: '#/components/schemas/Widget'}", "{$ref: '#/components/schemas/Other', allOf: [{discriminator: {propertyName: kind, mapping: {w: Widget}}}]}", 1),
+			other, "", [2]bool{false, true}, [2]bool{true, false}},
+		{"parent discriminator next to a reference, reached through a reference", holder,
+			other + "\n    Holder: {$ref: '#/components/schemas/Other', discriminator: {propertyName: kind}}" +
+				"\n    Child: {allOf: [{$ref: '#/components/schemas/Holder'}, {$ref: '#/components/schemas/Widget'}]}",
+			"", [2]bool{true, true}, [2]bool{false, false}},
 		{"allOf next to a reference, reached through a reference from a child", usageUnused,
 			pet + other + "\n    Child: {allOf: [{$ref: '#/components/schemas/Mid'}, {$ref: '#/components/schemas/Widget'}]}" +
 				"\n    Mid: {$ref: '#/components/schemas/Other', allOf: [{$ref: '#/components/schemas/Pet'}]}",
 			pets, [2]bool{true, true}, [2]bool{false, true}},
+		// The sibling transform skips an alias in a list, so the model reads it as the target of its $ref there, but
+		// not in every other place.
+		{"discriminator next to a reference in an alias",
+			"      x-holder: &holder {$ref: '#/components/schemas/Other', discriminator: {propertyName: kind, mapping: {w: Widget}}}\n" +
+				strings.Replace(usageResponseOnly, "{$ref: '#/components/schemas/Widget'}", "{anyOf: [*holder]}", 1),
+			other, "", [2]bool{true, true}, [2]bool{false, false}},
+		{"discriminator in the properties next to a reference in an alias",
+			"      x-holder: &holder {$ref: '#/components/schemas/Other', properties: {p: {discriminator: {propertyName: kind, mapping: {w: Widget}}}}}\n" +
+				strings.Replace(usageResponseOnly, "{$ref: '#/components/schemas/Widget'}", "{anyOf: [*holder]}", 1),
+			other, "", [2]bool{true, true}, [2]bool{false, false}},
 		{"allOf next to a reference in an alias", usageUnused,
 			pet + other + "\n    Mid: &mid {$ref: '#/components/schemas/Other', allOf: [{$ref: '#/components/schemas/Pet'}]}" +
 				"\n    Child: {allOf: [*mid, {$ref: '#/components/schemas/Widget'}]}",
 			pets, [2]bool{true, true}, [2]bool{false, true}},
+		// The schemas a discriminator selects are read as written, as the model reads a component schema, so the
+		// keywords next to their $ref count with the transform. Keywords the model drops inside them make the usage
+		// unknown.
+		{"discriminator next to a reference in a mapping target",
+			strings.Replace(usageResponseOnly, "{$ref: '#/components/schemas/Widget'}", "{type: object, discriminator: {propertyName: kind, mapping: {d: Dog}}}", 1),
+			other + "\n    Dog: {$ref: '#/components/schemas/Other', discriminator: {propertyName: kind, mapping: {w: Widget}}}",
+			"", [2]bool{false, true}, [2]bool{true, false}},
+		{"properties next to a reference in a mapping target",
+			strings.Replace(usageResponseOnly, "{$ref: '#/components/schemas/Widget'}", "{type: object, discriminator: {propertyName: kind, mapping: {d: Dog}}}", 1),
+			other + "\n    Dog: {$ref: '#/components/schemas/Other', properties: {w: {$ref: '#/components/schemas/Widget'}}}",
+			"", [2]bool{false, true}, [2]bool{true, false}},
+		{"properties next to a reference, reached through a reference from a mapping target",
+			strings.Replace(usageResponseOnly, "{$ref: '#/components/schemas/Widget'}", "{type: object, discriminator: {propertyName: kind, mapping: {d: Dog}}}", 1),
+			other + "\n    Dog: {$ref: '#/components/schemas/Holder'}" +
+				"\n    Holder: {$ref: '#/components/schemas/Other', properties: {w: {$ref: '#/components/schemas/Widget'}}}",
+			"", [2]bool{true, true}, [2]bool{false, false}},
+		// Next to an anyOf, the discriminator of the mapping target selects no children, so only its mapping counts.
+		{"discriminator next to a reference and an anyOf in a mapping target",
+			strings.Replace(usageResponseOnly, "{$ref: '#/components/schemas/Widget'}", "{type: object, discriminator: {propertyName: kind, mapping: {d: Dog}}}", 1),
+			other + "\n    Dog: {$ref: '#/components/schemas/Other', anyOf: [{type: object}], discriminator: {propertyName: kind, mapping: {w: Widget}}}",
+			"", [2]bool{false, true}, [2]bool{true, false}},
+		{"discriminator next to a reference in a child", usageUnused,
+			pet + "\n    Cat: {$ref: '#/components/schemas/Pet', discriminator: {propertyName: kind, mapping: {w: Widget}}}",
+			pets, [2]bool{false, true}, [2]bool{true, false}},
+		{"properties next to a reference in a child", usageUnused,
+			pet + "\n    Cat: {$ref: '#/components/schemas/Pet', properties: {w: {$ref: '#/components/schemas/Widget'}}}",
+			pets, [2]bool{false, true}, [2]bool{true, false}},
 	} {
 		for i, transform := range []bool{true, false} {
 			t.Run(fmt.Sprintf("%s, TransformSiblingRefs %v", tc.name, transform), func(t *testing.T) {
@@ -424,6 +478,125 @@ func TestRequiredDiscriminatorKeywordsNextToAReference(t *testing.T) {
 				t.Fatal("missing required change")
 			})
 		}
+	}
+}
+
+func TestRequiredDiscriminatorElsewhereWithKeywordsTheModelDrops(t *testing.T) {
+	// The /widgets response reaches Widget only through the properties next to the $ref of Holder, which the model
+	// drops, and /bases holds a discriminator. Before this PR the discriminator made the usage unknown, so following
+	// keywords the model drops did not matter. When both happen, the usage stays unknown.
+	const bases = `
+  /bases:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: {type: object, discriminator: {propertyName: kind%s}}`
+	const other = "\n    Other: {type: object}"
+	holder := strings.Replace(usageResponseOnly, "Widget", "Holder", 1)
+	for _, tc := range []struct {
+		name, mapping, schemas string
+		breaking, known        bool
+	}{
+		{"discriminator elsewhere", "", "\n    Holder: {$ref: '#/components/schemas/Other', properties: {w: {$ref: '#/components/schemas/Widget'}}}", true, false},
+		{"discriminator that also selects the schema", ", mapping: {h: Holder}", "\n    Holder: {$ref: '#/components/schemas/Other', properties: {w: {$ref: '#/components/schemas/Widget'}}}", true, false},
+		{"no keywords next to a reference", "", "\n    Holder: {type: object, properties: {w: {$ref: '#/components/schemas/Widget'}}}", false, true},
+	} {
+		for _, transform := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s, TransformSiblingRefs %v", tc.name, transform), func(t *testing.T) {
+				build := func(required string) *v3.Document {
+					spec := usageSpec(holder, usageWidget(required)+other+tc.schemas)
+					spec = strings.Replace(spec, "\ncomponents:", fmt.Sprintf(bases, tc.mapping)+"\ncomponents:", 1)
+					info, err := datamodel.ExtractSpecInfo([]byte(spec))
+					require.NoError(t, err)
+					config := datamodel.NewDocumentConfiguration()
+					config.TransformSiblingRefs = transform
+					doc, err := v3.CreateDocumentFromConfig(info, config)
+					require.NoError(t, err)
+					return doc
+				}
+				left := build("name")
+				assert.Equal(t, tc.known, buildSchemaUsage(left.Index) != nil)
+				changes := CompareDocuments(left, build("name, id"))
+				require.NotNil(t, changes)
+				for _, ch := range changes.GetAllChanges() {
+					if ch.Property == v3.RequiredLabel {
+						assert.Equal(t, tc.breaking, ch.Breaking)
+						return
+					}
+				}
+				t.Fatal("missing required change")
+			})
+		}
+	}
+}
+
+func TestRequiredDiscriminatorElsewhereNextToTheReferenceOfAResponseOrPathItem(t *testing.T) {
+	// The model reads a response or path item with a $ref as the one it refers to, and drops the rest. Only the content
+	// next to that $ref reaches Widget, and /bases holds a discriminator, so the usage stays unknown, as before.
+	const content = "content: {application/json: {schema: {$ref: '#/components/schemas/Widget'}}}"
+	const bases = "\n  /bases:\n    get:\n      responses:\n        '200': {description: ok, content: {application/json: {schema: {type: object, discriminator: {propertyName: kind}}}}}"
+	for _, tc := range []struct {
+		name, path      string
+		breaking, known bool
+	}{
+		{"response", "    get:\n      responses:\n        '200': {$ref: '#/components/responses/Empty', " + content + "}", true, false},
+		{"path item", "    $ref: '#/components/pathItems/Empty'\n    get:\n      responses:\n        '200': {description: ok, " + content + "}", true, false},
+		{"no reference", "    get:\n      responses:\n        '200': {description: ok, " + content + "}", false, true},
+	} {
+		for _, transform := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s, TransformSiblingRefs %v", tc.name, transform), func(t *testing.T) {
+				build := func(required string) *v3.Document {
+					spec := "openapi: 3.1.0\ninfo: {title: Direction, version: 1.0.0}\npaths:\n  /widgets:\n" + tc.path + bases +
+						"\ncomponents:\n  responses:\n    Empty: {description: ok}\n  pathItems:\n    Empty: {}\n  schemas:\n" + usageWidget(required)
+					info, err := datamodel.ExtractSpecInfo([]byte(spec))
+					require.NoError(t, err)
+					config := datamodel.NewDocumentConfiguration()
+					config.TransformSiblingRefs = transform
+					doc, err := v3.CreateDocumentFromConfig(info, config)
+					require.NoError(t, err)
+					return doc
+				}
+				left := build("name")
+				assert.Equal(t, tc.known, buildSchemaUsage(left.Index) != nil)
+				changes := CompareDocuments(left, build("name, id"))
+				require.NotNil(t, changes)
+				for _, ch := range changes.GetAllChanges() {
+					if ch.Property == v3.RequiredLabel {
+						assert.Equal(t, tc.breaking, ch.Breaking)
+						return
+					}
+				}
+				t.Fatal("missing required change")
+			})
+		}
+	}
+}
+
+func TestSchemaUsageDiscriminatorWithAReferenceThatIsAnAlias(t *testing.T) {
+	// The model does not resolve a $ref whose value is an alias, while the walk follows it, as before. With a
+	// discriminator, the usage is then unknown, as before this PR.
+	const widgets = "\n  /widgets: {get: {responses: {'200': {description: ok, content: {application/json: {schema: {$ref: *widget}}}}}}}"
+	const bases = "\n  /bases: {post: {requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Base'}}}}}}"
+	for _, tc := range []struct {
+		name, paths, schemas string
+		known                bool
+	}{
+		{"discriminator elsewhere", widgets + bases, "", false},
+		{"no discriminator", widgets, "", true},
+		{"child that builds on the parent through it", bases, "\n    Child: {allOf: [{$ref: *base}]}", false},
+	} {
+		var root yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(`x-refs: {widget: &widget '#/components/schemas/Widget', base: &base '#/components/schemas/Base'}
+paths:`+tc.paths+`
+components:
+  schemas:
+    Widget: {type: object}
+    Base: {type: object, discriminator: {propertyName: kind}}`+tc.schemas), &root))
+		idx := index.NewSpecIndexWithConfig(&root, index.CreateClosedAPIIndexConfig())
+		assert.Equal(t, tc.known, buildSchemaUsage(idx) != nil, tc.name)
 	}
 }
 
