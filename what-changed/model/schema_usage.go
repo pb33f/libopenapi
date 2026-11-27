@@ -7,6 +7,7 @@ import (
 	"context"
 	"iter"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 
@@ -112,9 +113,11 @@ type usageWalker struct {
 	// refSiblings reads the keywords next to $ref, as the schema model does with TransformSiblingRefs. Without it, the
 	// model reads a schema with a $ref as the referenced schema alone.
 	refSiblings bool
-	// children lists, for each schema, the component schemas that build on it with allOf, directly or through other
-	// schemas. It is built for the first discriminator that needs it.
+	// children lists, for each schema, the schemas that build on it directly: with allOf, or with a $ref to it. It is
+	// built for the first discriminator that needs it, and positions is built at the same time.
 	children map[*yaml.Node][]*yaml.Node
+	// positions holds the place of each component schema, so the children are returned in the order they are declared.
+	positions map[*yaml.Node]int
 }
 
 func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
@@ -345,31 +348,58 @@ func (w *usageWalker) discriminatorTarget(value *yaml.Node, dir schemaDirection)
 	w.walk(schema, schemaObject, dir)
 }
 
-// allOfChildren returns the component schemas that build on parent with allOf, directly or through other schemas.
+// allOfChildren returns the component schemas that build on parent with allOf, directly or through other schemas, in
+// the order they are declared. A parent that is a component schema is returned as well.
 func (w *usageWalker) allOfChildren(parent *yaml.Node) []*yaml.Node {
 	if w.children == nil {
 		w.children = make(map[*yaml.Node][]*yaml.Node)
+		w.positions = make(map[*yaml.Node]int)
+		linked := make(map[*yaml.Node]bool)
 		for _, schema := range usageFields(w.schemas) {
 			schema = utils.NodeAlias(schema)
-			ancestors := make(map[*yaml.Node]bool)
-			w.ancestors(schema, ancestors)
-			for ancestor := range ancestors {
-				w.children[ancestor] = append(w.children[ancestor], schema)
+			if _, seen := w.positions[schema]; !seen {
+				w.positions[schema] = len(w.positions)
+			}
+			w.link(schema, linked)
+		}
+	}
+	// Each direct link is stored once, so the schemas that build on parent through others are found by following them.
+	// Only the component schemas among them are returned, so the cost depends on the children, not on all schemas.
+	reached := map[*yaml.Node]bool{parent: true}
+	pending := []*yaml.Node{parent}
+	var children []*yaml.Node
+	if _, component := w.positions[parent]; component {
+		children = append(children, parent)
+	}
+	for len(pending) > 0 {
+		node := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
+		for _, child := range w.children[node] {
+			if !reached[child] {
+				reached[child] = true
+				pending = append(pending, child)
+				if _, component := w.positions[child]; component {
+					children = append(children, child)
+				}
 			}
 		}
 	}
-	return w.children[parent]
+	slices.SortFunc(children, func(a, b *yaml.Node) int {
+		return w.positions[a] - w.positions[b]
+	})
+	return children
 }
 
-// ancestors collects node and the schemas it builds on with allOf. A schema with a $ref builds on the schema it refers
-// to as well, so the references are followed too, and an allOf next to a $ref only counts when the model reads it. A
-// reference that cannot be followed could lead to a parent, so it makes the usage unknown.
-func (w *usageWalker) ancestors(node *yaml.Node, seen map[*yaml.Node]bool) {
+// link records node as a child of the schemas it builds on with allOf, and links those schemas in turn. A schema with a
+// $ref builds on the schema it refers to as well, so the references are followed too, and an allOf next to a $ref only
+// counts when the model reads it. A reference that cannot be followed could lead to a parent, so it makes the usage
+// unknown.
+func (w *usageWalker) link(node *yaml.Node, linked map[*yaml.Node]bool) {
 	node = utils.NodeAlias(node)
-	if w.unknown || node == nil || seen[node] {
+	if w.unknown || node == nil || linked[node] {
 		return
 	}
-	seen[node] = true
+	linked[node] = true
 	for key, value := range usageFields(node) {
 		switch {
 		case key == v3.RefLabel:
@@ -378,13 +408,20 @@ func (w *usageWalker) ancestors(node *yaml.Node, seen map[*yaml.Node]bool) {
 				w.unknown = true
 				return
 			}
-			w.ancestors(target, seen)
+			w.linkParent(node, target, linked)
 		case key == v3.AllOfLabel && (w.refSiblings || usageField(node, v3.RefLabel) == nil):
 			for _, item := range utils.NodeAlias(value).Content {
-				w.ancestors(item, seen)
+				w.linkParent(node, item, linked)
 			}
 		}
 	}
+}
+
+// linkParent records child as a child of parent and links parent in turn.
+func (w *usageWalker) linkParent(child, parent *yaml.Node, linked map[*yaml.Node]bool) {
+	parent = utils.NodeAlias(parent)
+	w.children[parent] = append(w.children[parent], child)
+	w.link(parent, linked)
 }
 
 // usageField returns the value of one field of a mapping, or nil when the mapping does not have it.

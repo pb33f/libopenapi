@@ -420,6 +420,37 @@ func TestSchemaUsageDiscriminatorStopsOnceUnknown(t *testing.T) {
 	assert.Empty(t, w.targets)
 }
 
+func TestSchemaUsageDiscriminatorChildrenOfAChain(t *testing.T) {
+	// Each schema builds on the one before it, so every schema in the chain is a child of the first one. Storing each
+	// direct link once keeps the index linear in the size of the chain, instead of one entry per ancestor and child.
+	const length = 256
+	var spec strings.Builder
+	spec.WriteString("components:\n  schemas:\n    S0: {type: object, discriminator: {propertyName: kind}}\n")
+	for i := 1; i < length; i++ {
+		fmt.Fprintf(&spec, "    S%d: {allOf: [{$ref: '#/components/schemas/S%d'}]}\n", i, i-1)
+	}
+	var root yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte(spec.String()), &root))
+	idx := index.NewSpecIndexWithConfig(&root, index.CreateClosedAPIIndexConfig())
+	schemas := usageField(usageField(root.Content[0], v3.ComponentsLabel), v3.SchemasLabel)
+
+	w := usageWalker{index: idx, targets: make(map[string]*yaml.Node), schemas: schemas}
+	children := w.allOfChildren(usageField(schemas, "S0"))
+	assert.False(t, w.unknown)
+	// The children are returned in the order they are declared.
+	if assert.Len(t, children, length) {
+		for i, child := range children {
+			assert.Same(t, usageField(schemas, fmt.Sprintf("S%d", i)), child)
+		}
+	}
+	entries := 0
+	for _, children := range w.children {
+		entries += len(children)
+	}
+	// One link from each schema to the item of its allOf, and one from that item to the schema it refers to.
+	assert.Equal(t, 2*(length-1), entries)
+}
+
 // usageChild is Widget with the keyword that makes it build on another schema, or without one when builds is empty.
 func usageChild(required, builds string) string {
 	if builds == "" {
