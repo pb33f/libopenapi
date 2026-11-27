@@ -232,3 +232,40 @@ func TestResolverResolveLocalRefPath(t *testing.T) {
 	wantFallback, _ := filepath.Abs(utils.CheckPathOverlap("/base", "file.yaml", string(os.PathSeparator)))
 	assert.Equal(t, wantFallback, gotFallback)
 }
+
+func TestResolveRelativeFilePath_SiblingOutsideRoots(t *testing.T) {
+	dir := t.TempDir()
+	base := filepath.Join(dir, "api")
+	other := filepath.Join(dir, "other")
+	for _, d := range []string{base, other} {
+		require.NoError(t, os.MkdirAll(d, 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(d, "openapi.yaml"), []byte("type: object"), 0o600))
+	}
+
+	resolve := func(fsConfig *LocalFSConfig, defRoot string) string {
+		localFS, err := NewLocalFSWithConfig(fsConfig)
+		require.NoError(t, err)
+
+		rolo := NewRolodex(CreateOpenAPIIndexConfig())
+		rolo.AddLocalFS(base, localFS)
+
+		cfg := CreateOpenAPIIndexConfig()
+		cfg.BasePath = base
+		idx := &SpecIndex{config: cfg, rolodex: rolo}
+		return idx.ResolveRelativeFilePath(defRoot, "openapi.yaml")
+	}
+
+	// the OS file system can read the sibling, so it wins over BasePath.
+	got := resolve(&LocalFSConfig{BaseDirectory: base}, other)
+	assert.Equal(t, filepath.Join(other, "openapi.yaml"), got)
+
+	// a virtual file system can't, so BasePath is still preferred.
+	virtual := fstest.MapFS{"openapi.yaml": {Data: []byte("type: object")}}
+	got = resolve(&LocalFSConfig{BaseDirectory: base, DirFS: virtual}, other)
+	assert.Equal(t, filepath.Join(base, "openapi.yaml"), got)
+
+	// a relative defRoot says nothing about the current file, so the working directory doesn't win.
+	t.Chdir(other)
+	got = resolve(&LocalFSConfig{BaseDirectory: base}, ".")
+	assert.Equal(t, filepath.Join(base, "openapi.yaml"), got)
+}
