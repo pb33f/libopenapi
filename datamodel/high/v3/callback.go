@@ -103,13 +103,10 @@ func (c *Callback) MarshalYAML() (interface{}, error) {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		var style yaml.Style
 		if c.low != nil {
-			lpi := c.low.FindExpression(k)
-			if lpi != nil {
-				ln = lpi.ValueNode.Line
-			}
-
 			for lk := range c.low.Expression.KeysFromOldest() {
 				if lk.Value == k {
+					// the key lives in this document, a $ref'd value may not.
+					ln = lk.KeyNode.Line
 					style = lk.KeyNode.Style
 					break
 				}
@@ -203,13 +200,10 @@ func (c *Callback) marshalYAMLInlineInternal(ctx any) (interface{}, error) {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		var style yaml.Style
 		if c.low != nil {
-			lpi := c.low.FindExpression(k)
-			if lpi != nil {
-				ln = lpi.ValueNode.Line
-			}
-
 			for lk := range c.low.Expression.KeysFromOldest() {
 				if lk.Value == k {
+					// the key lives in this document, a $ref'd value may not.
+					ln = lk.KeyNode.Line
 					style = lk.KeyNode.Style
 					break
 				}

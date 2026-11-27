@@ -91,13 +91,10 @@ func (p *Paths) MarshalYAML() (interface{}, error) {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		var style yaml.Style
 		if p.low != nil {
-			lpi := p.low.FindPath(k)
-			if lpi != nil {
-				ln = lpi.ValueNode.Line
-			}
-
 			for lk := range p.low.PathItems.KeysFromOldest() {
 				if lk.Value == k {
+					// the key lives in this document, a $ref'd value may not.
+					ln = lk.KeyNode.Line
 					style = lk.KeyNode.Style
 					break
 				}
@@ -169,13 +166,10 @@ func (p *Paths) marshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		var style yaml.Style
 		if p.low != nil {
-			lpi := p.low.FindPath(k)
-			if lpi != nil {
-				ln = lpi.ValueNode.Line
-			}
-
 			for lk := range p.low.PathItems.KeysFromOldest() {
 				if lk.Value == k {
+					// the key lives in this document, a $ref'd value may not.
+					ln = lk.KeyNode.Line
 					style = lk.KeyNode.Style
 					break
 				}
