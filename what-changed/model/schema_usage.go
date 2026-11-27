@@ -109,6 +109,9 @@ type usageWalker struct {
 	unknown bool
 	// schemas are the component schemas, which a discriminator can select by name.
 	schemas *yaml.Node
+	// refSiblings reads the keywords next to $ref, as the schema model does with TransformSiblingRefs. Without it, the
+	// model reads a schema with a $ref as the referenced schema alone.
+	refSiblings bool
 	// children lists, for each schema, the component schemas that build on it with allOf, directly or through other
 	// schemas. It is built for the first discriminator that needs it.
 	children map[*yaml.Node][]*yaml.Node
@@ -123,9 +126,10 @@ func buildSchemaUsage(idx *index.SpecIndex) schemaUsage {
 		root = root.Content[0]
 	}
 	w := usageWalker{
-		index:   idx,
-		targets: make(map[string]*yaml.Node),
-		schemas: usageField(usageField(root, v3.ComponentsLabel), v3.SchemasLabel),
+		index:       idx,
+		targets:     make(map[string]*yaml.Node),
+		schemas:     usageField(usageField(root, v3.ComponentsLabel), v3.SchemasLabel),
+		refSiblings: idx.GetConfig() != nil && idx.GetConfig().TransformSiblingRefs,
 	}
 	for i := range w.visited {
 		w.visited[i] = make(schemaUsage)
@@ -358,8 +362,8 @@ func (w *usageWalker) allOfChildren(parent *yaml.Node) []*yaml.Node {
 }
 
 // ancestors collects node and the schemas it builds on with allOf. A schema with a $ref builds on the schema it refers
-// to as well, so the references are followed too. A reference that cannot be followed could lead to a parent, so it
-// makes the usage unknown.
+// to as well, so the references are followed too, and an allOf next to a $ref only counts when the model reads it. A
+// reference that cannot be followed could lead to a parent, so it makes the usage unknown.
 func (w *usageWalker) ancestors(node *yaml.Node, seen map[*yaml.Node]bool) {
 	node = utils.NodeAlias(node)
 	if w.unknown || node == nil || seen[node] {
@@ -367,15 +371,15 @@ func (w *usageWalker) ancestors(node *yaml.Node, seen map[*yaml.Node]bool) {
 	}
 	seen[node] = true
 	for key, value := range usageFields(node) {
-		switch key {
-		case v3.RefLabel:
+		switch {
+		case key == v3.RefLabel:
 			target := w.localTarget(utils.NodeAlias(value).Value)
 			if target == nil {
 				w.unknown = true
 				return
 			}
 			w.ancestors(target, seen)
-		case v3.AllOfLabel:
+		case key == v3.AllOfLabel && (w.refSiblings || usageField(node, v3.RefLabel) == nil):
 			for _, item := range utils.NodeAlias(value).Content {
 				w.ancestors(item, seen)
 			}

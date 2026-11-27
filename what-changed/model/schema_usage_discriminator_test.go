@@ -4,10 +4,12 @@
 package model
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/pb33f/go-yaml"
+	"github.com/pb33f/libopenapi/datamodel"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/testify/assert"
@@ -321,6 +323,47 @@ func TestRequiredDiscriminatorChildOfAResponseParent(t *testing.T) {
 		return strings.Replace(spec, "\ncomponents:", pets+"\ncomponents:", 1)
 	}
 	requireEntryBreaking(t, build("name"), build("name, id"), false)
+}
+
+func TestRequiredDiscriminatorChildNextToAReference(t *testing.T) {
+	// Nothing refers to Widget, and Alias refers to it next to an allOf with Pet, which only a response uses. With
+	// TransformSiblingRefs the schema model reads Alias as both, so only that response can select it. Without it, the
+	// model reads Alias as Widget alone, so Alias does not build on Pet and Widget stays unused.
+	const pets = `
+  /pets:
+    get:
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Pet'}`
+	const schemas = `
+    Pet: {type: object, properties: {kind: {type: string}}, discriminator: {propertyName: kind}}
+    Alias: {$ref: '#/components/schemas/Widget', allOf: [{$ref: '#/components/schemas/Pet'}]}`
+	for _, transform := range []bool{true, false} {
+		t.Run(fmt.Sprintf("TransformSiblingRefs %v", transform), func(t *testing.T) {
+			build := func(required string) *v3.Document {
+				spec := usageSpec(usageUnused, usageWidget(required)+schemas)
+				info, err := datamodel.ExtractSpecInfo([]byte(strings.Replace(spec, "\ncomponents:", pets+"\ncomponents:", 1)))
+				require.NoError(t, err)
+				config := datamodel.NewDocumentConfiguration()
+				config.TransformSiblingRefs = transform
+				doc, err := v3.CreateDocumentFromConfig(info, config)
+				require.NoError(t, err)
+				return doc
+			}
+			changes := CompareDocuments(build("name"), build("name, id"))
+			require.NotNil(t, changes)
+			for _, ch := range changes.GetAllChanges() {
+				if ch.Property == v3.RequiredLabel {
+					assert.Equal(t, !transform, ch.Breaking)
+					return
+				}
+			}
+			t.Fatal("missing required change")
+		})
+	}
 }
 
 func TestSchemaUsageDiscriminatorParentWithUnresolvedReferences(t *testing.T) {
