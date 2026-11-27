@@ -44,6 +44,14 @@ func (index *SpecIndex) resolveRelativeFilePath(defRoot, ref string) string {
 		}
 	}
 
+	// The current file may live outside every configured root. A file that exists next to it still
+	// wins over a file with the same relative name under BasePath or another root.
+	if filepath.IsAbs(defRoot) && index.hasOSFileSystem() {
+		if info, err := os.Stat(fallback); err == nil && !info.IsDir() {
+			return fallback
+		}
+	}
+
 	// Prefer the configured BasePath if present and it yields an existing file.
 	if index.config.BasePath != "" {
 		baseAbs, _ := filepath.Abs(index.config.BasePath)
@@ -71,6 +79,17 @@ func (index *SpecIndex) resolveRelativeFilePath(defRoot, ref string) string {
 	}
 
 	return fallback
+}
+
+// hasOSFileSystem reports whether any local file system reads straight from the operating system,
+// and can therefore open absolute paths outside its base directory.
+func (index *SpecIndex) hasOSFileSystem() bool {
+	for _, fsys := range index.rolodex.localFS {
+		if lfs, ok := fsys.(*LocalFS); ok && lfs.fsConfig != nil && lfs.fsConfig.DirFS == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // ResolveRelativeFilePath is a public wrapper for resolving local file references.
